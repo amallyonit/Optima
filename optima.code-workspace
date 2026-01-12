@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "optima"
+		},
+		{
+			"path": "../../nginx-optima-conf"
+		},
+		{
+			"path": "../../nginx-strapi-conf"
+		}
+	],
+	"settings": {}
+}
