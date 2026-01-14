@@ -1,4 +1,5 @@
 // ignore_for_file: file_names, non_constant_identifier_names
+import 'package:intl/intl.dart';
 class PrevYearMonthList {
   final List<PrevYearMonthData> prevYearMonthData;
   PrevYearMonthList({required this.prevYearMonthData});
@@ -655,7 +656,9 @@ class SalesList {
   final String salesType;
   final String type;
   final String invoiceNo;
-  final String invoiceDate;
+
+  final DateTime invoiceDate;
+
   final String refNo;
   final String termsofDelivery;
   final String dispatchThrough;
@@ -689,7 +692,7 @@ class SalesList {
     required this.salesType,
     required this.type,
     required this.invoiceNo,
-    required this.invoiceDate,
+    required this.invoiceDate, // DateTime now
     required this.refNo,
     required this.termsofDelivery,
     required this.dispatchThrough,
@@ -721,41 +724,151 @@ class SalesList {
 
   factory SalesList.fromJson(Map<String, dynamic> json) {
     return SalesList(
-      invoiceType: json['invoiceType'],
-      salesType: json['salesType'],
-      type: json['type'],
-      invoiceNo: json['invoiceNo'],
-      invoiceDate: json['invoiceDate'],
-      refNo: json['refNo'],
-      termsofDelivery: json['termsofDelivery'],
-      dispatchThrough: json['dispatchThrough'],
-      destinationDetails: json['destinationDetails'],
-      customerCode: json['customerCode'],
-      customerName: json['customerName'],
-      customerGroup: json['customerGroup'],
-      customerCity: json['customerCity'],
-      customerState: json['customerState'],
-      countryZone: json['countryZone'],
-      salesRep: json['salesRep'],
-      salesManager: json['salesManager'],
-      regionalManager: json['regionalManager'],
-      itemGroup: json['itemGroup'],
-      itemSubGroup: json['itemSubGroup'],
-      code: json['code'],
-      description: json['description'],
-      uom: json['uom'],
-      quantity: json['quantity'],
-      currency: json['currency'],
-      currencyRate: json['currencyRate'],
-      price: json['price'],
-      taxCode: json['taxCode'],
-      rowTotal: json['rowTotal'],
-      documentTotal: json['documentTotal'],
-      branchName: json['branchName'],
-      whsCode: json['whsCode'],
+      invoiceType: json['invoiceType'] ?? '',
+      salesType: json['salesType'] ?? '',
+      type: json['type'] ?? '',
+      invoiceNo: json['invoiceNo'] ?? '',
+
+      // 🔥 Parse invoiceDate once here
+      invoiceDate: DateFormat('dd/MM/yyyy').parse(json['invoiceDate'] ?? '01/01/2000'),
+
+      refNo: json['refNo'] ?? '',
+      termsofDelivery: json['termsofDelivery'] ?? '',
+      dispatchThrough: json['dispatchThrough'] ?? '',
+      destinationDetails: json['destinationDetails'] ?? '',
+      customerCode: json['customerCode'] ?? '',
+      customerName: json['customerName'] ?? '',
+      customerGroup: json['customerGroup'] ?? '',
+      customerCity: json['customerCity'] ?? '',
+      customerState: json['customerState'] ?? '',
+      countryZone: json['countryZone'] ?? '',
+      salesRep: json['salesRep'] ?? '',
+      salesManager: json['salesManager'] ?? '',
+      regionalManager: json['regionalManager'] ?? '',
+      itemGroup: json['itemGroup'] ?? '',
+      itemSubGroup: json['itemSubGroup'] ?? '',
+      code: json['code'] ?? '',
+      description: json['description'] ?? '',
+      uom: json['uom'] ?? '',
+      quantity: json['quantity'] ?? '',
+      currency: json['currency'] ?? '',
+      currencyRate: json['currencyRate'] ?? '',
+      price: json['price'] ?? '',
+      taxCode: json['taxCode'] ?? '',
+      rowTotal: json['rowTotal']?.toString() ?? '0',
+      documentTotal: json['documentTotal'] ?? '',
+      branchName: json['branchName'] ?? '',
+      whsCode: json['whsCode'] ?? '',
     );
   }
 }
+
+// class SalesList {
+//   final String invoiceType;
+//   final String salesType;
+//   final String type;
+//   final String invoiceNo;
+//   final String invoiceDate;
+//   final String refNo;
+//   final String termsofDelivery;
+//   final String dispatchThrough;
+//   final String destinationDetails;
+//   final String customerGroup;
+//   final String customerCode;
+//   final String customerName;
+//   final String customerCity;
+//   final String customerState;
+//   final String countryZone;
+//   final String salesRep;
+//   final String salesManager;
+//   final String regionalManager;
+//   final String itemGroup;
+//   final String itemSubGroup;
+//   final String code;
+//   final String description;
+//   final String uom;
+//   final String quantity;
+//   final String currency;
+//   final String currencyRate;
+//   final String price;
+//   final String taxCode;
+//   final String rowTotal;
+//   final String documentTotal;
+//   final String branchName;
+//   final String whsCode;
+
+//   SalesList({
+//     required this.invoiceType,
+//     required this.salesType,
+//     required this.type,
+//     required this.invoiceNo,
+//     required this.invoiceDate,
+//     required this.refNo,
+//     required this.termsofDelivery,
+//     required this.dispatchThrough,
+//     required this.destinationDetails,
+//     required this.customerCode,
+//     required this.customerName,
+//     required this.customerGroup,
+//     required this.customerCity,
+//     required this.customerState,
+//     required this.countryZone,
+//     required this.salesRep,
+//     required this.salesManager,
+//     required this.regionalManager,
+//     required this.itemGroup,
+//     required this.itemSubGroup,
+//     required this.code,
+//     required this.description,
+//     required this.uom,
+//     required this.quantity,
+//     required this.currency,
+//     required this.currencyRate,
+//     required this.price,
+//     required this.taxCode,
+//     required this.rowTotal,
+//     required this.documentTotal,
+//     required this.branchName,
+//     required this.whsCode,
+//   });
+
+//   factory SalesList.fromJson(Map<String, dynamic> json) {
+//     return SalesList(
+//       invoiceType: json['invoiceType'],
+//       salesType: json['salesType'],
+//       type: json['type'],
+//       invoiceNo: json['invoiceNo'],
+//       invoiceDate: json['invoiceDate'],
+//       refNo: json['refNo'],
+//       termsofDelivery: json['termsofDelivery'],
+//       dispatchThrough: json['dispatchThrough'],
+//       destinationDetails: json['destinationDetails'],
+//       customerCode: json['customerCode'],
+//       customerName: json['customerName'],
+//       customerGroup: json['customerGroup'],
+//       customerCity: json['customerCity'],
+//       customerState: json['customerState'],
+//       countryZone: json['countryZone'],
+//       salesRep: json['salesRep'],
+//       salesManager: json['salesManager'],
+//       regionalManager: json['regionalManager'],
+//       itemGroup: json['itemGroup'],
+//       itemSubGroup: json['itemSubGroup'],
+//       code: json['code'],
+//       description: json['description'],
+//       uom: json['uom'],
+//       quantity: json['quantity'],
+//       currency: json['currency'],
+//       currencyRate: json['currencyRate'],
+//       price: json['price'],
+//       taxCode: json['taxCode'],
+//       rowTotal: json['rowTotal'],
+//       documentTotal: json['documentTotal'],
+//       branchName: json['branchName'],
+//       whsCode: json['whsCode'],
+//     );
+//   }
+// }
 
 class PODetailList {
   final String soDate;
@@ -1189,6 +1302,7 @@ class VisitAnalysisData {
   final String leadActivityCheckout;
   final String leadActivityInLocation;
   final String leadInputMaterials;
+
   VisitAnalysisData({
     required this.leadID,
     required this.visitDate,
@@ -1211,6 +1325,31 @@ class VisitAnalysisData {
     required this.leadActivityInLocation,
     required this.leadInputMaterials,
   });
+
+  factory VisitAnalysisData.fromJson(Map<String, dynamic> json) {
+    return VisitAnalysisData(
+      leadID: json['leadID'] ?? 0,
+      visitDate: json['visitDate'] ?? '',
+      visitTime: json['visitTime'] ?? '',
+      visitCount: json['visitCount'] ?? 0,
+      userId: json['userId'] ?? 0,
+      userName: json['userName'] ?? '',
+      userLevel: json['userLevel'] ?? 0,
+      accountName: json['accountName'] ?? '',
+      leadActivitySummary: json['leadActivitySummary'] ?? '',
+      visitType: json['visitType'] ?? '',
+      productCategory: json['productCategory'] ?? '',
+      productName: json['productName'] ?? '',
+      participantName: json['participantName'] ?? '',
+      leadActivityLatitude: json['leadActivityLatitude'] ?? '',
+      leadActivityLongitude: json['leadActivityLongitude'] ?? '',
+      leadActivityLocation: json['leadActivityLocation'] ?? '',
+      leadActivityCheckin: json['leadActivityCheckin'] ?? '',
+      leadActivityCheckout: json['leadActivityCheckout'] ?? '',
+      leadActivityInLocation: json['leadActivityInLocation'] ?? '',
+      leadInputMaterials: json['leadInputMaterials'] ?? '',
+    );
+  }
 }
 
 class VisitAnalysisList {

@@ -375,7 +375,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     // assume invoiceDate in format dd/MM/yyyy -- convert safely
     DateTime inv;
     try {
-      inv = DateFormat('dd/MM/yyyy').parse(s.invoiceDate);
+      inv = s.invoiceDate;
     } catch (_) {
       continue;
     }
@@ -3759,7 +3759,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       context.read<DailyCostingSalesProvider>().updateSalesList(sales);
 
       sales = sales.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+        DateTime dueon = target.invoiceDate;
         return (dueon.isAtLeast(fromDateFilter!) &&
             dueon.isAtMost(toDateFilter!));
       }).toList();

@@ -1228,9 +1228,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
       double sum = 0;
       var currentMonthSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
 
         return invoiceDate.isAtLeast(currentMonthFromDate!) &&
             invoiceDate.isAtMost(currentDate!);
@@ -1267,9 +1265,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       }
 
       var lastMonthSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
 
         return invoiceDate.isAtLeast(lastMonthFromDate!) &&
             invoiceDate.isAtMost(lastMonthToDate!);
@@ -1306,9 +1302,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       }
 
       var curQtrSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(currentQuarterFromDate!) &&
             invoiceDate.isAtMost(currentQuarterToDate!);
       });
@@ -1344,9 +1338,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       }
 
       var ytdSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(fiscalYearStartDate!) &&
             invoiceDate.isAtMost(currentDate!);
       });
@@ -1418,9 +1410,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q1Target = sum;
           Q1TargetStr = "${(Q1Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
             return invoiceDate.isAtLeast(q1FromDate!) &&
                 invoiceDate.isAtMost(q1ToDate!);
           });
@@ -1473,9 +1463,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q2Target = sum;
           Q2TargetStr = "${(Q2Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
             return invoiceDate.isAtLeast(q2FromDate!) &&
                 invoiceDate.isAtMost(q2ToDate!);
           });
@@ -1527,9 +1515,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q3Target = sum;
           Q3TargetStr = "${(Q3Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
             return invoiceDate.isAtLeast(q3FromDate!) &&
                 invoiceDate.isAtMost(q3ToDate!);
           });
@@ -1585,9 +1571,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q4Target = sum;
           Q4TargetStr = "${(Q4Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
             return invoiceDate.isAtLeast(q4FromDate!) &&
                 invoiceDate.isAtMost(q4ToDate!);
           });
@@ -1837,9 +1821,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (i >= 4 && i <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(i);
         monthlySalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -1847,9 +1829,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear + 1, i - 12, 1);
         endDate = DateTime(currentYear + 1, (i - 12) + 1, 0);
         monthlySalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -1912,9 +1892,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           ).add(const Duration(days: -1));
 
           for (var sale in itemSales) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(sale.invoiceDate);
+            DateTime invoiceDate = sale.invoiceDate;
             if (invoiceDate.isAtLeast(startDate) &&
                 invoiceDate.isAtMost(endDate)) {
               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
@@ -2013,9 +1991,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           ).add(const Duration(days: -1));
 
           for (var sale in itemSales) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(sale.invoiceDate);
+            DateTime invoiceDate = sale.invoiceDate;
             if (invoiceDate.isAtLeast(startDate) &&
                 invoiceDate.isAtMost(endDate)) {
               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
@@ -2140,9 +2116,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         }
       }
       var lastMonthSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(lastMonthFromDate!) &&
             invoiceDate.isAtMost(lastMonthToDate!);
       });
@@ -2186,9 +2160,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         }
 
         var curQtrSales = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(qrtFromDate!) &&
               invoiceDate.isAtMost(qrtToDate!);
         });
@@ -2253,7 +2225,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2263,9 +2235,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       productSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2273,9 +2243,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2284,9 +2252,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2397,7 +2363,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2407,9 +2373,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       productSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2417,9 +2381,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2428,9 +2390,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2540,7 +2500,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2551,9 +2511,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       customerSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2561,9 +2519,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2572,9 +2528,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2685,7 +2639,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2695,9 +2649,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       customerSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2705,9 +2657,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2716,9 +2666,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2880,9 +2828,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       tsmSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2890,9 +2836,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         tsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2900,9 +2844,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear, monthIndex, 1);
         endDate = DateTime(currentYear, monthIndex + 1, 0);
         tsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -3208,9 +3150,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       asmSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -3218,9 +3158,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         asmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -3228,9 +3166,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear, monthIndex, 1);
         endDate = DateTime(currentYear, monthIndex + 1, 0);
         asmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -3536,9 +3472,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       rsmSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -3546,9 +3480,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         rsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -3556,9 +3488,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear, monthIndex, 1);
         endDate = DateTime(currentYear, monthIndex + 1, 0);
         rsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });

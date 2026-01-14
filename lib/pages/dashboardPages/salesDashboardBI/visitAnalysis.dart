@@ -589,10 +589,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
   Future<void> generateVisitAnalysisExcel() async {
     if (visitAnalysisList.visitAnalysisData.isEmpty) {
       visitAnalysisDataLoaded = false;
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId') ?? '';
-      final userJwtToken = prefs.getString('userJwtToken') ?? '';
-      final userMailID = prefs.getString('userMailID') ?? '';
       await _loadVisitAnalysis(userId, userJwtToken, userMailID);
       if (visitAnalysisList.visitAnalysisData.isEmpty) {
         final snackBar = SnackBar(
@@ -608,7 +604,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     }
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
     sheet.appendRow(
       toCellRow([
         'Lead ID',
@@ -630,13 +625,11 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       ]),
     );
 
-    for (int column = 0; column < 15; column++) {
+    for (int column = 0; column <= 15; column++) {
       var cell = sheet.cell(
         xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
       );
       cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
-
-      // sheet.setColAutoFit(column);
     }
 
     for (var visitData in visitAnalysisList.visitAnalysisData) {
@@ -658,7 +651,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
           visitData.leadActivityInLocation,
           visitData.leadActivityCheckout,
           visitData.leadActivityLocation,
-          xl.CellStyle(),
+          //xl.CellStyle(),
         ]),
       );
     }
@@ -671,7 +664,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     int numberOfRows = visitAnalysisList.visitAnalysisData.length;
 
     for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-      for (int colIndex = 0; colIndex < 15; colIndex++) {
+      for (int colIndex = 0; colIndex <= 15; colIndex++) {
         var cell = sheet.cell(
           xl.CellIndex.indexByColumnRow(
             columnIndex: colIndex,
@@ -710,74 +703,31 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       'ToDt': currentDate.toString(),
       'UserId': userId,
     };
-    const apiUrl = '${ApiHelper.baseUrl}selectvisitanalysisexcel';
-    var headers = {HttpHeaders.contentTypeHeader: 'application/json'};
+
     try {
       final response = await http.post(
-        Uri.parse(apiUrl),
+        Uri.parse('${ApiHelper.baseUrl}selectvisitanalysisexcel'),
+        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
         body: jsonEncode(body),
-        headers: headers,
       );
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        bool status = responseJson["Status"];
-        if (status && responseJson["Data"].toString().isNotEmpty) {
-          List<dynamic> data = responseJson['Data'];
-          if (data.isNotEmpty) {
-            List<VisitAnalysisData> visitAnalysisDataList = [];
-            for (var visit in data) {
-              VisitAnalysisData visitAnalysisData = VisitAnalysisData(
-                leadID: visit['LeadID'],
-                visitDate: visit['VisitDate'],
-                visitTime: visit['VisitTime'],
-                visitCount: visit['VisitCount'],
-                userId: visit['UserId'],
-                userName: visit['UserName'],
-                userLevel: visit['UserLevel'],
-                accountName: visit['AccountName'],
-                leadActivitySummary: visit['LeadActivitySummary'],
-                visitType: visit['VisitType'],
-                productCategory: visit['ProductCategory'],
-                productName: visit['ProductName'],
-                participantName: visit['ParticipantName'],
-                leadActivityLatitude: visit['LeadActivityLatitude'],
-                leadActivityLongitude: visit['LeadActivityLongitude'],
-                leadActivityLocation: visit['LeadActivityLocation'],
-                leadActivityCheckin: visit['LeadActivityCheckin'],
-                leadActivityCheckout: visit['LeadActivityCheckout'],
-                leadActivityInLocation: visit['LeadActivityInLocation'],
-                leadInputMaterials: visit['LeadInputMaterials'],
-              );
-              visitAnalysisDataList.add(visitAnalysisData);
-            }
-            setState(() {
-              visitAnalysisList = VisitAnalysisList(
-                visitAnalysisData: visitAnalysisDataList,
-              );
-              VisitData = true;
-              visitAnalysisDataLoaded = true;
-            });
-          }
-        } else {
-          if (responseJson.containsKey("Error") &&
-              responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
-        }
+
+      final json = jsonDecode(response.body);
+
+      if (response.statusCode != 200 || json["Status"] != true) {
+        final snackBar = SnackBar(content: Text('Error: $json'));
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return;
       }
+
+      final list = (json['Data'] as List)
+          .map((e) => VisitAnalysisData.fromJson(e))
+          .toList();
+
+      setState(() {
+        visitAnalysisList = VisitAnalysisList(visitAnalysisData: list);
+        VisitData = list.isNotEmpty;
+        visitAnalysisDataLoaded = true;
+      });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -1457,11 +1407,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
   ) async {
     LoadDates();
     LoadAllQuarterFromToDates();
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? '';
-    final userJwtToken = prefs.getString('userJwtToken') ?? '';
-    final userMailID = prefs.getString('userMailID') ?? '';
-    final userLevel = prefs.getString('userLevel') ?? '';
+
     UserLevel = userLevel;
     await _loadUserListForFilter(
       userId,
@@ -1513,11 +1459,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
   }
 
   Future<void> loadData(String selectedUser) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? '';
-    final userJwtToken = prefs.getString('userJwtToken') ?? '';
-    final userMailID = prefs.getString('userMailID') ?? '';
-    final userLevel = prefs.getString('userLevel') ?? '';
+    await _loadUserSession();
     UserLevel = userLevel;
     await _loadUserListForFilter(
       userId,
@@ -1530,14 +1472,47 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     await _loadDailyVisitBarChartData(userId, userJwtToken, userMailID);
     await _loadNumberOfVisitsAccWise("", "", "", "", "");
     await _loadPromotionAnalysis("", "", "", "", "");
-    if (int.tryParse(UserLevel)! <= 3) {
+    if (int.tryParse(UserLevel)! >= 3) {
       await _loadRSMVisitBarChartData("", "", "", "", "");
       await _loadASMVisitBarChartData("", "", "", "", "");
       await _loadTSMVisitBarChartData("", "", "", "", "");
+    } else if (int.tryParse(UserLevel)! <= 2) {
+      await _loadASMVisitBarChartData("", "", "", "", "");
+      await _loadTSMVisitBarChartData("", "", "", "", "");
+    } else if (int.tryParse(UserLevel)! == 1) {
+      await _loadTSMVisitBarChartData("", "", "", "", "");
     }
     await _loadProductWisePromotionAnalysis(userId, userJwtToken, userMailID);
-    await _loadVisitAnalysis(userId, userJwtToken, userMailID);
     chartDataLoaded = true;
+  }
+
+  Future<void> loadDataNew(String selectedUser) async {
+    await _loadUserSession();
+
+    await Future.wait([
+      _loadUserListForFilter(
+        userId,
+        userJwtToken,
+        userMailID,
+        int.tryParse(userLevel) ?? 0,
+      ),
+      _loadDailyVisitDataSummary(userId, userJwtToken, userMailID),
+      _loadEachQtrValues(userId, userJwtToken, userMailID),
+      _loadDailyVisitBarChartData(userId, userJwtToken, userMailID),
+      _loadNumberOfVisitsAccWise("", "", "", "", ""),
+      _loadPromotionAnalysis("", "", "", "", ""),
+      _loadProductWisePromotionAnalysis(userId, userJwtToken, userMailID),
+    ]);
+
+    if (int.parse(userLevel) <= 3) {
+      await Future.wait([
+        _loadRSMVisitBarChartData("", "", "", "", ""),
+        _loadASMVisitBarChartData("", "", "", "", ""),
+        _loadTSMVisitBarChartData("", "", "", "", ""),
+      ]);
+    }
+
+    setState(() => chartDataLoaded = true);
   }
 
   Future<void> removeFilter() async {
@@ -1549,11 +1524,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     LoadDates();
     LoadAllQuarterFromToDates();
     _clearGraphData();
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? '';
-    final userJwtToken = prefs.getString('userJwtToken') ?? '';
-    final userMailID = prefs.getString('userMailID') ?? '';
-    final userLevel = prefs.getString('userLevel') ?? '';
+
     UserLevel = userLevel;
     await _loadUserListForFilter(
       userId,
@@ -2599,15 +2570,27 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     }
   }
 
+  late String userId, userJwtToken, userMailID, userLevel;
+
+  Future<void> _loadUserSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString('userId') ?? '';
+    userJwtToken = prefs.getString('userJwtToken') ?? '';
+    userMailID = prefs.getString('userMailID') ?? '';
+    userLevel = prefs.getString('userLevel') ?? '0';
+  }
+
   @override
   void initState() {
     super.initState();
     callAvgPerDayPercent = 0;
     VisitData = false;
     visitAnalysisDataLoaded = false;
+
     LoadDates();
     LoadAllQuarterFromToDates();
     _clearGraphData();
+
     if (isUserLoggedIn && isBiDashboardStart) {
       loadDataFuture = loadData("");
     }
@@ -2662,27 +2645,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
                           icon: const Icon(Icons.filter_alt_outlined),
                         ),
                         const SizedBox(width: 5),
-                        // PopupMenuButton(
-                        //   onSelected: (value) {},
-                        //   itemBuilder: (BuildContext bc) {
-                        //     return [
-                        //       PopupMenuItem(
-                        //         onTap: () {
-                        //           setState(() {
-                        //             showLoaderDialog(context);
-                        //             generateVisitAnalysisExcel();
-                        //             if (VisitData == true) {
-                        //               Navigator.pop(context);
-                        //             }
-                        //           });
-                        //         },
-                        //         child: const Row(
-                        //           children: [Text("Download Excel")],
-                        //         ),
-                        //       ),
-                        //     ];
-                        //   },
-                        // ),
                         PopupMenuButton(
                           onSelected: (value) async {
                             if (value == 'excel') {

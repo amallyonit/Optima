@@ -638,7 +638,8 @@ class CustomerSalesPerformancePageState
     String selectedCustomerCode,
   ) {
     return sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+DateTime invoiceDate = target.invoiceDate;
+
       bool withinDateRange =
           invoiceDate.isAtLeast(startDate) && invoiceDate.isAtMost(endDate);
 
@@ -685,17 +686,15 @@ class CustomerSalesPerformancePageState
       sum = 0.00;
       var curMthSalesTarget = sales.where((target) {
         if (selectedCustomerCode != "") {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+         DateTime invoiceDate = target.invoiceDate;
+
           String customerCode = target.customerCode;
           return invoiceDate.isAtLeast(prevThreeMthFromDate) &&
               invoiceDate.isAtMost(prevThreeMthToDate) &&
               customerCode == selectedCustomerCode;
         } else {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(prevThreeMthFromDate) &&
               invoiceDate.isAtMost(prevThreeMthToDate);
         }
@@ -715,17 +714,15 @@ class CustomerSalesPerformancePageState
 
       var lastMonthSales = sales.where((target) {
         if (selectedCustomerCode != "") {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           String customerCode = target.customerCode;
           return invoiceDate.isAtLeast(lastMonthFromDate!) &&
               invoiceDate.isAtMost(lastMonthToDate!) &&
               customerCode == selectedCustomerCode;
         } else {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(lastMonthFromDate!) &&
               invoiceDate.isAtMost(lastMonthToDate!);
         }
@@ -749,17 +746,13 @@ class CustomerSalesPerformancePageState
       DateTime? toDate = addMonth(fromDate!, 1).add(const Duration(days: -1));
       var lastQtrSalesTarget = sales.where((target) {
         if (selectedCustomerCode != "") {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           String customerCode = target.customerCode;
           return invoiceDate.isAtLeast(lastQuarterFromDate!) &&
               invoiceDate.isAtMost(lastQuarterToDate!) &&
               customerCode == selectedCustomerCode;
         } else {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(lastQuarterFromDate!) &&
               invoiceDate.isAtMost(lastQuarterToDate!);
         }
@@ -782,17 +775,13 @@ class CustomerSalesPerformancePageState
         monthlySales = 0;
         var curQtrSales = sales.where((target) {
           if (selectedCustomerCode != "") {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
             String customerCode = target.customerCode;
             return invoiceDate.isAtLeast(fromDate!) &&
                 invoiceDate.isAtMost(toDate!) &&
                 customerCode == selectedCustomerCode;
           } else {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
             return invoiceDate.isAtLeast(fromDate!) &&
                 invoiceDate.isAtMost(toDate!);
           }
@@ -851,7 +840,8 @@ class CustomerSalesPerformancePageState
 
     // Filter sales data once based on date range and customer code
     var filteredSales = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+DateTime invoiceDate = target.invoiceDate;
+
       if (selectedCustomerCode.isNotEmpty) {
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate) &&
@@ -1090,7 +1080,7 @@ class CustomerSalesPerformancePageState
       bool isLastQuarter = false,
     }) {
       return sales.where((target) {
-        DateTime invoiceDate = parseDate(target.invoiceDate);
+DateTime invoiceDate = target.invoiceDate;
         bool isWithinRange =
             invoiceDate.isAtLeast(fromDate) && invoiceDate.isAtMost(toDate);
 
@@ -1295,7 +1285,8 @@ class CustomerSalesPerformancePageState
     double sum = 0;
 
     final filteredSales = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
+
       bool withinDateRange =
           invoiceDate.isAtLeast(startDate) && invoiceDate.isAtMost(endDate);
 

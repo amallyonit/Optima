@@ -17,7 +17,6 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/pages/dashboardPages/platform_excel_helper.dart';
 import 'package:optima/pages/dashboardPages/platform_pdf_helper.dart';
-import 'package:optima/pages/dashboardPages/salesDashboardBI/soAnalysisBI.dart';
 import '../../../api_helper.dart';
 import '../../../classes/leads.dart';
 import '../../../login_screen.dart';
@@ -42,6 +41,9 @@ class SalesTargetListSalesAnalysisProvider with ChangeNotifier {
     notifyListeners();
   }
 }
+
+List<SalesList> _allSales = []; // Master list for all loaded data
+List<SalesList> sales = []; // Filtered list for UI
 
 class SalesListSalesAnalysisProvider with ChangeNotifier {
   List<SalesList> _salesList = [];
@@ -75,7 +77,9 @@ CustomerStateWiseSalesList customerStateWiseSalesList =
 ProductGroupwiseSalesList productGroupwiseSalesList = ProductGroupwiseSalesList(
   productGroupData: [],
 );
-
+ProductGroupwiseSalesList itemGroupWiseData = ProductGroupwiseSalesList(
+  productGroupData: [],
+);
 List<Users> usersListForFilter = [];
 List<Users> usersList = [];
 List<Users> childUsers = [];
@@ -122,7 +126,6 @@ String LastMonthPercentageStr = "";
 String CurrentQtrPercentageStr = "";
 String YtdPercentageStr = "";
 List<Map<String, dynamic>> salesList = [];
-List<SalesList> sales = [];
 bool noUserList = false;
 bool chartDataLoaded = false;
 bool YtdSalesBarChartData = false;
@@ -246,7 +249,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       context.read<SalesListSalesAnalysisProvider>().updateSalesList(sales);
 
       sales = sales.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+        DateTime dueon = target.invoiceDate;
         return (dueon.isAtLeast(fromDateFilter!) &&
             dueon.isAtMost(toDateFilter!));
       }).toList();
@@ -265,7 +268,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     setState(() async {
-      await _loadSales(userName, userLevel);
+      await _loadSalesWithLazyLoading(userName, userLevel);
       _dateFilterTarget("", "", false);
       await _loadEachQtrValues();
       await _loadMonthlySalesBarChartData();
@@ -1346,274 +1349,206 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     }
   }
 
-  Future<void> _loadSales(String UserName, String UserLevel) async {
-    int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
-    List<SalesList> salesList = [];
-    int monthIndex = currentDate!.month;
-    try {
-      do {
-        var body = {
+  Future<void> _loadSalesWithLazyLoading(
+    String userName,
+    String userLevel,
+  ) async {
+    final Stopwatch watch = Stopwatch()..start();
+
+    sales.clear();
+
+    // Load first page quickly
+    await _loadInitialSales(userName, userLevel);
+
+    watch.stop();
+    print('Initial visible load time: ${watch.elapsedMilliseconds} ms');
+
+    // Start background loading (non-blocking)
+    _loadSalesInBackground(userName: userName, userLevel: userLevel);
+  }
+
+  Future<void> _loadInitialSales(String userName, String userLevel) async {
+    const int limit = 5000;
+    const int index = 0;
+
+    final body = {
+      "FromDate": formatDate(
+        currentDate!.month == 4 ? lastMonthFromDate! : fiscalYearStartDate!,
+      ),
+      "ToDate": formatDate(currentDate!),
+      "Index": index.toString(),
+      "Limit": limit.toString(),
+      "sapToken": DataManager.readSapToken(),
+    };
+
+    final response = await http.post(
+      Uri.parse('${ApiHelper.baseUrl}Crm_SalesList'),
+      headers: {
+        HttpHeaders.contentTypeHeader: 'application/json',
+        HttpHeaders.acceptEncodingHeader: 'gzip',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) return;
+
+    final json = jsonDecode(response.body);
+    final List list = json['responseData'] ?? [];
+
+    final initialSales = list.map((e) => SalesList.fromJson(e)).toList();
+
+    setState(() {
+      _allSales.clear();
+      _allSales.addAll(initialSales); // Save all loaded data
+
+      // Apply filters to master list
+      sales = _applyUserFilter(_allSales, userName, userLevel);
+    });
+
+    _calculateSalesTotals();
+  }
+
+  Future<void> _loadSalesInBackground({
+    required String userName,
+    required String userLevel,
+  }) async {
+    const int limit = 5000;
+    int index = 1;
+    bool hasMore = true;
+
+    while (hasMore) {
+      try {
+        final body = {
           "FromDate": formatDate(
-            monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!,
+            currentDate!.month == 4 ? lastMonthFromDate! : fiscalYearStartDate!,
           ),
           "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
-        const apiUrl = '${ApiHelper.baseUrl}Crm_SalesList';
+
         final response = await http.post(
-          Uri.parse(apiUrl),
+          Uri.parse('${ApiHelper.baseUrl}Crm_SalesList'),
           headers: {
             HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
+            HttpHeaders.acceptEncodingHeader: 'gzip',
           },
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<SalesList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => SalesList.fromJson(item))
-                    .toList();
+        if (response.statusCode != 200) break;
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
+        final json = jsonDecode(response.body);
+        final List list = json['responseData'] ?? [];
+
+        if (list.isEmpty) {
+          hasMore = false;
+          break;
         }
-      } while (fetchedCount == limit);
 
-      setState(() {
-        context.read<SalesListSalesAnalysisProvider>().updateSalesList(
-          salesList,
-        );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          sales = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          sales = salesList
-              .where((element) => element.regionalManager == UserName)
-              .toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          sales = salesList
-              .where((element) => menuNames.contains(element.salesManager))
-              .toList();
-        } else {
-          sales = salesList
-              .where((element) => element.salesRep == UserName)
-              .toList();
-        }
-      });
+        final newSales = list.map((e) => SalesList.fromJson(e)).toList();
 
-      List<SalesList> filteredList = [];
+        setState(() {
+          _allSales.addAll(newSales); // Append to master list
 
-      List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+          // Re-filter full master list
+          sales = _applyUserFilter(_allSales, userName, userLevel);
+        });
 
-      List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+        _calculateSalesTotals();
 
-      List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+        index++;
 
-      if (trueRSMOptions.isNotEmpty) {
-        filteredList = sales
-            .where((person) => trueRSMOptions.contains(person.regionalManager))
-            .toList();
-
-        sales = filteredList;
+        // Small delay avoids network congestion
+        await Future.delayed(const Duration(milliseconds: 100));
+      } catch (e) {
+        print('Background load error: $e');
+        break;
       }
-
-      if (trueASMOptions.isNotEmpty) {
-        filteredList = sales
-            .where((person) => trueASMOptions.contains(person.salesManager))
-            .toList();
-        sales = filteredList;
-      }
-
-      if (trueTSMOptions.isNotEmpty) {
-        filteredList = sales
-            .where((person) => trueTSMOptions.contains(person.salesRep))
-            .toList();
-        sales = filteredList;
-      }
-
-      double sum = 0;
-      var currentMonthSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
-
-        return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-            invoiceDate.isAtMost(currentDate!);
-      });
-
-      double salesAmt = 0;
-      for (var target in currentMonthSales.toList()) {
-        // if (target.invoiceType != "Sales Return") {
-        //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        // } else {
-        //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-        // }
-        salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        sum += salesAmt;
-      }
-
-      CurrentMonthSales = sum;
-      CurrentMonthSalesStr =
-          "${(CurrentMonthSales / 100000).toStringAsFixed(2)} L";
-      if (CurrentMonthSales == 0) {
-        CurrentMonthSalesPercentage = 0;
-      } else {
-        CurrentMonthSalesPercentage =
-            double.tryParse(
-              ((CurrentMonthSales / SalesGoal) * 100).toStringAsFixed(0),
-            )?.ceil() ??
-            0;
-      }
-      CurrentMonthSalesPercentageStr =
-          "${CurrentMonthSalesPercentage.toString()} %";
-
-      if (CurrentMonthSalesPercentage > 100) {
-        CurrentMonthSalesPercentage = 100;
-      }
-
-      var lastMonthSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
-
-        return invoiceDate.isAtLeast(lastMonthFromDate!) &&
-            invoiceDate.isAtMost(lastMonthToDate!);
-      });
-
-      sum = 0;
-      salesAmt = 0;
-      for (var target in lastMonthSales.toList()) {
-        // if (target.invoiceType != "Sales Return") {
-        //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        // } else {
-        //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-        // }
-        salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        sum += salesAmt;
-      }
-
-      LastMonthSales = sum;
-      LastMonthSalesStr = "${(LastMonthSales / 100000).toStringAsFixed(2)} L";
-      if (LastMonthSales == 0) {
-        LastMonthPercentage = 0;
-      } else {
-        LastMonthPercentage =
-            double.tryParse(
-              ((LastMonthSales / LastMonthTarget) * 100).toStringAsFixed(2),
-            )?.ceil() ??
-            0;
-      }
-      LastMonthPercentageStr = "${LastMonthPercentage.toString()} %";
-      if (LastMonthPercentage > 100) {
-        LastMonthPercentage = 100;
-      }
-
-      var curQtrSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
-        return invoiceDate.isAtLeast(currentQuarterFromDate!) &&
-            invoiceDate.isAtMost(currentQuarterToDate!);
-      });
-
-      sum = 0;
-      salesAmt = 0;
-      for (var target in curQtrSales.toList()) {
-        // if (target.invoiceType != "Sales Return") {
-        //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        // } else {
-        //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-        // }
-        salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        sum += salesAmt;
-      }
-
-      CurrentQtrSales = sum;
-      CurrentQtrSalesStr = "${(CurrentQtrSales / 100000).toStringAsFixed(2)} L";
-      if (CurrentQtrSales == 0) {
-        CurrentQtrPercentage = 0;
-      } else {
-        CurrentQtrPercentage =
-            double.tryParse(
-              ((CurrentQtrSales / CurrentQtrTarget) * 100).toStringAsFixed(2),
-            )?.ceil() ??
-            0;
-      }
-      CurrentQtrPercentageStr = "${CurrentQtrPercentage.toString()} %";
-      if (CurrentQtrPercentage > 100) {
-        CurrentQtrPercentage = 100;
-      }
-
-      var ytdSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
-        return invoiceDate.isAtLeast(fiscalYearStartDate!) &&
-            invoiceDate.isAtMost(currentDate!);
-      });
-
-      sum = 0;
-      salesAmt = 0;
-      for (var target in ytdSales.toList()) {
-        // if (target.invoiceType != "Sales Return") {
-        //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        // } else {
-        //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-        // }
-        salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        sum += salesAmt;
-      }
-
-      YtdSales = sum;
-      YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
-      if (YtdSales == 0) {
-        YtdPercentage = 0;
-      } else {
-        YtdPercentage =
-            double.tryParse(
-              ((YtdSales / YtdTarget) * 100).toStringAsFixed(2),
-            )?.ceil() ??
-            0;
-      }
-      YtdPercentageStr = "${YtdPercentage.toString()} %";
-
-      if (YtdPercentage > 100) {
-        YtdPercentage = 100;
-      }
-    } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
+
+    print('Background sales loading completed');
+  }
+
+  List<SalesList> _applyUserFilter(
+    List<SalesList> list,
+    String userName,
+    String userLevel,
+  ) {
+    final int level = int.parse(userLevel);
+
+    if (level == 5) return list;
+
+    final menuNames =
+        usersList
+            .where((e) => e.parentMenuId == 0)
+            .map((e) => e.menuName)
+            .toList()
+          ..insert(0, userName);
+
+    return list.where((e) {
+      if (level == 4 && e.regionalManager != userName) {
+        return false;
+      }
+
+      if (level >= 2 && level <= 3 && !menuNames.contains(e.salesManager)) {
+        return false;
+      }
+
+      if (level < 2 && e.salesRep != userName) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+  }
+
+  void _calculateSalesTotals() {
+    double sumCurrentMonth = 0;
+    double sumLastMonth = 0;
+    double sumCurrentQtr = 0;
+    double sumYtd = 0;
+
+    for (var target in _allSales) {
+      final DateTime invoiceDate = target.invoiceDate;
+      final double salesAmt = double.tryParse(target.rowTotal) ?? 0;
+
+      if (invoiceDate.isAtLeast(currentMonthFromDate!) &&
+          invoiceDate.isAtMost(currentDate!)) {
+        sumCurrentMonth += salesAmt;
+      }
+
+      if (invoiceDate.isAtLeast(lastMonthFromDate!) &&
+          invoiceDate.isAtMost(lastMonthToDate!)) {
+        sumLastMonth += salesAmt;
+      }
+
+      if (invoiceDate.isAtLeast(currentQuarterFromDate!) &&
+          invoiceDate.isAtMost(currentQuarterToDate!)) {
+        sumCurrentQtr += salesAmt;
+      }
+
+      if (invoiceDate.isAtLeast(fiscalYearStartDate!) &&
+          invoiceDate.isAtMost(currentDate!)) {
+        sumYtd += salesAmt;
+      }
+    }
+
+    setState(() {
+      CurrentMonthSales = sumCurrentMonth;
+      CurrentMonthSalesStr =
+          "${(sumCurrentMonth / 100000).toStringAsFixed(2)} L";
+
+      LastMonthSales = sumLastMonth;
+      LastMonthSalesStr = "${(sumLastMonth / 100000).toStringAsFixed(2)} L";
+
+      CurrentQtrSales = sumCurrentQtr;
+      CurrentQtrSalesStr = "${(sumCurrentQtr / 100000).toStringAsFixed(2)} L";
+
+      YtdSales = sumYtd;
+      YtdSalesStr = "${(sumYtd / 100000).toStringAsFixed(2)} L";
+    });
   }
 
   int monthDifference(DateTime startDate, DateTime endDate) {
@@ -1645,9 +1580,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q1Target = sum;
           Q1TargetStr = "${(Q1Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
             return invoiceDate.isAtLeast(q1FromDate!) &&
                 invoiceDate.isAtMost(q1ToDate!);
           });
@@ -1700,9 +1633,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q2Target = sum;
           Q2TargetStr = "${(Q2Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
+
             return invoiceDate.isAtLeast(q2FromDate!) &&
                 invoiceDate.isAtMost(q2ToDate!);
           });
@@ -1754,9 +1686,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q3Target = sum;
           Q3TargetStr = "${(Q3Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
+
             return invoiceDate.isAtLeast(q3FromDate!) &&
                 invoiceDate.isAtMost(q3ToDate!);
           });
@@ -1812,9 +1743,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           Q4Target = sum;
           Q4TargetStr = "${(Q4Target / 100000).toStringAsFixed(2)} L";
           var curQtrSales = sales.where((target) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(target.invoiceDate);
+            DateTime invoiceDate = target.invoiceDate;
+
             return invoiceDate.isAtLeast(q4FromDate!) &&
                 invoiceDate.isAtMost(q4ToDate!);
           });
@@ -2064,9 +1994,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (i >= 4 && i <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(i);
         monthlySalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2074,9 +2003,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear + 1, i - 12, 1);
         endDate = DateTime(currentYear + 1, (i - 12) + 1, 0);
         monthlySalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2139,9 +2067,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           ).add(const Duration(days: -1));
 
           for (var sale in itemSales) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(sale.invoiceDate);
+            DateTime invoiceDate = sale.invoiceDate;
             if (invoiceDate.isAtLeast(startDate) &&
                 invoiceDate.isAtMost(endDate)) {
               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
@@ -2240,9 +2166,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           ).add(const Duration(days: -1));
 
           for (var sale in itemSales) {
-            DateTime invoiceDate = DateFormat(
-              'dd/MM/yyyy',
-            ).parse(sale.invoiceDate);
+            DateTime invoiceDate = sale.invoiceDate;
+
             if (invoiceDate.isAtLeast(startDate) &&
                 invoiceDate.isAtMost(endDate)) {
               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
@@ -2367,9 +2292,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         }
       }
       var lastMonthSales = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
+
         return invoiceDate.isAtLeast(lastMonthFromDate!) &&
             invoiceDate.isAtMost(lastMonthToDate!);
       });
@@ -2413,9 +2337,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         }
 
         var curQtrSales = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(qrtFromDate!) &&
               invoiceDate.isAtMost(qrtToDate!);
         });
@@ -2480,7 +2403,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
+
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2490,9 +2414,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       productSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2500,9 +2422,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2511,9 +2431,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2624,7 +2542,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2634,9 +2552,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       productSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2644,9 +2560,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2655,9 +2570,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         productSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2767,7 +2680,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2778,9 +2691,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       customerSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
+
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2788,9 +2700,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2799,9 +2710,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2912,7 +2821,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
 
     var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+      DateTime invoiceDate = target.invoiceDate;
       return invoiceDate.isAtLeast(prevThreethFromDate) &&
           invoiceDate.isAtMost(prevThreeMthToDate);
     });
@@ -2922,9 +2831,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       customerSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2932,9 +2839,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2943,9 +2849,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         customerSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -3107,9 +3011,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       tsmSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -3117,9 +3019,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         tsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -3127,9 +3027,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear, monthIndex, 1);
         endDate = DateTime(currentYear, monthIndex + 1, 0);
         tsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -3440,9 +3338,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       asmSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
+
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -3450,9 +3347,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         asmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -3460,9 +3356,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear, monthIndex, 1);
         endDate = DateTime(currentYear, monthIndex + 1, 0);
         asmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -3773,9 +3667,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       rsmSalesList = sales.where((target) {
-        DateTime invoiceDate = DateFormat(
-          'dd/MM/yyyy',
-        ).parse(target.invoiceDate);
+        DateTime invoiceDate = target.invoiceDate;
+
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -3783,9 +3676,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         rsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
+
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -3793,9 +3685,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         startDate = DateTime(currentYear, monthIndex, 1);
         endDate = DateTime(currentYear, monthIndex + 1, 0);
         rsmSalesList = sales.where((target) {
-          DateTime invoiceDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime invoiceDate = target.invoiceDate;
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -4064,7 +3954,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       int.tryParse(userLevel) ?? 0,
     );
     await _loadSalesTarget(userName, userLevel);
-    await _loadSales(userName, userLevel);
+    await _loadSalesWithLazyLoading(userName, userLevel);
     await _loadEachQtrValues();
     await _loadMonthlySalesBarChartData();
     showDrillDownChart = true;
@@ -6639,7 +6529,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoaded == true
         ? SingleChildScrollView(
@@ -6649,26 +6538,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Row(
-                    //   children: [
-                    //     const SizedBox(width: 15),
-                    //     touchedMonthGoals == true
-                    //         ? Text(
-                    //       "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
-                    //     )
-                    //         : touchedQuarterGoals == true
-                    //         ? Text(
-                    //       "$formattedQuarterStartDate - $formattedQuarterLastDate",
-                    //     )
-                    //         : touchedYTDGoals == true
-                    //         ? Text(
-                    //       "$formattedFiscalYearStartDate - $formattedDateNow",
-                    //     )
-                    //         : Text(
-                    //       "$formattedDateFirstOfThisMonth - $formattedDateNow",
-                    //     ),
-                    //   ],
-                    // ),
                     Row(
                       children: [
                         const SizedBox(width: 15),
@@ -6716,539 +6585,647 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 15),
+                        Text(
+                          "Sales Analysis",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    Row(children: [SizedBox(width: 5)]),
+                  ],
+                ),
                 SizedBox(
-                  height: screenHeight / 2.67,
+                  height: 300, //  SAFE HEIGHT FOR WEB + MOBILE
                   child: Stack(
                     children: [
-                      Center(
+                      /// ================= MAIN BIG INDICATOR =================
+                      Align(
+                        alignment: Alignment.topCenter,
                         child: CircularPercentIndicator(
                           arcType: ArcType.HALF,
                           radius: 120.0,
                           lineWidth: 50.0,
                           animation: true,
                           percent: CurrentMonthSalesPercentage / 100,
-                          center: Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 70.0),
-                                child: Text(
-                                  CurrentMonthSalesPercentageStr,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20.0,
-                                    color: Colors.red,
+
+                          /// WEB-SAFE CENTER (KEEP THIS)
+                          center: SizedBox(
+                            height: 90,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    CurrentMonthSalesPercentageStr,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20.0,
+                                      color: Colors.red,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    CurrentMonthSalesStr,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 14.0),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "${getMonthName(currentDate!.month)} Goal - $SalesGoalStr",
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14.0,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                CurrentMonthSalesStr,
-                                style: const TextStyle(fontSize: 14.0),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                "${getMonthName(currentDate!.month)} Goal - $SalesGoalStr",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.0,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                           circularStrokeCap: CircularStrokeCap.butt,
                           progressColor: Colors.red,
                           arcBackgroundColor: Colors.grey.shade200,
                         ),
                       ),
-                      Positioned.fill(
-                        top: screenHeight / 4.5,
-                        left: screenHeight / 35,
+
+                      /// ================= BOTTOM SMALL INDICATORS =================
+                      Positioned(
+                        top: 170,
+                        left: 0,
                         right: 0,
-                        bottom: 0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 4.0,
-                                right: 4.0,
-                              ),
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    loadMonthlySalesBarChartDataFromPieChart(1);
-                                    _monthlySalesAnalysisChart(
-                                      monthlySalesList.monthlyData,
-                                    );
-                                    showProductSaleChart = false;
-                                    showDrillDownChart = false;
-                                    lastMonthChartFunc = true;
-                                    lastThreeMonthChartFunc = false;
-                                    touchedMonthGoals = true;
-                                    touchedQuarterGoals = false;
-                                    touchedYTDGoals = false;
-                                  });
-                                },
-                                child: CircularPercentIndicator(
-                                  arcType: ArcType.HALF,
-                                  radius: 55.0,
-                                  lineWidth: 20.0,
-                                  animation: true,
-                                  percent: LastMonthPercentage / 100,
-                                  center: Column(
-                                    children: [
-                                      const SizedBox(height: 30),
-                                      Text(
-                                        LastMonthPercentageStr,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: touchedMonthGoals
-                                              ? 13.0
-                                              : 12.0,
-                                          color: touchedMonthGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit
+                                .scaleDown, // prevents overflow on small devices
+                            child: Row(
+                              mainAxisSize: MainAxisSize
+                                  .min, // prevents landscape gap expansion
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                /// ---------- LAST MONTH ----------
+                                Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        loadMonthlySalesBarChartDataFromPieChart(
+                                          1,
+                                        );
+                                        _monthlySalesAnalysisChart(
+                                          monthlySalesList.monthlyData,
+                                        );
+                                        showProductSaleChart = false;
+                                        showDrillDownChart = false;
+                                        lastMonthChartFunc = true;
+                                        lastThreeMonthChartFunc = false;
+                                        touchedMonthGoals = true;
+                                        touchedQuarterGoals = false;
+                                        touchedYTDGoals = false;
+                                      });
+                                    },
+                                    child: SizedBox(
+                                      height: 110,
+                                      width: 110,
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 55.0,
+                                        lineWidth: 20.0,
+                                        animation: true,
+                                        percent: LastMonthPercentage / 100,
+                                        center: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const SizedBox(height: 30),
+                                            Text(
+                                              LastMonthPercentageStr,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedMonthGoals
+                                                    ? 13.0
+                                                    : 12.0,
+                                                color: touchedMonthGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            Text(
+                                              LastMonthSalesStr,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: touchedMonthGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedMonthGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Text(
+                                              "${getMonthName(currentDate!.month - 1)} Sales\n($LastMonthTargetStr)",
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedMonthGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedMonthGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ],
                                         ),
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.red,
+                                        arcBackgroundColor:
+                                            Colors.grey.shade200,
                                       ),
-                                      Text(
-                                        LastMonthSalesStr,
-                                        style: TextStyle(
-                                          fontSize: touchedMonthGoals
-                                              ? 11.0
-                                              : 10.0,
-                                          color: touchedMonthGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      Center(
-                                        child: Text(
-                                          "${getMonthName(currentDate!.month - 1)} Sales \n($LastMonthTargetStr)",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedMonthGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedMonthGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                  curve: Curves.linear,
-                                  circularStrokeCap: CircularStrokeCap.butt,
-                                  progressColor: Colors.red,
-                                  arcBackgroundColor: Colors.grey.shade200,
                                 ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    lastMonthChartFunc = false;
-                                    lastThreeMonthChartFunc = true;
-                                    loadMonthlySalesBarChartDataFromPieChart(3);
-                                    _monthlySalesAnalysisChart(
-                                      monthlySalesList.monthlyData,
-                                    );
-                                    showProductSaleChart = false;
-                                    showDrillDownChart = false;
 
-                                    touchedMonthGoals = false;
-                                    touchedQuarterGoals = true;
-                                    touchedYTDGoals = false;
-                                  });
-                                },
-                                child: CircularPercentIndicator(
-                                  arcType: ArcType.HALF,
-                                  radius: 55.0,
-                                  lineWidth: 20.0,
-                                  animation: true,
-                                  percent: CurrentQtrPercentage / 100,
-                                  center: Column(
-                                    children: [
-                                      const SizedBox(height: 30),
-                                      Text(
-                                        CurrentQtrPercentageStr,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: touchedQuarterGoals
-                                              ? 13.0
-                                              : 12.0,
-                                          color: touchedQuarterGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
+                                /// ---------- CURRENT QUARTER ----------
+                                Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        lastMonthChartFunc = false;
+                                        lastThreeMonthChartFunc = true;
+                                        loadMonthlySalesBarChartDataFromPieChart(
+                                          3,
+                                        );
+                                        _monthlySalesAnalysisChart(
+                                          monthlySalesList.monthlyData,
+                                        );
+                                        showProductSaleChart = false;
+                                        showDrillDownChart = false;
+                                        touchedMonthGoals = false;
+                                        touchedQuarterGoals = true;
+                                        touchedYTDGoals = false;
+                                      });
+                                    },
+                                    child: SizedBox(
+                                      height: 110,
+                                      width: 110,
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 55.0,
+                                        lineWidth: 20.0,
+                                        animation: true,
+                                        percent: CurrentQtrPercentage / 100,
+                                        center: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const SizedBox(height: 30),
+                                            Text(
+                                              CurrentQtrPercentageStr,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedQuarterGoals
+                                                    ? 13.0
+                                                    : 12.0,
+                                                color: touchedQuarterGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            Text(
+                                              CurrentQtrSalesStr,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: touchedQuarterGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedQuarterGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Text(
+                                              "Q$currentQuarter Sales\n($CurrentQtrTargetStr)",
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedQuarterGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedQuarterGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ],
                                         ),
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.orange,
+                                        arcBackgroundColor:
+                                            Colors.grey.shade200,
                                       ),
-                                      Text(
-                                        CurrentQtrSalesStr,
-                                        style: TextStyle(
-                                          fontSize: touchedQuarterGoals
-                                              ? 11.0
-                                              : 10.0,
-                                          color: touchedQuarterGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      Text(
-                                        "Q$currentQuarter Sales \n($CurrentQtrTargetStr)",
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: touchedQuarterGoals
-                                              ? 11.0
-                                              : 10.0,
-                                          color: touchedQuarterGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                  curve: Curves.linear,
-                                  circularStrokeCap: CircularStrokeCap.butt,
-                                  progressColor: Colors.orange,
-                                  arcBackgroundColor: Colors.grey.shade200,
                                 ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _loadMonthlySalesBarChartData();
-                                    _monthlySalesAnalysisChart(
-                                      monthlySalesList.monthlyData,
-                                    );
-                                    showProductSaleChart = false;
-                                    showDrillDownChart = false;
-                                    lastThreeMonthChartFunc = false;
-                                    lastMonthChartFunc = false;
 
-                                    touchedMonthGoals = false;
-                                    touchedQuarterGoals = false;
-                                    touchedYTDGoals = true;
-                                  });
-                                },
-                                child: CircularPercentIndicator(
-                                  arcType: ArcType.HALF,
-                                  radius: 55.0,
-                                  lineWidth: 20.0,
-                                  animation: true,
-                                  percent: YtdPercentage / 100,
-                                  center: Column(
-                                    children: [
-                                      const SizedBox(height: 30),
-                                      Text(
-                                        YtdPercentageStr,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: touchedYTDGoals
-                                              ? 13.0
-                                              : 12.0,
-                                          color: touchedYTDGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
+                                /// ---------- YTD ----------
+                                Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _loadMonthlySalesBarChartData();
+                                        _monthlySalesAnalysisChart(
+                                          monthlySalesList.monthlyData,
+                                        );
+                                        showProductSaleChart = false;
+                                        showDrillDownChart = false;
+                                        lastThreeMonthChartFunc = false;
+                                        lastMonthChartFunc = false;
+                                        touchedMonthGoals = false;
+                                        touchedQuarterGoals = false;
+                                        touchedYTDGoals = true;
+                                      });
+                                    },
+                                    child: SizedBox(
+                                      height: 110,
+                                      width: 110,
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 55.0,
+                                        lineWidth: 20.0,
+                                        animation: true,
+                                        percent: YtdPercentage / 100,
+                                        center: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const SizedBox(height: 30),
+                                            Text(
+                                              YtdPercentageStr,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedYTDGoals
+                                                    ? 13.0
+                                                    : 12.0,
+                                                color: touchedYTDGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            Text(
+                                              YtdSalesStr,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: touchedYTDGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedYTDGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Text(
+                                              "YTD\n($YtdTargetStr)",
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedYTDGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedYTDGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ],
                                         ),
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.green,
+                                        arcBackgroundColor:
+                                            Colors.grey.shade200,
                                       ),
-                                      Text(
-                                        YtdSalesStr,
-                                        style: TextStyle(
-                                          fontSize: touchedYTDGoals
-                                              ? 11.0
-                                              : 10.0,
-                                          color: touchedYTDGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      Text(
-                                        "YTD \n($YtdTargetStr)",
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: touchedYTDGoals
-                                              ? 11.0
-                                              : 10.0,
-                                          color: touchedYTDGoals
-                                              ? Colors.cyan
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                  curve: Curves.linear,
-                                  circularStrokeCap: CircularStrokeCap.butt,
-                                  progressColor: Colors.green,
-                                  arcBackgroundColor: Colors.grey.shade200,
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                      // Positioned.fill(
-                      //   top: screenHeight / 4.5,
-                      //   left: screenHeight / 35,
+
+                      /// ================= BOTTOM SMALL INDICATORS =================
+                      // Positioned(
+                      //   top: 170,
+                      //   left: 0,
                       //   right: 0,
-                      //   bottom: 0,
-                      //   child: SizedBox(
-                      //     child: Row(
-                      //       children: [
-                      //         Padding(
-                      //           padding: const EdgeInsets.only(
-                      //               top: 4.0, right: 4.0),
-                      //           child: GestureDetector(
-                      //             onTap: () {
-                      //               setState(() {
-                      //                 loadMonthlySalesBarChartDataFromPieChart(
-                      //                     1);
-                      //                 _monthlySalesAnalysisChart(
-                      //                     monthlySalesList.monthlyData);
-                      //                 showProductSaleChart = false;
-                      //                 showDrillDownChart = false;
-                      //                 lastMonthChartFunc = true;
-                      //                 lastThreeMonthChartFunc = false;
-                      //                 touchedMonthGoals = true;
-                      //                 touchedQuarterGoals = false;
-                      //                 touchedYTDGoals = false;
-                      //               });
-                      //             },
-                      //             child: CircularPercentIndicator(
-                      //               arcType: ArcType.HALF,
-                      //               radius: 55.0,
-                      //               lineWidth: 20.0,
-                      //               animation: true,
-                      //               percent: LastMonthPercentage / 100,
-                      //               center: Column(
-                      //                 children: [
-                      //                   const SizedBox(
-                      //                     height: 30,
-                      //                   ),
-                      //                   Text(
-                      //                     LastMonthPercentageStr,
-                      //                     style: TextStyle(
-                      //                         fontWeight: FontWeight.bold,
-                      //                         fontSize: touchedMonthGoals
-                      //                             ? 13.0
-                      //                             : 12.0,
-                      //                         color: touchedMonthGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                   Text(
-                      //                     LastMonthSalesStr,
-                      //                     style: TextStyle(
-                      //                         fontSize: touchedMonthGoals
-                      //                             ? 11.0
-                      //                             : 10.0,
-                      //                         color: touchedMonthGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                   const SizedBox(
-                      //                     height: 5,
-                      //                   ),
-                      //                   Center(
-                      //                     child: Text(
-                      //                       "${getMonthName(currentDate!.month - 1)} Sales \n($LastMonthTargetStr)",
-                      //                       textAlign: TextAlign.center,
-                      //                       style: TextStyle(
-                      //                           fontWeight:
-                      //                               FontWeight.bold,
-                      //                           fontSize:
-                      //                               touchedMonthGoals
-                      //                                   ? 11.0
-                      //                                   : 10.0,
+                      //   child: Row(
+                      //     mainAxisAlignment: MainAxisAlignment.center,
+                      //     children: [
+                      //       /// ---------- LAST MONTH ----------
+                      //       Expanded(
+                      //         child: Padding(
+                      //           padding: const EdgeInsets.all(4.0),
+                      //           child: FittedBox(
+                      //             fit: BoxFit.scaleDown,
+                      //             child: GestureDetector(
+                      //               onTap: () {
+                      //                 setState(() {
+                      //                   loadMonthlySalesBarChartDataFromPieChart(
+                      //                     1,
+                      //                   );
+                      //                   _monthlySalesAnalysisChart(
+                      //                     monthlySalesList.monthlyData,
+                      //                   );
+                      //                   showProductSaleChart = false;
+                      //                   showDrillDownChart = false;
+                      //                   lastMonthChartFunc = true;
+                      //                   lastThreeMonthChartFunc = false;
+                      //                   touchedMonthGoals = true;
+                      //                   touchedQuarterGoals = false;
+                      //                   touchedYTDGoals = false;
+                      //                 });
+                      //               },
+                      //               child: SizedBox(
+                      //                 height: 110,
+                      //                 width: 110,
+                      //                 child: CircularPercentIndicator(
+                      //                   arcType: ArcType.HALF,
+                      //                   radius: 55.0,
+                      //                   lineWidth: 20.0,
+                      //                   animation: true,
+                      //                   percent: LastMonthPercentage / 100,
+                      //                   center: Column(
+                      //                     mainAxisSize: MainAxisSize.min,
+                      //                     children: [
+                      //                       const SizedBox(height: 30),
+                      //                       Text(
+                      //                         LastMonthPercentageStr,
+                      //                         style: TextStyle(
+                      //                           fontWeight: FontWeight.bold,
+                      //                           fontSize: touchedMonthGoals
+                      //                               ? 13.0
+                      //                               : 12.0,
                       //                           color: touchedMonthGoals
                       //                               ? Colors.cyan
-                      //                               : Colors.black),
-                      //                     ),
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                       Text(
+                      //                         LastMonthSalesStr,
+                      //                         maxLines: 1,
+                      //                         overflow: TextOverflow.ellipsis,
+                      //                         style: TextStyle(
+                      //                           fontSize: touchedMonthGoals
+                      //                               ? 11.0
+                      //                               : 10.0,
+                      //                           color: touchedMonthGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                       const SizedBox(height: 5),
+                      //                       Text(
+                      //                         "${getMonthName(currentDate!.month - 1)} Sales\n($LastMonthTargetStr)",
+                      //                         textAlign: TextAlign.center,
+                      //                         maxLines: 2,
+                      //                         overflow: TextOverflow.ellipsis,
+                      //                         style: TextStyle(
+                      //                           fontWeight: FontWeight.bold,
+                      //                           fontSize: touchedMonthGoals
+                      //                               ? 11.0
+                      //                               : 10.0,
+                      //                           color: touchedMonthGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                     ],
                       //                   ),
-                      //                 ],
+                      //                   circularStrokeCap:
+                      //                       CircularStrokeCap.butt,
+                      //                   progressColor: Colors.red,
+                      //                   arcBackgroundColor:
+                      //                       Colors.grey.shade200,
+                      //                 ),
                       //               ),
-                      //               curve: Curves.linear,
-                      //               circularStrokeCap:
-                      //                   CircularStrokeCap.butt,
-                      //               progressColor: Colors.red,
-                      //               arcBackgroundColor:
-                      //                   Colors.grey.shade200,
                       //             ),
                       //           ),
                       //         ),
-                      //         Padding(
+                      //       ),
+                      //       /// ---------- CURRENT QUARTER ----------
+                      //       Expanded(
+                      //         child: Padding(
                       //           padding: const EdgeInsets.all(4.0),
-                      //           child: GestureDetector(
-                      //             onTap: () {
-                      //               setState(() {
-                      //                 lastMonthChartFunc = false;
-                      //                 lastThreeMonthChartFunc = true;
-                      //                 loadMonthlySalesBarChartDataFromPieChart(
-                      //                     3);
-                      //                 _monthlySalesAnalysisChart(
-                      //                     monthlySalesList.monthlyData);
-                      //                 showProductSaleChart = false;
-                      //                 showDrillDownChart = false;
-                      //
-                      //                 touchedMonthGoals = false;
-                      //                 touchedQuarterGoals = true;
-                      //                 touchedYTDGoals = false;
-                      //               });
-                      //             },
-                      //             child: CircularPercentIndicator(
-                      //               arcType: ArcType.HALF,
-                      //               radius: 55.0,
-                      //               lineWidth: 20.0,
-                      //               animation: true,
-                      //               percent: CurrentQtrPercentage / 100,
-                      //               center: Column(
-                      //                 children: [
-                      //                   const SizedBox(
-                      //                     height: 30,
+                      //           child: FittedBox(
+                      //             fit: BoxFit.scaleDown,
+                      //             child: GestureDetector(
+                      //               onTap: () {
+                      //                 setState(() {
+                      //                   lastMonthChartFunc = false;
+                      //                   lastThreeMonthChartFunc = true;
+                      //                   loadMonthlySalesBarChartDataFromPieChart(
+                      //                     3,
+                      //                   );
+                      //                   _monthlySalesAnalysisChart(
+                      //                     monthlySalesList.monthlyData,
+                      //                   );
+                      //                   showProductSaleChart = false;
+                      //                   showDrillDownChart = false;
+                      //                   touchedMonthGoals = false;
+                      //                   touchedQuarterGoals = true;
+                      //                   touchedYTDGoals = false;
+                      //                 });
+                      //               },
+                      //               child: SizedBox(
+                      //                 height: 110,
+                      //                 width: 110,
+                      //                 child: CircularPercentIndicator(
+                      //                   arcType: ArcType.HALF,
+                      //                   radius: 55.0,
+                      //                   lineWidth: 20.0,
+                      //                   animation: true,
+                      //                   percent: CurrentQtrPercentage / 100,
+                      //                   center: Column(
+                      //                     mainAxisSize: MainAxisSize.min,
+                      //                     children: [
+                      //                       const SizedBox(height: 30),
+                      //                       Text(
+                      //                         CurrentQtrPercentageStr,
+                      //                         style: TextStyle(
+                      //                           fontWeight: FontWeight.bold,
+                      //                           fontSize: touchedQuarterGoals
+                      //                               ? 13.0
+                      //                               : 12.0,
+                      //                           color: touchedQuarterGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                       Text(
+                      //                         CurrentQtrSalesStr,
+                      //                         maxLines: 1,
+                      //                         overflow: TextOverflow.ellipsis,
+                      //                         style: TextStyle(
+                      //                           fontSize: touchedQuarterGoals
+                      //                               ? 11.0
+                      //                               : 10.0,
+                      //                           color: touchedQuarterGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                       const SizedBox(height: 5),
+                      //                       Text(
+                      //                         "Q$currentQuarter Sales\n($CurrentQtrTargetStr)",
+                      //                         textAlign: TextAlign.center,
+                      //                         maxLines: 2,
+                      //                         overflow: TextOverflow.ellipsis,
+                      //                         style: TextStyle(
+                      //                           fontWeight: FontWeight.bold,
+                      //                           fontSize: touchedQuarterGoals
+                      //                               ? 11.0
+                      //                               : 10.0,
+                      //                           color: touchedQuarterGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                     ],
                       //                   ),
-                      //                   Text(
-                      //                     CurrentQtrPercentageStr,
-                      //                     style: TextStyle(
-                      //                         fontWeight: FontWeight.bold,
-                      //                         fontSize:
-                      //                             touchedQuarterGoals
-                      //                                 ? 13.0
-                      //                                 : 12.0,
-                      //                         color: touchedQuarterGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                   Text(
-                      //                     CurrentQtrSalesStr,
-                      //                     style: TextStyle(
-                      //                         fontSize:
-                      //                             touchedQuarterGoals
-                      //                                 ? 11.0
-                      //                                 : 10.0,
-                      //                         color: touchedQuarterGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                   const SizedBox(
-                      //                     height: 5,
-                      //                   ),
-                      //                   Text(
-                      //                     "Q$currentQuarter Sales \n($CurrentQtrTargetStr)",
-                      //                     textAlign: TextAlign.center,
-                      //                     style: TextStyle(
-                      //                         fontWeight: FontWeight.bold,
-                      //                         fontSize:
-                      //                             touchedQuarterGoals
-                      //                                 ? 11.0
-                      //                                 : 10.0,
-                      //                         color: touchedQuarterGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                 ],
+                      //                   circularStrokeCap:
+                      //                       CircularStrokeCap.butt,
+                      //                   progressColor: Colors.orange,
+                      //                   arcBackgroundColor:
+                      //                       Colors.grey.shade200,
+                      //                 ),
                       //               ),
-                      //               curve: Curves.linear,
-                      //               circularStrokeCap:
-                      //                   CircularStrokeCap.butt,
-                      //               progressColor: Colors.orange,
-                      //               arcBackgroundColor:
-                      //                   Colors.grey.shade200,
                       //             ),
                       //           ),
                       //         ),
-                      //         Padding(
+                      //       ),
+                      //       /// ---------- YTD ----------
+                      //       Expanded(
+                      //         child: Padding(
                       //           padding: const EdgeInsets.all(4.0),
-                      //           child: GestureDetector(
-                      //             onTap: () {
-                      //               setState(() {
-                      //                 _loadMonthlySalesBarChartData();
-                      //                 _monthlySalesAnalysisChart(
-                      //                     monthlySalesList.monthlyData);
-                      //                 showProductSaleChart = false;
-                      //                 showDrillDownChart = false;
-                      //                 lastThreeMonthChartFunc = false;
-                      //                 lastMonthChartFunc = false;
-                      //
-                      //                 touchedMonthGoals = false;
-                      //                 touchedQuarterGoals = false;
-                      //                 touchedYTDGoals = true;
-                      //               });
-                      //             },
-                      //             child: CircularPercentIndicator(
-                      //               arcType: ArcType.HALF,
-                      //               radius: 55.0,
-                      //               lineWidth: 20.0,
-                      //               animation: true,
-                      //               percent: YtdPercentage / 100,
-                      //               center: Column(
-                      //                 children: [
-                      //                   const SizedBox(
-                      //                     height: 30,
+                      //           child: FittedBox(
+                      //             fit: BoxFit.scaleDown,
+                      //             child: GestureDetector(
+                      //               onTap: () {
+                      //                 setState(() {
+                      //                   _loadMonthlySalesBarChartData();
+                      //                   _monthlySalesAnalysisChart(
+                      //                     monthlySalesList.monthlyData,
+                      //                   );
+                      //                   showProductSaleChart = false;
+                      //                   showDrillDownChart = false;
+                      //                   lastThreeMonthChartFunc = false;
+                      //                   lastMonthChartFunc = false;
+                      //                   touchedMonthGoals = false;
+                      //                   touchedQuarterGoals = false;
+                      //                   touchedYTDGoals = true;
+                      //                 });
+                      //               },
+                      //               child: SizedBox(
+                      //                 height: 110,
+                      //                 width: 110,
+                      //                 child: CircularPercentIndicator(
+                      //                   arcType: ArcType.HALF,
+                      //                   radius: 55.0,
+                      //                   lineWidth: 20.0,
+                      //                   animation: true,
+                      //                   percent: YtdPercentage / 100,
+                      //                   center: Column(
+                      //                     mainAxisSize: MainAxisSize.min,
+                      //                     children: [
+                      //                       const SizedBox(height: 30),
+                      //                       Text(
+                      //                         YtdPercentageStr,
+                      //                         style: TextStyle(
+                      //                           fontWeight: FontWeight.bold,
+                      //                           fontSize: touchedYTDGoals
+                      //                               ? 13.0
+                      //                               : 12.0,
+                      //                           color: touchedYTDGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                       Text(
+                      //                         YtdSalesStr,
+                      //                         maxLines: 1,
+                      //                         overflow: TextOverflow.ellipsis,
+                      //                         style: TextStyle(
+                      //                           fontSize: touchedYTDGoals
+                      //                               ? 11.0
+                      //                               : 10.0,
+                      //                           color: touchedYTDGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                       const SizedBox(height: 5),
+                      //                       Text(
+                      //                         "YTD\n($YtdTargetStr)",
+                      //                         textAlign: TextAlign.center,
+                      //                         maxLines: 2,
+                      //                         overflow: TextOverflow.ellipsis,
+                      //                         style: TextStyle(
+                      //                           fontWeight: FontWeight.bold,
+                      //                           fontSize: touchedYTDGoals
+                      //                               ? 11.0
+                      //                               : 10.0,
+                      //                           color: touchedYTDGoals
+                      //                               ? Colors.cyan
+                      //                               : Colors.black,
+                      //                         ),
+                      //                       ),
+                      //                     ],
                       //                   ),
-                      //                   Text(
-                      //                     YtdPercentageStr,
-                      //                     style: TextStyle(
-                      //                         fontWeight: FontWeight.bold,
-                      //                         fontSize: touchedYTDGoals
-                      //                             ? 13.0
-                      //                             : 12.0,
-                      //                         color: touchedYTDGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                   Text(
-                      //                     YtdSalesStr,
-                      //                     style: TextStyle(
-                      //                         fontSize: touchedYTDGoals
-                      //                             ? 11.0
-                      //                             : 10.0,
-                      //                         color: touchedYTDGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                   const SizedBox(
-                      //                     height: 5,
-                      //                   ),
-                      //                   Text(
-                      //                     "YTD \n($YtdTargetStr)",
-                      //                     textAlign: TextAlign.center,
-                      //                     style: TextStyle(
-                      //                         fontWeight: FontWeight.bold,
-                      //                         fontSize: touchedYTDGoals
-                      //                             ? 11.0
-                      //                             : 10.0,
-                      //                         color: touchedYTDGoals
-                      //                             ? Colors.cyan
-                      //                             : Colors.black),
-                      //                   ),
-                      //                 ],
+                      //                   circularStrokeCap:
+                      //                       CircularStrokeCap.butt,
+                      //                   progressColor: Colors.green,
+                      //                   arcBackgroundColor:
+                      //                       Colors.grey.shade200,
+                      //                 ),
                       //               ),
-                      //               curve: Curves.linear,
-                      //               circularStrokeCap:
-                      //                   CircularStrokeCap.butt,
-                      //               progressColor: Colors.green,
-                      //               arcBackgroundColor:
-                      //                   Colors.grey.shade200,
                       //             ),
                       //           ),
                       //         ),
-                      //       ],
-                      //     ),
+                      //       ),
+                      //     ],
                       //   ),
                       // ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+
+                const SizedBox(height: 1),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -7680,6 +7657,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 10),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),

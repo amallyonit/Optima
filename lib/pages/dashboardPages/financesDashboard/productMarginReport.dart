@@ -879,7 +879,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       context.read<ProductWiseMarginProvider>().updateSalesList(sales);
 
       sales = sales.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+        DateTime dueon = target.invoiceDate;
         return (dueon.isAtLeast(fromDateFilter!) &&
             dueon.isAtMost(toDateFilter!));
       }).toList();
@@ -1238,8 +1238,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               addMonth(startDate, 1).subtract(const Duration(days: 1));
 
           for (var sale in itemSales) {
-            DateTime invoiceDate =
-                DateFormat('dd/MM/yyyy').parse(sale.invoiceDate);
+            DateTime invoiceDate = sale.invoiceDate;
             if (invoiceDate.isAtLeast(startDate) &&
                 invoiceDate.isAtMost(endDate)) {
               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;

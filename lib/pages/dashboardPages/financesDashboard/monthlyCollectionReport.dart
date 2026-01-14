@@ -977,7 +977,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       }).toList();
 
       sales = sales.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+        DateTime dueon = target.invoiceDate;
         return (dueon.isAtLeast(fromDateFilter!) &&
             dueon.isAtMost(toDateFilter!));
       }).toList();

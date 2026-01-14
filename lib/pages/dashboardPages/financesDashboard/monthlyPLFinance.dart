@@ -1232,7 +1232,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       }
 
       var monthSalesRows = sales.where((row) {
-        final dt = DateFormat('dd/MM/yyyy').parse(row.invoiceDate);
+        final dt = row.invoiceDate;
         return dt.isAtLeast(startDate) && dt.isAtMost(endDate);
       });
 
@@ -6206,7 +6206,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       }).toList();
 
       sales = sales.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+        DateTime dueon = target.invoiceDate;
         return (dueon.isAtLeast(fromDateFilter!) &&
             dueon.isAtMost(toDateFilter!));
       }).toList();

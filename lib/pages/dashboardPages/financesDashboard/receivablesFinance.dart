@@ -3685,8 +3685,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               addMonth(startDate, 1).add(const Duration(days: -1));
 
           for (var sale in itemSales) {
-            DateTime invoiceDate =
-                DateFormat('dd/MM/yyyy').parse(sale.invoiceDate);
+            DateTime invoiceDate = sale.invoiceDate;
             if (invoiceDate.isAtLeast(startDate) &&
                 invoiceDate.isAtMost(endDate)) {
               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;

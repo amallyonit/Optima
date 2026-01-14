@@ -1488,9 +1488,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         );
 
         currentMonthSalesListNH = salesNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime postingDate = target.invoiceDate;
           return postingDate.isAtLeast(monthDates['start']!) &&
               postingDate.isAtMost(monthDates['end']!);
         }).toList();
@@ -1524,9 +1522,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         }).toList();
 
         currentMonthSalesListSales = salesSalesTeamList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime postingDate = target.invoiceDate;
           return postingDate.isAtLeast(monthDates['start']!) &&
               postingDate.isAtMost(monthDates['end']!);
         }).toList();
@@ -1562,9 +1558,8 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         }).toList();
 
         currentMonthSalesListOffice = salesOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime postingDate = target.invoiceDate;
+
           return postingDate.isAtLeast(monthDates['start']!) &&
               postingDate.isAtMost(monthDates['end']!);
         }).toList();
@@ -1598,9 +1593,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         }).toList();
 
         totalSales = sales.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+DateTime postingDate = target.invoiceDate;
           return postingDate.isAtLeast(monthDates['start']!) &&
               postingDate.isAtMost(monthDates['end']!);
         }).toList();
@@ -1655,9 +1648,8 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         );
 
         currentMonthSalesListNH = salesNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime postingDate = target.invoiceDate;
+
           return postingDate.isAtLeast(startDate) &&
               postingDate.isAtMost(endDate);
         }).toList();
@@ -1691,9 +1683,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         }).toList();
 
         currentMonthSalesListSales = salesSalesTeamList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime postingDate = target.invoiceDate;
           return postingDate.isAtLeast(startDate) &&
               postingDate.isAtMost(endDate);
         }).toList();
@@ -1729,9 +1719,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         }).toList();
 
         currentMonthSalesListOffice = salesOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime postingDate = target.invoiceDate;
           return postingDate.isAtLeast(startDate) &&
               postingDate.isAtMost(endDate);
         }).toList();
@@ -1765,9 +1753,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         }).toList();
 
         totalSales = sales.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.invoiceDate);
+          DateTime postingDate = target.invoiceDate;
           return postingDate.isAtLeast(startDate) &&
               postingDate.isAtMost(endDate);
         }).toList();
@@ -2825,7 +2811,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       }).toList();
 
       sales = sales.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
+        DateTime dueon = target.invoiceDate;
         return (dueon.isAtLeast(fromDateFilter!) &&
             dueon.isAtMost(toDateFilter!));
       }).toList();
