@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, non_constant_identifier_names
 import 'package:intl/intl.dart';
+
 class PrevYearMonthList {
   final List<PrevYearMonthData> prevYearMonthData;
   PrevYearMonthList({required this.prevYearMonthData});
@@ -477,7 +478,7 @@ class SalesTargetList {
       case 'december':
         return dec;
       default:
-        throw Exception('Invalid month name: $monthName');
+        return '0';
     }
   }
 }
@@ -656,9 +657,7 @@ class SalesList {
   final String salesType;
   final String type;
   final String invoiceNo;
-
   final DateTime invoiceDate;
-
   final String refNo;
   final String termsofDelivery;
   final String dispatchThrough;
@@ -730,7 +729,9 @@ class SalesList {
       invoiceNo: json['invoiceNo'] ?? '',
 
       // 🔥 Parse invoiceDate once here
-      invoiceDate: DateFormat('dd/MM/yyyy').parse(json['invoiceDate'] ?? '01/01/2000'),
+      invoiceDate: DateFormat(
+        'dd/MM/yyyy',
+      ).parse(json['invoiceDate'] ?? '01/01/2000'),
 
       refNo: json['refNo'] ?? '',
       termsofDelivery: json['termsofDelivery'] ?? '',
@@ -762,113 +763,6 @@ class SalesList {
     );
   }
 }
-
-// class SalesList {
-//   final String invoiceType;
-//   final String salesType;
-//   final String type;
-//   final String invoiceNo;
-//   final String invoiceDate;
-//   final String refNo;
-//   final String termsofDelivery;
-//   final String dispatchThrough;
-//   final String destinationDetails;
-//   final String customerGroup;
-//   final String customerCode;
-//   final String customerName;
-//   final String customerCity;
-//   final String customerState;
-//   final String countryZone;
-//   final String salesRep;
-//   final String salesManager;
-//   final String regionalManager;
-//   final String itemGroup;
-//   final String itemSubGroup;
-//   final String code;
-//   final String description;
-//   final String uom;
-//   final String quantity;
-//   final String currency;
-//   final String currencyRate;
-//   final String price;
-//   final String taxCode;
-//   final String rowTotal;
-//   final String documentTotal;
-//   final String branchName;
-//   final String whsCode;
-
-//   SalesList({
-//     required this.invoiceType,
-//     required this.salesType,
-//     required this.type,
-//     required this.invoiceNo,
-//     required this.invoiceDate,
-//     required this.refNo,
-//     required this.termsofDelivery,
-//     required this.dispatchThrough,
-//     required this.destinationDetails,
-//     required this.customerCode,
-//     required this.customerName,
-//     required this.customerGroup,
-//     required this.customerCity,
-//     required this.customerState,
-//     required this.countryZone,
-//     required this.salesRep,
-//     required this.salesManager,
-//     required this.regionalManager,
-//     required this.itemGroup,
-//     required this.itemSubGroup,
-//     required this.code,
-//     required this.description,
-//     required this.uom,
-//     required this.quantity,
-//     required this.currency,
-//     required this.currencyRate,
-//     required this.price,
-//     required this.taxCode,
-//     required this.rowTotal,
-//     required this.documentTotal,
-//     required this.branchName,
-//     required this.whsCode,
-//   });
-
-//   factory SalesList.fromJson(Map<String, dynamic> json) {
-//     return SalesList(
-//       invoiceType: json['invoiceType'],
-//       salesType: json['salesType'],
-//       type: json['type'],
-//       invoiceNo: json['invoiceNo'],
-//       invoiceDate: json['invoiceDate'],
-//       refNo: json['refNo'],
-//       termsofDelivery: json['termsofDelivery'],
-//       dispatchThrough: json['dispatchThrough'],
-//       destinationDetails: json['destinationDetails'],
-//       customerCode: json['customerCode'],
-//       customerName: json['customerName'],
-//       customerGroup: json['customerGroup'],
-//       customerCity: json['customerCity'],
-//       customerState: json['customerState'],
-//       countryZone: json['countryZone'],
-//       salesRep: json['salesRep'],
-//       salesManager: json['salesManager'],
-//       regionalManager: json['regionalManager'],
-//       itemGroup: json['itemGroup'],
-//       itemSubGroup: json['itemSubGroup'],
-//       code: json['code'],
-//       description: json['description'],
-//       uom: json['uom'],
-//       quantity: json['quantity'],
-//       currency: json['currency'],
-//       currencyRate: json['currencyRate'],
-//       price: json['price'],
-//       taxCode: json['taxCode'],
-//       rowTotal: json['rowTotal'],
-//       documentTotal: json['documentTotal'],
-//       branchName: json['branchName'],
-//       whsCode: json['whsCode'],
-//     );
-//   }
-// }
 
 class PODetailList {
   final String soDate;
@@ -1326,28 +1220,28 @@ class VisitAnalysisData {
     required this.leadInputMaterials,
   });
 
-  factory VisitAnalysisData.fromJson(Map<String, dynamic> json) {
+  factory VisitAnalysisData.fromJson(Map<String, dynamic> j) {
     return VisitAnalysisData(
-      leadID: json['leadID'] ?? 0,
-      visitDate: json['visitDate'] ?? '',
-      visitTime: json['visitTime'] ?? '',
-      visitCount: json['visitCount'] ?? 0,
-      userId: json['userId'] ?? 0,
-      userName: json['userName'] ?? '',
-      userLevel: json['userLevel'] ?? 0,
-      accountName: json['accountName'] ?? '',
-      leadActivitySummary: json['leadActivitySummary'] ?? '',
-      visitType: json['visitType'] ?? '',
-      productCategory: json['productCategory'] ?? '',
-      productName: json['productName'] ?? '',
-      participantName: json['participantName'] ?? '',
-      leadActivityLatitude: json['leadActivityLatitude'] ?? '',
-      leadActivityLongitude: json['leadActivityLongitude'] ?? '',
-      leadActivityLocation: json['leadActivityLocation'] ?? '',
-      leadActivityCheckin: json['leadActivityCheckin'] ?? '',
-      leadActivityCheckout: json['leadActivityCheckout'] ?? '',
-      leadActivityInLocation: json['leadActivityInLocation'] ?? '',
-      leadInputMaterials: json['leadInputMaterials'] ?? '',
+      leadID: int.tryParse(j['LeadID']?.toString() ?? '0') ?? 0,
+      visitDate: j['VisitDate'] ?? '',
+      visitTime: j['VisitTime'] ?? '',
+      visitCount: j['VisitCount'] ?? 0,
+      userId: int.tryParse(j['UserId']?.toString() ?? '0') ?? 0,
+      userName: j['UserName'] ?? '',
+      userLevel: j['UserLevel'] ?? 0,
+      accountName: j['AccountName'] ?? '',
+      leadActivitySummary: j['LeadActivitySummary'] ?? '',
+      visitType: j['VisitType'] ?? '',
+      productCategory: j['ProductCategory'] ?? '',
+      productName: j['ProductName'] ?? '',
+      participantName: j['ParticipantName'] ?? '',
+      leadActivityLatitude: j['LeadActivityLatitude'] ?? '',
+      leadActivityLongitude: j['LeadActivityLongitude'] ?? '',
+      leadActivityLocation: j['LeadActivityLocation'] ?? '',
+      leadActivityCheckin: j['LeadActivityCheckin'] ?? '',
+      leadActivityCheckout: j['LeadActivityCheckout'] ?? '',
+      leadActivityInLocation: j['LeadActivityInLocation'] ?? '',
+      leadInputMaterials: j['LeadInputMaterials'] ?? '',
     );
   }
 }
@@ -3342,6 +3236,25 @@ class MonthlyProductionData {
     required this.target,
     required this.production,
     this.boxNo,
+  });
+}
+
+class DailyProductionList {
+  final List<DailyProductionData> dailyData;
+  DailyProductionList({required this.dailyData});
+}
+
+class DailyProductionData {
+  final DateTime date;
+  final String dayLabel; // e.g. "01 Aug"
+  final double production; // sum of completedQty for that day
+  final int boxNo; // summed boxes for that day (rounded)
+
+  DailyProductionData({
+    required this.date,
+    required this.dayLabel,
+    required this.production,
+    required this.boxNo,
   });
 }
 
@@ -6192,4 +6105,39 @@ class CustomerComplaint {
       handledBy: json['handledBy'],
     );
   }
+}
+
+class CustomerChartData {
+  final String customerName;
+  final String customerCode;
+  final double value;
+  final int count;
+  final List<String> docNos; // SO No / Invoice No
+
+  CustomerChartData({
+    required this.customerName,
+    required this.customerCode,
+    required this.value,
+    required this.count,
+    required this.docNos,
+  });
+}
+
+class CombinedCustomerData {
+  final String customerCode;
+  final String customerName;
+  final double soValue;
+  final double salesValue;
+
+  final List<String> soNos;
+  final List<String> invoiceNos;
+
+  CombinedCustomerData({
+    required this.customerCode,
+    required this.customerName,
+    required this.soValue,
+    required this.salesValue,
+    required this.soNos,
+    required this.invoiceNos,
+  });
 }

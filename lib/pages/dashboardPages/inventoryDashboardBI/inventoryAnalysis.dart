@@ -77,18 +77,23 @@ double selectedChart = 0;
 List<InventoryList> inventory = [];
 List<InventoryLevelList> inventoryLevel = [];
 
-ReceivablesFinanceList receivablesFinanceList =
-    ReceivablesFinanceList(agingData: []);
+ReceivablesFinanceList receivablesFinanceList = ReceivablesFinanceList(
+  agingData: [],
+);
 
 InventoryAgingList inventoryAgingList = InventoryAgingList(agingData: []);
-WarehouseInventoryList warehouseLocationList =
-    WarehouseInventoryList(warehouseData: []);
-InventoryLevelGraphList inventoryGraphList =
-    InventoryLevelGraphList(levelData: []);
-ItemGroupWiseInventoryList itemGroupList =
-    ItemGroupWiseInventoryList(itemGroupData: []);
-ItemSubGroupWiseInventoryList itemSubGroupList =
-    ItemSubGroupWiseInventoryList(itemSubGroupData: []);
+WarehouseInventoryList warehouseLocationList = WarehouseInventoryList(
+  warehouseData: [],
+);
+InventoryLevelGraphList inventoryGraphList = InventoryLevelGraphList(
+  levelData: [],
+);
+ItemGroupWiseInventoryList itemGroupList = ItemGroupWiseInventoryList(
+  itemGroupData: [],
+);
+ItemSubGroupWiseInventoryList itemSubGroupList = ItemSubGroupWiseInventoryList(
+  itemSubGroupData: [],
+);
 
 String touchedAging = "";
 String touchedWarehouseLocation = "";
@@ -98,6 +103,8 @@ String touchedItemSubGroup = "";
 double totalInventory = 0;
 
 bool qtyOrValCheck = true;
+
+Map<String, double> warehouseTotals = {};
 
 class _InventoryAnalysisState extends State<InventoryAnalysis> {
   bool touchedMonthGoals = false;
@@ -233,8 +240,10 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate =
-        addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1));
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
@@ -263,8 +272,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear =
-        currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1;
+    int fiscalYearStartYear = currentDate!.month >= 4
+        ? currentDate!.year
+        : currentDate!.year - 1;
 
     int fiscalYearEndYear = fiscalYearStartYear + 1;
     financialYear =
@@ -284,9 +294,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   double getMaxValue(double maxValue) {
@@ -308,7 +318,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         if (maxValue >= 200000) {
           divVal = 20000;
         }
-        if (maxValue >= 200000) {
+        if (maxValue >= 300000) {
           divVal = 30000;
         }
         if (maxValue >= 400000) {
@@ -330,17 +340,14 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   }
 
   SideTitles get _leftTitles => SideTitles(
-        reservedSize: 50,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String leftDouble = "";
-          leftDouble = formatAmount(value);
-          return Text(
-            leftDouble,
-            style: const TextStyle(fontSize: 12),
-          );
-        },
-      );
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -350,165 +357,164 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   }
 
   SideTitles get _bottomTitlesInventoryAgeing => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<InventoryAgingData> mData = inventoryAgingList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<InventoryAgingData> mData = inventoryAgingList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesWarehouseLocationInventory => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<WarehouseInventoryData> mData =
-              warehouseLocationList.warehouseData;
-          text = mData.elementAt(value.toInt()).warehouseName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<WarehouseInventoryData> mData = warehouseLocationList.warehouseData;
+      text = mData.elementAt(value.toInt()).warehouseName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesInventoryLevel => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<InventoryLevelGraphData> mData = inventoryGraphList.levelData;
-          text = mData.elementAt(value.toInt()).itemName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<InventoryLevelGraphData> mData = inventoryGraphList.levelData;
+      text = mData.elementAt(value.toInt()).itemName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesItemGroupWise => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ItemGroupWiseInventoryData> mData = itemGroupList.itemGroupData;
-          text = mData.elementAt(value.toInt()).groupName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ItemGroupWiseInventoryData> mData = itemGroupList.itemGroupData;
+      text = mData.elementAt(value.toInt()).groupName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesItemSubGroupWise => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ItemSubGroupWiseInventoryData> mData =
-              itemSubGroupList.itemSubGroupData;
-          text = mData.elementAt(value.toInt()).subGroupName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ItemSubGroupWiseInventoryData> mData =
+          itemSubGroupList.itemSubGroupData;
+      text = mData.elementAt(value.toInt()).subGroupName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   List<BarChartGroupData> _inventoryAgeingChartData(
-      List<InventoryAgingData> data) {
+    List<InventoryAgingData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.agingTotal,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.agingTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _warehouseLocationInventoryChartData(
-      List<WarehouseInventoryData> data) {
+    List<WarehouseInventoryData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.quantity,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.quantity,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _inventoryLevelChartData(
-      List<InventoryLevelGraphData> data) {
+    List<InventoryLevelGraphData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
                 backDrawRodData: BackgroundBarChartRodData(
                   color: const Color(0xFF97D7F3),
@@ -521,40 +527,58 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                 toY: chartData.minLevel,
                 width: 30,
               ),
-            ]))
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _itemGroupWiseChartData(
-      List<ItemGroupWiseInventoryData> data) {
+    List<ItemGroupWiseInventoryData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.quantity,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.quantity,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _itemSubGroupWiseChartData(
-      List<ItemSubGroupWiseInventoryData> data) {
+    List<ItemSubGroupWiseInventoryData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.quantity,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.quantity,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
-  Future<void> _loadUserListForFilter(String userId, String userJwtToken,
-      String userMailID, int userLevel) async {
+  Future<void> _loadUserListForFilter(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    int userLevel,
+  ) async {
     final body = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
@@ -575,8 +599,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
           List<dynamic> data = responseJson['Data'];
           if (data.isNotEmpty) {
             setState(() {
-              usersListForFilter =
-                  (data).map((item) => Users.fromJson(item)).toList();
+              usersListForFilter = (data)
+                  .map((item) => Users.fromJson(item))
+                  .toList();
             });
           }
         } else {
@@ -586,10 +611,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -597,15 +619,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('User list not found.'),
-        );
+        const snackBar = SnackBar(content: Text('User list not found.'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -629,16 +647,12 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         nodes.add(node);
       }
     }
-    // treeController = TreeController<MyNode>(
-    //   roots: nodes,
-    //   childrenProvider: (MyNode node) => node.children,
-    // );
-
     return nodes;
   }
 
   InventoryAgingSummary summarizeCollectionTargets(
-      Iterable<InventoryList> inventory) {
+    Iterable<InventoryList> inventory,
+  ) {
     InventoryAgingSummary summary = InventoryAgingSummary();
     String overDueDays = "";
     for (var element in inventory) {
@@ -698,20 +712,17 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
       do {
         var body = {
           "FromDate": formatDate(
-              monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
+            monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!,
+          ),
           "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -753,143 +764,6 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
           inventory = salesList.toList();
         }
       });
-      // var currentMonthSales = inventory.where((target) {
-      //   DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //
-      //   return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-      //       invoiceDate.isAtMost(currentDate!);
-      // });
-
-      // double salesAmt = 0;
-      // for (var target in currentMonthSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // CurrentMonthSales = sum;
-      // CurrentMonthSalesStr =
-      // "${(CurrentMonthSales / 100000).toStringAsFixed(2)} L";
-      // if (CurrentMonthSales == 0) {
-      //   CurrentMonthSalesPercentage = 0;
-      // } else {
-      //   CurrentMonthSalesPercentage = double.tryParse(
-      //       ((CurrentMonthSales / SalesGoal) * 100).toStringAsFixed(0))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // CurrentMonthSalesPercentageStr =
-      // "${CurrentMonthSalesPercentage.toString()} %";
-      //
-      // if (CurrentMonthSalesPercentage > 100) {
-      //   CurrentMonthSalesPercentage = 100;
-      // }
-
-      // var lastMonthSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //
-      //   return invoiceDate.isAtLeast(lastMonthFromDate!) &&
-      //       invoiceDate.isAtMost(lastMonthToDate!);
-      // });
-
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in lastMonthSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // LastMonthSales = sum;
-      // LastMonthSalesStr = "${(LastMonthSales / 100000).toStringAsFixed(2)} L";
-      // if (LastMonthSales == 0) {
-      //   LastMonthPercentage = 0;
-      // } else {
-      //   LastMonthPercentage = double.tryParse(
-      //       ((LastMonthSales / LastMonthTarget) * 100)
-      //           .toStringAsFixed(2))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // LastMonthPercentageStr = "${LastMonthPercentage.toString()} %";
-      // if (LastMonthPercentage > 100) {
-      //   LastMonthPercentage = 100;
-      // }
-      //
-      // var curQtrSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //   return invoiceDate.isAtLeast(currentQuarterFromDate!) &&
-      //       invoiceDate.isAtMost(currentQuarterToDate!);
-      // });
-
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in curQtrSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // CurrentQtrSales = sum;
-      // CurrentQtrSalesStr = "${(CurrentQtrSales / 100000).toStringAsFixed(2)} L";
-      // if (CurrentQtrSales == 0) {
-      //   CurrentQtrPercentage = 0;
-      // } else {
-      //   CurrentQtrPercentage = double.tryParse(
-      //       ((CurrentQtrSales / CurrentQtrTarget) * 100)
-      //           .toStringAsFixed(2))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // CurrentQtrPercentageStr = "${CurrentQtrPercentage.toString()} %";
-      // if (CurrentQtrPercentage > 100) {
-      //   CurrentQtrPercentage = 100;
-      // }
-      //
-      // var ytdSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //   return invoiceDate.isAtLeast(fiscalYearStartDate!) &&
-      //       invoiceDate.isAtMost(currentDate!);
-      // });
-      //
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in ytdSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-      //
-      // YtdSales = sum;
-      // YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
-      // if (YtdSales == 0) {
-      //   YtdPercentage = 0;
-      // } else {
-      //   YtdPercentage =
-      //       double.tryParse(((YtdSales / YtdTarget) * 100).toStringAsFixed(2))
-      //           ?.ceil() ??
-      //           0;
-      // }
-      // YtdPercentageStr = "${YtdPercentage.toString()} %";
-      //
-      // if (YtdPercentage > 100) {
-      //   YtdPercentage = 100;
-      // }zs
     } catch (e) {
       if (mounted) {
         final snackBar = SnackBar(
@@ -912,16 +786,12 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
           "Index": index.toString(),
           "Limit": limit.toString(),
           "type": "All",
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -963,143 +833,6 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
           inventoryLevel = salesList.toList();
         }
       });
-      // var currentMonthSales = inventory.where((target) {
-      //   DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //
-      //   return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-      //       invoiceDate.isAtMost(currentDate!);
-      // });
-
-      // double salesAmt = 0;
-      // for (var target in currentMonthSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // CurrentMonthSales = sum;
-      // CurrentMonthSalesStr =
-      // "${(CurrentMonthSales / 100000).toStringAsFixed(2)} L";
-      // if (CurrentMonthSales == 0) {
-      //   CurrentMonthSalesPercentage = 0;
-      // } else {
-      //   CurrentMonthSalesPercentage = double.tryParse(
-      //       ((CurrentMonthSales / SalesGoal) * 100).toStringAsFixed(0))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // CurrentMonthSalesPercentageStr =
-      // "${CurrentMonthSalesPercentage.toString()} %";
-      //
-      // if (CurrentMonthSalesPercentage > 100) {
-      //   CurrentMonthSalesPercentage = 100;
-      // }
-
-      // var lastMonthSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //
-      //   return invoiceDate.isAtLeast(lastMonthFromDate!) &&
-      //       invoiceDate.isAtMost(lastMonthToDate!);
-      // });
-
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in lastMonthSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // LastMonthSales = sum;
-      // LastMonthSalesStr = "${(LastMonthSales / 100000).toStringAsFixed(2)} L";
-      // if (LastMonthSales == 0) {
-      //   LastMonthPercentage = 0;
-      // } else {
-      //   LastMonthPercentage = double.tryParse(
-      //       ((LastMonthSales / LastMonthTarget) * 100)
-      //           .toStringAsFixed(2))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // LastMonthPercentageStr = "${LastMonthPercentage.toString()} %";
-      // if (LastMonthPercentage > 100) {
-      //   LastMonthPercentage = 100;
-      // }
-      //
-      // var curQtrSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //   return invoiceDate.isAtLeast(currentQuarterFromDate!) &&
-      //       invoiceDate.isAtMost(currentQuarterToDate!);
-      // });
-
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in curQtrSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // CurrentQtrSales = sum;
-      // CurrentQtrSalesStr = "${(CurrentQtrSales / 100000).toStringAsFixed(2)} L";
-      // if (CurrentQtrSales == 0) {
-      //   CurrentQtrPercentage = 0;
-      // } else {
-      //   CurrentQtrPercentage = double.tryParse(
-      //       ((CurrentQtrSales / CurrentQtrTarget) * 100)
-      //           .toStringAsFixed(2))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // CurrentQtrPercentageStr = "${CurrentQtrPercentage.toString()} %";
-      // if (CurrentQtrPercentage > 100) {
-      //   CurrentQtrPercentage = 100;
-      // }
-      //
-      // var ytdSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //   return invoiceDate.isAtLeast(fiscalYearStartDate!) &&
-      //       invoiceDate.isAtMost(currentDate!);
-      // });
-      //
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in ytdSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-      //
-      // YtdSales = sum;
-      // YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
-      // if (YtdSales == 0) {
-      //   YtdPercentage = 0;
-      // } else {
-      //   YtdPercentage =
-      //       double.tryParse(((YtdSales / YtdTarget) * 100).toStringAsFixed(2))
-      //           ?.ceil() ??
-      //           0;
-      // }
-      // YtdPercentageStr = "${YtdPercentage.toString()} %";
-      //
-      // if (YtdPercentage > 100) {
-      //   YtdPercentage = 100;
-      // }zs
     } catch (e) {
       if (mounted) {
         final snackBar = SnackBar(
@@ -1112,288 +845,208 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   }
 
   Future<void> _loadInventoryAgingData(
-    String aging,
-    String WarehouseLocation,
-    String ItemGroupWise,
-    String ItemSubGroupWise,
+    List<InventoryList> inventoryList,
   ) async {
     List<InventoryAgingData> receivablesAgingDataList = [];
-    double agingGroup30Total = 0;
-    double agingGroup31to45Total = 0;
-    double agingGroup46to60Total = 0;
-    double agingGroup61to90Total = 0;
-    double agingGroup91to120Total = 0;
-    double agingGroup121to150Total = 0;
-    double agingGroup151to180Total = 0;
-    double agingGroup181to365Total = 0;
-    double agingGroup366to730Total = 0;
-    double agingGroup730Total = 0;
 
-    var collectionTargetList = inventory;
+    InventoryAgingSummary summary = summarizeCollectionTargets(inventoryList);
 
-    collectionTargetList = filterInventoryList(
-        collectionTargetList.cast<InventoryList>().toList(),
-        aging: aging,
-        WarehouseLocation: WarehouseLocation,
-        ItemGroupWise: ItemGroupWise,
-        ItemSubGroupWise: ItemSubGroupWise);
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "0-30",
+        agingTotal: summary.a0to30DaysTotal,
+      ),
+    );
 
-    InventoryAgingSummary summary =
-        summarizeCollectionTargets(collectionTargetList);
-    agingGroup30Total = summary.a0to30DaysTotal;
-    agingGroup31to45Total = summary.a31to45DaysTotal;
-    agingGroup46to60Total = summary.a46to60DaysTotal;
-    agingGroup61to90Total = summary.a61to90DaysTotal;
-    agingGroup91to120Total = summary.a91to120DaysTotal;
-    agingGroup121to150Total = summary.a121to150DaysTotal;
-    agingGroup151to180Total = summary.a151to180DaysTotal;
-    agingGroup181to365Total = summary.a181to365DaysTotal;
-    agingGroup366to730Total = summary.a366to730DaysTotal;
-    agingGroup730Total = summary.a730DaysTotal;
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "0-30",
-      agingTotal: agingGroup30Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "31-45",
-      agingTotal: agingGroup31to45Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "46-60",
-      agingTotal: agingGroup46to60Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "61-90",
-      agingTotal: agingGroup61to90Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "91-120",
-      agingTotal: agingGroup91to120Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "121-150",
-      agingTotal: agingGroup121to150Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "151-180",
-      agingTotal: agingGroup151to180Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "181-365",
-      agingTotal: agingGroup181to365Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "366-730",
-      agingTotal: agingGroup366to730Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "731+",
-      agingTotal: agingGroup730Total,
-    ));
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "31-45",
+        agingTotal: summary.a31to45DaysTotal,
+      ),
+    );
 
-    // for (InventoryAgingData agingData in receivablesAgingDataList) {
-    //    agingData.agingPercentage = double.tryParse(
-    //        ((agingData.agingGroupTotal / totalDueAmount) * 100)
-    //            .toStringAsFixed(2)) ??
-    //        0;
-    //    agingData.agingGroupTotal = double.tryParse((agingData.agingGroupTotal).toStringAsFixed(2)) ?? 0;
-    // }
-    inventoryAgingList =
-        InventoryAgingList(agingData: receivablesAgingDataList);
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "46-60",
+        agingTotal: summary.a46to60DaysTotal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "61-90",
+        agingTotal: summary.a61to90DaysTotal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "91-120",
+        agingTotal: summary.a91to120DaysTotal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "121-150",
+        agingTotal: summary.a121to150DaysTotal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "151-180",
+        agingTotal: summary.a151to180DaysTotal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "181-365",
+        agingTotal: summary.a181to365DaysTotal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "366-730",
+        agingTotal: summary.a366to730DaysTotal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingData(agingGroup: "731+", agingTotal: summary.a730DaysTotal),
+    );
+
+    inventoryAgingList = InventoryAgingList(
+      agingData: receivablesAgingDataList,
+    );
   }
 
   Future<void> _loadWarehouseLocationWiseInventory(
-    String aging,
-    String WarehouseLocation,
-    String ItemGroupWise,
-    String ItemSubGroupWise,
+    List<InventoryList> inventoryList,
   ) async {
-    var inventoryList = inventory;
-    String warehouseCode = "";
-    String warehouseName = "";
-    double productSales = 0.00;
     List<WarehouseInventoryData> warehouseData = [];
-    Set<String> processedWarehouseCodes = {};
 
-    inventoryList = filterInventoryList(
-        inventoryList.cast<InventoryList>().toList(),
-        aging: aging,
-        WarehouseLocation: WarehouseLocation,
-        ItemGroupWise: ItemGroupWise,
-        ItemSubGroupWise: ItemSubGroupWise);
+    Map<String, double> warehouseTotals = {};
+    Map<String, String> warehouseCodeMap = {};
+    for (var item in inventoryList) {
+      double value = qtyOrValCheck
+          ? double.parse(item.totalQuantity)
+          : double.parse(item.totalValue);
 
-    for (var warehouse in inventoryList) {
-      if (!processedWarehouseCodes.contains(warehouse.warehouseCode)) {
-        warehouseCode = warehouse.warehouseCode;
-        warehouseName = warehouse.warehouseName;
-        for (var target in inventoryList
-            .where((prdelement) => prdelement.warehouseCode == warehouseCode)) {
-          double salesAmt = (qtyOrValCheck
-              ? double.parse(target.totalQuantity)
-              : double.parse(target.totalValue));
-          productSales += salesAmt;
-        }
-
-        warehouseData.add(WarehouseInventoryData(
-          warehouseCode: warehouseCode,
-          warehouseName: warehouseName,
-          quantity: productSales,
-        ));
-        processedWarehouseCodes.add(warehouse.warehouseCode);
-      }
-      productSales = 0;
-      warehouseCode = "";
-      warehouseName = "";
+      warehouseTotals.update(
+        item.warehouseName,
+        (existing) => existing + value,
+        ifAbsent: () => value,
+      );
+      warehouseCodeMap[item.warehouseName] = item.warehouseCode;
     }
+
+    warehouseTotals.forEach((name, total) {
+      warehouseData.add(
+        WarehouseInventoryData(
+          warehouseCode: warehouseCodeMap[name] ?? "",
+          warehouseName: name,
+          quantity: total,
+        ),
+      );
+    });
+
     warehouseData.sort((a, b) => b.quantity.compareTo(a.quantity));
 
-    warehouseLocationList =
-        WarehouseInventoryList(warehouseData: warehouseData);
+    warehouseLocationList = WarehouseInventoryList(
+      warehouseData: warehouseData,
+    );
   }
 
   Future<void> _loadInventoryLevelGraph(
-    String aging,
-    String WarehouseLocation,
-    String ItemGroupWise,
-    String ItemSubGroupWise,
+    List<InventoryLevelList> inventoryList,
   ) async {
-    var inventoryList = inventoryLevel;
-    String itemDescription = "";
-    double productSales = 0.00;
-    double inStock = 0.00;
-    double minInventory = 0.00;
-    double maxInventory = 0.00;
     List<InventoryLevelGraphData> levelData = [];
-    Set<String> processedProductCodes = {};
 
-    inventoryList = filterInventoryLevelList(
-        inventoryList.cast<InventoryLevelList>().toList(),
-        aging: aging,
-        WarehouseLocation: WarehouseLocation,
-        ItemGroupWise: ItemGroupWise,
-        ItemSubGroupWise: ItemSubGroupWise);
+    Map<String, InventoryLevelGraphData> itemMap = {};
 
-    for (var level in inventoryList) {
-      if (!processedProductCodes.contains(level.itemDescription)) {
-        itemDescription = level.itemDescription;
-        for (var target in inventoryList.where(
-            (prdelement) => prdelement.itemDescription == itemDescription)) {
-          inStock = double.tryParse(target.inStock) ?? 0;
-          minInventory = double.tryParse(target.minInventory) ?? 0;
-          maxInventory = double.tryParse(target.maxInventory) ?? 0;
-          productSales = inStock + minInventory + maxInventory;
-        }
+    for (var item in inventoryList) {
+      double inStock = double.tryParse(item.inStock) ?? 0;
+      double minInventory = double.tryParse(item.minInventory) ?? 0;
+      double maxInventory = double.tryParse(item.maxInventory) ?? 0;
 
-        levelData.add(InventoryLevelGraphData(
-          itemName: itemDescription,
-          inStock: inStock,
-          minLevel: minInventory,
-          maxLevel: maxInventory,
-          total: productSales,
-        ));
-        processedProductCodes.add(level.itemDescription);
-      }
-      productSales = 0;
-      inStock = 0;
-      minInventory = 0;
-      maxInventory = 0;
-      itemDescription = "";
+      itemMap[item.itemDescription] = InventoryLevelGraphData(
+        itemName: item.itemDescription,
+        inStock: inStock,
+        minLevel: minInventory,
+        maxLevel: maxInventory,
+        total: inStock + minInventory + maxInventory,
+      );
     }
-    levelData.sort((a, b) => b.total.compareTo(a.total));
 
+    levelData = itemMap.values.toList();
+    levelData.sort((a, b) => b.total.compareTo(a.total));
     inventoryGraphList = InventoryLevelGraphList(levelData: levelData);
   }
 
   Future<void> _loadItemGroupWiseInventory(
-    String aging,
-    String WarehouseLocation,
-    String ItemGroupWise,
-    String ItemSubGroupWise,
+    List<InventoryList> inventoryList,
   ) async {
-    var inventoryList = inventory;
-    String groupName = "";
-    double productSales = 0.00;
     List<ItemGroupWiseInventoryData> warehouseData = [];
-    Set<String> processedGroupNames = {};
+    Map<String, double> groupTotals = {};
 
-    inventoryList = filterInventoryList(
-        inventoryList.cast<InventoryList>().toList(),
-        aging: aging,
-        WarehouseLocation: WarehouseLocation,
-        ItemGroupWise: ItemGroupWise,
-        ItemSubGroupWise: ItemSubGroupWise);
+    for (var item in inventoryList) {
+      double value = qtyOrValCheck
+          ? double.parse(item.totalQuantity)
+          : double.parse(item.totalValue);
 
-    for (var itemGroup in inventoryList) {
-      if (!processedGroupNames.contains(itemGroup.groupName)) {
-        groupName = itemGroup.groupName;
-        for (var target in inventoryList
-            .where((prdelement) => prdelement.groupName == groupName)) {
-          double salesAmt = (qtyOrValCheck
-              ? double.parse(target.totalQuantity)
-              : double.parse(target.totalValue));
-          productSales += salesAmt;
-        }
-
-        warehouseData.add(ItemGroupWiseInventoryData(
-          groupName: groupName,
-          quantity: productSales,
-        ));
-        processedGroupNames.add(itemGroup.groupName);
-      }
-      productSales = 0;
-      groupName = "";
+      groupTotals.update(
+        item.groupName,
+        (existing) => existing + value,
+        ifAbsent: () => value,
+      );
     }
+
+    groupTotals.forEach((name, total) {
+      warehouseData.add(
+        ItemGroupWiseInventoryData(groupName: name, quantity: total),
+      );
+    });
+
     warehouseData.sort((a, b) => b.quantity.compareTo(a.quantity));
-
     itemGroupList = ItemGroupWiseInventoryList(itemGroupData: warehouseData);
-
     totalInventory = itemGroupList.itemGroupData.fold(
-        0, (prev, elem) => prev + itemGroupList.itemGroupData.first.quantity);
+      0,
+      (prev, elem) => prev + elem.quantity,
+    );
   }
 
   Future<void> _loadItemSubGroupWiseInventory(
-    String aging,
-    String WarehouseLocation,
-    String ItemGroupWise,
-    String ItemSubGroupWise,
+    List<InventoryList> inventoryList,
   ) async {
-    var inventoryList = inventory;
-    String itemSubGroup = "";
-    double productSales = 0.00;
     List<ItemSubGroupWiseInventoryData> warehouseData = [];
-    Set<String> processedSubGroupNames = {};
+    Map<String, double> subGroupTotals = {};
 
-    inventoryList = filterInventoryList(
-        inventoryList.cast<InventoryList>().toList(),
-        aging: aging,
-        WarehouseLocation: WarehouseLocation,
-        ItemGroupWise: ItemGroupWise,
-        ItemSubGroupWise: ItemSubGroupWise);
+    for (var item in inventoryList) {
+      double value = qtyOrValCheck
+          ? double.parse(item.totalQuantity)
+          : double.parse(item.totalValue);
 
-    for (var itemGroup in inventoryList) {
-      if (!processedSubGroupNames.contains(itemGroup.itemSubGroup)) {
-        itemSubGroup = itemGroup.itemSubGroup;
-        for (var target in inventoryList
-            .where((prdelement) => prdelement.itemSubGroup == itemSubGroup)) {
-          double salesAmt = (qtyOrValCheck
-              ? double.parse(target.totalQuantity)
-              : double.parse(target.totalValue));
-          productSales += salesAmt;
-        }
-
-        warehouseData.add(ItemSubGroupWiseInventoryData(
-          subGroupName: itemSubGroup,
-          quantity: productSales,
-        ));
-        processedSubGroupNames.add(itemGroup.itemSubGroup);
-      }
-      productSales = 0;
-      itemSubGroup = "";
+      subGroupTotals.update(
+        item.itemSubGroup,
+        (existing) => existing + value,
+        ifAbsent: () => value,
+      );
     }
+
+    subGroupTotals.forEach((name, total) {
+      warehouseData.add(
+        ItemSubGroupWiseInventoryData(subGroupName: name, quantity: total),
+      );
+    });
+
     warehouseData.sort((a, b) => b.quantity.compareTo(a.quantity));
 
-    itemSubGroupList =
-        ItemSubGroupWiseInventoryList(itemSubGroupData: warehouseData);
+    itemSubGroupList = ItemSubGroupWiseInventoryList(
+      itemSubGroupData: warehouseData,
+    );
   }
 
   Future<void> loadData(String selectedUser) async {
@@ -1401,28 +1054,65 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
     final userId = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
-    // await _loadUserList(userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
     await _loadUserListForFilter(
-        userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
+      userId,
+      userJwtToken,
+      userMailID,
+      int.tryParse(userLevel) ?? 0,
+    );
     await _loadInventory(userName, userLevel);
     await _loadInventoryLevel(userName, userLevel);
-    await _loadInventoryAgingData("", "", "", "");
-    await _loadWarehouseLocationWiseInventory("", "", "", "");
-    await _loadInventoryLevelGraph("", "", "", "");
-    await _loadItemGroupWiseInventory("", "", "", "");
-    await _loadItemSubGroupWiseInventory("", "", "", "");
+
+    var filteredInventory = filterInventoryList(
+      inventory,
+      aging: "",
+      WarehouseLocation: "",
+      ItemGroupWise: "",
+      ItemSubGroupWise: "",
+    );
+    var filteredInventoryLevel = filterInventoryLevelList(
+      inventoryLevel,
+      aging: "",
+      WarehouseLocation: "",
+      ItemGroupWise: "",
+      ItemSubGroupWise: "",
+    );
+    await Future.wait([
+      _loadInventoryAgingData(filteredInventory),
+      _loadWarehouseLocationWiseInventory(filteredInventory),
+      _loadInventoryLevelGraph(filteredInventoryLevel),
+      _loadItemGroupWiseInventory(filteredInventory),
+      _loadItemSubGroupWiseInventory(filteredInventory),
+    ]);
     chartDataLoaded = true;
   }
 
   Future<void> loadQuantityOrValue(String selectedUser) async {
-    await _loadInventoryAgingData("", "", "", "");
-    await _loadWarehouseLocationWiseInventory("", "", "", "");
-    await _loadInventoryLevelGraph("", "", "", "");
-    await _loadItemGroupWiseInventory("", "", "", "");
-    await _loadItemSubGroupWiseInventory("", "", "", "");
+    var filteredInventory = filterInventoryList(
+      inventory,
+      aging: "",
+      WarehouseLocation: "",
+      ItemGroupWise: "",
+      ItemSubGroupWise: "",
+    );
+    var filteredInventoryLevel = filterInventoryLevelList(
+      inventoryLevel,
+      aging: "",
+      WarehouseLocation: "",
+      ItemGroupWise: "",
+      ItemSubGroupWise: "",
+    );
+    await Future.wait([
+      _loadInventoryAgingData(filteredInventory),
+      _loadWarehouseLocationWiseInventory(filteredInventory),
+      _loadInventoryLevelGraph(filteredInventoryLevel),
+      _loadItemGroupWiseInventory(filteredInventory),
+      _loadItemSubGroupWiseInventory(filteredInventory),
+    ]);
     chartDataLoaded = true;
   }
 
@@ -1435,46 +1125,26 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   }) {
     List<InventoryList> filteredCollectionTargetList = [];
     String overDueDays = "";
-    if (aging != null || aging != "") {
+    if (aging != null && aging.isNotEmpty) {
       if (aging == "0-30") {
-        // dueFromReceivable = 0;
-        // dueToReceivable = 30;
         overDueDays = "<30 Days";
       } else if (aging == "31-45") {
-        // dueFromReceivable = 31;
-        // dueToReceivable = 45;
         overDueDays = "31-45 Days";
       } else if (aging == "46-60") {
-        // dueFromReceivable = 46;
-        // dueToReceivable = 60;
         overDueDays = "46-60 Days";
       } else if (aging == "61-90") {
-        // dueFromReceivable = 61;
-        // dueToReceivable = 90;
         overDueDays = "61-90 Days";
       } else if (aging == "91-120") {
-        // dueFromReceivable = 91;
-        // dueToReceivable = 120;
         overDueDays = "91-120 Days";
       } else if (aging == "121-150") {
-        // dueFromReceivable = 121;
-        // dueToReceivable = 150;
         overDueDays = "121-150 Days";
       } else if (aging == "151-180") {
-        // dueFromReceivable = 151;
-        // dueToReceivable = 180;
         overDueDays = "151-180 Days";
       } else if (aging == "181-365") {
-        // dueFromReceivable = 181;
-        // dueToReceivable = 365;
         overDueDays = "181-365 Days";
       } else if (aging == "366-730") {
-        // dueFromReceivable = 366;
-        // dueToReceivable = 730;
         overDueDays = "366-730 Days";
       } else if (aging == "731+") {
-        // dueFromReceivable = 731;
-        // dueToReceivable = double.infinity;
         overDueDays = ">730 Days";
       }
     }
@@ -1507,7 +1177,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   }) {
     List<InventoryLevelList> filteredInventoryLevelList = [];
     String overDueDays = "";
-    if (aging != null || aging != "") {
+    if (aging != null && aging.isNotEmpty) {
       if (aging == "0-30") {
         overDueDays = "<30 Days";
       } else if (aging == "31-45") {
@@ -1558,28 +1228,54 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   ) async {
     clearVariablesForFilter();
     LoadDates();
-    await _loadInventoryAgingData(
-        aging!, WarehouseLocation!, ItemGroupWise!, ItemSubGroupWise!);
-    await _loadWarehouseLocationWiseInventory(
-        aging, WarehouseLocation, ItemGroupWise, ItemSubGroupWise);
-    await _loadInventoryLevelGraph(
-        aging, WarehouseLocation, ItemGroupWise, ItemSubGroupWise);
-    await _loadItemGroupWiseInventory(
-        aging, WarehouseLocation, ItemGroupWise, ItemSubGroupWise);
-    await _loadItemSubGroupWiseInventory(
-        aging, WarehouseLocation, ItemGroupWise, ItemSubGroupWise);
-
+    var filteredInventory = filterInventoryList(
+      inventory,
+      aging: aging,
+      WarehouseLocation: WarehouseLocation,
+      ItemGroupWise: ItemGroupWise,
+      ItemSubGroupWise: ItemSubGroupWise,
+    );
+    var filteredInventoryLevel = filterInventoryLevelList(
+      inventoryLevel,
+      aging: aging,
+      WarehouseLocation: WarehouseLocation,
+      ItemGroupWise: ItemGroupWise,
+      ItemSubGroupWise: ItemSubGroupWise,
+    );
+    await Future.wait([
+      _loadInventoryAgingData(filteredInventory),
+      _loadWarehouseLocationWiseInventory(filteredInventory),
+      _loadInventoryLevelGraph(filteredInventoryLevel),
+      _loadItemGroupWiseInventory(filteredInventory),
+      _loadItemSubGroupWiseInventory(filteredInventory),
+    ]);
     chartDataLoaded = true;
   }
 
   Future<void> removeFilter() async {
     clearVariables();
     LoadDates();
-    await _loadInventoryAgingData("", "", "", "");
-    await _loadWarehouseLocationWiseInventory("", "", "", "");
-    await _loadItemGroupWiseInventory("", "", "", "");
-    await _loadItemSubGroupWiseInventory("", "", "", "");
-    await _loadInventoryLevelGraph("", "", "", "");
+    var filteredInventory = filterInventoryList(
+      inventory,
+      aging: "",
+      WarehouseLocation: "",
+      ItemGroupWise: "",
+      ItemSubGroupWise: "",
+    );
+    var filteredInventoryLevel = filterInventoryLevelList(
+      inventoryLevel,
+      aging: "",
+      WarehouseLocation: "",
+      ItemGroupWise: "",
+      ItemSubGroupWise: "",
+    );
+    await Future.wait([
+      _loadInventoryAgingData(filteredInventory),
+      _loadWarehouseLocationWiseInventory(filteredInventory),
+      _loadInventoryLevelGraph(filteredInventoryLevel),
+      _loadItemGroupWiseInventory(filteredInventory),
+      _loadItemSubGroupWiseInventory(filteredInventory),
+    ]);
     chartDataLoaded = true;
   }
 
@@ -1622,15 +1318,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Ageing Group',
-        'Ageing Group Total',
-      ]));
+      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -1643,9 +1335,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1659,8 +1349,10 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Inventory Aging',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1673,24 +1365,44 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Ageing Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Ageing Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Ageing Group Total',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Ageing Group Total',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in inventoryAgingList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1707,27 +1419,22 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateWarehouseLocationExcel(
-      WarehouseInventoryList list) async {
+    WarehouseInventoryList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Warehouse Name',
-        'Qty',
-      ]));
+      sheet.appendRow(toCellRow(['Warehouse Name', 'Qty']));
       for (var monthlyData in list.warehouseData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.warehouseName,
-          monthlyData.quantity,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.warehouseName, monthlyData.quantity]),
+        );
       }
 
       if (kIsWeb) {
@@ -1740,9 +1447,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1756,8 +1461,10 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Warehouse Location-Wise Inventory',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1770,24 +1477,44 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Warehouse Name',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Warehouse Name',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Qty',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Qty',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in warehouseLocationList.warehouseData)
-                  pw.TableRow(children: [
-                    pw.Text(data.warehouseName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.warehouseName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.quantity.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.quantity.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1804,27 +1531,22 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateItemGroupWiseInventoryExcel(
-      ItemGroupWiseInventoryList list) async {
+    ItemGroupWiseInventoryList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item Group',
-        'Qty',
-      ]));
+      sheet.appendRow(toCellRow(['Item Group', 'Qty']));
       for (var monthlyData in list.itemGroupData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.groupName,
-          monthlyData.quantity,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.groupName, monthlyData.quantity]),
+        );
       }
 
       if (kIsWeb) {
@@ -1837,9 +1559,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1853,8 +1573,10 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Item Group Wise Inventory',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1867,24 +1589,44 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Item Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Item Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Qty',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Qty',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in itemGroupList.itemGroupData)
-                  pw.TableRow(children: [
-                    pw.Text(data.groupName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.groupName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.quantity.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.quantity.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1901,27 +1643,22 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateSubItemGroupWiseInventoryExcel(
-      ItemSubGroupWiseInventoryList list) async {
+    ItemSubGroupWiseInventoryList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item Sub Group',
-        'Qty',
-      ]));
+      sheet.appendRow(toCellRow(['Item Sub Group', 'Qty']));
       for (var monthlyData in list.itemSubGroupData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.subGroupName,
-          monthlyData.quantity,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.subGroupName, monthlyData.quantity]),
+        );
       }
 
       if (kIsWeb) {
@@ -1934,9 +1671,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1950,8 +1685,10 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Item Sub Group Wise Inventory',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1964,24 +1701,44 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Item Sub Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Item Sub Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Qty',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Qty',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in itemSubGroupList.itemSubGroupData)
-                  pw.TableRow(children: [
-                    pw.Text(data.subGroupName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.subGroupName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.quantity.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.quantity.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1998,9 +1755,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2009,19 +1764,18 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item Name',
-        'Min-Level',
-        'Max-Level',
-        'In-Stock',
-      ]));
+      sheet.appendRow(
+        toCellRow(['Item Name', 'Min-Level', 'Max-Level', 'In-Stock']),
+      );
       for (var monthlyData in list.levelData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.itemName,
-          monthlyData.minLevel,
-          monthlyData.maxLevel,
-          monthlyData.inStock,
-        ]));
+        sheet.appendRow(
+          toCellRow([
+            monthlyData.itemName,
+            monthlyData.minLevel,
+            monthlyData.maxLevel,
+            monthlyData.inStock,
+          ]),
+        );
       }
 
       if (kIsWeb) {
@@ -2034,9 +1788,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2050,8 +1802,10 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Inventory Level',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2064,36 +1818,72 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Item Name',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Item Name',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Min Level',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Min Level',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Max Level',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Max Level',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('In Stock',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'In Stock',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in inventoryGraphList.levelData)
-                  pw.TableRow(children: [
-                    pw.Text(data.itemName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.itemName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.minLevel.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.minLevel.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.maxLevel.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.maxLevel.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.inStock.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.inStock.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2110,9 +1900,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2120,9 +1908,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   void toggleCheckbox() {
     setState(() {
       chartDataLoaded = false;
-      loadQuantityOrValue("");
       qtyOrValCheck = !qtyOrValCheck;
     });
+    loadQuantityOrValue("");
   }
 
   @override
@@ -2137,19 +1925,25 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    String formattedFiscalYearStartDate =
-        DateFormat('dd/MM/yy').format(fiscalYearStartDate!);
-    String formattedQuarterStartDate =
-        DateFormat('dd/MM/yy').format(currentQuarterFromDate!);
-    String formattedQuarterLastDate =
-        DateFormat('dd/MM/yy').format(currentQuarterToDate!);
+    String formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(fiscalYearStartDate!);
+    String formattedQuarterStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterFromDate!);
+    String formattedQuarterLastDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterToDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month, 1));
+    String formattedDateFirstOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
+    String formattedDateLastOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
+    String formattedDateFirstOfThisMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
     return chartDataLoaded == true
         ? SingleChildScrollView(
             child: Column(
@@ -2159,63 +1953,129 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 15,
-                        ),
+                        const SizedBox(width: 15),
                         touchedMonthGoals == true
                             ? Text(
-                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth")
+                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
+                              )
                             : touchedQuarterGoals == true
-                                ? Text(
-                                    "$formattedQuarterStartDate - $formattedQuarterLastDate")
-                                : touchedYTDGoals == true
-                                    ? Text(
-                                        "$formattedFiscalYearStartDate - $formattedDateNow")
-                                    : Text(
-                                        "$formattedDateFirstOfThisMonth - $formattedDateNow"),
+                            ? Text(
+                                "$formattedQuarterStartDate - $formattedQuarterLastDate",
+                              )
+                            : touchedYTDGoals == true
+                            ? Text(
+                                "$formattedFiscalYearStartDate - $formattedDateNow",
+                              )
+                            : Text(
+                                "$formattedDateFirstOfThisMonth - $formattedDateNow",
+                              ),
                       ],
                     ),
                     Row(
                       children: [
                         IconButton(
-                            onPressed: () {
-                              showPopupMenu();
-                            },
-                            icon: const Icon(Icons.filter_alt_outlined)),
-                        const SizedBox(
-                          width: 5,
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
                         ),
+                        const SizedBox(width: 5),
                       ],
                     ),
                   ],
                 ),
                 Center(
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Showing Data:"),
-                      const SizedBox(
-                        width: 10,
-                      ),
-                      const Text("Quantity"),
-                      Checkbox(
-                        checkColor: Colors.white,
-                        value: qtyOrValCheck,
-                        onChanged: (_) => toggleCheckbox(),
-                      ),
-                      const SizedBox(
-                        width: 5,
-                      ),
-                      const Text("Value"),
-                      Checkbox(
-                        checkColor: Colors.white,
-                        value: !qtyOrValCheck,
-                        onChanged: (_) => toggleCheckbox(),
+                      const Text("View By:"),
+                      const SizedBox(width: 10),
+
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade400),
+                        ),
+                        child: Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (qtyOrValCheck) {
+                                  setState(() {
+                                    qtyOrValCheck = false;
+                                    chartDataLoaded = false;
+                                  });
+                                  loadQuantityOrValue("");
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: !qtyOrValCheck
+                                      ? const Color(0xFF1976D2)
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(6),
+                                    bottomLeft: Radius.circular(6),
+                                  ),
+                                ),
+                                child: Text(
+                                  "Value",
+                                  style: TextStyle(
+                                    color: !qtyOrValCheck
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            GestureDetector(
+                              onTap: () {
+                                if (!qtyOrValCheck) {
+                                  setState(() {
+                                    qtyOrValCheck = true;
+                                    chartDataLoaded = false;
+                                  });
+                                  loadQuantityOrValue("");
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: qtyOrValCheck
+                                      ? const Color(0xFF1976D2)
+                                      : Colors.transparent,
+                                  borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(6),
+                                    bottomRight: Radius.circular(6),
+                                  ),
+                                ),
+                                child: Text(
+                                  "Quantity",
+                                  style: TextStyle(
+                                    color: qtyOrValCheck
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
+                SizedBox(height: 12),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -2225,10 +2085,12 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                         child: Container(
                           width: screenWidth - 30,
                           decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius:
-                                  const BorderRadius.all(Radius.circular(10))),
+                            color: const Color(0xFF97D7F3),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(10.0),
                             child: Column(
@@ -2252,47 +2114,48 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                 SizedBox(
                   height: 150,
                   child: GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 120, childAspectRatio: 0.4),
-                      itemCount: itemGroupList.itemGroupData.length,
-                      scrollDirection: Axis.horizontal,
-                      itemBuilder: (BuildContext context, int index) {
-                        return Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            width: 120,
-                            decoration: BoxDecoration(
-                                color: const Color(0xFF97D7F3),
-                                border: Border.all(color: Colors.transparent),
-                                borderRadius: const BorderRadius.all(
-                                    Radius.circular(10))),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    itemGroupList
-                                        .itemGroupData[index].groupName,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  Text(
-                                    formatAmount(itemGroupList
-                                        .itemGroupData[index].quantity),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 120,
+                          childAspectRatio: 0.4,
+                        ),
+                    itemCount: itemGroupList.itemGroupData.length,
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (BuildContext context, int index) {
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          width: 120,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF97D7F3),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
                             ),
                           ),
-                        );
-                      }),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  itemGroupList.itemGroupData[index].groupName,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                Text(
+                                  formatAmount(
+                                    itemGroupList.itemGroupData[index].quantity,
+                                  ),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2300,11 +2163,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Inventory Ageing",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Inventory Ageing",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -2316,18 +2179,15 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateInventoryAgingExcel(
-                                        inventoryAgingList);
-                                  });
+                                  generateInventoryAgingExcel(
+                                    inventoryAgingList,
+                                  );
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateInventoryAgingPDF();
-                                  });
+                                  generateInventoryAgingPDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -2339,17 +2199,12 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _inventoryAgeing(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2357,11 +2212,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Warehouse Location-wise Inventory",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Warehouse Location-wise Inventory",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -2373,18 +2228,15 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateWarehouseLocationExcel(
-                                        warehouseLocationList);
-                                  });
+                                  generateWarehouseLocationExcel(
+                                    warehouseLocationList,
+                                  );
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateWarehouseLocationPDF();
-                                  });
+                                  generateWarehouseLocationPDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -2396,17 +2248,12 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _warehouseLocationWiseInventory(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2414,11 +2261,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Item Group Wise Inventory",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Item Group Wise Inventory",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -2430,18 +2277,15 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateItemGroupWiseInventoryExcel(
-                                        itemGroupList);
-                                  });
+                                  generateItemGroupWiseInventoryExcel(
+                                    itemGroupList,
+                                  );
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateItemGroupWiseInventoryPDF();
-                                  });
+                                  generateItemGroupWiseInventoryPDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -2453,17 +2297,12 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemGroupWiseInventory(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2471,11 +2310,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Item Sub Group Wise Inventory",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Item Sub Group Wise Inventory",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -2487,18 +2326,15 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateSubItemGroupWiseInventoryExcel(
-                                        itemSubGroupList);
-                                  });
+                                  generateSubItemGroupWiseInventoryExcel(
+                                    itemSubGroupList,
+                                  );
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateSubItemGroupWiseInventoryPDF();
-                                  });
+                                  generateSubItemGroupWiseInventoryPDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -2510,17 +2346,12 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemSubGroupWiseInventory(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2528,11 +2359,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Inventory Level",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Inventory Level",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -2543,46 +2374,31 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                           width: 8,
                           color: const Color(0xFFFF9F47),
                         ),
-                        const SizedBox(
-                          width: 5,
-                        ),
-                        const Text(
-                          "Min-Level",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(
-                          width: 5,
-                        ),
+                        const SizedBox(width: 5),
+                        const Text("Min-Level", style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 5),
                         Container(
                           height: 8,
                           width: 8,
                           color: const Color(0xFF97D7F3),
                         ),
-                        const SizedBox(
-                          width: 5,
-                        ),
-                        const Text(
-                          "In-Stock",
-                          style: TextStyle(fontSize: 12),
-                        ),
+                        const SizedBox(width: 5),
+                        const Text("In-Stock", style: TextStyle(fontSize: 12)),
                         PopupMenuButton(
                           onSelected: (value) {},
                           itemBuilder: (BuildContext bc) {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateInventoryLevelExcel(
-                                        inventoryGraphList);
-                                  });
+                                  generateInventoryLevelExcel(
+                                    inventoryGraphList,
+                                  );
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateInventoryLevelPDF();
-                                  });
+                                  generateInventoryLevelPDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -2594,10 +2410,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _inventoryLevel(),
                 ),
               ],
@@ -2635,8 +2448,8 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
 
     double maxAmount = len > 0
         ? inventoryAgingList.agingData
-            .map((data) => data.agingTotal)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.agingTotal)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -2650,36 +2463,26 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesInventoryAgeing, axisNameSize: 20),
+                sideTitles: _bottomTitlesInventoryAgeing,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _inventoryAgeingChartData(inventoryAgingList.agingData),
@@ -2691,8 +2494,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedAging = touchedAging == ""
                           ? inventoryAgingList
-                              .agingData[barTouchResponse.spot!.spot.x.toInt()]
-                              .agingGroup
+                                .agingData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .agingGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -2709,28 +2513,32 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      inventoryAgingList.agingData[grpIndex].agingGroup,
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "\nQty : ${formatAmount(inventoryAgingList.agingData[grpIndex].agingTotal)}"
-                              : "\nVal : ${formatAmount(inventoryAgingList.agingData[grpIndex].agingTotal)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    inventoryAgingList.agingData[grpIndex].agingGroup,
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "\nQty : ${formatAmount(inventoryAgingList.agingData[grpIndex].agingTotal)}"
+                            : "\nVal : ${formatAmount(inventoryAgingList.agingData[grpIndex].agingTotal)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -2757,8 +2565,8 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
 
     double maxAmount = len > 0
         ? warehouseLocationList.warehouseData
-            .map((data) => data.quantity)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.quantity)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -2772,41 +2580,31 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesWarehouseLocationInventory,
-                  axisNameSize: 20),
+                sideTitles: _bottomTitlesWarehouseLocationInventory,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _warehouseLocationInventoryChartData(
-                warehouseLocationList.warehouseData),
+              warehouseLocationList.warehouseData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -2815,9 +2613,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedWarehouseLocation = touchedWarehouseLocation == ""
                           ? warehouseLocationList
-                              .warehouseData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .warehouseName
+                                .warehouseData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .warehouseName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -2834,29 +2632,32 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      warehouseLocationList
-                          .warehouseData[grpIndex].warehouseName,
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "\nQty : ${formatAmount(warehouseLocationList.warehouseData[grpIndex].quantity)}"
-                              : "\nVal : ${formatAmount(warehouseLocationList.warehouseData[grpIndex].quantity)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    warehouseLocationList.warehouseData[grpIndex].warehouseName,
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "\nQty : ${formatAmount(warehouseLocationList.warehouseData[grpIndex].quantity)}"
+                            : "\nVal : ${formatAmount(warehouseLocationList.warehouseData[grpIndex].quantity)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -2883,8 +2684,8 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
 
     double maxAmount = len > 0
         ? inventoryGraphList.levelData
-            .map((data) => data.total)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.total)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -2898,36 +2699,26 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesInventoryLevel, axisNameSize: 20),
+                sideTitles: _bottomTitlesInventoryLevel,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _inventoryLevelChartData(inventoryGraphList.levelData),
@@ -2940,45 +2731,49 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      inventoryGraphList.levelData[grpIndex].itemName,
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    inventoryGraphList.levelData[grpIndex].itemName,
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            "\nMin-Level : ${formatAmount(inventoryGraphList.levelData[grpIndex].minLevel)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              "\nMin-Level : ${formatAmount(inventoryGraphList.levelData[grpIndex].minLevel)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            "\nMax-Level : ${formatAmount(inventoryGraphList.levelData[grpIndex].maxLevel)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "\nMax-Level : ${formatAmount(inventoryGraphList.levelData[grpIndex].maxLevel)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "\nIn-Stock : ${formatAmount(inventoryGraphList.levelData[grpIndex].inStock)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "\nIn-Stock : ${formatAmount(inventoryGraphList.levelData[grpIndex].inStock)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -3005,8 +2800,8 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
 
     double maxAmount = len > 0
         ? itemGroupList.itemGroupData
-            .map((data) => data.quantity)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.quantity)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -3020,36 +2815,26 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesItemGroupWise, axisNameSize: 20),
+                sideTitles: _bottomTitlesItemGroupWise,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _itemGroupWiseChartData(itemGroupList.itemGroupData),
@@ -3061,9 +2846,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItemGroup = touchedItemGroup == ""
                           ? itemGroupList
-                              .itemGroupData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .groupName
+                                .itemGroupData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .groupName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -3080,28 +2865,32 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${itemGroupList.itemGroupData[grpIndex].groupName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].quantity)}"
-                              : "Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].quantity)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    '${itemGroupList.itemGroupData[grpIndex].groupName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].quantity)}"
+                            : "Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].quantity)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -3128,8 +2917,8 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
 
     double maxAmount = len > 0
         ? itemSubGroupList.itemSubGroupData
-            .map((data) => data.quantity)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.quantity)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -3143,40 +2932,31 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesItemSubGroupWise, axisNameSize: 20),
+                sideTitles: _bottomTitlesItemSubGroupWise,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups:
-                _itemSubGroupWiseChartData(itemSubGroupList.itemSubGroupData),
+            barGroups: _itemSubGroupWiseChartData(
+              itemSubGroupList.itemSubGroupData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -3185,9 +2965,9 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItemSubGroup = touchedItemSubGroup == ""
                           ? itemSubGroupList
-                              .itemSubGroupData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .subGroupName
+                                .itemSubGroupData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .subGroupName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -3204,28 +2984,32 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${itemSubGroupList.itemSubGroupData[grpIndex].subGroupName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].quantity)}"
-                              : "Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].quantity)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    '${itemSubGroupList.itemSubGroupData[grpIndex].subGroupName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].quantity)}"
+                            : "Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].quantity)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,

@@ -2,13 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:optima/pages/dashboardPages/customerDashboard/customerDeliverAnalysis.dart';
-// import 'package:optima/pages/dashboardPages/customerDashboard/customerDeliverAnalysis.dart';
 import 'package:optima/pages/dashboardPages/customerDashboard/customerSalesPerformance.dart';
 import 'package:optima/pages/dashboardPages/salesDashboardBI/loaderPage.dart';
 import 'package:optima/sidemenu/sidemenu.dart';
-// import 'package:optima/pages/notificationpage.dart';
-// import 'package:optima/pages/searchpage.dart';
-// import 'customerCollectionAnalysis.dart';
 
 String selectedCustomerCode = "";
 
@@ -27,39 +23,43 @@ class CustomerDashboardPage extends StatefulWidget {
 
 class CustomerDashboardPageState extends State<CustomerDashboardPage>
     with SingleTickerProviderStateMixin {
+  late PageController pageController;
+  List<Widget> pages = [];
+  List<String> items = [];
   int current = 0;
 
   @override
   void initState() {
-    if (widget.customerCode != "") {
-      selectedCustomerCode = widget.customerCode;
-    }
     super.initState();
-  }
+    pageController = PageController(initialPage: widget.initialPage);
 
-  @override
-  Widget build(BuildContext context) {
-    final PageController pageController = PageController(
-      initialPage: widget.initialPage,
-    );
-
-    List<String> items = [
+    items = [
       "",
       "Sales \nPerformance",
       "Delivery \nAnalysis",
       "Collection \nAnalysis",
     ];
 
-    List<Widget> pages = [
+    pages = [
       const LoaderPage(),
-      CustomerSalesPerformancePage(
-        customerCode: widget.customerCode == "" ? "" : widget.customerCode,
-      ),
-      CustomerDeliverAnalysis(
-        customerCode: widget.customerCode == "" ? "" : widget.customerCode,
-      ),
+      CustomerSalesPerformancePage(customerCode: widget.customerCode),
+      CustomerDeliverAnalysis(customerCode: widget.customerCode),
       const Text(""),
     ];
+
+    if (widget.customerCode != "") {
+      selectedCustomerCode = widget.customerCode;
+    }
+  }
+
+  @override
+  void dispose() {
+    pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       drawer: const SideMenu(),
       appBar: AppBar(
@@ -67,13 +67,9 @@ class CustomerDashboardPageState extends State<CustomerDashboardPage>
         backgroundColor: Colors.white,
         leading: Builder(
           builder: (BuildContext context) {
-            return RotatedBox(
-              quarterTurns: 1,
+            return SizedBox(
               child: IconButton(
-                icon: const Icon(
-                  Icons.bar_chart_rounded,
-                  color: Color(0xFF454545),
-                ),
+                icon: const Icon(Icons.menu, color: Color(0xFF454545)),
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
             );

@@ -159,7 +159,7 @@ class TabNavigationItem {
     ),
 
     TabNavigationItem(
-      page: const CustomerDashboardPage(customerCode: "", initialPage: 1),
+      page: const CustomerDashboardPage(customerCode: "", initialPage: 0),
       icon: const Icon(Icons.pie_chart_outline_outlined),
       title: const Text("Customer Data"),
     ),

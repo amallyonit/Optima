@@ -19,11 +19,12 @@ import 'package:excel/excel.dart' as xl;
 import '../../../../api_helper.dart';
 import '../../platform_excel_helper.dart';
 
-class ManpowerCostingReport extends StatefulWidget {
-  const ManpowerCostingReport({super.key});
+class ManpowerCostingReportOld extends StatefulWidget {
+  const ManpowerCostingReportOld({super.key});
 
   @override
-  State<ManpowerCostingReport> createState() => _ManpowerCostingReportState();
+  State<ManpowerCostingReportOld> createState() =>
+      _ManpowerCostingReportOldState();
 }
 
 class DailyProductionData {
@@ -212,7 +213,7 @@ class ManpowerCostingTargetProvider with ChangeNotifier {
   }
 }
 
-class _ManpowerCostingReportState extends State<ManpowerCostingReport> {
+class _ManpowerCostingReportOldState extends State<ManpowerCostingReportOld> {
   void LoadAllQuarterFromToDates() {
     DateTime now = DateTime.now();
 
@@ -1034,83 +1035,6 @@ class _ManpowerCostingReportState extends State<ManpowerCostingReport> {
         .toList();
   }
 
-  // Future<void> _loadMonthlyProductionBarChartData() async {
-  //   List<MonthlyProductionData> month = [];
-  //   int currentYear = DateTime.now().year;
-  //   DateTime startDate;
-  //   DateTime endDate;
-  //   String monthName = "";
-  //   double monthlyTarget = 0.00;
-  //   double monthlyProduction = 0.00;
-  //   var monthlyProductionActual = const Iterable.empty();
-  //   var monthlyProductionTarget = const Iterable.empty();
-  //   double sum = 0;
-  //
-  //   for (int i = 4; i <= 15; i++) {
-  //     monthName = getMonthName(i);
-  //     if (i >= 4 && i <= 12) {
-  //       var result = getLastThreeMonthsRange(i);
-  //       monthlyProductionTarget = production.where((target) {
-  //         DateTime invoiceDate =
-  //         DateFormat('dd/MM/yyyy').parse(target.orderDate);
-  //         return invoiceDate.isAtLeast(result['fromDate']!) &&
-  //             invoiceDate.isAtMost(result['toDate']!);
-  //       });
-  //
-  //       Map<String, DateTime> monthDates = getMonthStartEndDates(i);
-  //       monthlyProductionActual = production.where((target) {
-  //         DateTime invoiceDate =
-  //         DateFormat('dd/MM/yyyy').parse(target.orderDate);
-  //         return invoiceDate.isAtLeast(monthDates['start']!) &&
-  //             invoiceDate.isAtMost(monthDates['end']!);
-  //       });
-  //     } else {
-  //       monthName = getMonthName(i - 12);
-  //       var result = getLastThreeMonthsRange(i - 12);
-  //       monthlyProductionTarget = production.where((target) {
-  //         DateTime invoiceDate =
-  //         DateFormat('dd/MM/yyyy').parse(target.orderDate);
-  //         return invoiceDate.isAtLeast(result['fromDate']!) &&
-  //             invoiceDate.isAtMost(result['toDate']!);
-  //       });
-  //
-  //       startDate = DateTime(currentYear, i - 12, 1);
-  //       endDate = DateTime(currentYear, (i - 12) + 1, 0);
-  //       monthlyProductionActual = production.where((target) {
-  //         DateTime invoiceDate =
-  //         DateFormat('dd/MM/yyyy').parse(target.orderDate);
-  //         return invoiceDate.isAtLeast(startDate) &&
-  //             invoiceDate.isAtMost(endDate);
-  //       });
-  //     }
-  //     double targetAmt = 0;
-  //     double actualAmt = 0;
-  //     sum = 0;
-  //     for (var target in monthlyProductionTarget.toList()) {
-  //       targetAmt = double.tryParse(target.completedQty) ?? 0;
-  //       sum += targetAmt;
-  //     }
-  //     monthlyTarget = sum / 3;
-  //
-  //     for (var target in monthlyProductionActual.toList()) {
-  //       actualAmt = (double.tryParse(target.completedQty) ?? 0);
-  //       monthlyProduction += actualAmt;
-  //     }
-  //     if (monthlyProduction > 0) {
-  //       month.add(MonthlyProductionData(
-  //         monthName: monthName,
-  //         target: monthlyTarget,
-  //         production: monthlyProduction,
-  //         boxNo: 0,
-  //       ));
-  //     }
-  //     monthlyProduction = 0;
-  //     monthlyTarget = 0;
-  //     monthData = MonthlyProductionList(monthlyData: month);
-  //   }
-  //   monthData = MonthlyProductionList(monthlyData: month);
-  // }
-
   Future<void> _loadMonthlyProductionBarChartData() async {
     List<MonthlyProductionData> month = [];
     int currentYear = DateTime.now().year;
@@ -1786,16 +1710,7 @@ class _ManpowerCostingReportState extends State<ManpowerCostingReport> {
                         ),
                       ],
                     ),
-                    const Row(
-                      children: [
-                        // IconButton(
-                        //     onPressed: () {
-                        //       showPopupMenu();
-                        //     },
-                        //     icon: const Icon(Icons.filter_alt_outlined)),
-                        SizedBox(width: 5),
-                      ],
-                    ),
+                    const Row(children: [SizedBox(width: 5)]),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -1843,13 +1758,6 @@ class _ManpowerCostingReportState extends State<ManpowerCostingReport> {
                     ),
                   ],
                 ),
-                // BranchDropdown(
-                //   production: production,
-                //   initialBranch: null,
-                //   onChanged: (b) {
-                //     print('selected branch: $b');
-                //   },
-                // ),
                 Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: BranchPicker(
@@ -2347,45 +2255,6 @@ class _ManpowerCostingReportState extends State<ManpowerCostingReport> {
             ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
-              // touchCallback: (flTouchEvent, barTouchResponse) async {
-              //   // if (barTouchResponse != null && barTouchResponse.spot != null) {
-              //   //   setState(() {
-              //   //     // touchedMonth = monthData
-              //   //     //     .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
-              //   //     //     .monthName;
-              //   //     // List months = [
-              //   //     //   'Jan',
-              //   //     //   'Feb',
-              //   //     //   'Mar',
-              //   //     //   'Apr',
-              //   //     //   'May',
-              //   //     //   'Jun',
-              //   //     //   'Jul',
-              //   //     //   'Aug',
-              //   //     //   'Sep',
-              //   //     //   'Oct',
-              //   //     //   'Nov',
-              //   //     //   'Dec'
-              //   //     // ];
-              //   //     // if (flTouchEvent is FlTapUpEvent) {
-              //   //     //   touchedMonthIndex = (touchedMonthIndex == 0
-              //   //     //       ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-              //   //     //       : 0);
-              //   //     //   selectedChart = barTouchResponse.spot!.spot.x;
-              //   //     //   showDrillDownChart = true;
-              //   //     //   loadDataWithFilter(
-              //   //     //       touchedMonthIndex,
-              //   //     //       touchedItemCode,
-              //   //     //       touchedBranchName,
-              //   //     //       touchedItemGroup,
-              //   //     //       touchedItemSubGroup,
-              //   //     //       touchedPlant,
-              //   //     //       touchedUnit,
-              //   //     //       touchedShift);
-              //   //     // }
-              //   //   });
-              //   // }
-              // },
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
@@ -2494,41 +2363,7 @@ class _ManpowerCostingReportState extends State<ManpowerCostingReport> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    // touchedMonth = monthData
-                    //     .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
-                    //     .monthName;
-                    // List months = [
-                    //   'Jan',
-                    //   'Feb',
-                    //   'Mar',
-                    //   'Apr',
-                    //   'May',
-                    //   'Jun',
-                    //   'Jul',
-                    //   'Aug',
-                    //   'Sep',
-                    //   'Oct',
-                    //   'Nov',
-                    //   'Dec'
-                    // ];
-                    // if (flTouchEvent is FlTapUpEvent) {
-                    //   touchedMonthIndex = (touchedMonthIndex == 0
-                    //       ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-                    //       : 0);
-                    //   selectedChart = barTouchResponse.spot!.spot.x;
-                    //   showDrillDownChart = true;
-                    //   loadDataWithFilter(
-                    //       touchedMonthIndex,
-                    //       touchedItemCode,
-                    //       touchedBranchName,
-                    //       touchedItemGroup,
-                    //       touchedItemSubGroup,
-                    //       touchedPlant,
-                    //       touchedUnit,
-                    //       touchedShift);
-                    // }
-                  });
+                  setState(() {});
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -3309,17 +3144,6 @@ class _BranchPickerState extends State<BranchPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Top title row (like your screenshot)
-        // Row(
-        //   children: [
-        //     Expanded(
-        //       child: Text(
-        //         widget.title,
-        //         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        //       ),
-        //     ),
-        //   ],
-        // ),
         const SizedBox(height: 8),
         // Wrap field and circular icon in a row so the icon appears inside-right visually.
         // We use Expanded for the Dropdown so it fills available space.
@@ -3614,5 +3438,3 @@ class _ProductionDataTableState extends State<ProductionDataTable> {
     );
   }
 }
-
-////Packs,Gowns,Drapes,Safety Packs

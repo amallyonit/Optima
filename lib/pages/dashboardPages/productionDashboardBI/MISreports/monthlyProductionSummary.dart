@@ -1,0 +1,738 @@
+// ignore_for_file: non_constant_identifier_names, file_names, use_build_context_synchronously, library_private_types_in_public_api
+import 'dart:convert';
+import 'dart:io';
+import 'package:optima/classes/globals.dart';
+import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb check
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:optima/api_helper.dart';
+import 'package:optima/classes/dashBoard.dart';
+import 'package:optima/classes/dataManager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:excel/excel.dart' as xl;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+
+// --- Global Variables ---
+List<ProductionOrderList> dayWiseProduction = [];
+late Future<void> loadDataFuture;
+bool chartDataLoaded = false;
+
+// Date Variables
+DateTime? currentDate;
+DateTime? currentMonthFromDate;
+DateTime? currentMonthToDate;
+DateTime? lastMonthFromDate;
+DateTime? lastMonthToDate;
+DateTime? currentQuarterFromDate;
+DateTime? currentQuarterToDate;
+DateTime? lastQuarterFromDate;
+DateTime? lastQuarterToDate;
+DateTime? fiscalYearStartDate;
+DateTime? prevFiscalYearStartDate;
+DateTime? prevFiscalYearEndDate;
+String financialYear = "";
+String prevFinancialYear = "";
+int currentQuarter = 0;
+
+class SubGroupProductionData {
+  final String subGroupName;
+  final double totalQty;
+
+  SubGroupProductionData({required this.subGroupName, required this.totalQty});
+}
+
+class MonthlyProductionMISProvider with ChangeNotifier {
+  List<ProductionOrderList> _salesList = [];
+  List<ProductionOrderList> get salesList => _salesList;
+  void updateProductionList(List<ProductionOrderList> newSalesList) {
+    _salesList = newSalesList;
+    notifyListeners();
+  }
+}
+
+class MonthlyProductionSummaryPage extends StatefulWidget {
+  const MonthlyProductionSummaryPage({super.key});
+
+  @override
+  State<MonthlyProductionSummaryPage> createState() =>
+      _MonthlyProductionSummaryPageState();
+}
+
+class _MonthlyProductionSummaryPageState
+    extends State<MonthlyProductionSummaryPage> {
+  DateTime _selectedMonth = DateTime.now();
+  List<SubGroupProductionData> _graphData = [];
+  List<String> _availablePlants = [];
+
+  bool isLoading = false;
+  String? _selectedPlant;
+
+  double _totalProduction = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    LoadDates();
+
+    if (isUserLoggedIn && isBiDashboardStart) {
+      if (!chartDataLoaded || dayWiseProduction.isEmpty) {
+        loadDataFuture = loadData("");
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _extractPlants();
+          _processDataAndGenerateGraph();
+        });
+      }
+    }
+  }
+
+  // --- API LOADING LOGIC ---
+  Future<void> loadData(String selectedUser) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
+
+    final userLevel = prefs.getString('userLevel') ?? '';
+
+    await _loadProductionOrderAnalysis(userName, userLevel);
+  }
+
+  Future<void> _loadProductionOrderAnalysis(
+    String UserName,
+    String UserLevel,
+  ) async {
+    int index = 0;
+    int limit = 10000;
+    int fetchedCount = 0;
+    List<ProductionOrderList> salesList = [];
+    int monthIndex = DateTime.now().month;
+
+    // We send 'yyyyMMdd' to the API as per your original request payload structure
+    DateTime fromDate = monthIndex == 4
+        ? lastMonthFromDate!
+        : fiscalYearStartDate!;
+
+    try {
+      do {
+        var body = {
+          "FromDate": formatApiDate(fromDate),
+          "ToDate": formatApiDate(currentDate!),
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        const apiUrl = '${ApiHelper.baseUrl}BicxoProductionAnalysis';
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseJson = jsonDecode(response.body);
+          if (responseJson["responseData"].toString().isNotEmpty) {
+            List<ProductionOrderList> newSalesList =
+                (responseJson['responseData'] as List)
+                    .map((item) => ProductionOrderList.fromJson(item))
+                    .toList();
+
+            salesList.addAll(newSalesList);
+            fetchedCount = newSalesList.length;
+            index++;
+          } else {
+            fetchedCount = 0;
+          }
+        } else {
+          fetchedCount = 0;
+        }
+      } while (fetchedCount == limit);
+
+      if (mounted) {
+        setState(() {
+          dayWiseProduction = salesList;
+          context.read<MonthlyProductionMISProvider>().updateProductionList(
+            salesList,
+          );
+          chartDataLoaded = true;
+
+          _extractPlants();
+          if (_availablePlants.isNotEmpty) {
+            _selectedPlant ??= _availablePlants.first;
+            _processDataAndGenerateGraph();
+          }
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error loading data: $e");
+      }
+    }
+  }
+
+  // Format date for API Request (keeping this yyyyMMdd as per your API needs)
+  String formatApiDate(DateTime date) {
+    final formatter = DateFormat('yyyyMMdd');
+    return formatter.format(date);
+  }
+
+  // --- DATA PROCESSING LOGIC ---
+
+  void _extractPlants() {
+    final Set<String> plants = dayWiseProduction
+        .map((e) => e.plant)
+        .where((element) => element.isNotEmpty)
+        .toSet();
+
+    if (mounted) {
+      setState(() {
+        _availablePlants = plants.toList()..sort();
+        if (_selectedPlant == null && _availablePlants.isNotEmpty) {
+          _selectedPlant = _availablePlants.first;
+        } else if (_selectedPlant != null &&
+            !_availablePlants.contains(_selectedPlant)) {
+          _selectedPlant = _availablePlants.isNotEmpty
+              ? _availablePlants.first
+              : null;
+        }
+      });
+    }
+  }
+
+  void _processDataAndGenerateGraph() {
+    if (dayWiseProduction.isEmpty) return;
+
+    setState(() => isLoading = true);
+
+    Map<String, double> groupedData = {};
+    double totalProd = 0;
+
+    // **CHANGED**: Formatter specifically for "dd/MM/yyyy"
+    final inputDateFormatter = DateFormat('dd/MM/yyyy');
+
+    for (var order in dayWiseProduction) {
+      // 1. Filter by Plant
+      if (order.plant != _selectedPlant) continue;
+
+      // 2. Parse Date Safely using dd/MM/yyyy
+      DateTime? orderDate;
+      try {
+        // The API returns dates like "01/04/2025"
+        orderDate = inputDateFormatter.parse(order.orderDate);
+      } catch (e) {
+        // Fallback: try default parsing if the specific format fails
+        orderDate = DateTime.tryParse(order.orderDate);
+      }
+
+      if (orderDate == null) continue;
+
+      // 3. Filter by Selected Month
+      // Check if date falls within the selected month
+      if (orderDate.year == _selectedMonth.year &&
+          orderDate.month == _selectedMonth.month) {
+        double qty = double.tryParse(order.completedQty) ?? 0.0;
+        String key = order.itemSubGroup.isEmpty
+            ? "Unknown"
+            : order.itemSubGroup;
+
+        groupedData[key] = (groupedData[key] ?? 0) + qty;
+        totalProd += qty;
+      }
+    }
+
+    // 4. Convert to List
+    List<SubGroupProductionData> resultList = groupedData.entries.map((entry) {
+      return SubGroupProductionData(
+        subGroupName: entry.key,
+        totalQty: entry.value,
+      );
+    }).toList();
+
+    // 5. Sort Descending
+    resultList.sort((a, b) => b.totalQty.compareTo(a.totalQty));
+
+    setState(() {
+      _graphData = resultList;
+      _totalProduction = totalProd;
+      isLoading = false;
+    });
+  }
+
+  // --- UI & HELPERS ---
+
+  String formatAmount(double amount) {
+    if (amount % 1 == 0) return amount.toInt().toString();
+    return amount.toStringAsFixed(1);
+  }
+
+  Future<void> _pickMonth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: "SELECT MONTH",
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedMonth = DateTime(picked.year, picked.month, 1);
+      });
+      _processDataAndGenerateGraph();
+    }
+  }
+
+  // Excel Export Logic
+  Future<void> _generateExcel(BuildContext context) async {
+    if (_graphData.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No data to export.')));
+      return;
+    }
+
+    try {
+      final excel = xl.Excel.createExcel();
+      String defaultSheet = excel.sheets.keys.first;
+      String sheetName = "SubGroup Production";
+      excel.rename(defaultSheet, sheetName);
+      final sheet = excel[sheetName];
+
+      final headerStyle = xl.CellStyle(
+        bold: true,
+        horizontalAlign: xl.HorizontalAlign.Center,
+        backgroundColorHex: xl.ExcelColor.fromHexString("#D3D3D3"),
+      );
+      final titleStyle = xl.CellStyle(
+        bold: true,
+        fontSize: 14,
+        horizontalAlign: xl.HorizontalAlign.Center,
+      );
+
+      sheet.merge(
+        xl.CellIndex.indexByString("A1"),
+        xl.CellIndex.indexByString("B1"),
+      );
+      var titleCell = sheet.cell(xl.CellIndex.indexByString("A1"));
+      titleCell.value = xl.TextCellValue(
+        "Plant: $_selectedPlant - ${DateFormat('MMMM yyyy').format(_selectedMonth)}",
+      );
+      titleCell.cellStyle = titleStyle;
+
+      List<String> headers = ["Item SubGroup", "Completed Qty"];
+      sheet.appendRow(headers.map((e) => xl.TextCellValue(e)).toList());
+
+      for (int i = 0; i < headers.length; i++) {
+        sheet
+                .cell(
+                  xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 1),
+                )
+                .cellStyle =
+            headerStyle;
+      }
+
+      for (var item in _graphData) {
+        sheet.appendRow([
+          xl.TextCellValue(item.subGroupName),
+          xl.DoubleCellValue(item.totalQty),
+        ]);
+      }
+
+      sheet.appendRow([
+        xl.TextCellValue("TOTAL"),
+        xl.DoubleCellValue(_totalProduction),
+      ]);
+
+      final fileBytes = excel.save();
+      if (fileBytes != null && !kIsWeb) {
+        final storageDir = await getStorageDirectory();
+        final fileName =
+            'Production_${DateFormat('MMM_yyyy').format(_selectedMonth)}.xlsx';
+        final file = File('$storageDir/$fileName');
+        await file.writeAsBytes(fileBytes, flush: true);
+        OpenFile.open(file.path);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Exported: $fileName')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  Future<String> getStorageDirectory() async {
+    if (Platform.isAndroid) {
+      return (await getExternalStorageDirectory())?.path ??
+          (await getApplicationDocumentsDirectory()).path;
+    }
+    return (await getApplicationDocumentsDirectory()).path;
+  }
+
+  void LoadDates() {
+    currentDate = DateTime.now();
+    currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
+    lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
+    lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
+
+    int fiscalYearStartMonth = 4;
+    currentQuarter = getCurrentQuarter();
+    getLastQuarterDates();
+
+    int fiscalYear = currentDate!.month >= fiscalYearStartMonth
+        ? currentDate!.year
+        : currentDate!.year - 1;
+    fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
+
+    prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
+    prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
+  }
+
+  DateTime addMonth(DateTime date, int addMonth) {
+    int currentMonth = date.month;
+    int currentYear = date.year;
+    int nextMonth = currentMonth + addMonth;
+    int nextYear = currentYear;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear++;
+    }
+    int lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
+    int originalDay = date.day;
+    if (originalDay > lastDayOfNextMonth) originalDay = lastDayOfNextMonth;
+    return DateTime(nextYear, nextMonth, originalDay);
+  }
+
+  int getCurrentQuarter() {
+    int m = DateTime.now().month;
+    if (m >= 4 && m <= 6) return 1;
+    if (m >= 7 && m <= 9) return 2;
+    if (m >= 10 && m <= 12) return 3;
+    return 4;
+  }
+
+  void getLastQuarterDates() {
+    DateTime now = DateTime.now();
+    int q = getCurrentQuarter();
+    if (q == 1) {
+      lastQuarterFromDate = DateTime(now.year, 1, 1);
+      lastQuarterToDate = DateTime(now.year, 3, 31);
+    } else if (q == 2) {
+      lastQuarterFromDate = DateTime(now.year, 4, 1);
+      lastQuarterToDate = DateTime(now.year, 6, 30);
+    } else if (q == 3) {
+      lastQuarterFromDate = DateTime(now.year, 7, 1);
+      lastQuarterToDate = DateTime(now.year, 9, 30);
+    } else {
+      lastQuarterFromDate = DateTime(now.year - 1, 10, 1);
+      lastQuarterToDate = DateTime(now.year - 1, 12, 31);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return chartDataLoaded == true
+        ? Scaffold(
+            appBar: AppBar(
+              title: const Text('Production Summary'),
+              centerTitle: true,
+              elevation: 0,
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.blue,
+            ),
+            body: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                children: [
+                  // Controls
+                  Card(
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: _buildControls(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Content
+                  Expanded(
+                    child: isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _graphData.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.bar_chart,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "No data found for ${DateFormat('MMM yyyy').format(_selectedMonth)}",
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                // _buildSummaryCards(),
+                                const SizedBox(height: 20),
+                                _buildSectionHeader(
+                                  "SubGroup wise Completed Qty",
+                                  () => _generateExcel(context),
+                                ),
+                                const Divider(),
+                                _buildProductionChart(),
+                                const SizedBox(height: 40),
+                              ],
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+
+  Widget _buildControls() {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    // Dynamic Dropdown
+    final dropdown = SizedBox(
+      width: 250,
+      height: 45,
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedPlant,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Select Plant',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8,
+          ),
+        ),
+        items: _availablePlants
+            .map(
+              (plant) => DropdownMenuItem(
+                value: plant,
+                child: Text(plant, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(),
+        onChanged: (value) {
+          setState(() => _selectedPlant = value);
+          if (value != null) _processDataAndGenerateGraph();
+        },
+      ),
+    );
+
+    final monthButton = ElevatedButton.icon(
+      onPressed: _pickMonth,
+      icon: const Icon(Icons.calendar_month),
+      label: Text(DateFormat('MMM yyyy').format(_selectedMonth)),
+      style: ElevatedButton.styleFrom(minimumSize: const Size(130, 45)),
+    );
+
+    // Generate Button
+    final generateButton = ElevatedButton(
+      onPressed: _processDataAndGenerateGraph,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xff2ca9df),
+        foregroundColor: Colors.white,
+        minimumSize: const Size(130, 45),
+      ),
+      child: const Text('Generate'),
+    );
+
+    if (isLandscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          dropdown,
+          const SizedBox(width: 12),
+          monthButton,
+          const SizedBox(width: 12),
+          generateButton,
+        ],
+      );
+    }
+    return Column(
+      children: [
+        dropdown,
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [monthButton, generateButton],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, VoidCallback onDownload) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          ),
+        ),
+        PopupMenuButton(
+          icon: const Icon(Icons.more_vert, color: Colors.grey),
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              onTap: onDownload,
+              child: const Row(
+                children: [
+                  Icon(Icons.download, color: Colors.green, size: 20),
+                  SizedBox(width: 8),
+                  Text("Download Excel"),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductionChart() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double chartWidth = _graphData.length > 4
+        ? screenWidth + (60 * _graphData.length)
+        : screenWidth;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        height: 400,
+        width: chartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 20.0, right: 20.0),
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 50,
+                    getTitlesWidget: (v, m) => Text(
+                      formatAmount(v),
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 80,
+                    getTitlesWidget: (v, m) {
+                      if (v.toInt() >= 0 && v.toInt() < _graphData.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: RotationTransition(
+                            turns: const AlwaysStoppedAnimation(-20 / 360),
+                            child: SizedBox(
+                              width: 60,
+                              child: Text(
+                                _graphData[v.toInt()].subGroupName,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400),
+                  top: BorderSide(color: Colors.grey.shade400),
+                ),
+              ),
+              gridData: FlGridData(show: true, drawVerticalLine: false),
+              barGroups: List.generate(_graphData.length, (index) {
+                final data = _graphData[index];
+                return BarChartGroupData(
+                  x: index,
+                  barRods: [
+                    BarChartRodData(
+                      toY: data.totalQty,
+                      color: const Color(0xFF2ca9df),
+                      width: 25,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4),
+                        topRight: Radius.circular(4),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+              barTouchData: BarTouchData(
+                enabled: true,
+                handleBuiltInTouches: true,
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (_) => Colors.white,
+                  tooltipBorder: const BorderSide(color: Colors.grey, width: 1),
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final data = _graphData[groupIndex];
+                    return BarTooltipItem(
+                      data.subGroupName,
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: "\nQty: ${formatAmount(data.totalQty)}",
+                          style: const TextStyle(
+                            color: Color(0xFF2ca9df),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

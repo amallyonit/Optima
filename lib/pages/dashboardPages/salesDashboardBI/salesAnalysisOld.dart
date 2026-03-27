@@ -1656,7 +1656,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     return DateTime(nextYear, nextMonth, originalDay);
   }
 
-  List<SalesList> filterSalesList(
+  List<SalesList> filterSalesListOld(
     List<SalesList> salesList,
     List<Users> userNames, {
     String? regionalManager,
@@ -1667,6 +1667,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     String? productGroupCode,
     String? productCode,
   }) {
+    print("OLD FILTER METHOD CALLED");
     bool regionalManagerCondition = true;
     bool salesManagerCondition = true;
     List<SalesList> filteredSalesList = [];
@@ -1734,7 +1735,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         filteredSalesList.add(sale);
       }
     }
-
     return filteredSalesList;
   }
 
@@ -2259,7 +2259,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       }
     }
 
-    productSalesList = filterSalesList(
+    productSalesList = filterSalesListOld(
       productSalesList.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2270,7 +2270,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       productGroupCode: productGroupCode,
       customerCode: customerCode,
     );
-    curMthSalesTarget = filterSalesList(
+    curMthSalesTarget = filterSalesListOld(
       curMthSalesTarget.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2397,7 +2397,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       }
     }
 
-    productSalesList = filterSalesList(
+    productSalesList = filterSalesListOld(
       productSalesList.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2408,7 +2408,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       productGroupCode: productGroupCode,
       customerCode: customerCode,
     );
-    curMthSalesTarget = filterSalesList(
+    curMthSalesTarget = filterSalesListOld(
       curMthSalesTarget.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2534,7 +2534,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         });
       }
     }
-    customerSalesList = filterSalesList(
+    customerSalesList = filterSalesListOld(
       customerSalesList.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2545,7 +2545,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       productGroupCode: productGroupCode,
       customerCode: customerCode,
     );
-    curMthSalesTarget = filterSalesList(
+    curMthSalesTarget = filterSalesListOld(
       curMthSalesTarget.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2672,7 +2672,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         });
       }
     }
-    customerSalesList = filterSalesList(
+    customerSalesList = filterSalesListOld(
       customerSalesList.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2683,7 +2683,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       productGroupCode: productGroupCode,
       customerCode: customerCode,
     );
-    curMthSalesTarget = filterSalesList(
+    curMthSalesTarget = filterSalesListOld(
       curMthSalesTarget.cast<SalesList>().toList(),
       usersListForFilter,
       regionalManager: regionalManager,
@@ -2979,7 +2979,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     }).toList();
     tmpTsmSalesTargetList = tsmSalesTargetList;
     List<SalesList> lstSales = tsmSalesList.cast<SalesList>().toList();
-    tsmSalesList = filterSalesList(
+    tsmSalesList = filterSalesListOld(
       lstSales,
       usersListForFilter,
       regionalManager: regionalManager,
@@ -3314,7 +3314,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     tmpAsmSalesTargetList = asmSalesTargetList;
 
     List<SalesList> lstSales = asmSalesList.cast<SalesList>().toList();
-    asmSalesList = filterSalesList(
+    asmSalesList = filterSalesListOld(
       lstSales,
       usersListForFilter,
       regionalManager: regionalManager,
@@ -3624,7 +3624,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
     tmpRsmSalesTargetList = rsmSalesTargetList;
     List<SalesList> lstSales = rsmSalesList.cast<SalesList>().toList();
-    rsmSalesList = filterSalesList(
+    rsmSalesList = filterSalesListOld(
       lstSales,
       usersListForFilter,
       regionalManager: regionalManager,

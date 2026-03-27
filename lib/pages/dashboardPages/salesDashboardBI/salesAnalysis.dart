@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, avoid_print, strict_top_level_inference
 
+import 'dart:math';
 import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -58,6 +59,8 @@ final LongPressGestureRecognizer _longPressGestureRecognizer =
     LongPressGestureRecognizer();
 
 int touchedMonthIndex = 0;
+int? selectedMonthIndex = -1;
+int selectedPiechartIndex = -1;
 YTDSalesList ytdSalesList = YTDSalesList(ytdData: []);
 ItemYTDSalesList ytdItemSalesList = ItemYTDSalesList(ytdData: []);
 MonthlySalesList monthlySalesList = MonthlySalesList(monthlyData: []);
@@ -129,6 +132,7 @@ List<Map<String, dynamic>> salesList = [];
 bool noUserList = false;
 bool chartDataLoaded = false;
 bool YtdSalesBarChartData = false;
+bool isLazyLoading = true;
 DateTime? currentDate;
 DateTime? currentMonthFromDate;
 DateTime? lastMonthFromDate;
@@ -194,6 +198,12 @@ String Q3AverageStr = "";
 double Q4Average = 0;
 String Q4AverageStr = "";
 
+int loadedBatchCount = 0;
+double animatedProgress = 0.0;
+
+const int batchSize = 5000;
+const int maxVisibleBlocks = 8;
+
 final List<String> categories = ['RSM', 'ASM', 'TSM', 'Date'];
 
 List<List<String>> filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
@@ -201,6 +211,9 @@ List<List<String>> filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
 List<String> listOfRSM = [];
 List<String> listOfASM = [];
 List<String> listOfTSM = [];
+
+List<SalesList> filteredSales = [];
+List<SalesTargetList> filteredTargets = [];
 
 bool fromFilter = false;
 
@@ -222,6 +235,8 @@ DateTime? fromDateFilter;
 DateTime? toDateFilter;
 bool dateFilterFlag = false;
 
+Map<String, double> monthlySales = {};
+
 class SalesPerformancePageState extends State<SalesPerformancePage> {
   bool showDrillDownChart = false;
   bool showProductSaleChart = false;
@@ -232,7 +247,11 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
   bool touchedYTDGoals = false;
+  bool showTooltipOnly = false;
+  DateTime? touchStartTime;
   List<double> selectedMonthSales = [];
+  int? tooltipIndex;
+  bool showTooltip = false;
   ScrollController salesPerformancePageController = ScrollController();
 
   Future<void> _dateFilterTarget(
@@ -271,55 +290,19 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       await _loadSalesWithLazyLoading(userName, userLevel);
       _dateFilterTarget("", "", false);
       await _loadEachQtrValues();
-      await _loadMonthlySalesBarChartData();
+      await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
       showDrillDownChart = true;
       touchedYearGraph = true;
       showProductSaleChart = true;
       if (UserLevel != "1") {
-        await _loadTSMSalesBarChartData(0, "", "", "", "", "", "", "");
-        await _loadASMSalesBarChartData(0, "", "", "", "", "", "", "");
-        await _loadRSMSalesBarChartData(0, "", "", "", "", "", "", "");
+        await _loadTSMSalesBarChartData(0, filteredSales, filteredTargets);
+        await _loadASMSalesBarChartData(0, filteredSales, filteredTargets);
+        await _loadRSMSalesBarChartData(0, filteredSales, filteredTargets);
       }
-      await _loadMonthlyProductGroupwiseSalesBarChartData(
-        0,
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      );
-      await _loadMonthlyProductwiseSalesBarChartData(
-        0,
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      );
-      await _loadMonthlyCustomerStateWiseSalesBarChartData(
-        0,
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      );
-      await _loadMonthlyCustomerWiseSalesBarChartData(
-        0,
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      );
+      await _loadMonthlyProductGroupwiseSalesBarChartData(0, filteredSales);
+      await _loadMonthlyProductwiseSalesBarChartData(0, filteredSales);
+      await _loadMonthlyCustomerStateWiseSalesBarChartData(0, filteredSales);
+      await _loadMonthlyCustomerWiseSalesBarChartData(0, filteredSales);
 
       List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
           .where((entry) => entry.value)
@@ -375,8 +358,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         } else {
           savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
         }
-
-        // selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
       });
 
       setState(() {
@@ -566,27 +547,33 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   List<BarChartGroupData> _monthlySalesAnalysisChart(
     List<MonthlySalesData> monthlyData,
   ) {
-    return monthlyData
-        .map(
-          (sales) => BarChartGroupData(
-            x: monthlyData.indexOf(sales),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: sales.salesTarget,
-                  show: true,
-                  color: const Color(0xFFF49136),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: sales.salesAmount,
-                width: 30,
-              ),
-            ],
+    return monthlyData.asMap().entries.map((entry) {
+      int index = entry.key;
+      MonthlySalesData sales = entry.value;
+
+      bool isSelected = selectedMonthIndex == index;
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: sales.salesTarget,
+              show: true,
+              color: const Color(0xFFF49136),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: sales.salesAmount,
+            width: isSelected ? 36 : 30,
+            borderSide: isSelected
+                ? const BorderSide(color: Colors.black, width: 1.5)
+                : BorderSide.none,
           ),
-        )
-        .toList();
+        ],
+      );
+    }).toList();
   }
 
   List<BarChartGroupData> _regionalManagerAnalysisChart(
@@ -1153,11 +1140,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         nodes.add(node);
       }
     }
-    // treeController = TreeController<MyNode>(
-    //   roots: nodes,
-    //   childrenProvider: (MyNode node) => node.children,
-    // );
-
     return nodes;
   }
 
@@ -1354,12 +1336,13 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     String userLevel,
   ) async {
     final Stopwatch watch = Stopwatch()..start();
-
     sales.clear();
 
     // Load first page quickly
     await _loadInitialSales(userName, userLevel);
-
+    buildFilteredLists();
+    loadedBatchCount++;
+    _updateSteppedProgress();
     watch.stop();
     print('Initial visible load time: ${watch.elapsedMilliseconds} ms');
 
@@ -1367,10 +1350,26 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     _loadSalesInBackground(userName: userName, userLevel: userLevel);
   }
 
+  void _updateMonthlySales(List<SalesList> batch) {
+    for (final s in batch) {
+      final DateTime d = s.invoiceDate;
+
+      final int m = d.month;
+
+      final String monthName = (m >= 4)
+          ? getMonthName(m)
+          : getMonthName(m + 12);
+
+      final double val = double.tryParse(s.rowTotal) ?? 0;
+
+      monthlySales[monthName] = (monthlySales[monthName] ?? 0) + val;
+    }
+  }
+
   Future<void> _loadInitialSales(String userName, String userLevel) async {
     const int limit = 5000;
     const int index = 0;
-
+    monthlySales.clear();
     final body = {
       "FromDate": formatDate(
         currentDate!.month == 4 ? lastMonthFromDate! : fiscalYearStartDate!,
@@ -1380,7 +1379,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       "Limit": limit.toString(),
       "sapToken": DataManager.readSapToken(),
     };
-
     final response = await http.post(
       Uri.parse('${ApiHelper.baseUrl}Crm_SalesList'),
       headers: {
@@ -1389,23 +1387,41 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       },
       body: jsonEncode(body),
     );
-
     if (response.statusCode != 200) return;
-
     final json = jsonDecode(response.body);
     final List list = json['responseData'] ?? [];
-
     final initialSales = list.map((e) => SalesList.fromJson(e)).toList();
 
     setState(() {
       _allSales.clear();
       _allSales.addAll(initialSales); // Save all loaded data
-
       // Apply filters to master list
-      sales = _applyUserFilter(_allSales, userName, userLevel);
+      sales = _applyUserFilter(initialSales, userName, userLevel);
+      _updateMonthlySales(initialSales);
+    });
+    _calculateSalesTotals();
+  }
+
+  void _updateSteppedProgress() {
+    // Each batch adds 10%, capped at 90%
+    final double nextProgress = (loadedBatchCount * 0.10).clamp(0.0, 0.9);
+
+    setState(() {
+      animatedProgress = nextProgress;
+    });
+  }
+
+  void _completeProgress() {
+    setState(() {
+      animatedProgress = 1.0;
     });
 
-    _calculateSalesTotals();
+    // Optional: hide after animation
+    Future.delayed(const Duration(milliseconds: 600), () {
+      setState(() {
+        animatedProgress = 0.0;
+      });
+    });
   }
 
   Future<void> _loadSalesInBackground({
@@ -1415,7 +1431,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     const int limit = 5000;
     int index = 1;
     bool hasMore = true;
-
+    final Stopwatch watch = Stopwatch()..start();
     while (hasMore) {
       try {
         final body = {
@@ -1427,7 +1443,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
-
         final response = await http.post(
           Uri.parse('${ApiHelper.baseUrl}Crm_SalesList'),
           headers: {
@@ -1436,30 +1451,31 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           },
           body: jsonEncode(body),
         );
-
         if (response.statusCode != 200) break;
-
         final json = jsonDecode(response.body);
         final List list = json['responseData'] ?? [];
-
+        // final newSales = await parseSales(response.body);
         if (list.isEmpty) {
           hasMore = false;
+          _completeProgress();
+          watch.stop();
+          buildFilteredLists();
+          print('Final load time: ${watch.elapsedMilliseconds} ms');
           break;
         }
-
         final newSales = list.map((e) => SalesList.fromJson(e)).toList();
-
         setState(() {
           _allSales.addAll(newSales); // Append to master list
 
           // Re-filter full master list
-          sales = _applyUserFilter(_allSales, userName, userLevel);
+          sales.addAll(_applyUserFilter(newSales, userName, userLevel));
+          _updateMonthlySales(newSales);
         });
 
         _calculateSalesTotals();
-
         index++;
-
+        loadedBatchCount++;
+        _updateSteppedProgress();
         // Small delay avoids network congestion
         await Future.delayed(const Duration(milliseconds: 100));
       } catch (e) {
@@ -1467,8 +1483,36 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         break;
       }
     }
-
-    print('Background sales loading completed');
+    
+    await _loadEachQtrValues();
+    await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
+    showDrillDownChart = true;
+    touchedYearGraph = true;
+    showProductSaleChart = true;
+    if (UserLevel != "1") {
+      await _loadTSMSalesBarChartData(0, filteredSales, filteredTargets);
+      await _loadASMSalesBarChartData(0, filteredSales, filteredTargets);
+      await _loadRSMSalesBarChartData(0, filteredSales, filteredTargets);
+    }
+    await _loadMonthlyProductGroupwiseSalesBarChartData(0, filteredSales);
+    await _loadMonthlyProductwiseSalesBarChartData(0, filteredSales);
+    await _loadMonthlyCustomerStateWiseSalesBarChartData(0, filteredSales);
+    await _loadMonthlyCustomerWiseSalesBarChartData(0, filteredSales);
+    setState(() {
+      filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
+      savedFinanceReceivablesOptions = filterOptions
+          .map((options) => List<bool>.filled(options.length, false))
+          .toList();
+      if (savedFinanceReceivablesOptionsTemp.isEmpty) {
+        savedFinanceReceivablesOptions = filterOptions
+            .map((options) => List<bool>.filled(options.length, false))
+            .toList();
+      } else {
+        savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
+      }
+      chartDataLoaded = true;
+      isLazyLoading = false;
+    });
   }
 
   List<SalesList> _applyUserFilter(
@@ -1509,46 +1553,152 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     double sumLastMonth = 0;
     double sumCurrentQtr = 0;
     double sumYtd = 0;
-
-    for (var target in _allSales) {
+    for (var target in sales) {
       final DateTime invoiceDate = target.invoiceDate;
       final double salesAmt = double.tryParse(target.rowTotal) ?? 0;
-
       if (invoiceDate.isAtLeast(currentMonthFromDate!) &&
           invoiceDate.isAtMost(currentDate!)) {
         sumCurrentMonth += salesAmt;
       }
-
       if (invoiceDate.isAtLeast(lastMonthFromDate!) &&
           invoiceDate.isAtMost(lastMonthToDate!)) {
         sumLastMonth += salesAmt;
       }
-
       if (invoiceDate.isAtLeast(currentQuarterFromDate!) &&
           invoiceDate.isAtMost(currentQuarterToDate!)) {
         sumCurrentQtr += salesAmt;
       }
-
       if (invoiceDate.isAtLeast(fiscalYearStartDate!) &&
           invoiceDate.isAtMost(currentDate!)) {
         sumYtd += salesAmt;
       }
     }
-
     setState(() {
       CurrentMonthSales = sumCurrentMonth;
       CurrentMonthSalesStr =
           "${(sumCurrentMonth / 100000).toStringAsFixed(2)} L";
-
+      if (CurrentMonthSales == 0) {
+        CurrentMonthSalesPercentage = 0;
+      } else {
+        CurrentMonthSalesPercentage =
+            double.tryParse(
+              ((CurrentMonthSales / SalesGoal) * 100).toStringAsFixed(0),
+            )?.ceil() ??
+            0;
+      }
+      CurrentMonthSalesPercentageStr =
+          "${CurrentMonthSalesPercentage.toString()} %";
+      if (CurrentMonthSalesPercentage > 100) {
+        CurrentMonthSalesPercentage = 100;
+      }
       LastMonthSales = sumLastMonth;
       LastMonthSalesStr = "${(sumLastMonth / 100000).toStringAsFixed(2)} L";
-
+      if (LastMonthSales == 0) {
+        LastMonthPercentage = 0;
+      } else {
+        LastMonthPercentage =
+            double.tryParse(
+              ((LastMonthSales / LastMonthTarget) * 100).toStringAsFixed(2),
+            )?.ceil() ??
+            0;
+      }
+      LastMonthPercentageStr = "${LastMonthPercentage.toString()} %";
+      if (LastMonthPercentage > 100) {
+        LastMonthPercentage = 100;
+      }
       CurrentQtrSales = sumCurrentQtr;
       CurrentQtrSalesStr = "${(sumCurrentQtr / 100000).toStringAsFixed(2)} L";
-
+      if (CurrentQtrSales == 0) {
+        CurrentQtrPercentage = 0;
+      } else {
+        CurrentQtrPercentage =
+            double.tryParse(
+              ((CurrentQtrSales / CurrentQtrTarget) * 100).toStringAsFixed(2),
+            )?.ceil() ??
+            0;
+      }
+      CurrentQtrPercentageStr = "${CurrentQtrPercentage.toString()} %";
+      if (CurrentQtrPercentage > 100) {
+        CurrentQtrPercentage = 100;
+      }
       YtdSales = sumYtd;
       YtdSalesStr = "${(sumYtd / 100000).toStringAsFixed(2)} L";
+      if (YtdSales == 0) {
+        YtdPercentage = 0;
+      } else {
+        YtdPercentage =
+            double.tryParse(
+              ((YtdSales / YtdTarget) * 100).toStringAsFixed(2),
+            )?.ceil() ??
+            0;
+      }
+      YtdPercentageStr = "${YtdPercentage.toString()} %";
+      if (YtdPercentage > 100) {
+        YtdPercentage = 100;
+      }
     });
+  }
+
+  void buildFilteredLists({
+    String regionalManager = "",
+    String salesManager = "",
+    String salesRep = "",
+    String stateName = "",
+    String customerCode = "",
+    String productGroupCode = "",
+    String productCode = "",
+  }) {
+    filteredSales = filterSalesList(
+      sales,
+      usersListForFilter,
+      regionalManager: regionalManager,
+      salesManager: salesManager,
+      salesRep: salesRep,
+      stateName: stateName,
+      customerCode: customerCode,
+      productGroupCode: productGroupCode,
+      productCode: productCode,
+    );
+
+    filteredTargets = filterSalesTargetList(
+      salesTarget,
+      usersListForFilter,
+      regionalManager: regionalManager,
+      salesManager: salesManager,
+      salesRep: salesRep,
+    );
+  }
+
+  String getFullMonthName(String shortMonth) {
+    switch (shortMonth) {
+      case 'jan':
+        return 'january';
+      case 'feb':
+        return 'february';
+      case 'mar':
+        return 'march';
+      case 'april':
+        return 'april';
+      case 'may':
+        return 'may';
+      case 'june':
+        return 'june';
+      case 'july':
+        return 'july';
+      case 'aug':
+        return 'august';
+      case 'sep':
+        return 'september';
+      case 'oct':
+        return 'october';
+      case 'nov':
+        return 'november';
+      case 'dec':
+        return 'december';
+
+      default:
+        throw Exception("Invalid month short name: $shortMonth");
+    }
   }
 
   int monthDifference(DateTime startDate, DateTime endDate) {
@@ -1829,6 +1979,84 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     return DateTime(nextYear, nextMonth, originalDay);
   }
 
+  bool matchHierarchy({
+    required String rowRsm,
+    required String rowAsm,
+    required String rowTsm,
+    required List<Users> userNames,
+    String? regionalManager,
+    String? salesManager,
+    String? salesRep,
+  }) {
+    int regionalMenuId = -1;
+    int salesMenuId = -1;
+
+    Set<String> regionalChildren = {};
+    Set<String> salesChildren = {};
+
+    if (regionalManager != null && regionalManager.isNotEmpty) {
+      regionalMenuId = userNames
+          .firstWhere(
+            (e) => e.menuName == regionalManager,
+            orElse: () => Users(
+              menuId: -1,
+              menuName: '',
+              subMenuId: -1,
+              parentMenuId: -1,
+              userLevel: -1,
+            ),
+          )
+          .menuId;
+
+      if (regionalMenuId != -1) {
+        regionalChildren = userNames
+            .where((e) => e.parentMenuId == regionalMenuId)
+            .map((e) => e.menuName)
+            .toSet();
+      }
+
+      if (regionalManager != rowRsm) return false;
+
+      if (regionalChildren.isNotEmpty && !regionalChildren.contains(rowAsm)) {
+        return false;
+      }
+    }
+
+    if (salesManager != null && salesManager.isNotEmpty) {
+      salesMenuId = userNames
+          .firstWhere(
+            (e) => e.menuName == salesManager,
+            orElse: () => Users(
+              menuId: -1,
+              menuName: '',
+              subMenuId: -1,
+              parentMenuId: -1,
+              userLevel: -1,
+            ),
+          )
+          .menuId;
+
+      if (salesMenuId != -1) {
+        salesChildren = userNames
+            .where((e) => e.parentMenuId == salesMenuId)
+            .map((e) => e.menuName)
+            .toSet();
+      }
+
+      if (salesManager != rowAsm) return false;
+
+      if (salesChildren.isNotEmpty && !salesChildren.contains(rowTsm)) {
+        return false;
+      }
+    }
+
+    if (salesRep != null && salesRep.isNotEmpty && rowTsm != salesRep) {
+      return false;
+    }
+
+    return true;
+  }
+
   List<SalesList> filterSalesList(
     List<SalesList> salesList,
     List<Users> userNames, {
@@ -1840,75 +2068,49 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     String? productGroupCode,
     String? productCode,
   }) {
-    bool regionalManagerCondition = true;
-    bool salesManagerCondition = true;
-    List<SalesList> filteredSalesList = [];
+    List<SalesList> result = [];
+
     for (var sale in salesList) {
-      if (regionalManager != null && regionalManager.isNotEmpty) {
-        int? regionalManagerMenuId = userNames
-            .firstWhere(
-              (element) => element.menuName == regionalManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-        List<String> childMenuNames = userNames
-            .where((element) => element.parentMenuId == regionalManagerMenuId)
-            .map((user) => user.menuName)
-            .toList();
-        regionalManagerCondition =
-            regionalManagerMenuId != -1 &&
-            childMenuNames.contains(sale.salesManager);
+      if (!matchHierarchy(
+        rowRsm: sale.regionalManager,
+        rowAsm: sale.salesManager,
+        rowTsm: sale.salesRep,
+        userNames: userNames,
+        regionalManager: regionalManager,
+        salesManager: salesManager,
+        salesRep: salesRep,
+      )) {
+        continue;
       }
 
-      if (salesManager != null && salesManager.isNotEmpty) {
-        int? salesManagerMenuId = userNames
-            .firstWhere(
-              (element) => element.menuName == salesManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-        List<String> childMenuNames = userNames
-            .where((element) => element.parentMenuId == salesManagerMenuId)
-            .map((user) => user.menuName)
-            .toList();
-        salesManagerCondition =
-            salesManagerMenuId != -1 && childMenuNames.contains(sale.salesRep);
+      if (stateName != null &&
+          stateName.isNotEmpty &&
+          sale.customerState != stateName) {
+        continue;
       }
 
-      if (!regionalManagerCondition || !salesManagerCondition) {
-        continue; // Skip this sale if either regionalManager or salesManager condition fails
+      if (customerCode != null &&
+          customerCode.isNotEmpty &&
+          sale.customerCode != customerCode) {
+        continue;
       }
 
-      if ((salesRep == null || salesRep.isEmpty || sale.salesRep == salesRep) &&
-          (stateName == null ||
-              stateName.isEmpty ||
-              sale.customerState == stateName) &&
-          (customerCode == null ||
-              customerCode.isEmpty ||
-              sale.customerCode == customerCode) &&
-          (productCode == null ||
-              productCode.isEmpty ||
-              sale.code == productCode) &&
-          (productGroupCode == null ||
-              productGroupCode.isEmpty ||
-              sale.itemSubGroup == productGroupCode)) {
-        filteredSalesList.add(sale);
+      if (productCode != null &&
+          productCode.isNotEmpty &&
+          sale.code != productCode) {
+        continue;
       }
+
+      if (productGroupCode != null &&
+          productGroupCode.isNotEmpty &&
+          sale.itemSubGroup != productGroupCode) {
+        continue;
+      }
+
+      result.add(sale);
     }
 
-    return filteredSalesList;
+    return result;
   }
 
   List<SalesTargetList> filterSalesTargetList(
@@ -1918,117 +2120,61 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     String? salesManager,
     String? salesRep,
   }) {
-    bool regionalManagerCondition = true;
-    bool salesManagerCondition = true;
-    List<SalesTargetList> filteredSalesTargetList = [];
+    List<SalesTargetList> result = [];
 
     for (var target in salesTargetList) {
-      if (regionalManager != null && regionalManager.isNotEmpty) {
-        int? regionalManagerMenuId = userNames
-            .firstWhere(
-              (element) => element.menuName == regionalManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-        List<String> childMenuNames = userNames
-            .where((element) => element.parentMenuId == regionalManagerMenuId)
-            .map((user) => user.menuName)
-            .toList();
-        regionalManagerCondition =
-            regionalManagerMenuId != -1 &&
-            childMenuNames.contains(target.salesManager);
+      if (!matchHierarchy(
+        rowRsm: target.regionalManager,
+        rowAsm: target.salesManager,
+        rowTsm: target.salesRep,
+        userNames: userNames,
+        regionalManager: regionalManager,
+        salesManager: salesManager,
+        salesRep: salesRep,
+      )) {
+        continue;
       }
 
-      if (salesManager != null && salesManager.isNotEmpty) {
-        int? salesManagerMenuId = userNames
-            .firstWhere(
-              (element) => element.menuName == salesManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-        List<String> childMenuNames = userNames
-            .where((element) => element.parentMenuId == salesManagerMenuId)
-            .map((user) => user.menuName)
-            .toList();
-        salesManagerCondition =
-            salesManagerMenuId != -1 &&
-            childMenuNames.contains(target.salesRep);
-      }
-      if (!regionalManagerCondition || !salesManagerCondition) {
-        continue; // Skip this sale if either regionalManager or salesManager condition fails
-      }
-      filteredSalesTargetList.add(target);
+      result.add(target);
     }
-    return filteredSalesTargetList;
+
+    return result;
   }
 
-  Future<void> _loadMonthlySalesBarChartData() async {
+  Future<void> _loadMonthlySalesBarChartData(
+    List<SalesList> filteredSales,
+    List<SalesTargetList> filteredTargets,
+  ) async {
     List<MonthlySalesData> monthlyDataList = [];
+
     prevYearMonthList = PrevYearMonthList(prevYearMonthData: []);
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
+
+    Map<String, double> targetMap = {};
+
+    for (var t in filteredTargets) {
+      if (t.financialYear != financialYear) continue;
+
+      for (int i = 4; i <= 15; i++) {
+        String monthName = getMonthName(i);
+
+        targetMap[monthName] =
+            (targetMap[monthName] ?? 0) +
+            (double.tryParse(t.getTargetForMonth(monthName)) ?? 0);
+      }
+    }
+
     for (int i = 4; i <= 15; i++) {
       String monthName = getMonthName(i);
-      double monthlyTarget = 0.00;
-      double monthlySales = 0.00;
-      for (var target in salesTarget.where(
-        (element) => element.financialYear == financialYear,
-      )) {
-        monthlyTarget +=
-            double.tryParse(target.getTargetForMonth(monthName)) ?? 0;
-      }
-      var monthlySalesList = const Iterable.empty();
-      if (i >= 4 && i <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(i);
-        monthlySalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
 
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear + 1, i - 12, 1);
-        endDate = DateTime(currentYear + 1, (i - 12) + 1, 0);
-        monthlySalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-      double salesAmt = 0;
-      for (var target in monthlySalesList.toList()) {
-        // if (target.invoiceType != "Sales Return") {
-        //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        // } else {
-        //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-        // }
-        salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        monthlySales += salesAmt;
-      }
       monthlyDataList.add(
         MonthlySalesData(
           monthName: monthName,
-          salesAmount: monthlySales,
-          salesTarget: monthlyTarget,
+          salesAmount: monthlySales[monthName] ?? 0,
+          salesTarget: targetMap[monthName] ?? 0,
         ),
       );
-      monthlySales = 0;
-      monthlyTarget = 0;
     }
+
     monthlySalesList = MonthlySalesList(monthlyData: monthlyDataList);
   }
 
@@ -2254,59 +2400,55 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   }
 
   void loadMonthlySalesBarChartDataFromPieChart(int piechartIndex) {
+    setState(() {
+      selectedPiechartIndex = piechartIndex;
+    });
     LoadDates();
     LoadAllQuarterFromToDates();
+
     List<MonthlySalesData> monthlyDataList = [];
     List<PrevYearMonthData> prevYearMonthDataList = [];
+
     prevYearMonthList = PrevYearMonthList(prevYearMonthData: []);
 
-    String monthName = "";
-    double monthlyTarget = 0.00;
-    double monthlySales = 0.00;
-    if (piechartIndex == 1) {
-      monthName = getMonthName(lastMonthFromDate!.month);
-      if (currentDate!.month == 4) {
-        for (var target in salesTarget.where(
-          (element) => element.financialYear == prevFinancialYear,
-        )) {
-          monthlyTarget +=
-              double.tryParse(
-                target.getTargetForMonth(
-                  getMonthName(lastMonthFromDate!.month),
-                ),
-              ) ??
-              0;
-          prevYearMonthDataList.add(PrevYearMonthData(monthName: monthName));
-        }
-      } else {
-        for (var target in salesTarget.where(
-          (element) => element.financialYear == financialYear,
-        )) {
-          monthlyTarget +=
-              double.tryParse(
-                target.getTargetForMonth(
-                  getMonthName(lastMonthFromDate!.month),
-                ),
-              ) ??
-              0;
-        }
-      }
-      var lastMonthSales = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
+    /// PRECOMPUTE SALES BY MONTH
+    Map<String, double> salesMonthMap = {};
 
-        return invoiceDate.isAtLeast(lastMonthFromDate!) &&
-            invoiceDate.isAtMost(lastMonthToDate!);
-      });
-      double salesAmt = 0;
-      for (var target in lastMonthSales.toList()) {
-        // if (target.invoiceType != "Sales Return") {
-        //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        // } else {
-        //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-        // }
-        salesAmt = double.tryParse(target.rowTotal) ?? 0;
-        monthlySales += salesAmt;
+    for (var s in filteredSales) {
+      DateTime d = s.invoiceDate;
+
+      int m = d.month;
+
+      String monthName;
+
+      if (m >= 4) {
+        monthName = getMonthName(m);
+      } else {
+        monthName = getMonthName(m + 12);
       }
+
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      salesMonthMap[monthName] = (salesMonthMap[monthName] ?? 0) + val;
+    }
+
+    if (piechartIndex == 1) {
+      /// LAST MONTH MODE
+      String monthName = getMonthName(lastMonthFromDate!.month);
+
+      double monthlyTarget = 0;
+
+      Iterable<SalesTargetList> targets = filteredTargets.where(
+        (t) =>
+            t.financialYear ==
+            (currentDate!.month == 4 ? prevFinancialYear : financialYear),
+      );
+
+      for (var t in targets) {
+        monthlyTarget += double.tryParse(t.getTargetForMonth(monthName)) ?? 0;
+      }
+
+      double monthlySales = salesMonthMap[monthName] ?? 0;
 
       monthlyDataList.add(
         MonthlySalesData(
@@ -2315,44 +2457,31 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           salesTarget: monthlyTarget,
         ),
       );
+
+      if (currentDate!.month == 4) {
+        prevYearMonthDataList.add(PrevYearMonthData(monthName: monthName));
+      }
+
       prevYearMonthList = PrevYearMonthList(
         prevYearMonthData: prevYearMonthDataList,
       );
     } else {
-      DateTime? qrtFromDate = currentQuarterFromDate;
-      DateTime? qrtToDate = addMonth(
-        qrtFromDate!,
-        1,
-      ).add(const Duration(days: -1));
-      for (int i = 1; i <= 3; i++) {
-        monthName = getMonthName(qrtFromDate!.month);
-        for (var target in salesTarget.where(
-          (element) => element.financialYear == financialYear,
-        )) {
-          monthlyTarget +=
-              double.tryParse(
-                target.getTargetForMonth(getMonthName(qrtFromDate.month)),
-              ) ??
-              0;
+      /// QUARTER MODE
+
+      DateTime qrtFromDate = currentQuarterFromDate!;
+
+      for (int i = 0; i < 3; i++) {
+        String monthName = getMonthName(qrtFromDate.month);
+
+        double monthlyTarget = 0;
+
+        for (var t in filteredTargets) {
+          if (t.financialYear != financialYear) continue;
+
+          monthlyTarget += double.tryParse(t.getTargetForMonth(monthName)) ?? 0;
         }
 
-        var curQtrSales = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-
-          return invoiceDate.isAtLeast(qrtFromDate!) &&
-              invoiceDate.isAtMost(qrtToDate!);
-        });
-
-        double salesAmt = 0;
-        for (var target in curQtrSales.toList()) {
-          // if (target.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          monthlySales += salesAmt;
-        }
+        double monthlySales = salesMonthMap[monthName] ?? 0;
 
         monthlyDataList.add(
           MonthlySalesData(
@@ -2361,567 +2490,16 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
             salesTarget: monthlyTarget,
           ),
         );
-        monthlySales = 0;
-        monthlyTarget = 0;
-        prevYearMonthList = PrevYearMonthList(
-          prevYearMonthData: prevYearMonthDataList,
-        );
+
         qrtFromDate = addOneMonth(qrtFromDate);
-        qrtToDate = addMonth(qrtFromDate, 1).add(const Duration(days: -1));
       }
+
+      prevYearMonthList = PrevYearMonthList(
+        prevYearMonthData: prevYearMonthDataList,
+      );
     }
+
     monthlySalesList = MonthlySalesList(monthlyData: monthlyDataList);
-  }
-
-  Future<void> _loadMonthlyProductwiseSalesBarChartData(
-    int monthIndex,
-    String regionalManager,
-    String salesManager,
-    String salesRep,
-    String stateName,
-    String customerCode,
-    String productGroupCode,
-    String productCode,
-  ) async {
-    List<ProductwiseData> productwiseDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    String itemCode = "";
-    String itemName = "";
-    double productSales = 0.00;
-    double productTarget = 0.00;
-    DateTime? prevThreethFromDate = DateTime(
-      currentDate!.year,
-      currentDate!.month - 3,
-      1,
-    );
-    DateTime? prevThreeMthToDate = DateTime(
-      currentDate!.year,
-      currentDate!.month,
-      0,
-    );
-
-    var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = target.invoiceDate;
-
-      return invoiceDate.isAtLeast(prevThreethFromDate) &&
-          invoiceDate.isAtMost(prevThreeMthToDate);
-    });
-
-    var productSalesList = const Iterable.empty();
-    if (monthIndex == 0) {
-      startDate = currentMonthFromDate!;
-      endDate = currentDate!;
-      productSalesList = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
-        return invoiceDate.isAtLeast(startDate) &&
-            invoiceDate.isAtMost(endDate);
-      });
-    } else {
-      if (monthIndex >= 4 && monthIndex <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-        productSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear, monthIndex, 1);
-        endDate = DateTime(currentYear, monthIndex + 1, 0);
-
-        productSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-    }
-
-    productSalesList = filterSalesList(
-      productSalesList.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-    curMthSalesTarget = filterSalesList(
-      curMthSalesTarget.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-
-    Set<String> processedProductCodes = {};
-    for (var product in productSalesList.toList()) {
-      if (!processedProductCodes.contains(product.code)) {
-        itemCode = product.code;
-        itemName = product.description;
-        for (var target in productSalesList.where(
-          (prdelement) => prdelement.code == itemCode,
-        )) {
-          double salesAmt = 0;
-          // if (target.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          productSales += salesAmt;
-        }
-        for (var target in curMthSalesTarget.where(
-          (element) => element.code == itemCode,
-        )) {
-          double salesAmt = 0;
-          // if (target.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          productTarget += salesAmt;
-        }
-
-        productwiseDataList.add(
-          ProductwiseData(
-            productCode: itemCode,
-            productName: itemName,
-            salesAmount: productSales,
-            targetAmount: productTarget / 3,
-          ),
-        );
-        processedProductCodes.add(product.code);
-      }
-      productSales = 0;
-      productTarget = 0;
-      itemCode = "";
-      itemName = "";
-    }
-    productwiseDataList.sort((a, b) => b.salesAmount.compareTo(a.salesAmount));
-
-    productwiseSalesList = ProductwiseSalesList(
-      productData: productwiseDataList,
-    );
-  }
-
-  Future<void> _loadMonthlyProductGroupwiseSalesBarChartData(
-    int monthIndex,
-    String regionalManager,
-    String salesManager,
-    String salesRep,
-    String stateName,
-    String customerCode,
-    String productGroupCode,
-    String productCode,
-  ) async {
-    List<ProductGroupwiseData> productGroupwiseDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    String productGroupName = "";
-    double productSales = 0.00;
-    double productTarget = 0.00;
-    DateTime? prevThreethFromDate = DateTime(
-      currentDate!.year,
-      currentDate!.month - 3,
-      1,
-    );
-    DateTime? prevThreeMthToDate = DateTime(
-      currentDate!.year,
-      currentDate!.month,
-      0,
-    );
-
-    var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = target.invoiceDate;
-      return invoiceDate.isAtLeast(prevThreethFromDate) &&
-          invoiceDate.isAtMost(prevThreeMthToDate);
-    });
-
-    var productSalesList = const Iterable.empty();
-    if (monthIndex == 0) {
-      startDate = currentMonthFromDate!;
-      endDate = currentDate!;
-      productSalesList = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
-        return invoiceDate.isAtLeast(startDate) &&
-            invoiceDate.isAtMost(endDate);
-      });
-    } else {
-      if (monthIndex >= 4 && monthIndex <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-        productSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear, monthIndex, 1);
-        endDate = DateTime(currentYear, monthIndex + 1, 0);
-
-        productSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-    }
-
-    productSalesList = filterSalesList(
-      productSalesList.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-    curMthSalesTarget = filterSalesList(
-      curMthSalesTarget.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-
-    Set<String> processedProductGroups = {};
-    for (var product in productSalesList.toList()) {
-      if (!processedProductGroups.contains(product.itemSubGroup)) {
-        productGroupName = product.itemSubGroup;
-        for (var target in productSalesList.where(
-          (prdelement) => prdelement.itemSubGroup == productGroupName,
-        )) {
-          double salesAmt = 0;
-          // if (target.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          productSales += salesAmt;
-        }
-        for (var target in curMthSalesTarget.where(
-          (element) => element.itemSubGroup == productGroupName,
-        )) {
-          double salesAmt = 0;
-          // if (target.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          productTarget += salesAmt;
-        }
-        productGroupwiseDataList.add(
-          ProductGroupwiseData(
-            productGroupName: productGroupName,
-            salesAmount: productSales,
-            targetAmount: productTarget / 3,
-          ),
-        );
-        processedProductGroups.add(productGroupName);
-      }
-      productSales = 0;
-      productTarget = 0;
-      productGroupName = "";
-    }
-
-    productGroupwiseDataList.sort(
-      (a, b) => b.salesAmount.compareTo(a.salesAmount),
-    );
-    productGroupwiseSalesList = ProductGroupwiseSalesList(
-      productGroupData: productGroupwiseDataList,
-    );
-  }
-
-  Future<void> _loadMonthlyCustomerWiseSalesBarChartData(
-    int monthIndex,
-    String regionalManager,
-    String salesManager,
-    String salesRep,
-    String stateName,
-    String customerCode,
-    String productGroupCode,
-    String productCode,
-  ) async {
-    List<CustomerWiseData> customerWiseDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    String custCode = "";
-    String custName = "";
-    double customerSales = 0.00;
-    double customerTarget = 0.00;
-    DateTime? prevThreethFromDate = DateTime(
-      currentDate!.year,
-      currentDate!.month - 3,
-      1,
-    );
-    DateTime? prevThreeMthToDate = DateTime(
-      currentDate!.year,
-      currentDate!.month,
-      0,
-    );
-
-    var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = target.invoiceDate;
-      return invoiceDate.isAtLeast(prevThreethFromDate) &&
-          invoiceDate.isAtMost(prevThreeMthToDate);
-    });
-
-    var customerSalesList = const Iterable.empty();
-
-    if (monthIndex == 0) {
-      startDate = currentMonthFromDate!;
-      endDate = currentDate!;
-      customerSalesList = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
-
-        return invoiceDate.isAtLeast(startDate) &&
-            invoiceDate.isAtMost(endDate);
-      });
-    } else {
-      if (monthIndex >= 4 && monthIndex <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-        customerSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear, monthIndex, 1);
-        endDate = DateTime(currentYear, monthIndex + 1, 0);
-
-        customerSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-    }
-    customerSalesList = filterSalesList(
-      customerSalesList.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-    curMthSalesTarget = filterSalesList(
-      curMthSalesTarget.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-    Set<String> processedCustomerCodes = {};
-    for (var customer in customerSalesList.toList()) {
-      if (!processedCustomerCodes.contains(customer.customerCode)) {
-        custCode = customer.customerCode;
-        custName = customer.customerName;
-        for (var sales in customerSalesList.where(
-          (saleelement) => saleelement.customerCode == custCode,
-        )) {
-          double salesAmt = 0;
-          // if (sales.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(sales.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(sales.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(sales.rowTotal) ?? 0;
-          customerSales += salesAmt;
-        }
-
-        for (var target in curMthSalesTarget.where(
-          (element) => element.customerCode == custCode,
-        )) {
-          double salesAmt = 0;
-          // if (target.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          customerTarget += salesAmt;
-        }
-
-        customerWiseDataList.add(
-          CustomerWiseData(
-            customerCode: custCode,
-            customerName: custName,
-            saleAmount: customerSales,
-            targetAmount: customerTarget / 3,
-          ),
-        );
-        processedCustomerCodes.add(custCode);
-      }
-      customerSales = 0;
-      customerTarget = 0;
-      custCode = "";
-      custName = "";
-    }
-
-    customerWiseDataList.sort((a, b) => b.saleAmount.compareTo(a.saleAmount));
-    customerWiseSalesList = CustomerWiseSalesList(
-      customerData: customerWiseDataList,
-    );
-  }
-
-  Future<void> _loadMonthlyCustomerStateWiseSalesBarChartData(
-    int monthIndex,
-    String regionalManager,
-    String salesManager,
-    String salesRep,
-    String stateName,
-    String customerCode,
-    String productGroupCode,
-    String productCode,
-  ) async {
-    List<CustomerStateWiseData> customerStateDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    String state = "";
-    double customerSales = 0.00;
-    double customerTarget = 0.00;
-
-    DateTime? prevThreethFromDate = DateTime(
-      currentDate!.year,
-      currentDate!.month - 3,
-      1,
-    );
-    DateTime? prevThreeMthToDate = DateTime(
-      currentDate!.year,
-      currentDate!.month,
-      0,
-    );
-
-    var curMthSalesTarget = sales.where((target) {
-      DateTime invoiceDate = target.invoiceDate;
-      return invoiceDate.isAtLeast(prevThreethFromDate) &&
-          invoiceDate.isAtMost(prevThreeMthToDate);
-    });
-
-    var customerSalesList = const Iterable.empty();
-    if (monthIndex == 0) {
-      startDate = currentMonthFromDate!;
-      endDate = currentDate!;
-      customerSalesList = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
-        return invoiceDate.isAtLeast(startDate) &&
-            invoiceDate.isAtMost(endDate);
-      });
-    } else {
-      if (monthIndex >= 4 && monthIndex <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-        customerSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear, monthIndex, 1);
-        endDate = DateTime(currentYear, monthIndex + 1, 0);
-
-        customerSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-    }
-    customerSalesList = filterSalesList(
-      customerSalesList.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-    curMthSalesTarget = filterSalesList(
-      curMthSalesTarget.cast<SalesList>().toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-    Set<String> processedCustomerStates = {};
-    for (var customer in customerSalesList.toList()) {
-      if (!processedCustomerStates.contains(customer.customerState)) {
-        state = customer.customerState;
-        for (var sales in customerSalesList.where(
-          (element) => element.customerState == state,
-        )) {
-          double salesAmt = 0;
-          // if (sales.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(sales.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(sales.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(sales.rowTotal) ?? 0;
-          customerSales += salesAmt;
-        }
-        for (var target in curMthSalesTarget.where(
-          (element) => element.customerState == state,
-        )) {
-          double salesAmt = 0;
-          // if (target.invoiceType != "Sales Return") {
-          //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          // } else {
-          //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-          // }
-          salesAmt = double.tryParse(target.rowTotal) ?? 0;
-          customerTarget += salesAmt;
-        }
-        customerStateDataList.add(
-          CustomerStateWiseData(
-            stateName: state,
-            saleAmount: customerSales,
-            targetAmount: customerTarget / 3,
-          ),
-        );
-        processedCustomerStates.add(state);
-      }
-      customerSales = 0;
-      customerTarget = 0;
-      state = "";
-    }
-    customerStateDataList.sort((a, b) => b.saleAmount.compareTo(a.saleAmount));
-    customerStateWiseSalesList = CustomerStateWiseSalesList(
-      customerStateData: customerStateDataList,
-    );
   }
 
   double calculateTotalForMonth(String month, List<Map<String, dynamic>> list) {
@@ -2936,180 +2514,309 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     String userLevel,
     Iterable<dynamic> iterableList,
   ) {
-    List<Map<String, dynamic>> list = iterableList
-        .cast<Map<String, dynamic>>()
-        .toList();
-    List<Map<String, dynamic>> repList = [];
-
     double total = 0.0;
-    if (userLevel == "1") {
-      repList = list
-          .where(
-            (item) =>
-                item['salesRep'] == userName &&
-                item['financialYear'] == financialYear,
-          )
-          .toList();
-    } else if (userLevel == "2" || userLevel == "3") {
-      repList = list
-          .where(
-            (item) =>
-                item['salesManager'] == userName &&
-                item['financialYear'] == financialYear,
-          )
-          .toList();
-    } else {
-      repList = list
-          .where(
-            (item) =>
-                item['regionalManager'] == userName &&
-                item['financialYear'] == financialYear,
-          )
-          .toList();
+
+    for (var item in iterableList) {
+      SalesTargetList target = item as SalesTargetList;
+
+      /// Financial Year Filter
+      if (target.financialYear != financialYear) continue;
+
+      bool match = false;
+
+      if (userLevel == "1") {
+        match = target.salesRep == userName;
+      } else if (userLevel == "2" || userLevel == "3") {
+        match = target.salesManager == userName;
+      } else {
+        match = target.regionalManager == userName;
+      }
+
+      if (!match) continue;
+
+      /// Sum All Months
+      total += double.tryParse(target.april) ?? 0;
+      total += double.tryParse(target.may) ?? 0;
+      total += double.tryParse(target.june) ?? 0;
+      total += double.tryParse(target.july) ?? 0;
+      total += double.tryParse(target.aug) ?? 0;
+      total += double.tryParse(target.sep) ?? 0;
+      total += double.tryParse(target.oct) ?? 0;
+      total += double.tryParse(target.nov) ?? 0;
+      total += double.tryParse(target.dec) ?? 0;
+      total += double.tryParse(target.jan) ?? 0;
+      total += double.tryParse(target.feb) ?? 0;
+      total += double.tryParse(target.mar) ?? 0;
     }
 
-    if (repList.isNotEmpty) {
-      List<String> availableMonths = repList.first.keys
-          .where(
-            (key) =>
-                key != 'financialYear' &&
-                key != 'salesRepCode' &&
-                key != 'salesRep' &&
-                key != 'salesManager' &&
-                key != 'regionalManager',
-          )
-          .toList();
-      for (var month in availableMonths) {
-        total = calculateTotalForMonth(month, repList); //Current month data
-      }
-    }
     return total;
+  }
+
+  Future<void> _loadMonthlyProductwiseSalesBarChartData(
+    int monthIndex,
+    List<SalesList> filteredSales,
+  ) async {
+    Map<String, double> salesMap = {};
+    Map<String, double> targetMap = {};
+    Map<String, String> nameMap = {};
+
+    /// SALES MONTH RANGE
+    var dateRange = getDateRangeForMonth(monthIndex);
+
+    /// SALES FOR SELECTED MONTH
+    List<SalesList> productSalesList = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(dateRange["start"]!) &&
+          s.invoiceDate.isAtMost(dateRange["end"]!);
+    }).toList();
+
+    /// TARGET WINDOW (last 3 months)
+    DateTime prevFrom = DateTime(currentDate!.year, currentDate!.month - 3, 1);
+    DateTime prevTo = DateTime(currentDate!.year, currentDate!.month, 0);
+
+    List<SalesList> curMthSalesTarget = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(prevFrom) &&
+          s.invoiceDate.isAtMost(prevTo);
+    }).toList();
+
+    /// SALES AGGREGATION
+    for (var s in productSalesList) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      salesMap[s.code] = (salesMap[s.code] ?? 0) + val;
+
+      nameMap[s.code] = s.description;
+    }
+
+    /// TARGET AGGREGATION
+    for (var s in curMthSalesTarget) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      targetMap[s.code] = (targetMap[s.code] ?? 0) + val;
+    }
+
+    /// BUILD RESULT
+    List<ProductwiseData> result = [];
+
+    salesMap.forEach((code, salesVal) {
+      result.add(
+        ProductwiseData(
+          productCode: code,
+          productName: nameMap[code] ?? "",
+          salesAmount: salesVal,
+          targetAmount: (targetMap[code] ?? 0) / 3,
+        ),
+      );
+    });
+
+    result.sort((a, b) => b.salesAmount.compareTo(a.salesAmount));
+
+    productwiseSalesList = ProductwiseSalesList(productData: result);
+  }
+
+  Future<void> _loadMonthlyProductGroupwiseSalesBarChartData(
+    int monthIndex,
+    List<SalesList> filteredSales,
+  ) async {
+    Map<String, double> salesMap = {};
+    Map<String, double> targetMap = {};
+
+    /// SALES MONTH RANGE
+    var dateRange = getDateRangeForMonth(monthIndex);
+
+    /// SALES FOR SELECTED MONTH
+    List<SalesList> list = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(dateRange["start"]!) &&
+          s.invoiceDate.isAtMost(dateRange["end"]!);
+    }).toList();
+
+    /// TARGET WINDOW (last 3 months)
+    DateTime prevFrom = DateTime(currentDate!.year, currentDate!.month - 3, 1);
+    DateTime prevTo = DateTime(currentDate!.year, currentDate!.month, 0);
+
+    List<SalesList> targetList = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(prevFrom) &&
+          s.invoiceDate.isAtMost(prevTo);
+    }).toList();
+
+    /// SALES AGGREGATION
+    for (var s in list) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      salesMap[s.itemSubGroup] = (salesMap[s.itemSubGroup] ?? 0) + val;
+    }
+
+    /// TARGET AGGREGATION
+    for (var s in targetList) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      targetMap[s.itemSubGroup] = (targetMap[s.itemSubGroup] ?? 0) + val;
+    }
+
+    /// BUILD RESULT
+    List<ProductGroupwiseData> result = [];
+
+    salesMap.forEach((grp, val) {
+      result.add(
+        ProductGroupwiseData(
+          productGroupName: grp,
+          salesAmount: val,
+          targetAmount: (targetMap[grp] ?? 0) / 3,
+        ),
+      );
+    });
+
+    result.sort((a, b) => b.salesAmount.compareTo(a.salesAmount));
+
+    productGroupwiseSalesList = ProductGroupwiseSalesList(
+      productGroupData: result,
+    );
+  }
+
+  Future<void> _loadMonthlyCustomerWiseSalesBarChartData(
+    int monthIndex,
+    List<SalesList> filteredSales,
+  ) async {
+    Map<String, double> salesMap = {};
+    Map<String, double> targetMap = {};
+    Map<String, String> nameMap = {};
+
+    /// SALES MONTH RANGE (current selection)
+    var dateRange = getDateRangeForMonth(monthIndex);
+
+    /// SALES FOR SELECTED MONTH
+    List<SalesList> customerSalesList = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(dateRange["start"]!) &&
+          s.invoiceDate.isAtMost(dateRange["end"]!);
+    }).toList();
+
+    /// TARGET RANGE (last 3 months window)
+    DateTime prevFrom = DateTime(currentDate!.year, currentDate!.month - 3, 1);
+    DateTime prevTo = DateTime(currentDate!.year, currentDate!.month, 0);
+
+    /// TARGET SALES (ALREADY HIERARCHY FILTERED)
+    List<SalesList> curMthSalesTarget = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(prevFrom) &&
+          s.invoiceDate.isAtMost(prevTo);
+    }).toList();
+
+    /// SALES AGGREGATION
+    for (var s in customerSalesList) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      salesMap[s.customerCode] = (salesMap[s.customerCode] ?? 0) + val;
+
+      nameMap[s.customerCode] = s.customerName;
+    }
+
+    /// TARGET AGGREGATION
+    for (var s in curMthSalesTarget) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      targetMap[s.customerCode] = (targetMap[s.customerCode] ?? 0) + val;
+    }
+
+    /// BUILD RESULT
+    List<CustomerWiseData> result = [];
+
+    salesMap.forEach((code, val) {
+      result.add(
+        CustomerWiseData(
+          customerCode: code,
+          customerName: nameMap[code] ?? "",
+          saleAmount: val,
+          targetAmount: (targetMap[code] ?? 0) / 3,
+        ),
+      );
+    });
+
+    result.sort((a, b) => b.saleAmount.compareTo(a.saleAmount));
+
+    customerWiseSalesList = CustomerWiseSalesList(customerData: result);
+  }
+
+  Future<void> _loadMonthlyCustomerStateWiseSalesBarChartData(
+    int monthIndex,
+    List<SalesList> filteredSales,
+  ) async {
+    Map<String, double> salesMap = {};
+    Map<String, double> targetMap = {};
+
+    /// SALES MONTH RANGE (current selection)
+    var dateRange = getDateRangeForMonth(monthIndex);
+
+    /// SALES FOR SELECTED MONTH
+    List<SalesList> customerSalesList = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(dateRange["start"]!) &&
+          s.invoiceDate.isAtMost(dateRange["end"]!);
+    }).toList();
+
+    /// TARGET RANGE (previous 3 months)
+    DateTime prevFrom = DateTime(currentDate!.year, currentDate!.month - 3, 1);
+    DateTime prevTo = DateTime(currentDate!.year, currentDate!.month, 0);
+
+    /// TARGET SALES (already hierarchy-filtered)
+    List<SalesList> curMthSalesTarget = filteredSales.where((s) {
+      return s.invoiceDate.isAtLeast(prevFrom) &&
+          s.invoiceDate.isAtMost(prevTo);
+    }).toList();
+
+    /// SALES AGGREGATION
+    for (var s in customerSalesList) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      salesMap[s.customerState] = (salesMap[s.customerState] ?? 0) + val;
+    }
+
+    /// TARGET AGGREGATION
+    for (var s in curMthSalesTarget) {
+      double val = double.tryParse(s.rowTotal) ?? 0;
+
+      targetMap[s.customerState] = (targetMap[s.customerState] ?? 0) + val;
+    }
+
+    /// BUILD RESULT
+    List<CustomerStateWiseData> result = [];
+
+    salesMap.forEach((state, val) {
+      result.add(
+        CustomerStateWiseData(
+          stateName: state,
+          saleAmount: val,
+          targetAmount: (targetMap[state] ?? 0) / 3,
+        ),
+      );
+    });
+
+    result.sort((a, b) => b.saleAmount.compareTo(a.saleAmount));
+
+    customerStateWiseSalesList = CustomerStateWiseSalesList(
+      customerStateData: result,
+    );
   }
 
   Future<void> _loadTSMSalesBarChartData(
     int monthIndex,
-    String regionalManager,
-    String salesManager,
-    String salesRep,
-    String stateName,
-    String customerCode,
-    String productGroupCode,
-    String productCode,
+    List<SalesList> filteredSales,
+    List<SalesTargetList> filteredTargets,
   ) async {
     List<TsmwiseData> tsmwiseDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    String tsmName = "";
-    double salesAmount = 0.00;
-    double targetAmount = 0.00;
 
-    var tsmSalesList = const Iterable.empty();
-    var tsmSalesTargetList = const Iterable.empty();
-    var tmpTsmSalesTargetList = const Iterable.empty();
-    if (monthIndex == 0) {
-      startDate = currentMonthFromDate!;
-      endDate = currentDate!;
-      tsmSalesList = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
-        return invoiceDate.isAtLeast(startDate) &&
-            invoiceDate.isAtMost(endDate);
-      });
-    } else {
-      if (monthIndex >= 4 && monthIndex <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-        tsmSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear, monthIndex, 1);
-        endDate = DateTime(currentYear, monthIndex + 1, 0);
-        tsmSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-    }
-    List<String> monthsToInclude = [];
-    int currentMonth = DateTime.now().month;
-    if (currentMonth == 1) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    }
-    if (currentMonth == 2) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-        'feb',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    }
-    if (currentMonth == 3) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-        'feb',
-        'mar',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    } else if (currentMonth >= 4 && currentMonth <= 12) {
-      List<String> allMonths = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-      ];
-      int monthsCount = 0;
-      if (monthIndex == 0) {
-        monthsCount = currentMonth - 3;
-        monthsToInclude = allMonths.sublist(0, monthsCount);
-      } else {
-        monthsToInclude = allMonths.sublist(monthIndex - 4, monthIndex - 3);
-      }
-    }
+    /// MONTH RANGE
+    var dateRange = getDateRangeForMonth(monthIndex);
 
-    tsmSalesTargetList = salesTarget.map((element) {
+    /// MONTH FILTER FOR SALES
+    List<SalesList> tsmSalesList = filteredSales.where((target) {
+      DateTime invoiceDate = target.invoiceDate;
+
+      return invoiceDate.isAtLeast(dateRange["start"]!) &&
+          invoiceDate.isAtMost(dateRange["end"]!);
+    }).toList();
+
+    /// MONTHS REQUIRED FOR TARGET
+    List<String> monthsToInclude = getFinancialYearMonthsToInclude(monthIndex);
+
+    /// TRIM TARGETS TO REQUIRED MONTHS
+    var tsmSalesTargetList = filteredTargets.map((element) {
       Map<String, dynamic> filteredMap = {
         "financialYear": element.financialYear,
         "salesRepCode": element.salesRepCode,
@@ -3119,337 +2826,82 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       };
 
       for (var month in monthsToInclude) {
-        switch (month) {
-          case 'april':
-            filteredMap[month] = element.april;
-            break;
-          case 'may':
-            filteredMap[month] = element.may;
-            break;
-          case 'june':
-            filteredMap[month] = element.june;
-            break;
-          case 'july':
-            filteredMap[month] = element.july;
-            break;
-          case 'aug':
-            filteredMap[month] = element.aug;
-            break;
-          case 'sep':
-            filteredMap[month] = element.sep;
-            break;
-          case 'oct':
-            filteredMap[month] = element.oct;
-            break;
-          case 'nov':
-            filteredMap[month] = element.nov;
-            break;
-          case 'dec':
-            filteredMap[month] = element.dec;
-            break;
-          case 'jan':
-            filteredMap[month] = element.jan;
-            break;
-          case 'feb':
-            filteredMap[month] = element.feb;
-            break;
-          case 'mar':
-            filteredMap[month] = element.mar;
-            break;
-        }
+        filteredMap[month] = element
+            .getTargetForMonth(getFullMonthName(month))
+            .toString();
       }
+
       return filteredMap;
     }).toList();
-    tmpTsmSalesTargetList = tsmSalesTargetList;
-    List<SalesList> lstSales = tsmSalesList.cast<SalesList>().toList();
-    tsmSalesList = filterSalesList(
-      lstSales,
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
 
+    /// CONVERT BACK TO OBJECT
     List<SalesTargetList> lstSalesTrgt = tsmSalesTargetList
-        .map(
-          (dynamic item) =>
-              SalesTargetList.fromJson(item as Map<String, dynamic>),
-        )
+        .map((item) => SalesTargetList.fromJson(item))
         .toList();
 
-    tsmSalesTargetList = filterSalesTargetList(
-      lstSalesTrgt,
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-    );
+    /// -----------------------------------
+    /// FAST SALES AGGREGATION (O(n))
+    /// -----------------------------------
 
-    Set<String> processedTsmNames = {};
-    List<AsmMenu> asmMenuNames = [];
-    List<String> tsmNames = [];
+    Map<String, double> salesByTsm = {};
 
-    if (regionalManager == "" && salesManager == "" && salesRep == "") {
-      asmMenuNames = usersList
-          .where((element) => element.userLevel == 2)
-          .map((user) => AsmMenu(user.menuName, user.menuId))
-          .toList();
-    } else {
-      int? managerMenuId = 0;
-      if (salesRep != "") {
-        managerMenuId = usersList
-            .firstWhere(
-              (element) => element.menuName == salesRep,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .parentMenuId;
-      } else if (salesManager != "") {
-        managerMenuId = usersList
-            .firstWhere(
-              (element) => element.menuName == salesManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-      } else if (regionalManager != "") {
-        managerMenuId = usersList
-            .firstWhere(
-              (element) => element.menuName == regionalManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-      }
-      if (managerMenuId != -1) {
-        if (regionalManager != "" && salesManager == "") {
-          asmMenuNames = usersList
-              .where((element) => element.parentMenuId == managerMenuId)
-              .map((user) => AsmMenu(user.menuName, user.menuId))
-              .toList();
-        } else {
-          asmMenuNames = usersList
-              .where((element) => element.menuId == managerMenuId)
-              .map((user) => AsmMenu(user.menuName, user.menuId))
-              .toList();
-        }
+    for (var sale in tsmSalesList) {
+      String rep = sale.salesRep;
+
+      double amount = double.tryParse(sale.rowTotal) ?? 0;
+
+      salesByTsm.update(rep, (value) => value + amount, ifAbsent: () => amount);
+    }
+
+    /// -----------------------------------
+
+    for (var entry in salesByTsm.entries) {
+      String tsmName = entry.key;
+      double salesAmount = entry.value;
+
+      double targetAmount = calculateTotalForRep(tsmName, "1", lstSalesTrgt);
+
+      if (salesAmount + targetAmount > 0) {
+        tsmwiseDataList.add(
+          TsmwiseData(
+            tsmName: tsmName,
+            salesAmount: salesAmount,
+            targetAmount: targetAmount,
+          ),
+        );
       }
     }
-    for (var asmMenu in asmMenuNames) {
-      if (salesRep == "") {
-        tsmNames = usersList
-            .where((element) => element.parentMenuId == asmMenu.menuId)
-            .map((user) => user.menuName)
-            .toList();
-      } else {
-        tsmNames = usersList
-            .where((element) => element.menuName == salesRep)
-            .map((user) => user.menuName)
-            .toList();
-      }
-      for (var name in tsmNames) {
-        if (!processedTsmNames.contains(name)) {
-          tsmName = name;
-          for (var sales in tsmSalesList.where(
-            (tsmelement) => tsmelement.salesRep == tsmName,
-          )) {
-            double sum = 0.0;
-            // if (sales.invoiceType != "Sales Return") {
-            //   sum = double.tryParse(sales.rowTotal) ?? 0;
-            // } else {
-            //   sum = (double.tryParse(sales.rowTotal) ?? 0) * -1;
-            // }
-            sum = double.tryParse(sales.rowTotal) ?? 0;
-            salesAmount += sum;
-          }
-          targetAmount = calculateTotalForRep(
-            tsmName,
-            "1",
-            tmpTsmSalesTargetList,
-          );
-          if (salesAmount + targetAmount > 0) {
-            tsmwiseDataList.add(
-              TsmwiseData(
-                tsmName: tsmName,
-                salesAmount: salesAmount,
-                targetAmount: targetAmount,
-              ),
-            );
-          }
-          processedTsmNames.add(tsmName);
-        }
-        targetAmount = 0;
-        salesAmount = 0;
-        tsmName = "";
-      }
-    }
+
+    /// SORT FOR CHART
     tsmwiseDataList.sort((a, b) => a.salesAmount.compareTo(b.salesAmount));
+
+    /// FINAL LIST
     tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: tsmwiseDataList);
-    if (listOfTSM.isEmpty) {
-      listOfTSM = List<String>.from(
-        tsmSalesList.map((e) => e.salesRep).toSet(),
-      );
-    }
   }
 
   Future<void> _loadASMSalesBarChartData(
     int monthIndex,
-    String regionalManager,
-    String salesManager,
-    String salesRep,
-    String stateName,
-    String customerCode,
-    String productGroupCode,
-    String productCode,
+    List<SalesList> filteredSales,
+    List<SalesTargetList> filteredTargets,
   ) async {
     List<AsmwiseData> asmwiseDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    String asmName = "";
-    int asmId = 0;
-    double salesAmount = 0.00;
-    double targetAmount = 0.00;
 
-    var asmSalesList = const Iterable.empty();
-    var asmSalesTargetList = const Iterable.empty();
-    var tmpAsmSalesTargetList = const Iterable.empty();
+    /// MONTH RANGE
+    var dateRange = getDateRangeForMonth(monthIndex);
 
-    if (monthIndex == 0) {
-      startDate = currentMonthFromDate!;
-      endDate = currentDate!;
-      asmSalesList = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
+    /// MONTH FILTER FOR SALES
+    List<SalesList> asmSalesList = filteredSales.where((target) {
+      DateTime invoiceDate = target.invoiceDate;
 
-        return invoiceDate.isAtLeast(startDate) &&
-            invoiceDate.isAtMost(endDate);
-      });
-    } else {
-      if (monthIndex >= 4 && monthIndex <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-        asmSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
+      return invoiceDate.isAtLeast(dateRange["start"]!) &&
+          invoiceDate.isAtMost(dateRange["end"]!);
+    }).toList();
 
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear, monthIndex, 1);
-        endDate = DateTime(currentYear, monthIndex + 1, 0);
-        asmSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-    }
-    List<String> monthsToInclude = [];
-    int currentMonth = DateTime.now().month;
-    if (currentMonth == 1) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    }
-    if (currentMonth == 2) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-        'feb',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    }
-    if (currentMonth == 3) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-        'feb',
-        'mar',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    } else if (currentMonth >= 4 && currentMonth <= 12) {
-      List<String> allMonths = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-      ];
-      int monthsCount = 0;
-      if (monthIndex == 0) {
-        monthsCount = currentMonth - 3;
-        monthsToInclude = allMonths.sublist(0, monthsCount);
-      } else {
-        monthsToInclude = allMonths.sublist(monthIndex - 4, monthIndex - 3);
-      }
-    }
-    // int menuId = 0;
-    List<String> menuNames = usersList
-        .where((element) => element.userLevel == 2)
-        .map((user) => user.menuName)
-        .toList();
-    if (regionalManager == "" && salesManager == "") {
-      asmSalesTargetList = salesTarget.where((target) {
-        return menuNames.contains(target.salesManager);
-      });
-    } else {
-      asmSalesTargetList = salesTarget;
-    }
-    asmSalesTargetList = asmSalesTargetList.map((element) {
+    /// TARGET MONTHS
+    List<String> monthsToInclude = getFinancialYearMonthsToInclude(monthIndex);
+
+    /// TRIM TARGETS TO MONTH RANGE
+    var asmSalesTargetList = filteredTargets.map((element) {
       Map<String, dynamic> filteredMap = {
         "financialYear": element.financialYear,
         "salesRepCode": element.salesRepCode,
@@ -3459,163 +2911,35 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       };
 
       for (var month in monthsToInclude) {
-        switch (month) {
-          case 'april':
-            filteredMap[month] = element.april;
-            break;
-          case 'may':
-            filteredMap[month] = element.may;
-            break;
-          case 'june':
-            filteredMap[month] = element.june;
-            break;
-          case 'july':
-            filteredMap[month] = element.july;
-            break;
-          case 'aug':
-            filteredMap[month] = element.aug;
-            break;
-          case 'sep':
-            filteredMap[month] = element.sep;
-            break;
-          case 'oct':
-            filteredMap[month] = element.oct;
-            break;
-          case 'nov':
-            filteredMap[month] = element.nov;
-            break;
-          case 'dec':
-            filteredMap[month] = element.dec;
-            break;
-          case 'jan':
-            filteredMap[month] = element.jan;
-            break;
-          case 'feb':
-            filteredMap[month] = element.feb;
-            break;
-          case 'mar':
-            filteredMap[month] = element.mar;
-            break;
-        }
+        filteredMap[month] = element
+            .getTargetForMonth(getFullMonthName(month))
+            .toString();
       }
+
       return filteredMap;
     }).toList();
 
-    tmpAsmSalesTargetList = asmSalesTargetList;
-
-    List<SalesList> lstSales = asmSalesList.cast<SalesList>().toList();
-    asmSalesList = filterSalesList(
-      lstSales,
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-
     List<SalesTargetList> lstSalesTrgt = asmSalesTargetList
-        .map(
-          (dynamic item) =>
-              SalesTargetList.fromJson(item as Map<String, dynamic>),
-        )
+        .map((item) => SalesTargetList.fromJson(item))
         .toList();
 
-    asmSalesTargetList = filterSalesTargetList(
-      lstSalesTrgt,
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-    );
+    /// FAST AGGREGATION
+    Map<String, double> salesByAsm = {};
 
-    List<String> tsmNames = [];
-    List<AsmMenu> asmMenuNames = [];
-    if (regionalManager == "" && salesManager == "" && salesRep == "") {
-      asmMenuNames = usersList
-          .where((element) => element.userLevel == 2)
-          .map((user) => AsmMenu(user.menuName, user.menuId))
-          .toList();
-    } else {
-      int? managerMenuId = 0;
-      if (salesRep != "") {
-        managerMenuId = usersList
-            .firstWhere(
-              (element) => element.menuName == salesRep,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .parentMenuId;
-      } else if (salesManager != "") {
-        managerMenuId = usersList
-            .firstWhere(
-              (element) => element.menuName == salesManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-      } else if (regionalManager != "") {
-        managerMenuId = usersList
-            .firstWhere(
-              (element) => element.menuName == regionalManager,
-              orElse: () => Users(
-                menuId: -1,
-                menuName: '',
-                subMenuId: -1,
-                parentMenuId: -1,
-                userLevel: -1,
-              ),
-            )
-            .menuId;
-      }
-      if (managerMenuId != -1) {
-        if (regionalManager != "" && salesManager == "") {
-          asmMenuNames = usersList
-              .where((element) => element.parentMenuId == managerMenuId)
-              .map((user) => AsmMenu(user.menuName, user.menuId))
-              .toList();
-        } else {
-          asmMenuNames = usersList
-              .where((element) => element.menuId == managerMenuId)
-              .map((user) => AsmMenu(user.menuName, user.menuId))
-              .toList();
-        }
-      }
+    for (var sale in asmSalesList) {
+      String asm = sale.salesManager;
+
+      double amount = double.tryParse(sale.rowTotal) ?? 0;
+
+      salesByAsm.update(asm, (value) => value + amount, ifAbsent: () => amount);
     }
-    for (var asmMenu in asmMenuNames) {
-      asmId = asmMenu.menuId;
-      asmName = asmMenu.menuName;
-      tsmNames = usersList
-          .where((element) => element.parentMenuId == asmId)
-          .map((user) => user.menuName)
-          .toList();
-      for (var sales in asmSalesList.where(
-        (tsmelement) => tsmNames.contains(tsmelement.salesRep),
-      )) {
-        double sum = 0.0;
-        // if (sales.invoiceType != "Sales Return") {
-        //   sum = double.tryParse(sales.rowTotal) ?? 0;
-        // } else {
-        //   sum = (double.tryParse(sales.rowTotal) ?? 0) * -1;
-        // }
-        sum = double.tryParse(sales.rowTotal) ?? 0;
-        salesAmount += sum;
-      }
-      for (var name in tsmNames) {
-        targetAmount += calculateTotalForRep(name, "1", tmpAsmSalesTargetList);
-      }
+
+    for (var entry in salesByAsm.entries) {
+      String asmName = entry.key;
+      double salesAmount = entry.value;
+
+      double targetAmount = calculateTotalForRep(asmName, "2", lstSalesTrgt);
+
       if (salesAmount + targetAmount > 0) {
         asmwiseDataList.add(
           AsmwiseData(
@@ -3625,149 +2949,36 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           ),
         );
       }
-      asmName = "";
-      targetAmount = 0;
-      salesAmount = 0;
     }
 
     asmwiseDataList.sort((a, b) => a.salesAmount.compareTo(b.salesAmount));
+
     asmwiseSalesList = AsmwiseSalesList(asmwiseData: asmwiseDataList);
-    if (listOfASM.isEmpty) {
-      listOfASM = List<String>.from(
-        asmSalesList.map((e) => e.salesManager).toSet(),
-      );
-    }
   }
 
   Future<void> _loadRSMSalesBarChartData(
     int monthIndex,
-    String regionalManager,
-    String salesManager,
-    String salesRep,
-    String stateName,
-    String customerCode,
-    String productGroupCode,
-    String productCode,
+    List<SalesList> filteredSales,
+    List<SalesTargetList> filteredTargets,
   ) async {
     List<RsmwiseData> rsmwiseDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    String rsmName = "";
-    int rsmId = 0;
-    int asmId = 0;
-    double salesAmount = 0.00;
-    double targetAmount = 0.00;
 
-    var rsmSalesList = const Iterable.empty();
-    var rsmSalesTargetList = const Iterable.empty();
-    var tmpRsmSalesTargetList = const Iterable.empty();
+    /// MONTH RANGE
+    var dateRange = getDateRangeForMonth(monthIndex);
 
-    if (monthIndex == 0) {
-      startDate = currentMonthFromDate!;
-      endDate = currentDate!;
-      rsmSalesList = sales.where((target) {
-        DateTime invoiceDate = target.invoiceDate;
+    /// MONTH FILTER FOR SALES
+    List<SalesList> rsmSalesList = filteredSales.where((target) {
+      DateTime invoiceDate = target.invoiceDate;
 
-        return invoiceDate.isAtLeast(startDate) &&
-            invoiceDate.isAtMost(endDate);
-      });
-    } else {
-      if (monthIndex >= 4 && monthIndex <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-        rsmSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
+      return invoiceDate.isAtLeast(dateRange["start"]!) &&
+          invoiceDate.isAtMost(dateRange["end"]!);
+    }).toList();
 
-          return invoiceDate.isAtLeast(monthDates['start']!) &&
-              invoiceDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        startDate = DateTime(currentYear, monthIndex, 1);
-        endDate = DateTime(currentYear, monthIndex + 1, 0);
-        rsmSalesList = sales.where((target) {
-          DateTime invoiceDate = target.invoiceDate;
-          return invoiceDate.isAtLeast(startDate) &&
-              invoiceDate.isAtMost(endDate);
-        });
-      }
-    }
-    List<String> monthsToInclude = [];
-    int currentMonth = DateTime.now().month;
-    if (currentMonth == 1) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    }
-    if (currentMonth == 2) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-        'feb',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    }
-    if (currentMonth == 3) {
-      monthsToInclude = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-        'jan',
-        'feb',
-        'mar',
-      ];
-      if (monthIndex != 0) {
-        ['jan', 'feb', 'mar'].sublist(monthIndex - 1, monthIndex);
-      }
-    } else if (currentMonth >= 4 && currentMonth <= 12) {
-      List<String> allMonths = [
-        'april',
-        'may',
-        'june',
-        'july',
-        'aug',
-        'sep',
-        'oct',
-        'nov',
-        'dec',
-      ];
-      int monthsCount = 0;
-      if (monthIndex == 0) {
-        monthsCount = currentMonth - 3;
-        monthsToInclude = allMonths.sublist(0, monthsCount);
-      } else {
-        monthsToInclude = allMonths.sublist(monthIndex - 4, monthIndex - 3);
-      }
-    }
+    /// TARGET MONTHS
+    List<String> monthsToInclude = getFinancialYearMonthsToInclude(monthIndex);
 
-    rsmSalesTargetList = salesTarget.map((element) {
+    /// TRIM TARGETS TO MONTH RANGE
+    var rsmSalesTargetList = filteredTargets.map((element) {
       Map<String, dynamic> filteredMap = {
         "financialYear": element.financialYear,
         "salesRepCode": element.salesRepCode,
@@ -3777,150 +2988,97 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       };
 
       for (var month in monthsToInclude) {
-        switch (month) {
-          case 'april':
-            filteredMap[month] = element.april;
-            break;
-          case 'may':
-            filteredMap[month] = element.may;
-            break;
-          case 'june':
-            filteredMap[month] = element.june;
-            break;
-          case 'july':
-            filteredMap[month] = element.july;
-            break;
-          case 'aug':
-            filteredMap[month] = element.aug;
-            break;
-          case 'sep':
-            filteredMap[month] = element.sep;
-            break;
-          case 'oct':
-            filteredMap[month] = element.oct;
-            break;
-          case 'nov':
-            filteredMap[month] = element.nov;
-            break;
-          case 'dec':
-            filteredMap[month] = element.dec;
-            break;
-          case 'jan':
-            filteredMap[month] = element.jan;
-            break;
-          case 'feb':
-            filteredMap[month] = element.feb;
-            break;
-          case 'mar':
-            filteredMap[month] = element.mar;
-            break;
-        }
+        filteredMap[month] = element
+            .getTargetForMonth(getFullMonthName(month))
+            .toString();
       }
+
       return filteredMap;
     }).toList();
 
-    tmpRsmSalesTargetList = rsmSalesTargetList;
-    List<SalesList> lstSales = rsmSalesList.cast<SalesList>().toList();
-    rsmSalesList = filterSalesList(
-      lstSales,
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-      stateName: stateName,
-      productCode: productCode,
-      productGroupCode: productGroupCode,
-      customerCode: customerCode,
-    );
-
     List<SalesTargetList> lstSalesTrgt = rsmSalesTargetList
-        .map(
-          (dynamic item) =>
-              SalesTargetList.fromJson(item as Map<String, dynamic>),
-        )
+        .map((item) => SalesTargetList.fromJson(item))
         .toList();
 
-    rsmSalesTargetList = filterSalesTargetList(
-      lstSalesTrgt,
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesRep,
-    );
+    /// FAST AGGREGATION
+    Map<String, double> salesByRsm = {};
 
-    Set<String> processedRsmNames = {};
-    List<AsmMenu> asmNames = [];
-    List<String> tsmNames = [];
-    List<RsmMenu> rsmMenuNames = [];
-    if (int.tryParse(UserLevel)! > 3) {
-      if (regionalManager == "") {
-        rsmMenuNames = usersList
-            .where((element) => element.userLevel == 3)
-            .map((user) => RsmMenu(user.menuName, user.menuId))
-            .toList();
-      } else {
-        rsmMenuNames = usersList
-            .where((element) => element.menuName == regionalManager)
-            .map((user) => RsmMenu(user.menuName, user.menuId))
-            .toList();
-      }
-      for (var rsmMenu in rsmMenuNames) {
-        if (!processedRsmNames.contains(rsmMenu.menuName)) {
-          rsmName = rsmMenu.menuName;
-          rsmId = rsmMenu.menuId;
-          asmNames = usersList
-              .where((element) => element.parentMenuId == rsmId)
-              .map((user) => AsmMenu(user.menuName, user.menuId))
-              .toList();
-          for (var asmMenu in asmNames) {
-            asmId = asmMenu.menuId;
-            tsmNames = usersList
-                .where((element) => element.parentMenuId == asmId)
-                .map((user) => user.menuName)
-                .toList();
-            for (var sales in rsmSalesList.where(
-              (tsmelement) => tsmNames.contains(tsmelement.salesRep),
-            )) {
-              double sum = 0.0;
-              // if (sales.invoiceType != "Sales Return") {
-              //   sum = double.tryParse(sales.rowTotal) ?? 0;
-              // } else {
-              //   sum = (double.tryParse(sales.rowTotal) ?? 0) * -1;
-              // }
-              sum = double.tryParse(sales.rowTotal) ?? 0;
-              salesAmount += sum;
-            }
-            for (var name in tsmNames) {
-              targetAmount += calculateTotalForRep(
-                name,
-                "1",
-                tmpRsmSalesTargetList,
-              );
-            }
-          }
-          if (salesAmount + targetAmount > 0) {
-            rsmwiseDataList.add(
-              RsmwiseData(
-                rsmName: rsmName,
-                salesAmount: salesAmount,
-                targetAmount: targetAmount,
-              ),
-            );
-          }
-          processedRsmNames.add(rsmName);
-        }
-        targetAmount = 0;
-        salesAmount = 0;
-        rsmName = "";
+    for (var sale in rsmSalesList) {
+      String rsm = sale.regionalManager;
+
+      double amount = double.tryParse(sale.rowTotal) ?? 0;
+
+      salesByRsm.update(rsm, (value) => value + amount, ifAbsent: () => amount);
+    }
+
+    for (var entry in salesByRsm.entries) {
+      String rsmName = entry.key;
+      double salesAmount = entry.value;
+
+      double targetAmount = calculateTotalForRep(rsmName, "4", lstSalesTrgt);
+
+      if (salesAmount + targetAmount > 0) {
+        rsmwiseDataList.add(
+          RsmwiseData(
+            rsmName: rsmName,
+            salesAmount: salesAmount,
+            targetAmount: targetAmount,
+          ),
+        );
       }
     }
+
     rsmwiseDataList.sort((a, b) => a.salesAmount.compareTo(b.salesAmount));
+
     rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: rsmwiseDataList);
-    if (listOfRSM.isEmpty) {
-      listOfRSM = List<String>.from(
-        rsmSalesList.map((e) => e.regionalManager).toSet(),
-      );
+  }
+
+  List<String> getFinancialYearMonthsToInclude(int monthIndex) {
+    List<String> financialYearMonths = [
+      'april',
+      'may',
+      'june',
+      'july',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
+      'jan',
+      'feb',
+      'mar',
+    ];
+
+    int currentMonth = DateTime.now().month;
+
+    if (monthIndex == 0) {
+      int fyIndex = (currentMonth >= 4) ? currentMonth - 4 : currentMonth + 8;
+
+      return financialYearMonths.sublist(0, fyIndex + 1);
     }
+
+    int fyIndex = (monthIndex >= 4) ? monthIndex - 4 : monthIndex + 8;
+
+    return [financialYearMonths[fyIndex]];
+  }
+
+  Map<String, DateTime> getDateRangeForMonth(int monthIndex) {
+    DateTime now = DateTime.now();
+
+    // Determine financial year start
+    int financialYearStart = now.month >= 4 ? now.year : now.year - 1;
+
+    if (monthIndex == 0) {
+      return {"start": currentMonthFromDate!, "end": currentDate!};
+    }
+
+    // Decide the correct year based on financial year logic
+    int year = (monthIndex >= 4) ? financialYearStart : financialYearStart + 1;
+
+    DateTime startDate = DateTime(year, monthIndex, 1);
+    DateTime endDate = DateTime(year, monthIndex + 1, 0);
+
+    return {"start": startDate, "end": endDate};
   }
 
   void navigateToLoginScreen() async {
@@ -3956,62 +3114,24 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     await _loadSalesTarget(userName, userLevel);
     await _loadSalesWithLazyLoading(userName, userLevel);
     await _loadEachQtrValues();
-    await _loadMonthlySalesBarChartData();
+    await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
     showDrillDownChart = true;
     touchedYearGraph = true;
     showProductSaleChart = true;
     if (UserLevel != "1") {
-      await _loadTSMSalesBarChartData(0, "", "", "", "", "", "", "");
-      await _loadASMSalesBarChartData(0, "", "", "", "", "", "", "");
-      await _loadRSMSalesBarChartData(0, "", "", "", "", "", "", "");
+      await _loadTSMSalesBarChartData(0, filteredSales, filteredTargets);
+      await _loadASMSalesBarChartData(0, filteredSales, filteredTargets);
+      await _loadRSMSalesBarChartData(0, filteredSales, filteredTargets);
     }
-    await _loadMonthlyProductGroupwiseSalesBarChartData(
-      0,
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadMonthlyProductwiseSalesBarChartData(
-      0,
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadMonthlyCustomerStateWiseSalesBarChartData(
-      0,
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadMonthlyCustomerWiseSalesBarChartData(
-      0,
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
+    await _loadMonthlyProductGroupwiseSalesBarChartData(0, filteredSales);
+    await _loadMonthlyProductwiseSalesBarChartData(0, filteredSales);
+    await _loadMonthlyCustomerStateWiseSalesBarChartData(0, filteredSales);
+    await _loadMonthlyCustomerWiseSalesBarChartData(0, filteredSales);
     setState(() {
       filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
-
       savedFinanceReceivablesOptions = filterOptions
           .map((options) => List<bool>.filled(options.length, false))
           .toList();
-
       if (savedFinanceReceivablesOptionsTemp.isEmpty) {
         savedFinanceReceivablesOptions = filterOptions
             .map((options) => List<bool>.filled(options.length, false))
@@ -4023,49 +3143,57 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     });
   }
 
-  Future<void> removeFilter() async {
+  void resetSalesLists() {
     ytdSalesList = YTDSalesList(ytdData: []);
     ytdItemSalesList = ItemYTDSalesList(ytdData: []);
     monthlySalesList = MonthlySalesList(monthlyData: []);
     prevMonthlySalesList = MonthlySalesList(monthlyData: []);
     productwiseSalesList = ProductwiseSalesList(productData: []);
+    productGroupwiseSalesList = ProductGroupwiseSalesList(productGroupData: []);
+
     customerWiseSalesList = CustomerWiseSalesList(customerData: []);
-    prevYearMonthList = PrevYearMonthList(prevYearMonthData: []);
-    tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: []);
-    asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
-    rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
+
     customerStateWiseSalesList = CustomerStateWiseSalesList(
       customerStateData: [],
     );
-    productGroupwiseSalesList = ProductGroupwiseSalesList(productGroupData: []);
+
+    prevYearMonthList = PrevYearMonthList(prevYearMonthData: []);
+
+    tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: []);
+
+    asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
+
+    rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
+  }
+
+  Future<void> removeFilter() async {
+    resetSalesLists();
+
     touchedMonthIndex = 0;
+
     touchedRegionalManager = "";
     touchedSalesManager = "";
     touchedSalesRep = "";
+
     touchedCustomer = "";
     touchedProduct = "";
     touchedProductGroup = "";
     touchedState = "";
+
     touchedMonthGoals = false;
     touchedQuarterGoals = false;
     touchedYTDGoals = false;
-    clearVariables();
-    LoadDates();
-    LoadAllQuarterFromToDates();
+
+    for (var options in allCategoriesState.values) {
+      options.updateAll((key, value) => false);
+    }
+
+    allCategoriesState.clear();
+
+    loadDataFuture = loadDataWithFilter(0, "", "", "", "", "", "", "");
+
     setState(() {
-      setState(() {
-        chartDataLoaded = false;
-      });
-      clearVariables();
-      LoadDates();
-      allCategoriesState.forEach((category, options) {
-        options.updateAll((key, value) => false);
-      });
-      allCategoriesState.clear();
-      loadDataFuture = loadData("");
-      setState(() {
-        chartDataLoaded = false;
-      });
+      chartDataLoaded = false;
     });
   }
 
@@ -4079,91 +3207,127 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     String productGroupCode,
     String productCode,
   ) async {
+    bool showASMChart = true;
+    bool showTSMChart = true;
+
+    if (!hasASMChildren(regionalManager)) {
+      showASMChart = false;
+      showTSMChart = false;
+    }
+
+    if (!hasTSMChildren(salesManager)) {
+      showTSMChart = false;
+    }
+
     clearVariablesForFilter();
     LoadDates();
     LoadAllQuarterFromToDates();
+
     final prefs = await SharedPreferences.getInstance();
-    final userLevel = prefs.getString('userLevel') ?? '';
-    UserLevel = userLevel;
-    // await _loadEachQtrValues();
-    // await _loadMonthlySalesBarChartData();
+    UserLevel = prefs.getString('userLevel') ?? "";
+
     showDrillDownChart = true;
     touchedYearGraph = true;
     showProductSaleChart = true;
+
+    /// Filter once
+    final filteredSales = filterSalesList(
+      sales,
+      usersListForFilter,
+      regionalManager: regionalManager,
+      salesManager: salesManager,
+      salesRep: salesRep,
+      stateName: stateName,
+      customerCode: customerCode,
+      productGroupCode: productGroupCode,
+      productCode: productCode,
+    );
+
+    final filteredTargets = filterSalesTargetList(
+      salesTarget,
+      usersListForFilter,
+      regionalManager: regionalManager,
+      salesManager: salesManager,
+      salesRep: salesRep,
+    );
+
+    List<Future> futures = [];
+
     if (UserLevel != "1") {
-      await _loadTSMSalesBarChartData(
-        monthIndex,
-        regionalManager,
-        salesManager,
-        salesRep,
-        stateName,
-        customerCode,
-        productGroupCode,
-        productCode,
-      );
-      await _loadASMSalesBarChartData(
-        monthIndex,
-        regionalManager,
-        salesManager,
-        salesRep,
-        stateName,
-        customerCode,
-        productGroupCode,
-        productCode,
-      );
-      await _loadRSMSalesBarChartData(
-        monthIndex,
-        regionalManager,
-        salesManager,
-        salesRep,
-        stateName,
-        customerCode,
-        productGroupCode,
-        productCode,
+      if (showTSMChart) {
+        futures.add(
+          _loadTSMSalesBarChartData(monthIndex, filteredSales, filteredTargets),
+        );
+      } else {
+        tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: []);
+      }
+
+      if (showASMChart) {
+        futures.add(
+          _loadASMSalesBarChartData(monthIndex, filteredSales, filteredTargets),
+        );
+      } else {
+        asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
+      }
+
+      futures.add(
+        _loadRSMSalesBarChartData(monthIndex, filteredSales, filteredTargets),
       );
     }
 
-    await _loadMonthlyProductGroupwiseSalesBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      stateName,
-      customerCode,
-      productGroupCode,
-      productCode,
-    );
-    await _loadMonthlyProductwiseSalesBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      stateName,
-      customerCode,
-      productGroupCode,
-      productCode,
-    );
-    await _loadMonthlyCustomerStateWiseSalesBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      stateName,
-      customerCode,
-      productGroupCode,
-      productCode,
-    );
-    await _loadMonthlyCustomerWiseSalesBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      stateName,
-      customerCode,
-      productGroupCode,
-      productCode,
-    );
+    futures.addAll([
+      _loadMonthlySalesBarChartData(filteredSales, filteredTargets),
+      _loadMonthlyProductGroupwiseSalesBarChartData(monthIndex, filteredSales),
+      _loadMonthlyProductwiseSalesBarChartData(monthIndex, filteredSales),
+      _loadMonthlyCustomerStateWiseSalesBarChartData(monthIndex, filteredSales),
+      _loadMonthlyCustomerWiseSalesBarChartData(monthIndex, filteredSales),
+    ]);
+
+    await Future.wait(futures);
+
     chartDataLoaded = true;
+  }
+
+  bool hasASMChildren(String regionalManager) {
+    if (regionalManager.isEmpty) return true;
+
+    int menuId = usersListForFilter
+        .firstWhere(
+          (e) => e.menuName == regionalManager,
+          orElse: () => Users(
+            menuId: -1,
+            menuName: '',
+            subMenuId: -1,
+            parentMenuId: -1,
+            userLevel: -1,
+          ),
+        )
+        .menuId;
+
+    if (menuId == -1) return false;
+
+    return usersListForFilter.any((e) => e.parentMenuId == menuId);
+  }
+
+  bool hasTSMChildren(String salesManager) {
+    if (salesManager.isEmpty) return true;
+
+    int menuId = usersListForFilter
+        .firstWhere(
+          (e) => e.menuName == salesManager,
+          orElse: () => Users(
+            menuId: -1,
+            menuName: '',
+            subMenuId: -1,
+            parentMenuId: -1,
+            userLevel: -1,
+          ),
+        )
+        .menuId;
+
+    if (menuId == -1) return false;
+
+    return usersListForFilter.any((e) => e.parentMenuId == menuId);
   }
 
   void LoadDates() {
@@ -4179,15 +3343,19 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       case 1:
         currentQuarterFromDate = DateTime(now.year, 4, 1);
         currentQuarterToDate = DateTime(now.year, 6, 30);
+        break;
       case 2:
         currentQuarterFromDate = DateTime(now.year, 7, 1);
         currentQuarterToDate = DateTime(now.year, 9, 30);
+        break;
       case 3:
         currentQuarterFromDate = DateTime(now.year, 10, 1);
         currentQuarterToDate = DateTime(now.year, 12, 31);
+        break;
       case 4:
         currentQuarterFromDate = DateTime(now.year, 1, 1);
         currentQuarterToDate = DateTime(now.year, 3, 31);
+        break;
       default:
         throw Error();
     }
@@ -4459,12 +3627,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       );
 
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
         // Generate bytes
         final pdfBytes = await pdf.save();
         saveAndOpenPDF(pdfBytes);
@@ -4509,22 +3671,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'regional_manager_sales.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('regional_manager_sales.xlsx', excelBytes);
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'monthly_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/regional_manager_sales.xlsx');
@@ -6602,6 +5750,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                     Row(children: [SizedBox(width: 5)]),
                   ],
                 ),
+                _buildLazyLoadIndicator(),
                 SizedBox(
                   height: 300, //  SAFE HEIGHT FOR WEB + MOBILE
                   child: Stack(
@@ -6681,9 +5830,20 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                   child: GestureDetector(
                                     onTap: () {
                                       setState(() {
-                                        loadMonthlySalesBarChartDataFromPieChart(
-                                          1,
-                                        );
+                                        if (selectedPiechartIndex != 1) {
+                                          loadMonthlySalesBarChartDataFromPieChart(
+                                            selectedPiechartIndex == 1 ? -1 : 1,
+                                          );
+                                        } else {
+                                          selectedPiechartIndex = -1;
+                                          touchedMonthGoals = false;
+                                          touchedQuarterGoals = false;
+                                          _loadMonthlySalesBarChartData(
+                                            filteredSales,
+                                            filteredTargets,
+                                          );
+                                        }
+
                                         _monthlySalesAnalysisChart(
                                           monthlySalesList.monthlyData,
                                         );
@@ -6691,7 +5851,10 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                         showDrillDownChart = false;
                                         lastMonthChartFunc = true;
                                         lastThreeMonthChartFunc = false;
-                                        touchedMonthGoals = true;
+                                        touchedMonthGoals =
+                                            selectedPiechartIndex == 1
+                                            ? !touchedMonthGoals
+                                            : touchedMonthGoals;
                                         touchedQuarterGoals = false;
                                         touchedYTDGoals = false;
                                       });
@@ -6770,16 +5933,29 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                       setState(() {
                                         lastMonthChartFunc = false;
                                         lastThreeMonthChartFunc = true;
-                                        loadMonthlySalesBarChartDataFromPieChart(
-                                          3,
-                                        );
+                                        if (selectedPiechartIndex != 3) {
+                                          loadMonthlySalesBarChartDataFromPieChart(
+                                            selectedPiechartIndex == 3 ? -1 : 3,
+                                          );
+                                        } else {
+                                          selectedPiechartIndex = -1;
+                                          touchedQuarterGoals = false;
+                                          touchedMonthGoals = false;
+                                          _loadMonthlySalesBarChartData(
+                                            filteredSales,
+                                            filteredTargets,
+                                          );
+                                        }
                                         _monthlySalesAnalysisChart(
                                           monthlySalesList.monthlyData,
                                         );
                                         showProductSaleChart = false;
                                         showDrillDownChart = false;
                                         touchedMonthGoals = false;
-                                        touchedQuarterGoals = true;
+                                        touchedQuarterGoals =
+                                            selectedPiechartIndex == 3
+                                            ? !touchedQuarterGoals
+                                            : touchedQuarterGoals;
                                         touchedYTDGoals = false;
                                       });
                                     },
@@ -6855,7 +6031,10 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                   child: GestureDetector(
                                     onTap: () {
                                       setState(() {
-                                        _loadMonthlySalesBarChartData();
+                                        _loadMonthlySalesBarChartData(
+                                          filteredSales,
+                                          filteredTargets,
+                                        );
                                         _monthlySalesAnalysisChart(
                                           monthlySalesList.monthlyData,
                                         );
@@ -6938,725 +6117,12 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           ),
                         ),
                       ),
-
-                      /// ================= BOTTOM SMALL INDICATORS =================
-                      // Positioned(
-                      //   top: 170,
-                      //   left: 0,
-                      //   right: 0,
-                      //   child: Row(
-                      //     mainAxisAlignment: MainAxisAlignment.center,
-                      //     children: [
-                      //       /// ---------- LAST MONTH ----------
-                      //       Expanded(
-                      //         child: Padding(
-                      //           padding: const EdgeInsets.all(4.0),
-                      //           child: FittedBox(
-                      //             fit: BoxFit.scaleDown,
-                      //             child: GestureDetector(
-                      //               onTap: () {
-                      //                 setState(() {
-                      //                   loadMonthlySalesBarChartDataFromPieChart(
-                      //                     1,
-                      //                   );
-                      //                   _monthlySalesAnalysisChart(
-                      //                     monthlySalesList.monthlyData,
-                      //                   );
-                      //                   showProductSaleChart = false;
-                      //                   showDrillDownChart = false;
-                      //                   lastMonthChartFunc = true;
-                      //                   lastThreeMonthChartFunc = false;
-                      //                   touchedMonthGoals = true;
-                      //                   touchedQuarterGoals = false;
-                      //                   touchedYTDGoals = false;
-                      //                 });
-                      //               },
-                      //               child: SizedBox(
-                      //                 height: 110,
-                      //                 width: 110,
-                      //                 child: CircularPercentIndicator(
-                      //                   arcType: ArcType.HALF,
-                      //                   radius: 55.0,
-                      //                   lineWidth: 20.0,
-                      //                   animation: true,
-                      //                   percent: LastMonthPercentage / 100,
-                      //                   center: Column(
-                      //                     mainAxisSize: MainAxisSize.min,
-                      //                     children: [
-                      //                       const SizedBox(height: 30),
-                      //                       Text(
-                      //                         LastMonthPercentageStr,
-                      //                         style: TextStyle(
-                      //                           fontWeight: FontWeight.bold,
-                      //                           fontSize: touchedMonthGoals
-                      //                               ? 13.0
-                      //                               : 12.0,
-                      //                           color: touchedMonthGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                       Text(
-                      //                         LastMonthSalesStr,
-                      //                         maxLines: 1,
-                      //                         overflow: TextOverflow.ellipsis,
-                      //                         style: TextStyle(
-                      //                           fontSize: touchedMonthGoals
-                      //                               ? 11.0
-                      //                               : 10.0,
-                      //                           color: touchedMonthGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                       const SizedBox(height: 5),
-                      //                       Text(
-                      //                         "${getMonthName(currentDate!.month - 1)} Sales\n($LastMonthTargetStr)",
-                      //                         textAlign: TextAlign.center,
-                      //                         maxLines: 2,
-                      //                         overflow: TextOverflow.ellipsis,
-                      //                         style: TextStyle(
-                      //                           fontWeight: FontWeight.bold,
-                      //                           fontSize: touchedMonthGoals
-                      //                               ? 11.0
-                      //                               : 10.0,
-                      //                           color: touchedMonthGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                     ],
-                      //                   ),
-                      //                   circularStrokeCap:
-                      //                       CircularStrokeCap.butt,
-                      //                   progressColor: Colors.red,
-                      //                   arcBackgroundColor:
-                      //                       Colors.grey.shade200,
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //           ),
-                      //         ),
-                      //       ),
-                      //       /// ---------- CURRENT QUARTER ----------
-                      //       Expanded(
-                      //         child: Padding(
-                      //           padding: const EdgeInsets.all(4.0),
-                      //           child: FittedBox(
-                      //             fit: BoxFit.scaleDown,
-                      //             child: GestureDetector(
-                      //               onTap: () {
-                      //                 setState(() {
-                      //                   lastMonthChartFunc = false;
-                      //                   lastThreeMonthChartFunc = true;
-                      //                   loadMonthlySalesBarChartDataFromPieChart(
-                      //                     3,
-                      //                   );
-                      //                   _monthlySalesAnalysisChart(
-                      //                     monthlySalesList.monthlyData,
-                      //                   );
-                      //                   showProductSaleChart = false;
-                      //                   showDrillDownChart = false;
-                      //                   touchedMonthGoals = false;
-                      //                   touchedQuarterGoals = true;
-                      //                   touchedYTDGoals = false;
-                      //                 });
-                      //               },
-                      //               child: SizedBox(
-                      //                 height: 110,
-                      //                 width: 110,
-                      //                 child: CircularPercentIndicator(
-                      //                   arcType: ArcType.HALF,
-                      //                   radius: 55.0,
-                      //                   lineWidth: 20.0,
-                      //                   animation: true,
-                      //                   percent: CurrentQtrPercentage / 100,
-                      //                   center: Column(
-                      //                     mainAxisSize: MainAxisSize.min,
-                      //                     children: [
-                      //                       const SizedBox(height: 30),
-                      //                       Text(
-                      //                         CurrentQtrPercentageStr,
-                      //                         style: TextStyle(
-                      //                           fontWeight: FontWeight.bold,
-                      //                           fontSize: touchedQuarterGoals
-                      //                               ? 13.0
-                      //                               : 12.0,
-                      //                           color: touchedQuarterGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                       Text(
-                      //                         CurrentQtrSalesStr,
-                      //                         maxLines: 1,
-                      //                         overflow: TextOverflow.ellipsis,
-                      //                         style: TextStyle(
-                      //                           fontSize: touchedQuarterGoals
-                      //                               ? 11.0
-                      //                               : 10.0,
-                      //                           color: touchedQuarterGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                       const SizedBox(height: 5),
-                      //                       Text(
-                      //                         "Q$currentQuarter Sales\n($CurrentQtrTargetStr)",
-                      //                         textAlign: TextAlign.center,
-                      //                         maxLines: 2,
-                      //                         overflow: TextOverflow.ellipsis,
-                      //                         style: TextStyle(
-                      //                           fontWeight: FontWeight.bold,
-                      //                           fontSize: touchedQuarterGoals
-                      //                               ? 11.0
-                      //                               : 10.0,
-                      //                           color: touchedQuarterGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                     ],
-                      //                   ),
-                      //                   circularStrokeCap:
-                      //                       CircularStrokeCap.butt,
-                      //                   progressColor: Colors.orange,
-                      //                   arcBackgroundColor:
-                      //                       Colors.grey.shade200,
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //           ),
-                      //         ),
-                      //       ),
-                      //       /// ---------- YTD ----------
-                      //       Expanded(
-                      //         child: Padding(
-                      //           padding: const EdgeInsets.all(4.0),
-                      //           child: FittedBox(
-                      //             fit: BoxFit.scaleDown,
-                      //             child: GestureDetector(
-                      //               onTap: () {
-                      //                 setState(() {
-                      //                   _loadMonthlySalesBarChartData();
-                      //                   _monthlySalesAnalysisChart(
-                      //                     monthlySalesList.monthlyData,
-                      //                   );
-                      //                   showProductSaleChart = false;
-                      //                   showDrillDownChart = false;
-                      //                   lastThreeMonthChartFunc = false;
-                      //                   lastMonthChartFunc = false;
-                      //                   touchedMonthGoals = false;
-                      //                   touchedQuarterGoals = false;
-                      //                   touchedYTDGoals = true;
-                      //                 });
-                      //               },
-                      //               child: SizedBox(
-                      //                 height: 110,
-                      //                 width: 110,
-                      //                 child: CircularPercentIndicator(
-                      //                   arcType: ArcType.HALF,
-                      //                   radius: 55.0,
-                      //                   lineWidth: 20.0,
-                      //                   animation: true,
-                      //                   percent: YtdPercentage / 100,
-                      //                   center: Column(
-                      //                     mainAxisSize: MainAxisSize.min,
-                      //                     children: [
-                      //                       const SizedBox(height: 30),
-                      //                       Text(
-                      //                         YtdPercentageStr,
-                      //                         style: TextStyle(
-                      //                           fontWeight: FontWeight.bold,
-                      //                           fontSize: touchedYTDGoals
-                      //                               ? 13.0
-                      //                               : 12.0,
-                      //                           color: touchedYTDGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                       Text(
-                      //                         YtdSalesStr,
-                      //                         maxLines: 1,
-                      //                         overflow: TextOverflow.ellipsis,
-                      //                         style: TextStyle(
-                      //                           fontSize: touchedYTDGoals
-                      //                               ? 11.0
-                      //                               : 10.0,
-                      //                           color: touchedYTDGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                       const SizedBox(height: 5),
-                      //                       Text(
-                      //                         "YTD\n($YtdTargetStr)",
-                      //                         textAlign: TextAlign.center,
-                      //                         maxLines: 2,
-                      //                         overflow: TextOverflow.ellipsis,
-                      //                         style: TextStyle(
-                      //                           fontWeight: FontWeight.bold,
-                      //                           fontSize: touchedYTDGoals
-                      //                               ? 11.0
-                      //                               : 10.0,
-                      //                           color: touchedYTDGoals
-                      //                               ? Colors.cyan
-                      //                               : Colors.black,
-                      //                         ),
-                      //                       ),
-                      //                     ],
-                      //                   ),
-                      //                   circularStrokeCap:
-                      //                       CircularStrokeCap.butt,
-                      //                   progressColor: Colors.green,
-                      //                   arcBackgroundColor:
-                      //                       Colors.grey.shade200,
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 1),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Tooltip(
-                            preferBelow: false,
-                            richMessage: WidgetSpan(
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "Quarter 1 Analysis",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Column(
-                                    children: [
-                                      Text("Target : $Q1TargetStr"),
-                                      Text("Achieved : $Q1SalesStr"),
-                                      Text("Difference : $Q1DiffStr"),
-                                      Text("Percentage : $Q1PercentageStr"),
-                                      Text("Monthly Avg. : $Q1AverageStr"),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withValues(alpha: 0.5),
-                                  spreadRadius: 5,
-                                  blurRadius: 7,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                              color: Colors.white,
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(4),
-                              ),
-                            ),
-                            showDuration: const Duration(seconds: 7),
-                            triggerMode: TooltipTriggerMode.tap,
-                            child: Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xff6CCC3F,
-                                    ).withValues(alpha: 0.5),
-                                    border: const Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text(
-                                      "Q1",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Q1PercentageStr != ""
-                                        ? Text(Q1PercentageStr)
-                                        : const Text("      "),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Tooltip(
-                            preferBelow: false,
-                            richMessage: WidgetSpan(
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "Quarter 2 Analysis",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Column(
-                                    children: [
-                                      Text("Target : $Q2TargetStr"),
-                                      Text("Achieved : $Q2SalesStr"),
-                                      Text("Difference : $Q2DiffStr"),
-                                      Text("Percentage : $Q2PercentageStr"),
-                                      Text("Monthly Avg. : $Q2AverageStr"),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withValues(alpha: 0.5),
-                                  spreadRadius: 5,
-                                  blurRadius: 7,
-                                  offset: const Offset(
-                                    0,
-                                    3,
-                                  ), // changes position of shadow
-                                ),
-                              ],
-                              color: Colors.white,
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(4),
-                              ),
-                            ),
-                            triggerMode: TooltipTriggerMode.tap,
-                            child: Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFFF49136,
-                                    ).withValues(alpha: 0.5),
-                                    border: const Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text(
-                                      "Q2",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Q2PercentageStr != ""
-                                        ? Text(Q2PercentageStr)
-                                        : const Text("      "),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Tooltip(
-                            preferBelow: false,
-                            richMessage: WidgetSpan(
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "Quarter 3 Analysis",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Column(
-                                    children: [
-                                      Text("Target : $Q3TargetStr"),
-                                      Text("Achieved : $Q3SalesStr"),
-                                      Text("Difference : $Q3DiffStr"),
-                                      Text("Percentage : $Q3PercentageStr"),
-                                      Text("Monthly Avg. : $Q3AverageStr"),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withValues(alpha: 0.5),
-                                  spreadRadius: 5,
-                                  blurRadius: 7,
-                                  offset: const Offset(
-                                    0,
-                                    3,
-                                  ), // changes position of shadow
-                                ),
-                              ],
-                              color: Colors.white,
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(4),
-                              ),
-                            ),
-                            triggerMode: TooltipTriggerMode.tap,
-                            child: Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFFE92729,
-                                    ).withValues(alpha: 0.5),
-                                    border: const Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text(
-                                      "Q3",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Q3PercentageStr != ""
-                                        ? Text(Q3PercentageStr)
-                                        : const Text("      "),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Tooltip(
-                            preferBelow: false,
-                            richMessage: WidgetSpan(
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "Quarter 4 Analysis",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Column(
-                                    children: [
-                                      Text("Target : $Q4TargetStr"),
-                                      Text("Achieved : $Q4SalesStr"),
-                                      Text("Difference : $Q4DiffStr"),
-                                      Text("Percentage : $Q4PercentageStr"),
-                                      Text("Monthly Avg. : $Q4AverageStr"),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withValues(alpha: 0.5),
-                                  spreadRadius: 5,
-                                  blurRadius: 7,
-                                  offset: const Offset(
-                                    0,
-                                    3,
-                                  ), // changes position of shadow
-                                ),
-                              ],
-                              color: Colors.white,
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(4),
-                              ),
-                            ),
-                            triggerMode: TooltipTriggerMode.tap,
-                            child: Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF6CCC3F,
-                                    ).withValues(alpha: 0.5),
-                                    border: const Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text(
-                                      "Q4",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      right: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      top: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Q4PercentageStr != ""
-                                        ? Text(Q4PercentageStr)
-                                        : const Text("      "),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton(
-                      onSelected: (value) {},
-                      itemBuilder: (BuildContext bc) {
-                        return [
-                          PopupMenuItem(
-                            onTap: () {
-                              setState(() {
-                                generateSalesAnalysisQuarterDataYTDExcel();
-                              });
-                            },
-                            child: const Text("Download Excel"),
-                          ),
-                        ];
-                      },
-                    ),
-                  ],
-                ),
+                buildQuarterAnalysisRow(),
 
                 const SizedBox(height: 10),
                 const Padding(
@@ -7725,6 +6191,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   padding: const EdgeInsets.all(8.0),
                   child: _buildMonthlySalesChart(),
                 ),
+
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
@@ -8264,7 +6731,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     ).then((value) {
       if (value == '1') {
         setState(() {
-          loadDataFuture = removeFilter();
+          removeFilter();
         });
       }
     });
@@ -8324,6 +6791,11 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
                   setState(() {
+                    selectedMonthIndex =
+                        (selectedMonthIndex !=
+                            barTouchResponse.spot!.touchedBarGroupIndex
+                        ? barTouchResponse.spot!.touchedBarGroupIndex
+                        : -1);
                     touchedMonth = monthlySalesList
                         .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
                         .monthName;
@@ -8452,13 +6924,11 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
   Widget _regionalManagerAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
-    double chartWidth = 0.0;
+
     int len = rsmwiseSalesList.rsmwiseData.length;
-    if (rsmwiseSalesList.rsmwiseData.length > 5) {
-      chartWidth = screenWidth + (50 * len);
-    } else {
-      chartWidth = screenWidth;
-    }
+
+    double chartWidth = len > 5 ? screenWidth + (70 * len) + 100 : screenWidth;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -8466,19 +6936,26 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getRsmMaxValue(rsmwiseSalesList),
+            /// SAFE MAX Y
+            maxY: max(1, getRsmMaxValue(rsmwiseSalesList)),
+
             titlesData: FlTitlesData(
               show: true,
+
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
+
               rightTitles: const AxisTitles(
                 sideTitles: SideTitles(showTitles: false),
               ),
+
               topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+
               bottomTitles: AxisTitles(
                 sideTitles: _bottomTitlesRsm,
                 axisNameSize: 20,
               ),
             ),
+
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
@@ -8486,6 +6963,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
+
             borderData: FlBorderData(
               show: true,
               border: Border(
@@ -8493,103 +6971,159 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                 top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
+
             barGroups: _regionalManagerAnalysisChart(
               rsmwiseSalesList.rsmwiseData,
             ),
+
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
+
+              handleBuiltInTouches: true,
+
+              touchExtraThreshold: const EdgeInsets.all(10),
+
+              touchCallback: (event, response) async {
+                if (response == null || response.spot == null) return;
+
+                int index = response.spot!.spot.x.toInt();
+
+                /// SAFETY CHECK
+                if (index < 0 || index >= rsmwiseSalesList.rsmwiseData.length) {
+                  return;
+                }
+
+                /// LONG PRESS → TOOLTIP
+                if (event is FlLongPressStart) {
                   setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedRegionalManager = touchedRegionalManager == ""
-                          ? rsmwiseSalesList
-                                .rsmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .rsmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedState,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                      );
-                    }
+                    tooltipIndex = index;
+
+                    showTooltip = true;
                   });
-                  if (showProductSaleChart != true) {
+
+                  return;
+                }
+
+                /// LONG PRESS END
+                if (event is FlLongPressEnd) {
+                  setState(() {
+                    showTooltip = false;
+                  });
+
+                  return;
+                }
+
+                /// TAP → DRILLDOWN
+                if (event is FlTapUpEvent) {
+                  setState(() {
+                    showTooltip = false;
+
+                    touchedRegionalManager = touchedRegionalManager == ""
+                        ? rsmwiseSalesList.rsmwiseData[index].rsmName
+                        : "";
+
+                    selectedChart = index.toDouble();
+
+                    showDrillDownChart = true;
+
+                    touchedYearGraph = true;
+                  });
+
+                  loadDataWithFilter(
+                    touchedMonthIndex,
+
+                    touchedRegionalManager,
+
+                    touchedSalesManager,
+
+                    touchedSalesRep,
+
+                    touchedState,
+
+                    touchedCustomer,
+
+                    touchedProductGroup,
+
+                    touchedProduct,
+                  );
+
+                  if (!showProductSaleChart) {
                     await Future.delayed(const Duration(milliseconds: 50));
+
                     _scrollDown();
                   }
                 }
               },
+
               touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                fitInsideHorizontally: true,
+
+                fitInsideVertically: true,
+
+                getTooltipColor: (group) => Colors.white,
+
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  if (!showTooltip || tooltipIndex != groupIndex) {
+                    return null;
+                  }
+
+                  final data = rsmwiseSalesList.rsmwiseData[groupIndex];
+
+                  final salesL = data.salesAmount / 100000;
+
+                  final targetL = data.targetAmount / 100000;
+
+                  final diffL = salesL - targetL;
+
+                  final percent = data.targetAmount == 0
+                      ? "0%"
+                      : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
+
                   return BarTooltipItem(
-                    '${rsmwiseSalesList.rsmwiseData[grpIndex].rsmName}\n',
+                    '${data.rsmName}\n',
+
                     const TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
-                    children: <TextSpan>[
+
+                    children: [
                       TextSpan(
-                        text:
-                            "Achievement : ${(rsmwiseSalesList.rsmwiseData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
+                        text: "Achievement : ${salesL.toStringAsFixed(2)} L\n",
                         style: const TextStyle(
-                          color: Colors.black,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+
                       TextSpan(
-                        text:
-                            "Target : ${(rsmwiseSalesList.rsmwiseData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                        text: "Target : ${targetL.toStringAsFixed(2)} L\n",
                         style: const TextStyle(
-                          color: Colors.black,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+
                       TextSpan(
-                        text:
-                            "Difference : ${((rsmwiseSalesList.rsmwiseData[grpIndex].salesAmount - rsmwiseSalesList.rsmwiseData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                        text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
                         style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+
                       TextSpan(
-                        text:
-                            "Percentage : ${((rsmwiseSalesList.rsmwiseData[grpIndex].salesAmount / rsmwiseSalesList.rsmwiseData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                        text: "Percentage : $percent",
                         style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
-                    textAlign: TextAlign.start,
                   );
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -8599,142 +7133,178 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
   Widget _salesManagerAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
-    double chartWidth = 0.0;
     int len = asmwiseSalesList.asmwiseData.length;
-    if (asmwiseSalesList.asmwiseData.length > 5) {
-      chartWidth = screenWidth + (50 * len);
-    } else {
-      chartWidth = screenWidth;
-    }
+    double chartWidth = len > 5
+        ? screenWidth + (70.0 * len) + 100
+        : screenWidth;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: GestureDetector(
-          onTapDown: (details) {
-            setState(() {
-              touchedSalesManager = touchedSalesManager == ""
-                  ? asmwiseSalesList
-                        .asmwiseData[determineGrpIndex(
-                          details.localPosition,
-                          asmwiseSalesList.asmwiseData,
-                          chartWidth,
-                        )]
-                        .asmName
-                  : "";
-              showDrillDownChart = true;
-              loadDataWithFilter(
-                touchedMonthIndex,
-                touchedRegionalManager,
-                touchedSalesManager,
-                touchedSalesRep,
-                touchedState,
-                touchedCustomer,
-                touchedProductGroup,
-                touchedProduct,
-              );
-            });
-          },
-          child: BarChart(
-            BarChartData(
-              maxY: getAsmMaxValue(asmwiseSalesList),
-              titlesData: FlTitlesData(
-                show: true,
-                leftTitles: AxisTitles(
-                  sideTitles: _leftTitles,
-                  axisNameSize: 14,
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-                bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesAsm,
-                  axisNameSize: 20,
-                ),
+        child: BarChart(
+          BarChartData(
+            /// SAFE MAX Y
+            maxY: max(1, getAsmMaxValue(asmwiseSalesList)),
+            titlesData: FlTitlesData(
+              show: true,
+              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
               ),
-              gridData: FlGridData(
-                show: true,
-                checkToShowHorizontalLine: (value) => value % 10 == 0,
-                getDrawingHorizontalLine: (value) =>
-                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-                drawVerticalLine: false,
+
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+
+              bottomTitles: AxisTitles(
+                sideTitles: _bottomTitlesAsm,
+                axisNameSize: 20,
               ),
-              borderData: FlBorderData(
-                show: true,
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                ),
+            ),
+
+            gridData: FlGridData(
+              show: true,
+              checkToShowHorizontalLine: (value) => value % 10 == 0,
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+              drawVerticalLine: false,
+            ),
+
+            borderData: FlBorderData(
+              show: true,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
-              barGroups: _salesManagerAnalysisChart(
-                asmwiseSalesList.asmwiseData,
-              ),
-              barTouchData: BarTouchData(
-                allowTouchBarBackDraw: true,
-                touchTooltipData: BarTouchTooltipData(
-                  maxContentWidth: 200,
-                  tooltipBorder: const BorderSide(
-                    width: 4.0,
-                    color: Colors.black12,
-                    style: BorderStyle.none,
-                  ),
-                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                    return BarTooltipItem(
-                      '${asmwiseSalesList.asmwiseData[grpIndex].asmName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+            ),
+
+            barGroups: _salesManagerAnalysisChart(asmwiseSalesList.asmwiseData),
+
+            barTouchData: BarTouchData(
+              allowTouchBarBackDraw: true,
+              handleBuiltInTouches: true,
+              touchExtraThreshold: const EdgeInsets.all(10),
+
+              touchCallback: (event, response) async {
+                if (response == null || response.spot == null) return;
+
+                int index = response.spot!.spot.x.toInt();
+
+                /// SAFETY CHECK
+                if (index < 0 || index >= asmwiseSalesList.asmwiseData.length) {
+                  return;
+                }
+
+                /// LONG PRESS → TOOLTIP
+                if (event is FlLongPressStart) {
+                  setState(() {
+                    tooltipIndex = index;
+
+                    showTooltip = true;
+                  });
+
+                  return;
+                }
+
+                /// LONG PRESS END
+                if (event is FlLongPressEnd) {
+                  setState(() {
+                    showTooltip = false;
+                  });
+
+                  return;
+                }
+
+                /// TAP → DRILLDOWN
+                if (event is FlTapUpEvent) {
+                  setState(() {
+                    showTooltip = false;
+                    touchedSalesManager = touchedSalesManager == ""
+                        ? asmwiseSalesList.asmwiseData[index].asmName
+                        : "";
+                    selectedChart = index.toDouble();
+                    showDrillDownChart = true;
+                    touchedYearGraph = true;
+                  });
+
+                  loadDataWithFilter(
+                    touchedMonthIndex,
+                    touchedRegionalManager,
+                    touchedSalesManager,
+                    touchedSalesRep,
+                    touchedState,
+                    touchedCustomer,
+                    touchedProductGroup,
+                    touchedProduct,
+                  );
+
+                  if (!showProductSaleChart) {
+                    await Future.delayed(const Duration(milliseconds: 50));
+
+                    _scrollDown();
+                  }
+                }
+              },
+
+              touchTooltipData: BarTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (group) => Colors.white,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  if (!showTooltip || tooltipIndex != groupIndex) {
+                    return null;
+                  }
+                  final data = asmwiseSalesList.asmwiseData[groupIndex];
+                  final salesL = data.salesAmount / 100000;
+                  final targetL = data.targetAmount / 100000;
+                  final diffL = salesL - targetL;
+                  final percent = data.targetAmount == 0
+                      ? "0%"
+                      : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
+
+                  return BarTooltipItem(
+                    '${data.asmName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+
+                    children: [
+                      TextSpan(
+                        text: "Achievement : ${salesL.toStringAsFixed(2)} L\n",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              "Achievement : ${(asmwiseSalesList.asmwiseData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+
+                      TextSpan(
+                        text: "Target : ${targetL.toStringAsFixed(2)} L\n",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "Target : ${(asmwiseSalesList.asmwiseData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+
+                      TextSpan(
+                        text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "Difference : ${((asmwiseSalesList.asmwiseData[grpIndex].salesAmount - asmwiseSalesList.asmwiseData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+
+                      TextSpan(
+                        text: "Percentage : $percent",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "Percentage : ${((asmwiseSalesList.asmwiseData[grpIndex].salesAmount / asmwiseSalesList.asmwiseData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start,
-                    );
-                  },
-                  getTooltipColor: (group) => Colors.white,
-                  fitInsideVertically: true,
-                  fitInsideHorizontally: true,
-                ),
-                handleBuiltInTouches: true,
-                touchExtraThreshold: const EdgeInsets.all(10),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -8748,7 +7318,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     double chartWidth = 0.0;
     int len = tsmwiseSalesList.tsmwiseData.length;
     if (tsmwiseSalesList.tsmwiseData.length > 5) {
-      chartWidth = screenWidth + (50 * len);
+      chartWidth = screenWidth + (70 * len) + 100;
     } else {
       chartWidth = screenWidth;
     }
@@ -8759,7 +7329,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getTsmMaxValue(tsmwiseSalesList),
+            maxY: max(1, getTsmMaxValue(tsmwiseSalesList)),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -8789,31 +7359,54 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
             barGroups: _salesPersonAnalysisChart(tsmwiseSalesList.tsmwiseData),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
+              handleBuiltInTouches: true,
+              touchExtraThreshold: const EdgeInsets.all(10),
+              touchCallback: (event, response) async {
+                if (response == null || response.spot == null) return;
+                int index = response.spot!.spot.x.toInt();
+                if (index < 0 || index >= tsmwiseSalesList.tsmwiseData.length) {
+                  return;
+                }
+
+                /// LONG PRESS → Tooltip
+                if (event is FlLongPressStart) {
                   setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedSalesRep = touchedSalesRep == ""
-                          ? tsmwiseSalesList
-                                .tsmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .tsmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedState,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                      );
-                      touchedYearGraph = true;
-                    }
+                    tooltipIndex = index;
+                    showTooltip = true;
                   });
+                  return;
+                }
+
+                /// LONG PRESS END → Hide tooltip
+                if (event is FlLongPressEnd) {
+                  setState(() {
+                    showTooltip = false;
+                  });
+                  return;
+                }
+
+                /// TAP → Drilldown
+                if (event is FlTapUpEvent) {
+                  setState(() {
+                    showTooltip = false;
+                    touchedSalesRep = touchedSalesRep == ""
+                        ? tsmwiseSalesList.tsmwiseData[index].tsmName
+                        : "";
+                    selectedChart = index.toDouble();
+                    showDrillDownChart = true;
+                    touchedYearGraph = true;
+                  });
+
+                  loadDataWithFilter(
+                    touchedMonthIndex,
+                    touchedRegionalManager,
+                    touchedSalesManager,
+                    touchedSalesRep,
+                    touchedState,
+                    touchedCustomer,
+                    touchedProductGroup,
+                    touchedProduct,
+                  );
                   if (showProductSaleChart != true) {
                     await Future.delayed(const Duration(milliseconds: 50));
                     _scrollDown();
@@ -8821,42 +7414,24 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                 }
               },
               touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (group) => Colors.white,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  if (!showTooltip || tooltipIndex != groupIndex) {
+                    return null;
+                  }
                   return BarTooltipItem(
-                    '${tsmwiseSalesList.tsmwiseData[grpIndex].tsmName}\n',
+                    '${tsmwiseSalesList.tsmwiseData[groupIndex].tsmName}\n',
                     const TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
-                    children: <TextSpan>[
+                    children: [
                       TextSpan(
                         text:
-                            "Achievement : ${(tsmwiseSalesList.tsmwiseData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Target : ${(tsmwiseSalesList.tsmwiseData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((tsmwiseSalesList.tsmwiseData[grpIndex].salesAmount - tsmwiseSalesList.tsmwiseData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                            "Achievement : ${(tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -8865,7 +7440,25 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                       ),
                       TextSpan(
                         text:
-                            "Percentage : ${((tsmwiseSalesList.tsmwiseData[grpIndex].salesAmount / tsmwiseSalesList.tsmwiseData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                            "Target : ${(tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            "Difference : ${((tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount - tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            "Percentage : ${tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount == 0 ? "0%" : "${((tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount / tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount) * 100).toStringAsFixed(0)}%"}",
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -8873,15 +7466,9 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                         ),
                       ),
                     ],
-                    textAlign: TextAlign.start,
                   );
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -9421,7 +8008,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                     .toInt()]
                                 .productCode
                           : "";
-                      // _loadMonthlyCustomerWiseSalesBarChartData(
                       loadDataWithFilter(
                         touchedMonthIndex,
                         touchedRegionalManager,
@@ -9619,36 +8205,9 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                               Expanded(
                                 child:
                                     selectedCategoryIndex ==
-                                        categories.length -
-                                            1 // "Date" index
+                                        categories.length - 1
                                     ? Column(
                                         children: [
-                                          // ListTile(
-                                          //   title: const Text("From Date"),
-                                          //   subtitle: Text(fromDateFilter !=
-                                          //           null
-                                          //       ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
-                                          //       : formatDateString(
-                                          //           fiscalYearStartDate!)),
-                                          //   trailing: const Icon(
-                                          //       Icons.calendar_today),
-                                          //   onTap: () async {
-                                          //     final picked =
-                                          //         await showDatePicker(
-                                          //       context: context,
-                                          //       initialDate: fromDateFilter ??
-                                          //           DateTime.now(),
-                                          //       firstDate: fiscalYearStartDate!,
-                                          //       lastDate: currentDate!,
-                                          //     );
-                                          //     if (picked != null) {
-                                          //       setState(() {
-                                          //         fromDateFilter = picked;
-                                          //         dateFilterFlag = true;
-                                          //       });
-                                          //     }
-                                          //   },
-                                          // ),
                                           ListTile(
                                             title: const Text("To Date"),
                                             subtitle: Text(
@@ -9842,6 +8401,202 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildLazyLoadIndicator() {
+    if (!isLazyLoading && animatedProgress == 0.0) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        children: [
+          Center(
+            child: SizedBox(
+              width: 220, // FIXED, CLEAN, DASHBOARD-SAFE
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: animatedProgress),
+                duration: const Duration(milliseconds: 450),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) {
+                  return LinearProgressIndicator(
+                    value: value,
+                    minHeight: 6, // thinner looks better
+                    backgroundColor: Colors.grey.shade300,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.blue,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isLazyLoading
+                ? "Loaded ${loadedBatchCount * 5000} records…"
+                : "All data loaded",
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildQuarterAnalysisRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        /// Quarter boxes take remaining width
+        Expanded(
+          child: Align(
+            alignment: Alignment.center,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                children: [
+                  const SizedBox(width: 6),
+
+                  quarterBox(
+                    "Q1",
+                    Q1PercentageStr,
+                    const Color(0xff6CCC3F),
+                    "Quarter 1 Analysis",
+                    Q1TargetStr,
+                    Q1SalesStr,
+                    Q1DiffStr,
+                    Q1PercentageStr,
+                    Q1AverageStr,
+                  ),
+
+                  quarterBox(
+                    "Q2",
+                    Q2PercentageStr,
+                    const Color(0xFFF49136),
+                    "Quarter 2 Analysis",
+                    Q2TargetStr,
+                    Q2SalesStr,
+                    Q2DiffStr,
+                    Q2PercentageStr,
+                    Q2AverageStr,
+                  ),
+
+                  quarterBox(
+                    "Q3",
+                    Q3PercentageStr,
+                    const Color(0xFFE92729),
+                    "Quarter 3 Analysis",
+                    Q3TargetStr,
+                    Q3SalesStr,
+                    Q3DiffStr,
+                    Q3PercentageStr,
+                    Q3AverageStr,
+                  ),
+
+                  quarterBox(
+                    "Q4",
+                    Q4PercentageStr,
+                    const Color(0xff6CCC3F),
+                    "Quarter 4 Analysis",
+                    Q4TargetStr,
+                    Q4SalesStr,
+                    Q4DiffStr,
+                    Q4PercentageStr,
+                    Q4AverageStr,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        /// Menu keeps natural width
+        PopupMenuButton(
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              onTap: () {
+                generateSalesAnalysisQuarterDataYTDExcel();
+              },
+              child: const Text("Download Excel"),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget quarterBox(
+    String quarter,
+    String percentage,
+    Color color,
+    String title,
+    String target,
+    String achieved,
+    String diff,
+    String percent,
+    String avg,
+  ) {
+    return Tooltip(
+      triggerMode: TooltipTriggerMode.longPress,
+      preferBelow: false,
+      richMessage: WidgetSpan(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+
+            Text("Target : ${target.isEmpty ? "-" : target}"),
+            Text("Achieved : ${achieved.isEmpty ? "-" : achieved}"),
+            Text("Difference : ${diff.isEmpty ? "-" : diff}"),
+            Text("Percentage : ${percent.isEmpty ? "-" : percent}"),
+            Text("Monthly Avg. : ${avg.isEmpty ? "-" : avg}"),
+          ],
+        ),
+      ),
+
+      child: Row(
+        children: [
+          /// Q BOX
+          Container(
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.5),
+              border: const Border(
+                left: BorderSide(color: Colors.black),
+                top: BorderSide(color: Colors.black),
+                bottom: BorderSide(color: Colors.black),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              quarter,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+
+          /// % BOX
+          Container(
+            height: 38,
+            alignment: Alignment.center,
+            // constraints: const BoxConstraints(minWidth: 45),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: Colors.black),
+                top: BorderSide(color: Colors.black),
+                bottom: BorderSide(color: Colors.black),
+                right: quarter == "Q4"
+                    ? BorderSide(color: Colors.black)
+                    : BorderSide.none,
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Text(percentage.isEmpty ? "-" : percentage),
+          ),
+        ],
+      ),
     );
   }
 }

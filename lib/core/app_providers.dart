@@ -12,7 +12,7 @@ import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventoryAgeing
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventoryMovementAnalysis.dart';
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventorySlowDeadAnalysis.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/agingReport.dart';
-import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpowerCostingReport.dart';
+// import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpowerCostingReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/minimumStockVsActualStock.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/salesVsProduction.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/stockStatement.dart';
@@ -44,9 +44,13 @@ import '../pages/dashboardPages/financesDashboard/monthlyCollectionReport.dart';
 import '../pages/dashboardPages/financesDashboard/productMarginReport.dart';
 import '../pages/dashboardPages/financesDashboard/vendorPayment.dart';
 import '../pages/dashboardPages/inventoryDashboardBI/inventoryAnalysis.dart';
+import '../pages/dashboardPages/productionDashboardBI/MISreports/carriageInwardReport.dart';
+import '../pages/dashboardPages/productionDashboardBI/MISreports/carriageOutwardReport.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/cmsCostingReport.dart';
+import '../pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/purchasePrice.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/salesVsDelivery.dart';
+import '../pages/dashboardPages/productionDashboardBI/MISreports/sampleDataDetailsPage.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/scrapReport.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/topProducts.dart';
 import '../pages/dashboardPages/purchaseDashboard/paymentAnalysis.dart';
@@ -204,10 +208,10 @@ class AppProviders {
     ChangeNotifierProvider(
       create: (_) => SchedulerApprovalProviderForHomePending(),
     ),
-    ChangeNotifierProvider(create: (_) => ManpowerCostingProductionProvider()),
-    ChangeNotifierProvider(create: (_) => ManpowerCostingRCPProvider()),
-    ChangeNotifierProvider(create: (_) => ManpowerCostingCTCProvider()),
-    ChangeNotifierProvider(create: (_) => ManpowerCostingTargetProvider()),
+    // ChangeNotifierProvider(create: (_) => ManpowerCostingProductionProvider()),
+    // ChangeNotifierProvider(create: (_) => ManpowerCostingRCPProvider()),
+    // ChangeNotifierProvider(create: (_) => ManpowerCostingCTCProvider()),
+    // ChangeNotifierProvider(create: (_) => ManpowerCostingTargetProvider()),
     ChangeNotifierProvider(create: (_) => StockStatusListMISProvider()),
     ChangeNotifierProvider(create: (_) => StockStatementMISProvider()),
     ChangeNotifierProvider(create: (_) => SummOfRawMaterialMISProvider()),
@@ -222,5 +226,10 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => CMSDetailsMISProvider()),
     ChangeNotifierProvider(create: (_) => ScrapDetailProvider()),
     ChangeNotifierProvider(create: (_) => ComplaintDetailsMISProvider()),
+    ChangeNotifierProvider(create: (_) => SampleDetailsMISProvider()),
+    ChangeNotifierProvider(create: (_) => MonthlyProductionMISProvider()),
+    ChangeNotifierProvider(create: (_) => CarriageInwardMISProvider()),
+    ChangeNotifierProvider(create: (_) => CarriageOutwardMISProvider()),
+    ChangeNotifierProvider(create: (_) => SalesOrderListHomePageProvider()),
   ];
 }

@@ -1,11 +1,17 @@
 // ignore_for_file: file_names, use_build_context_synchronously
 import 'dart:convert';
 import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:optima/api_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_other.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+
+import 'package:optima/excel_helper.dart';
+import 'package:excel/excel.dart' as xl;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 class AttendanceRow {
   final String plant;
@@ -361,6 +367,65 @@ class _AttendancePageState extends State<AttendancePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
+  Future<void> _downloadExcel() async {
+    if (_rows.isEmpty) {
+      _showSnack("No data available to export.");
+      return;
+    }
+
+    final excel = xl.Excel.createExcel();
+    final sheet = excel['Attendance'];
+
+    /// Caption (Plant + Date Period)
+    String caption =
+        "${_selectedPlant ?? ''} (${_format(_from!)} to ${_format(_to!)})";
+
+    /// Caption Row
+    sheet.appendRow(toCellRow([caption]));
+
+    /// Empty Row
+    sheet.appendRow([]);
+
+    /// Header Row
+    sheet.appendRow(
+      toCellRow(['Date', 'Target', 'Onroll', 'Present', 'Absent %']),
+    );
+
+    /// Data Rows
+    for (var r in _rows) {
+      sheet.appendRow(
+        toCellRow([
+          r.formattedDate,
+          r.targetController.text,
+          r.onrollController.text,
+          r.presentController.text,
+          r.computeAbsentPercent(),
+        ]),
+      );
+    }
+
+    /// ===== DOWNLOAD / SAVE FILE =====
+
+    if (kIsWeb) {
+      final excelBytes = excel.encode()!;
+      saveAndOpenExcel('attendance_report.xlsx', excelBytes);
+    } else {
+      String storageDir = await getStorageDirectory();
+      final file = File('$storageDir/attendance_report.xlsx');
+      await file.writeAsBytes(excel.encode()!);
+      OpenFile.open(file.path);
+    }
+  }
+
+  Future<String> getStorageDirectory() async {
+    String? externalDir = (await getExternalStorageDirectory())?.path;
+    if (externalDir != null) {
+      return externalDir;
+    } else {
+      return (await getApplicationDocumentsDirectory()).path;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -445,32 +510,63 @@ class _AttendancePageState extends State<AttendancePage> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: SizedBox(
-                  width: double.infinity,
                   height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff2ca9df),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5.0),
+                  child: Row(
+                    children: [
+                      /// SAVE BUTTON
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff2ca9df),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                          ),
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  setState(() => isSaving = true);
+                                  await _saveAttendance();
+                                  setState(() => isSaving = false);
+                                },
+                          child: isSaving
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text(
+                                  "Save",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                        ),
                       ),
-                    ),
-                    onPressed: isSaving
-                        ? null
-                        : () async {
-                            setState(() => isSaving = true);
-                            await _saveAttendance();
-                            setState(() => isSaving = false);
-                          },
-                    child: isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            "Save",
+
+                      const SizedBox(width: 12),
+
+                      /// DOWNLOAD BUTTON
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff2ca9df),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                          ),
+                          onPressed: _downloadExcel,
+                          child: const Text(
+                            "Download Excel",
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
                           ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

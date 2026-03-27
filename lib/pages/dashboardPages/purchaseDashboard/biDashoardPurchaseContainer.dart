@@ -154,13 +154,9 @@ class _PurchaseBIState extends State<PurchaseBI> {
         backgroundColor: Colors.white,
         leading: Builder(
           builder: (BuildContext context) {
-            return RotatedBox(
-              quarterTurns: 1,
+            return SizedBox(
               child: IconButton(
-                icon: const Icon(
-                  Icons.bar_chart_rounded,
-                  color: Color(0xFF454545),
-                ),
+                icon: const Icon(Icons.menu, color: Color(0xFF454545)),
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
             );

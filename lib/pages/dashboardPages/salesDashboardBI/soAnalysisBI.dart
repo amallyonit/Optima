@@ -186,6 +186,16 @@ List<String> selectedSalesData = [];
 DateTime? fromDateFilter;
 DateTime? toDateFilter;
 bool dateFilterFlag = false;
+Map<String, DateTime> _dateCache = {};
+
+DateTime getParsedDate(String dateStr) {
+  if (_dateCache.containsKey(dateStr)) {
+    return _dateCache[dateStr]!;
+  }
+  final parsed = DateFormat('dd/MM/yyyy').parse(dateStr);
+  _dateCache[dateStr] = parsed;
+  return parsed;
+}
 
 class SalesOrderListSoAnalysisBIProvider with ChangeNotifier {
   List<SODetailsList> _soList = [];
@@ -673,84 +683,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
   }
 
-  List<SODetailsList> filterSalesOrderListOld(
-    List<SODetailsList> soList, {
-    String? salesManager,
-    String? salesRep,
-    String? stateName,
-    String? customerCode,
-    String? productGroupCode,
-    String? productCode,
-    String? agingCategory,
-  }) {
-    double dueDays = 0, orderValue = 0;
-    if (agingCategory == "0-30") {
-      dueDays = 30;
-    } else if (agingCategory == "31-60") {
-      dueDays = 60;
-    } else if (agingCategory == "61-90") {
-      dueDays = 90;
-    } else if (agingCategory == "90+") {
-      dueDays = 91;
-    }
-    return soList.where((sale) {
-      if (agingCategory != null && agingCategory.isNotEmpty) {
-        orderValue = double.tryParse(sale.orderValue) ?? 0;
-        switch (dueDays) {
-          case 30:
-            if (orderValue > dueDays) {
-              return false;
-            }
-          case 60:
-            if (orderValue > 30 && orderValue <= dueDays) {
-              return false;
-            }
-          case 90:
-            if (orderValue > 60 && orderValue <= dueDays) {
-              return false;
-            }
-          case 91:
-            if (orderValue >= dueDays) {
-              return false;
-            }
-          default:
-            return false;
-        }
-      }
-      if (salesManager != null && salesManager.isNotEmpty) {
-        if (sale.salesManager != salesManager) {
-          return false;
-        }
-      }
-      if (salesRep != null && salesRep.isNotEmpty) {
-        if (sale.salesRep != salesRep) {
-          return false;
-        }
-      }
-      if (stateName != null && stateName.isNotEmpty) {
-        if (sale.customerState != stateName) {
-          return false;
-        }
-      }
-      if (customerCode != null && customerCode.isNotEmpty) {
-        if (sale.customerCode != customerCode) {
-          return false;
-        }
-      }
-      if (productCode != null && productCode.isNotEmpty) {
-        if (sale.productCode != productCode) {
-          return false;
-        }
-      }
-      if (productGroupCode != null && productGroupCode.isNotEmpty) {
-        if (sale.itemSubGroup != productGroupCode) {
-          return false;
-        }
-      }
-      return true;
-    }).toList();
-  }
-
   List<SODetailsList> filterSalesOrderList(
     List<SODetailsList> soList,
     List<Users> userNames, {
@@ -868,9 +800,10 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
   Future<void> _loadSODetails(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000; // Maximum limit to fetch all data
+    int limit = 10000;
     int fetchedCount = 0;
     List<SODetailsList> soDetailList = [];
+
     try {
       do {
         var body = {
@@ -880,60 +813,61 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}CRM_SOList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<SODetailsList> newSODetailDataList =
-                (responseJson['responseData'] as List)
-                    .map((item) => SODetailsList.fromJson(item))
-                    .toList();
+          final json = jsonDecode(response.body);
+          final List list = json['responseData'] ?? [];
 
-            soDetailList.addAll(newSODetailDataList);
-            fetchedCount = newSODetailDataList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
+          final newSalesOrder = list
+              .map((e) => SODetailsList.fromJson(e))
+              .toList();
+
+          soDetailList.addAll(newSalesOrder);
+          fetchedCount = newSalesOrder.length;
+          index++;
         } else {
           fetchedCount = 0;
         }
       } while (fetchedCount == limit);
 
+      final userLevelInt = int.tryParse(UserLevel) ?? 0;
+
       setState(() {
         context.read<SalesOrderListSoAnalysisBIProvider>().updateSalesOrder(
           soDetailList,
         );
+
         List<String> menuNames = usersList
             .where((element) => element.parentMenuId == 0)
             .map((user) => user.menuName)
             .toList();
+
         menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
+
+        if (userLevelInt == 5) {
           SODetailList = soDetailList.toList();
-        } else if (int.parse(UserLevel) == 4) {
+        } else if (userLevelInt == 4) {
           SODetailList = soDetailList
-              .where((element) => element.regionalManager == UserName)
+              .where((e) => e.regionalManager == UserName)
               .toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
+        } else if (userLevelInt >= 2 && userLevelInt <= 3) {
           SODetailList = soDetailList
-              .where((element) => menuNames.contains(element.salesManager))
+              .where((e) => menuNames.contains(e.salesManager))
               .toList();
         } else {
           SODetailList = soDetailList
-              .where((element) => element.salesRep == UserName)
+              .where((e) => e.salesRep == UserName)
               .toList();
         }
+
         if (listOfString.isEmpty) {
           listOfString = List<String>.from(
             SODetailList.map((e) => e.soStatus).toSet(),
@@ -941,223 +875,134 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         }
       });
 
-      List<SODetailsList> filteredList = [];
-
+      // 🔴 FILTERING (unchanged logic)
       List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+          .where((e) => e.value)
+          .map((e) => e.key)
           .toList();
 
       List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+          .where((e) => e.value)
+          .map((e) => e.key)
           .toList();
 
       List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+          .where((e) => e.value)
+          .map((e) => e.key)
           .toList();
 
       List<String> trueStatusOptions = (allCategoriesState['Status'] ?? {})
           .entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+          .where((e) => e.value)
+          .map((e) => e.key)
           .toList();
 
-      if (trueRSMOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueRSMOptions.contains(person.regionalManager),
-        ).toList();
+      SODetailList = SODetailList.where((person) {
+        return (trueRSMOptions.isEmpty ||
+                trueRSMOptions.contains(person.regionalManager)) &&
+            (trueASMOptions.isEmpty ||
+                trueASMOptions.contains(person.salesManager)) &&
+            (trueTSMOptions.isEmpty ||
+                trueTSMOptions.contains(person.salesRep)) &&
+            (trueStatusOptions.isEmpty ||
+                trueStatusOptions.contains(person.soStatus));
+      }).toList();
 
-        SODetailList = filteredList;
+      // 🟢 SINGLE LOOP OPTIMIZATION STARTS HERE
+
+      double lastMonthTargetSum = 0;
+      double currentMonthTargetSum = 0;
+      double ytdTargetSum = 0;
+
+      double lastMonthSalesSum = 0;
+      double currentMonthSalesSum = 0;
+      double ytdSalesSum = 0;
+
+      var lastTargetRange = getLastThreeMonthsRange(lastMonthFromDate!.month);
+      var currentTargetRange = getLastThreeMonthsRange(
+        currentMonthFromDate!.month,
+      );
+
+      DateTime lastTargetFrom = lastTargetRange['fromDate']!;
+      DateTime lastTargetTo = lastTargetRange['endDate']!;
+
+      DateTime currentTargetFrom = currentTargetRange['fromDate']!;
+      DateTime currentTargetTo = currentTargetRange['endDate']!;
+
+      DateTime currentMonthEnd = addMonth(
+        currentMonthFromDate!,
+        1,
+      ).add(const Duration(days: -1));
+
+      for (var target in SODetailList) {
+        final date = getParsedDate(target.soDate);
+        final value = double.tryParse(target.orderValue) ?? 0;
+
+        // Last Month Target
+        if (date.isAtLeast(lastTargetFrom) && date.isAtMost(lastTargetTo)) {
+          lastMonthTargetSum += value;
+        }
+
+        // Current Month Target
+        if (date.isAtLeast(currentTargetFrom) &&
+            date.isAtMost(currentTargetTo)) {
+          currentMonthTargetSum += value;
+        }
+
+        // YTD Target
+        if (date.isAtLeast(prevFiscalYearStartDate!) &&
+            date.isAtMost(prevFiscalYearEndDate!)) {
+          ytdTargetSum += value;
+        }
+
+        // Last Month Sales
+        if (date.isAtLeast(lastMonthFromDate!) &&
+            date.isAtMost(lastMonthToDate!)) {
+          lastMonthSalesSum += value;
+        }
+
+        // Current Month Sales
+        if (date.isAtLeast(currentMonthFromDate!) &&
+            date.isAtMost(currentMonthEnd)) {
+          currentMonthSalesSum += value;
+        }
+
+        // YTD Sales
+        if (date.isAtLeast(fiscalYearStartDate!) &&
+            date.isAtMost(currentDate!)) {
+          ytdSalesSum += value;
+        }
       }
 
-      if (trueASMOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueASMOptions.contains(person.salesManager),
-        ).toList();
-        SODetailList = filteredList;
-      }
+      // 🟢 FINAL ASSIGNMENTS
 
-      if (trueTSMOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueTSMOptions.contains(person.salesRep),
-        ).toList();
-        SODetailList = filteredList;
-      }
-
-      if (trueStatusOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueTSMOptions.contains(person.soStatus),
-        ).toList();
-        SODetailList = filteredList;
-      }
-
-      double monthlyTarget = 0;
-      DateTime? prevThreethFromDate;
-      DateTime? prevThreeMthToDate;
-      // prevThreethFromDate = addMonth(lastMonthFromDate!, -3);
-      // prevThreeMthToDate =
-      //     addMonth(prevThreethFromDate, 3).add(const Duration(days: -1));
-      var dateRange = getLastThreeMonthsRange(lastMonthFromDate!.month);
-      prevThreethFromDate = dateRange['fromDate']!;
-      prevThreeMthToDate = dateRange['endDate']!;
-      var lastMthSalesTarget = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-        return invoiceDate.isAtLeast(prevThreethFromDate!) &&
-            invoiceDate.isAtMost(prevThreeMthToDate!);
-      });
-      for (var target in lastMthSalesTarget) {
-        monthlyTarget += double.tryParse(target.orderValue) ?? 0;
-      }
-      LastMonthTarget = (monthlyTarget / 3);
+      LastMonthTarget = lastMonthTargetSum / 3;
       LastMonthTargetStr = "${(LastMonthTarget / 100000).toStringAsFixed(2)} L";
-      monthlyTarget = 0;
 
-      // prevThreethFromDate = addMonth(currentMonthFromDate!, -3);
-      // prevThreeMthToDate =
-      //     addMonth(prevThreethFromDate, 3).add(const Duration(days: -1));
-      dateRange = getLastThreeMonthsRange(currentMonthFromDate!.month);
-      prevThreethFromDate = dateRange['fromDate']!;
-      prevThreeMthToDate = dateRange['endDate']!;
-      var curMthSalesTarget = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-        return invoiceDate.isAtLeast(prevThreethFromDate!) &&
-            invoiceDate.isAtMost(prevThreeMthToDate!);
-      });
-      for (var target in curMthSalesTarget) {
-        monthlyTarget += double.tryParse(target.orderValue) ?? 0;
-      }
-      CurrentMonthTarget = (monthlyTarget / 3);
+      CurrentMonthTarget = currentMonthTargetSum / 3;
       CurrentMonthTargetStr =
           "${(CurrentMonthTarget / 100000).toStringAsFixed(2)} L";
-      monthlyTarget = 0;
 
-      var ytdSalesTarget = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-        return invoiceDate.isAtLeast(prevFiscalYearStartDate!) &&
-            invoiceDate.isAtMost(prevFiscalYearEndDate!);
-      });
-      for (var target in ytdSalesTarget) {
-        monthlyTarget += double.tryParse(target.orderValue) ?? 0;
-      }
       YtdTarget = double.parse(
-        ((monthlyTarget / 12) *
+        ((ytdTargetSum / 12) *
                 (currentDate!.month <= 12 && currentDate!.month >= 4
                     ? currentDate!.month - 3
                     : currentDate!.month + 9))
             .toStringAsFixed(2),
       );
       YtdTargetStr = "${(YtdTarget / 100000).toStringAsFixed(2)} L";
-      monthlyTarget = 0;
 
-      double sum = 0;
-      var lastMonthSales = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-
-        return invoiceDate.isAtLeast(lastMonthFromDate!) &&
-            invoiceDate.isAtMost(lastMonthToDate!);
-      });
-
-      sum = 0;
-      for (var target in lastMonthSales.toList()) {
-        sum += double.tryParse(target.orderValue) ?? 0;
-      }
-      LastMonthSales = sum;
+      LastMonthSales = lastMonthSalesSum;
       LastMonthSalesStr = "${(LastMonthSales / 100000).toStringAsFixed(2)} L";
-      if (LastMonthSales == 0) {
-        LastMonthPercentage = 0;
-      } else {
-        if (LastMonthTarget != 0) {
-          LastMonthPercentage =
-              double.tryParse(
-                ((LastMonthSales /
-                            (LastMonthTarget == 0
-                                ? LastMonthSales
-                                : LastMonthTarget)) *
-                        100)
-                    .toStringAsFixed(2),
-              )?.ceil() ??
-              0;
-        } else {
-          LastMonthPercentage = 0;
-        }
-      }
-      LastMonthPercentageStr = "${LastMonthPercentage.toString()} %";
-      if (LastMonthPercentage > 100) {
-        LastMonthPercentage = 100;
-      }
 
-      var curMonthSales = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-        return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-            invoiceDate.isAtMost(
-              addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1)),
-            );
-      });
-
-      sum = 0;
-      for (var target in curMonthSales.toList()) {
-        sum += double.tryParse(target.orderValue) ?? 0;
-      }
-      CurrentMonthSales = sum;
+      CurrentMonthSales = currentMonthSalesSum;
       CurrentMonthSalesStr =
           "${(CurrentMonthSales / 100000).toStringAsFixed(2)} L";
-      if (CurrentMonthSales == 0) {
-        CurrentMonthSales = 0;
-      } else {
-        if (CurrentMonthTarget != 0) {
-          CurrentMonthPercentage =
-              double.tryParse(
-                ((CurrentMonthSales /
-                            (CurrentMonthTarget == 0
-                                ? CurrentMonthSales
-                                : CurrentMonthTarget)) *
-                        100)
-                    .toStringAsFixed(2),
-              )?.ceil() ??
-              0;
-        } else {
-          CurrentMonthPercentage = 0;
-        }
-      }
 
-      CurrentMonthPercentageStr = "${CurrentMonthPercentage.toString()} %";
-      if (CurrentMonthPercentage > 100) {
-        CurrentMonthPercentage = 100;
-      }
-
-      var ytdSales = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-        return invoiceDate.isAtLeast(fiscalYearStartDate!) &&
-            invoiceDate.isAtMost(currentDate!);
-      });
-
-      sum = 0;
-      for (var target in ytdSales.toList()) {
-        sum += double.tryParse(target.orderValue) ?? 0;
-      }
-      YtdSales = sum;
+      YtdSales = ytdSalesSum;
       YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
-      if (YtdSales == 0) {
-        YtdPercentage = 0;
-      } else {
-        if (YtdTarget != 0) {
-          YtdPercentage =
-              double.tryParse(
-                ((YtdSales / (YtdTarget == 0 ? YtdSales : YtdTarget)) * 100)
-                    .toStringAsFixed(2),
-              )?.ceil() ??
-              0;
-        } else {
-          YtdPercentage = 0;
-        }
-      }
 
-      YtdPercentageStr = "${YtdPercentage.toString()} %";
-      if (YtdPercentage > 100) {
-        YtdPercentage = 100;
-      }
+      await Future.delayed(const Duration(milliseconds: 50));
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -1248,7 +1093,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         prevThreeMthToDate = dateRange['endDate']!;
 
         curMthSalesTarget = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(prevThreethFromDate) &&
               invoiceDate.isAtMost(prevThreeMthToDate);
         });
@@ -1264,7 +1110,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         prevThreethFromDate = dateRange['fromDate']!;
         prevThreeMthToDate = dateRange['endDate']!;
         curMthSalesTarget = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(prevThreethFromDate) &&
               invoiceDate.isAtMost(prevThreeMthToDate);
         });
@@ -1278,7 +1125,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         });
       }
 
-      for (var target in monthlyCollectionList.toList()) {
+      for (var target in monthlyCollectionList) {
         monthlyCollection += double.tryParse(target.orderValue) ?? 0;
       }
 
@@ -1336,7 +1183,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     prevThreeMthToDate = dateRange['endDate']!;
 
     var curMthSalesTarget = SODetailList.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      DateTime invoiceDate = getParsedDate(target.soDate);
       return invoiceDate.isAtLeast(prevThreethFromDate!) &&
           invoiceDate.isAtMost(prevThreeMthToDate!);
     });
@@ -1345,7 +1193,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       monthlySoList = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        DateTime invoiceDate = getParsedDate(target.soDate);
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -1353,7 +1201,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         monthlySoList = SODetailList.where((target) {
-          DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime postingDate = getParsedDate(target.soDate);
           return postingDate.isAtLeast(monthDates['start']!) &&
               postingDate.isAtMost(monthDates['end']!);
         });
@@ -1467,7 +1315,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     prevThreeMthToDate = dateRange['endDate']!;
 
     rsmSalesTargetList = SODetailList.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      DateTime invoiceDate = getParsedDate(target.soDate);
       return invoiceDate.isAtLeast(prevThreethFromDate!) &&
           invoiceDate.isAtMost(prevThreeMthToDate!);
     });
@@ -1476,7 +1325,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       rsmSalesList = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        DateTime invoiceDate = getParsedDate(target.soDate);
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -1484,7 +1333,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         rsmSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -1493,7 +1342,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         rsmSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -1623,7 +1472,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     prevThreeMthToDate = dateRange['endDate']!;
 
     asmSalesTargetList = SODetailList.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      DateTime invoiceDate = getParsedDate(target.soDate);
       return invoiceDate.isAtLeast(prevThreethFromDate!) &&
           invoiceDate.isAtMost(prevThreeMthToDate!);
     });
@@ -1632,7 +1482,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       asmSalesList = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        DateTime invoiceDate = getParsedDate(target.soDate);
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -1640,7 +1491,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         asmSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -1649,7 +1500,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         asmSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -1762,7 +1613,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     var tsmSalesList = const Iterable.empty();
     var tsmSalesTargetList = const Iterable.empty();
     tsmSalesTargetList = SODetailList.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      DateTime invoiceDate = getParsedDate(target.soDate);
       return invoiceDate.isAtLeast(prevThreethFromDate!) &&
           invoiceDate.isAtMost(prevThreeMthToDate!);
     });
@@ -1771,7 +1623,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       tsmSalesList = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        DateTime invoiceDate = getParsedDate(target.soDate);
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -1779,7 +1632,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         tsmSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -1788,7 +1642,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         tsmSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -1889,7 +1744,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     prevThreeMthToDate = dateRange['endDate']!;
 
     var curMthSalesTarget = SODetailList.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      DateTime invoiceDate = getParsedDate(target.soDate);
       return invoiceDate.isAtLeast(prevThreethFromDate!) &&
           invoiceDate.isAtMost(prevThreeMthToDate!);
     });
@@ -1899,7 +1755,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       productSalesList = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        DateTime invoiceDate = getParsedDate(target.soDate);
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -1907,7 +1764,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         productSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -1916,7 +1774,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         productSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2015,7 +1874,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     prevThreeMthToDate = dateRange['endDate']!;
 
     var curMthSalesTarget = SODetailList.where((target) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+      DateTime invoiceDate = getParsedDate(target.soDate);
       return invoiceDate.isAtLeast(prevThreethFromDate!) &&
           invoiceDate.isAtMost(prevThreeMthToDate!);
     });
@@ -2025,7 +1885,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       startDate = currentMonthFromDate!;
       endDate = currentDate!;
       productSalesList = SODetailList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        DateTime invoiceDate = getParsedDate(target.soDate);
         return invoiceDate.isAtLeast(startDate) &&
             invoiceDate.isAtMost(endDate);
       });
@@ -2033,7 +1894,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       if (monthIndex >= 4 && monthIndex <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
         productSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(monthDates['start']!) &&
               invoiceDate.isAtMost(monthDates['end']!);
         });
@@ -2042,7 +1904,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         endDate = DateTime(currentYear, monthIndex + 1, 0);
 
         productSalesList = SODetailList.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+          DateTime invoiceDate = getParsedDate(target.soDate);
           return invoiceDate.isAtLeast(startDate) &&
               invoiceDate.isAtMost(endDate);
         });
@@ -2331,9 +2194,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     setState(() {
-      setState(() {
-        chartDataLoaded = false;
-      });
+      chartDataLoaded = false;
       clearVariables();
       LoadDates();
       allCategoriesState.forEach((category, options) {
@@ -2341,9 +2202,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       });
       allCategoriesState.clear();
       loadDataFuture = loadData("");
-      setState(() {
-        chartDataLoaded = false;
-      });
     });
     chartDataLoaded = true;
   }
@@ -2365,19 +2223,9 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     UserLevel = userLevel;
     showDrillDownChart = true;
     showProductSaleChart = true;
-    await _loadMonthWiseSOAnalysisBarChartData();
-    await _loadCustomerAnalysisBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      customerCode,
-      productGroupCode,
-      productCode,
-      touchedAgingCategory,
-    );
-    if (UserLevel != "1") {
-      await _loadSalesPersonBarChartData(
+    await Future.wait([
+      _loadMonthWiseSOAnalysisBarChartData(),
+      _loadCustomerAnalysisBarChartData(
         monthIndex,
         regionalManager,
         salesManager,
@@ -2386,8 +2234,40 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         productGroupCode,
         productCode,
         touchedAgingCategory,
-      );
-      await _loadSalesManagerBarChartData(
+      ),
+      if (UserLevel != "1") ...[
+        _loadSalesPersonBarChartData(
+          monthIndex,
+          regionalManager,
+          salesManager,
+          salesRep,
+          customerCode,
+          productGroupCode,
+          productCode,
+          touchedAgingCategory,
+        ),
+        _loadSalesManagerBarChartData(
+          monthIndex,
+          regionalManager,
+          salesManager,
+          salesRep,
+          customerCode,
+          productGroupCode,
+          productCode,
+          touchedAgingCategory,
+        ),
+        _loadRegionalManagerBarChartData(
+          monthIndex,
+          regionalManager,
+          salesManager,
+          salesRep,
+          customerCode,
+          productGroupCode,
+          productCode,
+          touchedAgingCategory,
+        ),
+      ],
+      _loadItemGroupWiseSalesBarChartData(
         monthIndex,
         regionalManager,
         salesManager,
@@ -2396,39 +2276,31 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         productGroupCode,
         productCode,
         touchedAgingCategory,
-      );
-    }
-    await _loadItemGroupWiseSalesBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      customerCode,
-      productGroupCode,
-      productCode,
-      touchedAgingCategory,
-    );
-    await _loadItemAnalysisSalesBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      customerCode,
-      productGroupCode,
-      productCode,
-      touchedAgingCategory,
-    );
-    await _loadOpenSOAgingBarChartData(
-      monthIndex,
-      regionalManager,
-      salesManager,
-      salesRep,
-      customerCode,
-      productGroupCode,
-      productCode,
-      touchedAgingCategory,
-    );
-    chartDataLoaded = true;
+      ),
+      _loadItemAnalysisSalesBarChartData(
+        monthIndex,
+        regionalManager,
+        salesManager,
+        salesRep,
+        customerCode,
+        productGroupCode,
+        productCode,
+        touchedAgingCategory,
+      ),
+      _loadOpenSOAgingBarChartData(
+        monthIndex,
+        regionalManager,
+        salesManager,
+        salesRep,
+        customerCode,
+        productGroupCode,
+        productCode,
+        touchedAgingCategory,
+      ),
+    ]);
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> _loadUserList(
@@ -2600,29 +2472,36 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
-    await _loadUserList(
-      userId,
-      userJwtToken,
-      userMailID,
-      int.tryParse(userLevel) ?? 0,
-    );
-    await _loadUserListForFilter(
-      userId,
-      userJwtToken,
-      userMailID,
-      int.tryParse(userLevel) ?? 0,
-    );
+    await Future.wait([
+      _loadUserList(
+        userId,
+        userJwtToken,
+        userMailID,
+        int.tryParse(userLevel) ?? 0,
+      ),
+
+      _loadUserListForFilter(
+        userId,
+        userJwtToken,
+        userMailID,
+        int.tryParse(userLevel) ?? 0,
+      ),
+    ]);
+
     await _loadSODetails(userName, userLevel);
-    await _loadMonthWiseSOAnalysisBarChartData();
-    await _loadCustomerAnalysisBarChartData(0, "", "", "", "", "", "", "");
-    if (UserLevel != "1") {
-      await _loadSalesPersonBarChartData(0, "", "", "", "", "", "", "");
-      await _loadSalesManagerBarChartData(0, "", "", "", "", "", "", "");
-      await _loadRegionalManagerBarChartData(0, "", "", "", "", "", "", "");
-    }
-    await _loadItemGroupWiseSalesBarChartData(0, "", "", "", "", "", "", "");
-    await _loadItemAnalysisSalesBarChartData(0, "", "", "", "", "", "", "");
-    await _loadOpenSOAgingBarChartData(0, "", "", "", "", "", "", "");
+
+    await Future.wait([
+      _loadMonthWiseSOAnalysisBarChartData(),
+      _loadCustomerAnalysisBarChartData(0, "", "", "", "", "", "", ""),
+      if (UserLevel != "1") ...[
+        _loadSalesPersonBarChartData(0, "", "", "", "", "", "", ""),
+        _loadSalesManagerBarChartData(0, "", "", "", "", "", "", ""),
+        _loadRegionalManagerBarChartData(0, "", "", "", "", "", "", ""),
+      ],
+      _loadItemGroupWiseSalesBarChartData(0, "", "", "", "", "", "", ""),
+      _loadItemAnalysisSalesBarChartData(0, "", "", "", "", "", "", ""),
+      _loadOpenSOAgingBarChartData(0, "", "", "", "", "", "", ""),
+    ]);
     setState(() {
       filterOptions = [listOfRSM, listOfASM, listOfTSM, listOfString, []];
 
@@ -2795,17 +2674,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'monthly_sales_report_SO_Analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('monthly_sales_report_SO_Analysis.xlsx', excelBytes);
       } else {
@@ -3023,17 +2891,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'customerwise_sales_report_SO_Analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel(
           'customerwise_sales_report_SO_Analysis.xlsx',
@@ -3236,17 +3093,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'regionalmanager_salesorder_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('regionalmanager_salesorder_report.xlsx', excelBytes);
       } else {
@@ -3427,17 +3273,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'salesmanager_sales_report_SO_Analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel(
           'salesmanager_sales_report_SO_Analysis.xlsx',
@@ -3607,17 +3442,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'salesrep_sales_report_SO_Analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('salesrep_sales_report_SO_Analysis.xlsx', excelBytes);
       } else {
@@ -3782,17 +3606,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'productgroupwise_sales_report_SO_Analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel(
           'productgroupwise_sales_report_SO_Analysis.xlsx',
@@ -3968,17 +3781,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'productwise_sales_report_SO_Analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel(
           'productwise_sales_report_SO_Analysis.xlsx',
@@ -4126,17 +3928,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         sheet.appendRow(toCellRow([itemData.group, itemData.receivableAmount]));
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'openSOAging.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('openSOAging.xlsx', excelBytes);
       } else {
@@ -4252,132 +4043,9 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     }
   }
 
-  // Future<void> _loadYtdSOBarChartData() async {
-  //   List<YTDSalesData> ytdSalesDataList = [];
-  //   String custCode = "";
-  //   String custName = "";
-  //   String itemCode = "";
-  //   String itemName = "";
-  //   String salesManager = "";
-  //   String salesRep = "";
-  //   String itemGroup = "";
-  //   String currency = "";
-  //   double rate = 0;
-  //   double price = 0;
-  //   DateTime startDate;
-  //   DateTime endDate;
-
-  //   List<SODetailsList> tmpSales = [];
-  //   List<SODetailsList> tmpProductSales = [];
-  //   var ytdList = const Iterable.empty();
-
-  //   Set<String> processedCustomerCodes = {};
-  //   Set<String> processedItemCodes = {};
-  //   tmpSales = SODetailList.toList();
-  //   tmpProductSales = SODetailList.toList();
-  //   for (var customer in tmpSales.toList()) {
-  //     if (!processedCustomerCodes.contains(customer.customerCode)) {
-  //       salesManager = customer.salesManager;
-  //       salesRep = customer.salesRep;
-  //       custCode = customer.customerCode;
-  //       custName = customer.customerName;
-  //       for (var products in tmpProductSales
-  //           .where((products) => products.customerCode == custCode)) {
-  //         if (!processedItemCodes.contains(products.productCode)) {
-  //           itemCode = products.productCode;
-  //           itemGroup = products.itemSubGroup;
-  //           itemName = products.productName;
-  //           rate = 0; //double.tryParse(customer.rate) ?? 0;
-  //           price = double.tryParse(customer.rate) ?? 0;
-  //           List<double> monthlyQty = List.filled(12, 0.0);
-  //           List<double> monthlyValue = List.filled(12, 0.0);
-
-  //           for (int i = 0; i <= 11; i++) {
-  //             startDate = addMonth(fiscalYearStartDate!, i);
-  //             endDate =
-  //                 addMonth(startDate, i + 1).add(const Duration(days: -1));
-  //             setState(() {
-  //               ytdList = tmpProductSales.where((target) {
-  //                 DateTime invoiceDate =
-  //                     DateFormat('dd/MM/yyyy').parse(target.soDate);
-  //                 return target.customerCode == custCode &&
-  //                     target.productCode == itemCode &&
-  //                     invoiceDate.isAtLeast(startDate) &&
-  //                     invoiceDate.isAtMost(endDate);
-  //               });
-  //             });
-
-  //             for (var sales in ytdList.toList()) {
-  //               double rowTotal = double.tryParse(sales.orderValue) ?? 0.0;
-  //               double quantity =
-  //                   double.tryParse(sales.dispatchQuantity) ?? 0.0;
-  //               monthlyValue[i] += rowTotal;
-  //               monthlyQty[i] += quantity;
-  //             }
-  //           }
-  //           ytdSalesDataList.add(YTDSalesData(
-  //             customerName: custName,
-  //             salesManager: salesManager,
-  //             salesRep: salesRep,
-  //             itemSubGroup: itemGroup,
-  //             itemName: itemName,
-  //             currency: currency,
-  //             currencyRate: rate,
-  //             price: price,
-  //             aprQty: monthlyQty[0],
-  //             aprValue: monthlyValue[0],
-  //             mayQty: monthlyQty[1],
-  //             mayValue: monthlyValue[1],
-  //             junQty: monthlyQty[2],
-  //             junValue: monthlyValue[2],
-  //             julQty: monthlyQty[3],
-  //             julValue: monthlyValue[3],
-  //             augQty: monthlyQty[4],
-  //             augValue: monthlyValue[4],
-  //             sepQty: monthlyQty[5],
-  //             sepValue: monthlyValue[5],
-  //             octQty: monthlyQty[6],
-  //             octValue: monthlyValue[6],
-  //             novQty: monthlyQty[7],
-  //             novValue: monthlyValue[7],
-  //             decQty: monthlyQty[8],
-  //             decValue: monthlyValue[8],
-  //             janQty: monthlyQty[9],
-  //             janValue: monthlyValue[9],
-  //             febQty: monthlyQty[10],
-  //             febValue: monthlyValue[10],
-  //             marQty: monthlyQty[11],
-  //             marValue: monthlyValue[11],
-  //             ytdTotalValue: monthlyValue.reduce((a, b) => a + b),
-  //             ytdTotalQty: monthlyQty.reduce((a, b) => a + b),
-  //           ));
-  //         }
-  //         processedItemCodes.add(itemCode);
-  //         itemCode = "";
-  //         itemName = "";
-  //         itemGroup = "";
-  //         rate = 0;
-  //         price = 0;
-  //       }
-  //     }
-  //     processedCustomerCodes.add(custCode);
-  //     tmpSales.removeWhere((sales) => sales.customerCode == custCode);
-  //     tmpProductSales = tmpSales.toList();
-  //     custCode = "";
-  //     custName = "";
-  //     currency = "";
-  //   }
-  //   setState(() {
-  //     ytdSalesDataList.sort((a, b) => a.customerName.compareTo(b.customerName));
-  //     ytdSalesList = YTDSalesList(ytdData: ytdSalesDataList);
-  //     YtdSOBarChartData = true;
-  //   });
-  // }
-
   Future<void> generateSalesAnalysisYTDExcel() async {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
     sheet.appendRow(
       toCellRow([
         'PO Date',
@@ -4448,17 +4116,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       YtdSOBarChartData = true;
     });
     if (kIsWeb) {
-      // var fileBytes = excel.encode();
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'YTDSOAnalysis_Report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
       final excelBytes = excel.encode()!;
       saveAndOpenExcel('YTDSOAnalysis_Report.xlsx', excelBytes);
     } else {
@@ -4509,102 +4166,105 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     setState(() {
       chartDataLoaded = false;
     });
-    String selectedUser = '';
-    final prefs = await SharedPreferences.getInstance();
-    final userName = selectedUser == ""
-        ? prefs.getString('userName') ?? ''
-        : selectedUser;
-    final userLevel = prefs.getString('userLevel') ?? '';
-    UserLevel = userLevel;
-    setState(() async {
-      await _loadSODetails(userName, userLevel);
-      _dateFilterTarget("", "", false);
-      await _loadMonthWiseSOAnalysisBarChartData();
-      await _loadCustomerAnalysisBarChartData(0, "", "", "", "", "", "", "");
-      if (UserLevel != "1") {
-        await _loadSalesPersonBarChartData(0, "", "", "", "", "", "", "");
-        await _loadSalesManagerBarChartData(0, "", "", "", "", "", "", "");
-        await _loadRegionalManagerBarChartData(0, "", "", "", "", "", "", "");
-      }
-      await _loadItemGroupWiseSalesBarChartData(0, "", "", "", "", "", "", "");
-      await _loadItemAnalysisSalesBarChartData(0, "", "", "", "", "", "", "");
-      await _loadOpenSOAgingBarChartData(0, "", "", "", "", "", "", "");
+    // String selectedUser = '';
+    // final prefs = await SharedPreferences.getInstance();
+    // final userName = selectedUser == ""
+    //     ? prefs.getString('userName') ?? ''
+    //     : selectedUser;
+    // final userLevel = prefs.getString('userLevel') ?? '';
+    // UserLevel = userLevel;
+    // setState(() async {
+    //   await _loadSODetails(userName, userLevel);
+    _dateFilterTarget("", "", false);
+    await Future.wait([
+      _loadMonthWiseSOAnalysisBarChartData(),
+      _loadCustomerAnalysisBarChartData(0, "", "", "", "", "", "", ""),
+      if (UserLevel != "1") ...[
+        _loadSalesPersonBarChartData(0, "", "", "", "", "", "", ""),
+        _loadSalesManagerBarChartData(0, "", "", "", "", "", "", ""),
+        _loadRegionalManagerBarChartData(0, "", "", "", "", "", "", ""),
+      ],
+      _loadItemGroupWiseSalesBarChartData(0, "", "", "", "", "", "", ""),
+      _loadItemAnalysisSalesBarChartData(0, "", "", "", "", "", "", ""),
+      _loadOpenSOAgingBarChartData(0, "", "", "", "", "", "", ""),
+    ]);
+    List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
 
-      List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+    List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+
+    List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+
+    List<String> trueStatusOptions = (allCategoriesState['Status'] ?? {})
+        .entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+
+    //List<SODetailsList> filteredList = [];
+    SODetailList = SODetailList.where((person) {
+      return (trueRSMOptions.isEmpty ||
+              trueRSMOptions.contains(person.regionalManager)) &&
+          (trueASMOptions.isEmpty ||
+              trueASMOptions.contains(person.salesManager)) &&
+          (trueTSMOptions.isEmpty ||
+              trueTSMOptions.contains(person.salesRep)) &&
+          (trueStatusOptions.isEmpty ||
+              trueStatusOptions.contains(person.soStatus));
+    }).toList();
+    // if (trueRSMOptions.isNotEmpty) {
+    //   filteredList = SODetailList.where(
+    //     (person) => trueRSMOptions.contains(person.regionalManager),
+    //   ).toList();
+    //   SODetailList = filteredList;
+    // }
+
+    // if (trueASMOptions.isNotEmpty) {
+    //   filteredList = SODetailList.where(
+    //     (person) => trueASMOptions.contains(person.salesManager),
+    //   ).toList();
+    //   SODetailList = filteredList;
+    // }
+
+    // if (trueTSMOptions.isNotEmpty) {
+    //   filteredList = SODetailList.where(
+    //     (person) => trueTSMOptions.contains(person.salesRep),
+    //   ).toList();
+    //   SODetailList = filteredList;
+    // }
+
+    // if (trueStatusOptions.isNotEmpty) {
+    //   filteredList = SODetailList.where(
+    //     (person) => trueStatusOptions.contains(person.soStatus),
+    //   ).toList();
+    //   SODetailList = filteredList;
+    // }
+
+    setState(() {
+      filterOptions = [listOfRSM, listOfASM, listOfTSM, listOfString, []];
+
+      savedFinanceReceivablesOptions = filterOptions
+          .map((options) => List<bool>.filled(options.length, false))
           .toList();
 
-      List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
-
-      List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
-
-      List<String> trueStatusOptions = (allCategoriesState['Status'] ?? {})
-          .entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
-
-      List<SODetailsList> filteredList = [];
-
-      if (trueRSMOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueRSMOptions.contains(person.regionalManager),
-        ).toList();
-        SODetailList = filteredList;
-      }
-
-      if (trueASMOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueASMOptions.contains(person.salesManager),
-        ).toList();
-        SODetailList = filteredList;
-      }
-
-      if (trueTSMOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueTSMOptions.contains(person.salesRep),
-        ).toList();
-        SODetailList = filteredList;
-      }
-
-      if (trueStatusOptions.isNotEmpty) {
-        filteredList = SODetailList.where(
-          (person) => trueStatusOptions.contains(person.soStatus),
-        ).toList();
-        SODetailList = filteredList;
-      }
-
-      chartDataLoaded = true;
-
-      setState(() {
-        filterOptions = [listOfRSM, listOfASM, listOfTSM, listOfString, []];
-
+      if (savedFinanceReceivablesOptionsTemp.isEmpty) {
         savedFinanceReceivablesOptions = filterOptions
             .map((options) => List<bool>.filled(options.length, false))
             .toList();
-
-        if (savedFinanceReceivablesOptionsTemp.isEmpty) {
-          savedFinanceReceivablesOptions = filterOptions
-              .map((options) => List<bool>.filled(options.length, false))
-              .toList();
-        } else {
-          savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
-        }
-
-        // selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
-      });
-
-      setState(() {
-        chartDataLoaded = true;
-      });
+      } else {
+        savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
+      }
+      chartDataLoaded = true;
     });
+    // });
   }
 
   @override
@@ -5626,18 +5286,28 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                        touchedAgingCategory,
-                      );
+                      // loadDataWithFilter(
+                      //   touchedMonthIndex,
+                      //   touchedRegionalManager,
+                      //   touchedSalesManager,
+                      //   touchedSalesRep,
+                      //   touchedCustomer,
+                      //   touchedProductGroup,
+                      //   touchedProduct,
+                      //   touchedAgingCategory,
+                      // );
                     }
                   });
+                  await loadDataWithFilter(
+                    touchedMonthIndex,
+                    touchedRegionalManager,
+                    touchedSalesManager,
+                    touchedSalesRep,
+                    touchedCustomer,
+                    touchedProductGroup,
+                    touchedProduct,
+                    touchedAgingCategory,
+                  );
                   if (showProductSaleChart != true) {
                     await Future.delayed(const Duration(milliseconds: 50));
                     _scrollDown();
@@ -6213,21 +5883,35 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                        touchedAgingCategory,
-                      );
-                      if (showProductSaleChart != true) {
-                        _scrollDown();
-                      }
+                      // loadDataWithFilter(
+                      //   touchedMonthIndex,
+                      //   touchedRegionalManager,
+                      //   touchedSalesManager,
+                      //   touchedSalesRep,
+                      //   touchedCustomer,
+                      //   touchedProductGroup,
+                      //   touchedProduct,
+                      //   touchedAgingCategory,
+                      // );
+                      // if (showProductSaleChart != true) {
+                      //   _scrollDown();
+                      // }
                     }
                   });
+                  await loadDataWithFilter(
+                    touchedMonthIndex,
+                    touchedRegionalManager,
+                    touchedSalesManager,
+                    touchedSalesRep,
+                    touchedCustomer,
+                    touchedProductGroup,
+                    touchedProduct,
+                    touchedAgingCategory,
+                  );
+                  if (showProductSaleChart != true) {
+                    await Future.delayed(const Duration(milliseconds: 50));
+                    _scrollDown();
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(

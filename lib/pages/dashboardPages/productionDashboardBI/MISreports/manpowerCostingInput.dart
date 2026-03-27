@@ -10,6 +10,12 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 
+import 'package:excel/excel.dart' as xl;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:optima/excel_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_other.dart';
+
 class ManpowerCostingInputTable extends StatefulWidget {
   @override
   _ManpowerCostingInputTableState createState() =>
@@ -65,6 +71,72 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
     });
     selectedDate = DateTime.now();
     loadData();
+  }
+
+  Future<String> getStorageDirectory() async {
+    String? externalDir = (await getExternalStorageDirectory())?.path;
+
+    if (externalDir != null) {
+      return externalDir;
+    } else {
+      return (await getApplicationDocumentsDirectory()).path;
+    }
+  }
+
+  Future<void> _downloadExcel() async {
+    if (controllers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No data available to export.")),
+      );
+      return;
+    }
+
+    final excel = xl.Excel.createExcel();
+    final sheet = excel['Overtime'];
+
+    String caption =
+        "${_selectedPlant ?? ''} (${DateFormat('MMMM yyyy').format(selectedDate!)})";
+
+    /// Caption
+    sheet.appendRow(toCellRow([caption]));
+
+    /// Empty Row
+    sheet.appendRow([]);
+
+    /// Header Row
+    sheet.appendRow(toCellRow(headers));
+
+    /// Data Rows
+    for (int i = 0; i < departments.length; i++) {
+      List<dynamic> row = [departments[i]];
+
+      for (int j = 0; j < headers.length - 1; j++) {
+        row.add(controllers[i][j].text);
+      }
+
+      sheet.appendRow(toCellRow(row));
+    }
+
+    /// Total Row
+    List<dynamic> totalRow = ["Total"];
+    totalRow.addAll(totals.map((e) => e.toStringAsFixed(2)));
+
+    sheet.appendRow(toCellRow(totalRow));
+
+    /// Target row
+    sheet.appendRow([]);
+    sheet.appendRow(toCellRow(["Target", target]));
+
+    /// Save / Download
+    if (kIsWeb) {
+      final excelBytes = excel.encode()!;
+      saveAndOpenExcel('monthly_overtime_report.xlsx', excelBytes);
+    } else {
+      String storageDir = await getStorageDirectory();
+      final file = File('$storageDir/monthly_overtime_report.xlsx');
+      await file.writeAsBytes(excel.encode()!);
+      OpenFile.open(file.path);
+    }
   }
 
   Future<void> _saveOvertimeData() async {
@@ -368,32 +440,47 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
             ),
             const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.only(
-                left: 16.0,
-                right: 16.0,
-                bottom: 16.0,
-              ),
-              child: Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff2ca9df),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                    ),
-                  ),
-                  onPressed: () async {
-                    await _saveOvertimeData();
-                  },
-                  child: const SizedBox(
-                    width: 400,
-                    child: Center(
-                      child: Text(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              child: Row(
+                children: [
+                  /// SAVE BUTTON
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xff2ca9df),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
+                      ),
+                      onPressed: () async {
+                        await _saveOvertimeData();
+                      },
+                      child: const Text(
                         "Save",
                         style: TextStyle(fontSize: 14, color: Colors.white),
                       ),
                     ),
                   ),
-                ),
+
+                  const SizedBox(width: 12),
+
+                  /// DOWNLOAD EXCEL
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xff2ca9df),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
+                      ),
+                      onPressed: _downloadExcel,
+                      child: const Text(
+                        "Download Excel",
+                        style: TextStyle(fontSize: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -537,179 +624,6 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
                   }),
                 ],
               ),
-
-              // TableRow(
-              //   children: [
-              //     // 1st cell
-              //     Container(
-              //       alignment: Alignment.center,
-              //       height: 55,
-              //       decoration: BoxDecoration(
-              //         border: Border.all(color: Colors.transparent),
-              //       ),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: const Text("No. of Days"),
-              //     ),
-
-              //     // 2nd cell (empty or use for spacing or label if needed)
-              //     Container(
-              //       decoration: BoxDecoration(
-              //         border: Border.all(color: Colors.transparent),
-              //       ),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: const Text(""),
-              //     ),
-
-              //     // 3rd cell - editable text field
-              //     Container(
-              //       decoration: BoxDecoration(
-              //         border: Border.all(color: Colors.transparent),
-              //       ),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: SizedBox(
-              //         width: 60,
-              //         height: 40,
-              //         child: TextField(
-              //           controller: noOfDaysController,
-              //           focusNode: noOfDaysFocusNode,
-              //           keyboardType: TextInputType.number,
-              //           textAlign: TextAlign.right,
-              //           onChanged: (value) {
-              //             // Parse and update the variable
-              //             final parsed = int.tryParse(value);
-              //             if (parsed != null) {
-              //               setState(() {
-              //                 noOfDays = parsed;
-              //               });
-              //             }
-              //           },
-              //           decoration: const InputDecoration(
-              //             border: OutlineInputBorder(),
-              //             contentPadding:
-              //                 EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-
-              //     // Remaining empty cells
-              //     ...List.generate(remainingCells, (index) {
-              //       return const TableCell(
-              //         child: SizedBox.shrink(),
-              //       );
-              //     }),
-              //   ],
-              // ),
-
-              // TableRow(
-              //   children: [
-              //     Container(
-              //       alignment: Alignment.center,
-              //       height: 55,
-              //       decoration: BoxDecoration(
-              //           border: Border.all(color: Colors.transparent)),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: const Text("Total ManPower"),
-              //     ),
-              //     Container(
-              //       decoration: BoxDecoration(
-              //           border: Border.all(color: Colors.transparent)),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: const Text(""),
-              //     ),
-              //     Container(
-              //       decoration: BoxDecoration(
-              //         border: Border.all(color: Colors.transparent),
-              //       ),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: SizedBox(
-              //         width: 60,
-              //         height: 40,
-              //         child: TextField(
-              //           controller: totalManPowerController,
-              //           focusNode: totalManPowerFocusNode,
-              //           keyboardType: TextInputType.number,
-              //           textAlign: TextAlign.right,
-              //           onChanged: (value) {
-              //             // Parse and update the variable
-              //             final parsed = double.tryParse(value);
-              //             if (parsed != null) {
-              //               setState(() {
-              //                 totalManPower = parsed;
-              //               });
-              //             }
-              //           },
-              //           decoration: const InputDecoration(
-              //             border: OutlineInputBorder(),
-              //             contentPadding:
-              //                 EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-              //     ...List.generate(remainingCells, (index) {
-              //       return const TableCell(
-              //         child:
-              //             SizedBox.shrink(), // No border, no decoration, clean
-              //       );
-              //     }),
-              //   ],
-              // ),
-
-              // TableRow(
-              //   children: [
-              //     Container(
-              //       alignment: Alignment.center,
-              //       height: 55,
-              //       decoration: BoxDecoration(
-              //           border: Border.all(color: Colors.transparent)),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: const Text("Average work force"),
-              //     ),
-              //     Container(
-              //       decoration: BoxDecoration(
-              //           border: Border.all(color: Colors.transparent)),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: const Text(""),
-              //     ),
-              //     Container(
-              //       decoration: BoxDecoration(
-              //         border: Border.all(color: Colors.transparent),
-              //       ),
-              //       padding: const EdgeInsets.all(8.0),
-              //       child: SizedBox(
-              //         width: 60,
-              //         height: 40,
-              //         child: TextField(
-              //           controller: averageWorkForceController,
-              //           focusNode: averageWorkForceFocusNode,
-              //           keyboardType: TextInputType.number,
-              //           textAlign: TextAlign.right,
-              //           onChanged: (value) {
-              //             // Parse and update the variable
-              //             final parsed = double.tryParse(value);
-              //             if (parsed != null) {
-              //               setState(() {
-              //                 averageWorkForce = parsed;
-              //               });
-              //             }
-              //           },
-              //           decoration: const InputDecoration(
-              //             border: OutlineInputBorder(),
-              //             contentPadding:
-              //                 EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-              //     ...List.generate(remainingCells, (index) {
-              //       return const TableCell(
-              //         child:
-              //             SizedBox.shrink(), // No border, no decoration, clean
-              //       );
-              //     }),
-              //   ],
-              // ),
             ],
           ),
         ],

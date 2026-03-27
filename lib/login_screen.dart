@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
+// import 'dart:math';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
@@ -197,15 +197,15 @@ class LoginScreenState extends State<LoginScreen> {
           navigateToHomePage();
         } else {
           await prefs.setBool('isUserLoggedIn', false);
-          const snackBar = SnackBar(content: Text('Login failed 1'));
+          const snackBar = SnackBar(content: Text('Login failed'));
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } else {
-        const snackBar = SnackBar(content: Text('Login failed 2'));
+        const snackBar = SnackBar(content: Text('Login failed'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      const snackBar = SnackBar(content: Text('Login failed 3'));
+      const snackBar = SnackBar(content: Text('Login failed.'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

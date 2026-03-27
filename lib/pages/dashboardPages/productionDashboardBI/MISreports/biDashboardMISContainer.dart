@@ -2,10 +2,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:optima/pages/comingsoon.dart';
+import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/carriageInwardReport.dart';
+import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/carriageOutwardReport.dart';
+import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpower_costing/manpower_dashboard_page.dart';
+// import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpower_costing/manpower_page.dart';
+import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
+import 'sampleDataDetailsPage.dart';
 import 'agingReport.dart';
 import 'cmsCostingReport.dart';
 import 'externalComplaintPage.dart';
-import 'manpowerCostingReport.dart';
+// import 'manpowerCostingReport.dart';
 import 'minimumStockVsActualStock.dart';
 import 'monthlyWorkforceSummary.dart';
 import 'overtimeReport.dart';
@@ -89,7 +95,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
   static final List<ReportItem> _items = [
     ReportItem(
       title: 'Manpower Costing Report',
-      pageBuilder: () => const ManpowerCostingReport(),
+      pageBuilder: () => const ManpowerDashboardPage(),
     ),
     ReportItem(
       title: 'Overtime Report',
@@ -119,13 +125,13 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       title: 'Sales Vs Delivery',
       pageBuilder: () => const SalesVsDeliveryPage(),
     ),
-    // ReportItem(
-    //   title: 'Carriage Outward Bangalore To Branch & Direct Customers NEW',
-    //   pageBuilder: () => const CarriageOutwardPage(),
-    // ),
+    ReportItem(
+      title: 'Carriage Outward Bangalore To Branch & Direct Customers NEW',
+      pageBuilder: () => const CarriageOutwardPage(),
+    ),
     ReportItem(
       title: 'Carriage Inward Cost Report',
-      pageBuilder: () => const ManpowerCostingReport(),
+      pageBuilder: () => const CarriageInwardPage(),
       isUnderDevelopment: true,
     ),
     ReportItem(
@@ -146,12 +152,12 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
     ),
     ReportItem(
       title: 'Monthly Production Summary',
-      pageBuilder: () => const ManpowerCostingReport(),
+      pageBuilder: () => const MonthlyProductionSummaryPage(),
       isUnderDevelopment: true,
     ),
     ReportItem(
       title: 'Sample Data Details',
-      pageBuilder: () => const ComingSoonPage(),
+      pageBuilder: () => const SampleDataPage(),
     ),
     ReportItem(
       title: 'External Complaint',
@@ -160,7 +166,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
     ),
     ReportItem(
       title: 'Kerala Freight',
-      pageBuilder: () => const ManpowerCostingReport(),
+      pageBuilder: () => const ComingSoonPage(),
       isUnderDevelopment: true,
     ),
     ReportItem(

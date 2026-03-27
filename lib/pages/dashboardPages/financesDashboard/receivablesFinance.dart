@@ -41,22 +41,29 @@ List<CollectionList> collection = [];
 List<DebtorsAgingList> target = [];
 
 List<Users> usersListForFilter = [];
-AllReceivablesFinanceList allReceivablesFinanceList =
-    AllReceivablesFinanceList(agingData: []);
-ReceivablesFinanceList receivablesFinanceList =
-    ReceivablesFinanceList(agingData: []);
-AdvanceFromCustomersList advanceCustomerList =
-    AdvanceFromCustomersList(agingData: []);
+AllReceivablesFinanceList allReceivablesFinanceList = AllReceivablesFinanceList(
+  agingData: [],
+);
+ReceivablesFinanceList receivablesFinanceList = ReceivablesFinanceList(
+  agingData: [],
+);
+AdvanceFromCustomersList advanceCustomerList = AdvanceFromCustomersList(
+  agingData: [],
+);
 CustomerAnalysisFinanceList customerAnalysisFinanceList =
     CustomerAnalysisFinanceList(customerData: []);
-ReceivablesCategoryList receivablesCategoryList =
-    ReceivablesCategoryList(categoryData: []);
-TsmwiseCollectionList tsmwiseCollectionList =
-    TsmwiseCollectionList(tsmwiseData: []);
-AsmwiseCollectionList asmwiseCollectionList =
-    AsmwiseCollectionList(asmwiseData: []);
-RsmwiseCollectionList rsmwiseCollectionList =
-    RsmwiseCollectionList(rsmwiseData: []);
+ReceivablesCategoryList receivablesCategoryList = ReceivablesCategoryList(
+  categoryData: [],
+);
+TsmwiseCollectionList tsmwiseCollectionList = TsmwiseCollectionList(
+  tsmwiseData: [],
+);
+AsmwiseCollectionList asmwiseCollectionList = AsmwiseCollectionList(
+  asmwiseData: [],
+);
+RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
+  rsmwiseData: [],
+);
 
 double Collections = 0;
 String CollectionsStr = "";
@@ -249,7 +256,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         if (maxValue >= 200000) {
           divVal = 20000;
         }
-        if (maxValue >= 200000) {
+        if (maxValue >= 300000) {
           divVal = 30000;
         }
         if (maxValue >= 400000) {
@@ -397,8 +404,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate =
-        addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1));
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
@@ -427,8 +436,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear =
-        currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1;
+    int fiscalYearStartYear = currentDate!.month >= 4
+        ? currentDate!.year
+        : currentDate!.year - 1;
 
     int fiscalYearEndYear = fiscalYearStartYear + 1;
     financialYear =
@@ -451,195 +461,171 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   SideTitles get _leftTitles => SideTitles(
-        reservedSize: 50,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          return Text(
-            formatAmount(value),
-            style: const TextStyle(fontSize: 12),
-          );
-        },
-      );
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      return Text(formatAmount(value), style: const TextStyle(fontSize: 12));
+    },
+  );
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
 
   SideTitles get _bottomTitlesReceivableAging => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<AllReceivablesFinanceData> mData =
-              allReceivablesFinanceList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<AllReceivablesFinanceData> mData =
+          allReceivablesFinanceList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesNetReceivableAging => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ReceivablesFinanceData> mData = receivablesFinanceList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ReceivablesFinanceData> mData = receivablesFinanceList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesAdvanceFromCustomer => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<AdvanceFromCustomersData> mData = advanceCustomerList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 5
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<AdvanceFromCustomersData> mData = advanceCustomerList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 5
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesCustomerAnalysis => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<CustomerAnalysisFinanceData> mData =
-              customerAnalysisFinanceList.customerData;
-          text = mData.elementAt(value.toInt()).customerName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 5
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<CustomerAnalysisFinanceData> mData =
+          customerAnalysisFinanceList.customerData;
+      text = mData.elementAt(value.toInt()).customerName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 5
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesRegionalManager => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<RsmwiseCollectionData> mData = rsmwiseCollectionList.rsmwiseData;
-          text = mData.elementAt(value.toInt()).rsmName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 5
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<RsmwiseCollectionData> mData = rsmwiseCollectionList.rsmwiseData;
+      text = mData.elementAt(value.toInt()).rsmName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 5
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesSalesManager => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<AsmwiseCollectionData> mData = asmwiseCollectionList.asmwiseData;
-          text = mData.elementAt(value.toInt()).asmName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 5
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<AsmwiseCollectionData> mData = asmwiseCollectionList.asmwiseData;
+      text = mData.elementAt(value.toInt()).asmName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 5
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesSalesPerson => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<TsmwiseCollectionData> mData = tsmwiseCollectionList.tsmwiseData;
-          text = mData.elementAt(value.toInt()).tsmName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 5
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<TsmwiseCollectionData> mData = tsmwiseCollectionList.tsmwiseData;
+      text = mData.elementAt(value.toInt()).tsmName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 5
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   List<PieChartSectionData> _receivablesCategoryChart() {
     final List<PieChartSectionData> sections = [];
@@ -657,12 +643,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             ? Visibility(
                 visible: isTouched,
                 child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                        color: Colors.white30,
-                        border: Border.all(color: Colors.white),
-                        borderRadius: BorderRadius.circular(15)),
-                    child: const Text("")),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white30,
+                    border: Border.all(color: Colors.white),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: const Text(""),
+                ),
               )
             : null,
         titleStyle: TextStyle(
@@ -705,100 +693,142 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   List<BarChartGroupData> _AllReceivableAgingChartData(
-      List<AllReceivablesFinanceData> data) {
+    List<AllReceivablesFinanceData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.agingGroupTotal,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.agingGroupTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _netReceivableAgingChartData(
-      List<ReceivablesFinanceData> data) {
+    List<ReceivablesFinanceData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.agingGroupTotal,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.agingGroupTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _advanceFromCustomerChartData(
-      List<AdvanceFromCustomersData> data) {
+    List<AdvanceFromCustomersData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.agingGroupTotal,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.agingGroupTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _customerAnalysisChartData(
-      List<CustomerAnalysisFinanceData> data) {
+    List<CustomerAnalysisFinanceData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.collectionAmount,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.collectionAmount,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _regionalManagerAnalysisChartData(
-      List<RsmwiseCollectionData> data) {
+    List<RsmwiseCollectionData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.collectionAmount,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.collectionAmount,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _salesManagerAnalysisChartData(
-      List<AsmwiseCollectionData> data) {
+    List<AsmwiseCollectionData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.collectionAmount,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.collectionAmount,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _salesPersonAnalysisChartData(
-      List<TsmwiseCollectionData> data) {
+    List<TsmwiseCollectionData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.collectionAmount,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.collectionAmount,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
@@ -807,11 +837,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   AgingSummary summarizeReceivables(
-      Iterable<DebtorsAgingList> collectionTargetList) {
+    Iterable<DebtorsAgingList> collectionTargetList,
+  ) {
     AgingSummary summary = AgingSummary();
     var overDueDays = 0;
     for (var element
-        in collectionTargetList /*.where((element) => double.tryParse(element.future)! <= 0)*/) {
+        in collectionTargetList /*.where((element) => double.tryParse(element.future)! <= 0)*/ ) {
       overDueDays = int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
 
       if (overDueDays <= 30) {
@@ -837,12 +868,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   AgingSummary summarizeCollectionTargets(
-      Iterable<DebtorsAgingList> collectionTargetList) {
+    Iterable<DebtorsAgingList> collectionTargetList,
+  ) {
     AgingSummary summary = AgingSummary();
     double balance = 0;
     var overDueDays = 0;
-    for (var element in collectionTargetList
-        .where((element) => double.tryParse(element.future)! <= 0)) {
+    for (var element in collectionTargetList.where(
+      (element) => double.tryParse(element.future)! <= 0,
+    )) {
       overDueDays = int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
       balance = double.tryParse(element.balance) ?? 0;
       if (balance < 0) {
@@ -871,11 +904,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   AgingSummary summarizeAdvanceFromCustomers(
-      Iterable<DebtorsAgingList> collectionTargetList) {
+    Iterable<DebtorsAgingList> collectionTargetList,
+  ) {
     AgingSummary summary = AgingSummary();
     int? overDueDays = 0;
-    for (var element in collectionTargetList
-        .where((element) => double.tryParse(element.balance)! <= 0)) {
+    for (var element in collectionTargetList.where(
+      (element) => double.tryParse(element.balance)! <= 0,
+    )) {
       overDueDays = int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
 
       if (overDueDays <= 30) {
@@ -938,26 +973,28 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     // otherPercent       = (balanceOther          / (balanceAmountTotal +balanceDistributor + balanceOther)) * 100;
     // }
 
-    receivablesCategoryList = ReceivablesCategoryList(categoryData: [
-      ReceivablesCategoryData(
-        categoryId: 0,
-        categoryName: 'Hospital',
-        categoryAmount: hospitalSum,
-        categoryPercentage: hospitalPercent,
-      ),
-      ReceivablesCategoryData(
-        categoryId: 1,
-        categoryName: 'Distributor',
-        categoryAmount: distributorSum,
-        categoryPercentage: distributorPercent,
-      ),
-      ReceivablesCategoryData(
-        categoryId: 2,
-        categoryName: 'Other',
-        categoryAmount: otherSum,
-        categoryPercentage: otherPercent,
-      ),
-    ]);
+    receivablesCategoryList = ReceivablesCategoryList(
+      categoryData: [
+        ReceivablesCategoryData(
+          categoryId: 0,
+          categoryName: 'Hospital',
+          categoryAmount: hospitalSum,
+          categoryPercentage: hospitalPercent,
+        ),
+        ReceivablesCategoryData(
+          categoryId: 1,
+          categoryName: 'Distributor',
+          categoryAmount: distributorSum,
+          categoryPercentage: distributorPercent,
+        ),
+        ReceivablesCategoryData(
+          categoryId: 2,
+          categoryName: 'Other',
+          categoryAmount: otherSum,
+          categoryPercentage: otherPercent,
+        ),
+      ],
+    );
   }
 
   Map<String, DateTime> getMonthStartEndDates(int month) {
@@ -969,12 +1006,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     int yearForMonth;
     if (now.month >= 1 && now.month <= 3) {
       // If the call is happening in Jan–Mar
-      yearForMonth =
-          (month >= 4 && month <= 12) ? currentYear - 1 : currentYear;
+      yearForMonth = (month >= 4 && month <= 12)
+          ? currentYear - 1
+          : currentYear;
     } else {
       // If the call is happening in Apr–Dec
-      yearForMonth =
-          (month >= 4 && month <= 12) ? currentYear : currentYear + 1;
+      yearForMonth = (month >= 4 && month <= 12)
+          ? currentYear
+          : currentYear + 1;
     }
 
     // Calculate the first and last days of the given month
@@ -987,9 +1026,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   Future<void> _loadReceivablesData(
@@ -1022,12 +1061,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String? bracketFilter;
     String bracketLabel = "";
     if (receivableId.isNotEmpty) {
-      bracketFilter =
-          receivableId == "Future" ? "Future" : "$receivableId Days";
+      bracketFilter = receivableId == "Future"
+          ? "Future"
+          : "$receivableId Days";
       bracketLabel = receivableId;
     } else if (netReceivableId.isNotEmpty) {
-      bracketFilter =
-          netReceivableId == "Future" ? "Future" : "$netReceivableId Days";
+      bracketFilter = netReceivableId == "Future"
+          ? "Future"
+          : "$netReceivableId Days";
       bracketLabel = netReceivableId;
     } else if (advanceId.isNotEmpty) {
       bracketFilter = advanceId == "Future" ? "Future" : "$advanceId Days";
@@ -1064,14 +1105,16 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     totalDue = buckets.values.fold(0.0, (sum, v) => sum + v);
 
     buckets.forEach((label, amt) {
-      dataList.add(AllReceivablesFinanceData(
-        agingGroup: label,
-        agingGroupTotal: amt.abs(),
-        agingPercentage: totalDue > 0
-            ? double.parse(((amt.abs() / totalDue) * 100).toStringAsFixed(2))
-            : 0,
-        agingTotal: totalDue.abs(),
-      ));
+      dataList.add(
+        AllReceivablesFinanceData(
+          agingGroup: label,
+          agingGroupTotal: amt.abs(),
+          agingPercentage: totalDue > 0
+              ? double.parse(((amt.abs() / totalDue) * 100).toStringAsFixed(2))
+              : 0,
+          agingTotal: totalDue.abs(),
+        ),
+      );
     });
 
     allReceivablesFinanceList = AllReceivablesFinanceList(agingData: dataList);
@@ -1107,12 +1150,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String? bracketFilter;
     String bracketLabel = "";
     if (receivableId.isNotEmpty) {
-      bracketFilter =
-          receivableId == "Future" ? "Future" : "$receivableId Days";
+      bracketFilter = receivableId == "Future"
+          ? "Future"
+          : "$receivableId Days";
       bracketLabel = receivableId;
     } else if (netReceivableId.isNotEmpty) {
-      bracketFilter =
-          netReceivableId == "Future" ? "Future" : "$netReceivableId Days";
+      bracketFilter = netReceivableId == "Future"
+          ? "Future"
+          : "$netReceivableId Days";
       bracketLabel = netReceivableId;
     } else if (advanceId.isNotEmpty) {
       bracketFilter = advanceId == "Future" ? "Future" : "$advanceId Days";
@@ -1148,18 +1193,21 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     final receivablesAgingDataList = <ReceivablesFinanceData>[];
     buckets.forEach((label, amt) {
       final absAmt = amt.abs();
-      receivablesAgingDataList.add(ReceivablesFinanceData(
-        agingGroup: label,
-        agingGroupTotal: absAmt,
-        agingPercentage: totalDue > 0
-            ? double.parse((absAmt / totalDue * 100).toStringAsFixed(2))
-            : 0,
-        agingTotal: totalDue.abs(),
-      ));
+      receivablesAgingDataList.add(
+        ReceivablesFinanceData(
+          agingGroup: label,
+          agingGroupTotal: absAmt,
+          agingPercentage: totalDue > 0
+              ? double.parse((absAmt / totalDue * 100).toStringAsFixed(2))
+              : 0,
+          agingTotal: totalDue.abs(),
+        ),
+      );
     });
 
-    receivablesFinanceList =
-        ReceivablesFinanceList(agingData: receivablesAgingDataList);
+    receivablesFinanceList = ReceivablesFinanceList(
+      agingData: receivablesAgingDataList,
+    );
   }
 
   Future<void> _loadAdvanceFromCustomers(
@@ -1199,11 +1247,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
     String? bracketFilter;
     if (receivableId.isNotEmpty) {
-      bracketFilter =
-          receivableId == "Future" ? "Future" : "$receivableId Days";
+      bracketFilter = receivableId == "Future"
+          ? "Future"
+          : "$receivableId Days";
     } else if (netReceivableId.isNotEmpty) {
-      bracketFilter =
-          netReceivableId == "Future" ? "Future" : "$netReceivableId Days";
+      bracketFilter = netReceivableId == "Future"
+          ? "Future"
+          : "$netReceivableId Days";
     } else if (advanceId.isNotEmpty) {
       bracketFilter = advanceId == "Future" ? "Future" : "$advanceId Days";
     }
@@ -1218,8 +1268,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     };
 
     for (var element in list.where((e) {
-      final balanceVal = double.tryParse(e.balance) ?? 0;
-      if (balanceVal > 0) return false;
+      // final balanceVal = double.tryParse(e.balance) ?? 0;
+      // if (balanceVal > 0) return false;
       if (bracketFilter != null && e.ageingBrackets != bracketFilter) {
         return false;
       }
@@ -1253,27 +1303,30 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     advanceList.clear();
     buckets.forEach((label, amt) {
       final absAmt = amt.abs();
-      advanceList.add(AdvanceFromCustomersData(
-        agingGroup: label,
-        agingGroupTotal: absAmt,
-        agingPercentage: totalDue > 0
-            ? double.parse((absAmt / totalDue * 100).toStringAsFixed(2))
-            : 0,
-        agingTotal: totalDue.abs(),
-      ));
+      advanceList.add(
+        AdvanceFromCustomersData(
+          agingGroup: label,
+          agingGroupTotal: absAmt,
+          agingPercentage: totalDue > 0
+              ? double.parse((absAmt / totalDue * 100).toStringAsFixed(2))
+              : 0,
+          agingTotal: totalDue.abs(),
+        ),
+      );
     });
 
     advanceCustomerList = AdvanceFromCustomersList(agingData: advanceList);
   }
 
   Future<void> _loadCustomerAnalysis(
-      String receivableId,
-      String netReceivableId,
-      String advanceId,
-      String customer,
-      String regionalManager,
-      String salesManager,
-      String salesPerson) async {
+    String receivableId,
+    String netReceivableId,
+    String advanceId,
+    String customer,
+    String regionalManager,
+    String salesManager,
+    String salesPerson,
+  ) async {
     List<CustomerAnalysisFinanceData> customerWiseDataList = [];
     var customerTargetList = const Iterable.empty();
     String custCode = "";
@@ -1305,14 +1358,15 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         custCode = customerRow.customerCode;
         customerName = customerRow.customerName;
 
-        for (var ele in target
-            .toList()
-            .where((element) => element.customerName == customerName)) {
+        for (var ele in target.toList().where(
+          (element) => element.customerName == customerName,
+        )) {
           bool shouldInclude = true;
 
           if (receivableId.isNotEmpty) {
-            final tag =
-                receivableId == "Future" ? "Future" : "$receivableId Days";
+            final tag = receivableId == "Future"
+                ? "Future"
+                : "$receivableId Days";
             shouldInclude = ele.ageingBrackets == tag;
           } else if (netReceivableId.isNotEmpty) {
             final tag = netReceivableId == "Future"
@@ -1330,11 +1384,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           }
         }
 
-        customerWiseDataList.add(CustomerAnalysisFinanceData(
-          customerCode: custCode,
-          customerName: customerName,
-          collectionAmount: balancAmount,
-        ));
+        customerWiseDataList.add(
+          CustomerAnalysisFinanceData(
+            customerCode: custCode,
+            customerName: customerName,
+            collectionAmount: balancAmount,
+          ),
+        );
 
         processedCustomer.add(customerName);
       }
@@ -1344,10 +1400,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       balancAmount = 0;
     }
 
-    customerWiseDataList
-        .sort((a, b) => b.collectionAmount.compareTo(a.collectionAmount));
-    customerAnalysisFinanceList =
-        CustomerAnalysisFinanceList(customerData: customerWiseDataList);
+    customerWiseDataList.sort(
+      (a, b) => b.collectionAmount.compareTo(a.collectionAmount),
+    );
+    customerAnalysisFinanceList = CustomerAnalysisFinanceList(
+      customerData: customerWiseDataList,
+    );
   }
 
   Future<void> _loadTSMCollectionBarChartData(
@@ -1392,7 +1450,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
         final dueOn = DateFormat('dd/MM/yyyy').parse(ele.dueon);
 
-        final bool isFutureSelected = receivableId == "Future" ||
+        final bool isFutureSelected =
+            receivableId == "Future" ||
             netReceivableId == "Future" ||
             advanceId == "Future";
 
@@ -1417,16 +1476,19 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       }
 
       if (salesAmount != 0.0) {
-        tsmwiseDataList.add(TsmwiseCollectionData(
-          tsmName: tsmName,
-          collectionAmount: salesAmount,
-          targetAmount: targetAmount,
-        ));
+        tsmwiseDataList.add(
+          TsmwiseCollectionData(
+            tsmName: tsmName,
+            collectionAmount: salesAmount,
+            targetAmount: targetAmount,
+          ),
+        );
       }
     }
 
-    tsmwiseDataList
-        .sort((a, b) => b.collectionAmount.compareTo(a.collectionAmount));
+    tsmwiseDataList.sort(
+      (a, b) => b.collectionAmount.compareTo(a.collectionAmount),
+    );
     tsmwiseCollectionList = TsmwiseCollectionList(tsmwiseData: tsmwiseDataList);
 
     if (listOfTSM.isEmpty) {
@@ -1474,7 +1536,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
         final dueOn = DateFormat('dd/MM/yyyy').parse(ele.dueon);
 
-        final bool isFutureSelected = receivableId == "Future" ||
+        final bool isFutureSelected =
+            receivableId == "Future" ||
             netReceivableId == "Future" ||
             advanceId == "Future";
 
@@ -1499,16 +1562,19 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       }
 
       if (salesAmount != 0.0) {
-        asmwiseDataList.add(AsmwiseCollectionData(
-          asmName: asmName,
-          collectionAmount: salesAmount,
-          targetAmount: targetAmount,
-        ));
+        asmwiseDataList.add(
+          AsmwiseCollectionData(
+            asmName: asmName,
+            collectionAmount: salesAmount,
+            targetAmount: targetAmount,
+          ),
+        );
       }
     }
 
-    asmwiseDataList
-        .sort((a, b) => b.collectionAmount.compareTo(a.collectionAmount));
+    asmwiseDataList.sort(
+      (a, b) => b.collectionAmount.compareTo(a.collectionAmount),
+    );
     asmwiseCollectionList = AsmwiseCollectionList(asmwiseData: asmwiseDataList);
 
     if (listOfASM.isEmpty) {
@@ -1527,25 +1593,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   ) async {
     final List<String> bracketFilters = [];
     if (receivableId.isNotEmpty) {
-      bracketFilters
-          .add(receivableId == "Future" ? "Future" : "$receivableId Days");
+      bracketFilters.add(
+        receivableId == "Future" ? "Future" : "$receivableId Days",
+      );
     }
     if (netReceivableId.isNotEmpty) {
       bracketFilters.add(
-          netReceivableId == "Future" ? "Future" : "$netReceivableId Days");
+        netReceivableId == "Future" ? "Future" : "$netReceivableId Days",
+      );
     }
     if (advanceId.isNotEmpty) {
       bracketFilters.add(advanceId == "Future" ? "Future" : "$advanceId Days");
     }
 
-    final bool isFutureSelected = receivableId == "Future" ||
+    final bool isFutureSelected =
+        receivableId == "Future" ||
         netReceivableId == "Future" ||
         advanceId == "Future";
 
     int monthIndex = 0;
     Iterable<DebtorsAgingList> dateFiltered = _filterByDate(
-        target, monthIndex, currentDate,
-        isFutureSelected: isFutureSelected);
+      target,
+      monthIndex,
+      currentDate,
+      isFutureSelected: isFutureSelected,
+    );
 
     final Iterable<DebtorsAgingList> filteredList = dateFiltered.where((t) {
       if (regionalManager.isNotEmpty && t.regionalManager != regionalManager) {
@@ -1573,15 +1645,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     final List<RsmwiseCollectionData> rsmwiseDataList = [];
     const double targetAmount = 0.0;
     for (final entry in sumsByRSM.entries) {
-      rsmwiseDataList.add(RsmwiseCollectionData(
-        rsmName: entry.key,
-        collectionAmount: entry.value,
-        targetAmount: targetAmount,
-      ));
+      rsmwiseDataList.add(
+        RsmwiseCollectionData(
+          rsmName: entry.key,
+          collectionAmount: entry.value,
+          targetAmount: targetAmount,
+        ),
+      );
     }
 
-    rsmwiseDataList
-        .sort((a, b) => b.collectionAmount.compareTo(a.collectionAmount));
+    rsmwiseDataList.sort(
+      (a, b) => b.collectionAmount.compareTo(a.collectionAmount),
+    );
     rsmwiseCollectionList = RsmwiseCollectionList(rsmwiseData: rsmwiseDataList);
 
     if (listOfRSM.isEmpty) {
@@ -1620,8 +1695,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     });
   }
 
-  Future<void> _loadUserList(String userId, String userJwtToken,
-      String userMailID, int userLevel) async {
+  Future<void> _loadUserList(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    int userLevel,
+  ) async {
     final body = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
@@ -1649,9 +1728,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                   .toList();
             });
           }
-          for (var parent in usersList.where((element) =>
-              element.parentMenuId == 0 &&
-              (element.userLevel == (userLevel > 3 ? 3 : 2)))) {
+          for (var parent in usersList.where(
+            (element) =>
+                element.parentMenuId == 0 &&
+                (element.userLevel == (userLevel > 3 ? 3 : 2)),
+          )) {
             final rsm = {
               "MenuId": parent.menuId,
               "MenuName": parent.menuName,
@@ -1660,9 +1741,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               "UserLevel": parent.userLevel,
             };
             newUserList.add(rsm);
-            for (var child in childUsers.where((element) =>
-                element.parentMenuId == parent.menuId &&
-                (element.userLevel == (userLevel > 3 ? 2 : 1)))) {
+            for (var child in childUsers.where(
+              (element) =>
+                  element.parentMenuId == parent.menuId &&
+                  (element.userLevel == (userLevel > 3 ? 2 : 1)),
+            )) {
               final asm = {
                 "MenuId": child.menuId,
                 "MenuName": child.menuName,
@@ -1671,8 +1754,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                 "UserLevel": child.userLevel,
               };
               newUserList.add(asm);
-              for (var subChild in childUsers
-                  .where((element) => element.parentMenuId == child.menuId)) {
+              for (var subChild in childUsers.where(
+                (element) => element.parentMenuId == child.menuId,
+              )) {
                 final tsm = {
                   "MenuId": subChild.menuId,
                   "MenuName": subChild.menuName,
@@ -1695,31 +1779,28 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('User list not found.'),
-        );
+        const snackBar = SnackBar(content: Text('User list not found.'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
-  Future<void> _loadUserListForFilter(String userId, String userJwtToken,
-      String userMailID, int userLevel) async {
+  Future<void> _loadUserListForFilter(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    int userLevel,
+  ) async {
     final body = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
@@ -1740,8 +1821,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           List<dynamic> data = responseJson['Data'];
           if (data.isNotEmpty) {
             setState(() {
-              usersListForFilter =
-                  (data).map((item) => Users.fromJson(item)).toList();
+              usersListForFilter = (data)
+                  .map((item) => Users.fromJson(item))
+                  .toList();
             });
           }
         } else {
@@ -1751,10 +1833,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -1762,21 +1841,20 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('User list not found.'),
-        );
+        const snackBar = SnackBar(content: Text('User list not found.'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> _loadCollectionTarget(
-      String UserName, String UserLevel, bool FromFilter) async {
+    String UserName,
+    String UserLevel,
+    bool FromFilter,
+  ) async {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
@@ -1787,7 +1865,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           var body = {
             "Index": index.toString(),
             "Limit": limit.toString(),
-            "sapToken": DataManager.readSapToken()
+            "sapToken": DataManager.readSapToken(),
           };
           const apiUrl = '${ApiHelper.baseUrl}Bicxo_DebtorsAgingList';
           final response = await http.post(
@@ -1839,40 +1917,34 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         }
 
         List<String> trueSalesDataOptions =
-            (allCategoriesState['Sales Data'] ?? {})
-                .entries
+            (allCategoriesState['Sales Data'] ?? {}).entries
                 .where((entry) => entry.value)
                 .map((entry) => entry.key)
                 .toList();
 
         List<String> trueCategoryOptions =
-            (allCategoriesState['Category'] ?? {})
-                .entries
+            (allCategoriesState['Category'] ?? {}).entries
                 .where((entry) => entry.value)
                 .map((entry) => entry.key)
                 .toList();
 
         List<String> trueDimensionOptions =
-            (allCategoriesState['Dimension'] ?? {})
-                .entries
+            (allCategoriesState['Dimension'] ?? {}).entries
                 .where((entry) => entry.value)
                 .map((entry) => entry.key)
                 .toList();
 
-        List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {})
-            .entries
+        List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
             .where((entry) => entry.value)
             .map((entry) => entry.key)
             .toList();
 
-        List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {})
-            .entries
+        List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
             .where((entry) => entry.value)
             .map((entry) => entry.key)
             .toList();
 
-        List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {})
-            .entries
+        List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
             .where((entry) => entry.value)
             .map((entry) => entry.key)
             .toList();
@@ -1884,8 +1956,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .toList();
 
         List<String> trueAdvanceOptions =
-            (allCategoriesState['Advance/Receivables'] ?? {})
-                .entries
+            (allCategoriesState['Advance/Receivables'] ?? {}).entries
                 .where((entry) => entry.value)
                 .map((entry) => entry.key)
                 .toList();
@@ -1900,8 +1971,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             }).toList();
           } else {
             filteredList = target
-                .where((person) =>
-                    trueSalesDataOptions.contains(person.salesManager))
+                .where(
+                  (person) =>
+                      trueSalesDataOptions.contains(person.salesManager),
+                )
                 .toList();
           }
           target = filteredList;
@@ -1909,16 +1982,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
         if (trueCategoryOptions.isNotEmpty) {
           filteredList = target
-              .where((person) =>
-                  trueCategoryOptions.contains(person.customerGroup))
+              .where(
+                (person) => trueCategoryOptions.contains(person.customerGroup),
+              )
               .toList();
           target = filteredList;
         }
 
         if (trueDimensionOptions.isNotEmpty) {
           filteredList = target
-              .where((person) =>
-                  trueDimensionOptions.contains(person.documentType))
+              .where(
+                (person) => trueDimensionOptions.contains(person.documentType),
+              )
               .toList();
           target = filteredList;
         }
@@ -1926,7 +2001,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         if (trueRSMOptions.isNotEmpty) {
           filteredList = target
               .where(
-                  (person) => trueRSMOptions.contains(person.regionalManager))
+                (person) => trueRSMOptions.contains(person.regionalManager),
+              )
               .toList();
           target = filteredList;
         }
@@ -1947,11 +2023,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
         if (trueDueOptions.isNotEmpty) {
           if (trueDueOptions.contains("Not Dues")) {
-            filteredList =
-                target.where((person) => person.future == "0").toList();
+            filteredList = target
+                .where((person) => person.future == "0")
+                .toList();
           } else if (trueDueOptions.contains("Overdue")) {
-            filteredList =
-                target.where((person) => person.future != "0").toList();
+            filteredList = target
+                .where((person) => person.future != "0")
+                .toList();
           }
           target = filteredList;
         }
@@ -2027,15 +2105,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Ageing Group',
-        'Ageing Group Total',
-      ]));
+      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingGroupTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -2048,9 +2122,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2064,8 +2136,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             return pw.Center(
               child: pw.Text(
                 'Receivables',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2078,24 +2152,44 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Ageing Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Ageing Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Ageing Group Total',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Ageing Group Total',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in allReceivablesFinanceList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingGroupTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingGroupTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2119,9 +2213,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2130,73 +2222,77 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Sales Manager',
-        'Regional Manager',
-        'Sales Rep',
-        'Customer Group',
-        'BP Group',
-        'Customer Code',
-        'Customer Name',
-        'Credit Limit',
-        'Posting Date',
-        'Document Number',
-        'Document Ref No',
-        'Account Balance',
-        'Invoice Issues',
-        'Expected Payment',
-        'Expected Payment Remarks',
-        'Last Receipt Date',
-        'Document Type',
-        'Payment Terms Days',
-        'Payment Terms',
-        'Due On',
-        'Due Days',
-        'Balance',
-        'Ageing Brackets',
-        'Future',
-        '0 - 30',
-        '31 - 60',
-        '61 - 90',
-        '91 - 180',
-        '180+',
-        'eKart No.',
-        'Commitment',
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          'Sales Manager',
+          'Regional Manager',
+          'Sales Rep',
+          'Customer Group',
+          'BP Group',
+          'Customer Code',
+          'Customer Name',
+          'Credit Limit',
+          'Posting Date',
+          'Document Number',
+          'Document Ref No',
+          'Account Balance',
+          'Invoice Issues',
+          'Expected Payment',
+          'Expected Payment Remarks',
+          'Last Receipt Date',
+          'Document Type',
+          'Payment Terms Days',
+          'Payment Terms',
+          'Due On',
+          'Due Days',
+          'Balance',
+          'Ageing Brackets',
+          'Future',
+          '0 - 30',
+          '31 - 60',
+          '61 - 90',
+          '91 - 180',
+          '180+',
+          'eKart No.',
+          'Commitment',
+        ]),
+      );
       for (var monthlyData in target) {
-        sheet.appendRow(toCellRow([
-          monthlyData.salesManager,
-          monthlyData.regionalManager,
-          monthlyData.salesRep,
-          monthlyData.customerGroup,
-          monthlyData.bpGroup,
-          monthlyData.customerCode,
-          monthlyData.customerName,
-          monthlyData.creditLimit,
-          monthlyData.postingDate,
-          monthlyData.documentNumber,
-          monthlyData.documentRefNo,
-          monthlyData.accountBalance,
-          monthlyData.invoiceIssues,
-          monthlyData.expectedPayment,
-          monthlyData.expectedPaymentRemarks,
-          monthlyData.lastReceiptDate,
-          monthlyData.documentType,
-          monthlyData.paymentTermsDays,
-          monthlyData.paymentTerms,
-          monthlyData.dueon,
-          monthlyData.dueDays,
-          monthlyData.balance,
-          monthlyData.ageingBrackets,
-          monthlyData.future,
-          monthlyData.a0to30Days,
-          monthlyData.a31to60Days,
-          monthlyData.a61to90Days,
-          monthlyData.a91to180Days,
-          monthlyData.a181Days,
-          monthlyData.eKartNo,
-          monthlyData.commitment,
-        ]));
+        sheet.appendRow(
+          toCellRow([
+            monthlyData.salesManager,
+            monthlyData.regionalManager,
+            monthlyData.salesRep,
+            monthlyData.customerGroup,
+            monthlyData.bpGroup,
+            monthlyData.customerCode,
+            monthlyData.customerName,
+            monthlyData.creditLimit,
+            monthlyData.postingDate,
+            monthlyData.documentNumber,
+            monthlyData.documentRefNo,
+            monthlyData.accountBalance,
+            monthlyData.invoiceIssues,
+            monthlyData.expectedPayment,
+            monthlyData.expectedPaymentRemarks,
+            monthlyData.lastReceiptDate,
+            monthlyData.documentType,
+            monthlyData.paymentTermsDays,
+            monthlyData.paymentTerms,
+            monthlyData.dueon,
+            monthlyData.dueDays,
+            monthlyData.balance,
+            monthlyData.ageingBrackets,
+            monthlyData.future,
+            monthlyData.a0to30Days,
+            monthlyData.a31to60Days,
+            monthlyData.a61to90Days,
+            monthlyData.a91to180Days,
+            monthlyData.a181Days,
+            monthlyData.eKartNo,
+            monthlyData.commitment,
+          ]),
+        );
       }
 
       if (kIsWeb) {
@@ -2209,9 +2305,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2220,15 +2314,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Ageing Group',
-        'Ageing Group Total',
-      ]));
+      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingGroupTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -2241,9 +2331,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2257,8 +2345,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             return pw.Center(
               child: pw.Text(
                 'Net Receivables',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2271,24 +2361,44 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Ageing Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Ageing Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Ageing Group Total',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Ageing Group Total',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in receivablesFinanceList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingGroupTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingGroupTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2312,9 +2422,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2323,15 +2431,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Ageing Group',
-        'Ageing Group Total',
-      ]));
+      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingGroupTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -2344,9 +2448,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2360,8 +2462,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             return pw.Center(
               child: pw.Text(
                 'Advance From Customers',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2374,24 +2478,44 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Ageing Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Ageing Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Ageing Group Total',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Ageing Group Total',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in advanceCustomerList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingGroupTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingGroupTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2415,29 +2539,26 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateCustomerAnalysisExcel(
-      CustomerAnalysisFinanceList list) async {
+    CustomerAnalysisFinanceList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Customer Name',
-        'Customer Code',
-        'Amount',
-      ]));
+      sheet.appendRow(toCellRow(['Customer Name', 'Customer Code', 'Amount']));
       for (var data in list.customerData) {
-        sheet.appendRow(toCellRow([
-          data.customerName,
-          data.customerCode,
-          data.collectionAmount,
-        ]));
+        sheet.appendRow(
+          toCellRow([
+            data.customerName,
+            data.customerCode,
+            data.collectionAmount,
+          ]),
+        );
       }
 
       if (kIsWeb) {
@@ -2450,15 +2571,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateCustomerAnalysisPDF(
-      CustomerAnalysisFinanceList list) async {
+    CustomerAnalysisFinanceList list,
+  ) async {
     try {
       final pdf = pw.Document();
       pdf.addPage(
@@ -2467,8 +2587,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             return pw.Center(
               child: pw.Text(
                 'Customer Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2481,27 +2603,51 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Customer Name',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Customer Name',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Customer Code',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Customer Code',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in customerAnalysisFinanceList.customerData)
-                  pw.TableRow(children: [
-                    pw.Text(data.customerName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.customerName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.customerCode,
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.customerCode,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.collectionAmount.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.collectionAmount.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2525,9 +2671,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2536,15 +2680,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Regional Manager',
-        'Amount',
-      ]));
+      sheet.appendRow(toCellRow(['Regional Manager', 'Amount']));
       for (var data in list.rsmwiseData) {
-        sheet.appendRow(toCellRow([
-          data.rsmName,
-          data.collectionAmount,
-        ]));
+        sheet.appendRow(toCellRow([data.rsmName, data.collectionAmount]));
       }
 
       if (kIsWeb) {
@@ -2557,9 +2695,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2573,8 +2709,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             return pw.Center(
               child: pw.Text(
                 'Regional Manager Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2587,24 +2725,44 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Regional Manager',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Regional Manager',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Amount',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Amount',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in rsmwiseCollectionList.rsmwiseData)
-                  pw.TableRow(children: [
-                    pw.Text(data.rsmName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.rsmName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.collectionAmount.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.collectionAmount.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2628,9 +2786,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2639,15 +2795,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Sale Manager',
-        'Amount',
-      ]));
+      sheet.appendRow(toCellRow(['Sale Manager', 'Amount']));
       for (var data in list.asmwiseData) {
-        sheet.appendRow(toCellRow([
-          data.asmName,
-          data.collectionAmount,
-        ]));
+        sheet.appendRow(toCellRow([data.asmName, data.collectionAmount]));
       }
 
       if (kIsWeb) {
@@ -2660,9 +2810,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2676,8 +2824,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             return pw.Center(
               child: pw.Text(
                 'Sales Manager Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2690,24 +2840,44 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Sales Manager',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Sales Manager',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Amount',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Amount',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in asmwiseCollectionList.asmwiseData)
-                  pw.TableRow(children: [
-                    pw.Text(data.asmName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.asmName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.collectionAmount.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.collectionAmount.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2731,9 +2901,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2742,15 +2910,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Sale Person',
-        'Amount',
-      ]));
+      sheet.appendRow(toCellRow(['Sale Person', 'Amount']));
       for (var data in list.tsmwiseData) {
-        sheet.appendRow(toCellRow([
-          data.tsmName,
-          data.collectionAmount,
-        ]));
+        sheet.appendRow(toCellRow([data.tsmName, data.collectionAmount]));
       }
 
       if (kIsWeb) {
@@ -2763,9 +2925,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2779,8 +2939,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             return pw.Center(
               child: pw.Text(
                 'Sales Person Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2793,24 +2955,44 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Sales Person',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Sales Person',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Amount',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Amount',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in tsmwiseCollectionList.tsmwiseData)
-                  pw.TableRow(children: [
-                    pw.Text(data.tsmName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.tsmName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.collectionAmount.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.collectionAmount.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2834,15 +3016,16 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> _dateFilterTarget(
-      String UserName, String UserLevel, bool FromFilter) async {
+    String UserName,
+    String UserLevel,
+    bool FromFilter,
+  ) async {
     setState(() {
       List<String> menuNames = usersList
           .where((element) => element.parentMenuId == 0)
@@ -2855,8 +3038,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
       target = target.where((target) {
         DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-        return (/*dueon.isAtLeast(fromDateFilter!) &&*/
-            dueon.isAtMost(toDateFilter!));
+        return ( /*dueon.isAtLeast(fromDateFilter!) &&*/ dueon.isAtMost(
+          toDateFilter!,
+        ));
       }).toList();
     });
   }
@@ -2869,17 +3053,24 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     final userId = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     await _loadUserList(
-        userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
+      userId,
+      userJwtToken,
+      userMailID,
+      int.tryParse(userLevel) ?? 0,
+    );
     await _loadUserListForFilter(
-        userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
+      userId,
+      userJwtToken,
+      userMailID,
+      int.tryParse(userLevel) ?? 0,
+    );
     await _loadCollectionTarget(userName, userLevel, fromFilter);
-    // await _loadSales(userName, userLevel);
-    // await _loadItemCost(userName, userLevel);
     await _loadReceivablesData("", "", "", "", "", "", "");
     await _loadNetReceivablesData("", "", "", "", "", "", "");
     await _loadAdvanceFromCustomers("", "", "", "", "", "", "");
@@ -2951,8 +3142,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     notDueStr = formatAmount(notDue.abs());
 
     advance = advanceSum;
-    advance =
-        advanceCustomerList.agingData.fold(0, (t, e) => t + e.agingGroupTotal);
+    advance = advanceCustomerList.agingData.fold(
+      0,
+      (t, e) => t + e.agingGroupTotal,
+    );
 
     advanceStr = formatAmount(advance.abs());
     netReceivables = sum - advance;
@@ -2964,9 +3157,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     if (overDue == 0 || receivablesAmount == 0) {
       receivablePercentage = 0;
     } else {
-      receivablePercentage = double.tryParse(
-                  ((overDue / (receivablesAmount)) * 100).toStringAsFixed(2))
-              ?.ceil() ??
+      receivablePercentage =
+          double.tryParse(
+            ((overDue / (receivablesAmount)) * 100).toStringAsFixed(2),
+          )?.ceil() ??
           0;
     }
 
@@ -2977,9 +3171,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     if (advance == 0 || netReceivables == 0) {
       netReceivablePercentage = 0;
     } else {
-      netReceivablePercentage = double.tryParse(
-                  ((advance / (netReceivables)) * 100).toStringAsFixed(2))
-              ?.ceil() ??
+      netReceivablePercentage =
+          double.tryParse(
+            ((advance / (netReceivables)) * 100).toStringAsFixed(2),
+          )?.ceil() ??
           0;
     }
 
@@ -3000,7 +3195,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         listOfTSM,
         ['Not Dues', 'Overdue'],
         ['Advance', 'Receivables'],
-        []
+        [],
       ];
 
       savedFinanceReceivablesOptions = filterOptions
@@ -3020,8 +3215,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   void resetFinanceReceivablesOptions() {
     setState(() {
-      savedFinanceReceivablesOptions =
-          List.from(selectedFinanceReceivablesOptions);
+      savedFinanceReceivablesOptions = List.from(
+        selectedFinanceReceivablesOptions,
+      );
     });
   }
 
@@ -3104,37 +3300,45 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           double.tryParse(target.dueDays.replaceAll(' Days', '')) ?? 0;
       if (regionalManager != null && regionalManager.isNotEmpty) {
         int? regionalManagerMenuId = userNames
-            .firstWhere((element) => element.menuName == regionalManager,
-                orElse: () => Users(
-                    menuId: -1,
-                    menuName: '',
-                    subMenuId: -1,
-                    parentMenuId: -1,
-                    userLevel: -1))
+            .firstWhere(
+              (element) => element.menuName == regionalManager,
+              orElse: () => Users(
+                menuId: -1,
+                menuName: '',
+                subMenuId: -1,
+                parentMenuId: -1,
+                userLevel: -1,
+              ),
+            )
             .menuId;
         List<String> childMenuNames = userNames
             .where((element) => element.parentMenuId == regionalManagerMenuId)
             .map((user) => user.menuName)
             .toList();
-        regionalManagerCondition = regionalManagerMenuId != -1 &&
+        regionalManagerCondition =
+            regionalManagerMenuId != -1 &&
             childMenuNames.contains(target.salesManager);
       }
 
       if (salesManager != null && salesManager.isNotEmpty) {
         int? salesManagerMenuId = userNames
-            .firstWhere((element) => element.menuName == salesManager,
-                orElse: () => Users(
-                    menuId: -1,
-                    menuName: '',
-                    subMenuId: -1,
-                    parentMenuId: -1,
-                    userLevel: -1))
+            .firstWhere(
+              (element) => element.menuName == salesManager,
+              orElse: () => Users(
+                menuId: -1,
+                menuName: '',
+                subMenuId: -1,
+                parentMenuId: -1,
+                userLevel: -1,
+              ),
+            )
             .menuId;
         List<String> childMenuNames = userNames
             .where((element) => element.parentMenuId == salesManagerMenuId)
             .map((user) => user.menuName)
             .toList();
-        salesManagerCondition = salesManagerMenuId != -1 &&
+        salesManagerCondition =
+            salesManagerMenuId != -1 &&
             childMenuNames.contains(target.salesRep);
       }
       if (!regionalManagerCondition || !salesManagerCondition) {
@@ -3171,13 +3375,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   Future<void> loadDataWithFilter(
-      String? receivableId,
-      String netReceivableId,
-      String? advanceId,
-      String? customer,
-      String? regionalManager,
-      String? salesManager,
-      String? salesPerson) async {
+    String? receivableId,
+    String netReceivableId,
+    String? advanceId,
+    String? customer,
+    String? regionalManager,
+    String? salesManager,
+    String? salesPerson,
+  ) async {
     clearVariablesForFilter();
     LoadDates();
     await _loadReceivablesData(
@@ -3254,8 +3459,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       receivablesFinanceList = ReceivablesFinanceList(agingData: []);
       allReceivablesFinanceList = AllReceivablesFinanceList(agingData: []);
       advanceCustomerList = AdvanceFromCustomersList(agingData: []);
-      customerAnalysisFinanceList =
-          CustomerAnalysisFinanceList(customerData: []);
+      customerAnalysisFinanceList = CustomerAnalysisFinanceList(
+        customerData: [],
+      );
       tsmwiseCollectionList = TsmwiseCollectionList(tsmwiseData: []);
       asmwiseCollectionList = AsmwiseCollectionList(asmwiseData: []);
       rsmwiseCollectionList = RsmwiseCollectionList(rsmwiseData: []);
@@ -3275,8 +3481,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       receivablesFinanceList = ReceivablesFinanceList(agingData: []);
       // allReceivablesFinanceList = AllReceivablesFinanceList(agingData: []);
       advanceCustomerList = AdvanceFromCustomersList(agingData: []);
-      customerAnalysisFinanceList =
-          CustomerAnalysisFinanceList(customerData: []);
+      customerAnalysisFinanceList = CustomerAnalysisFinanceList(
+        customerData: [],
+      );
       tsmwiseCollectionList = TsmwiseCollectionList(tsmwiseData: []);
       asmwiseCollectionList = AsmwiseCollectionList(asmwiseData: []);
       rsmwiseCollectionList = RsmwiseCollectionList(rsmwiseData: []);
@@ -3304,8 +3511,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     });
     String selectedUser = '';
     final prefs = await SharedPreferences.getInstance();
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     setState(() async {
@@ -3331,8 +3539,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       await _loadRSMCollectionBarChartData("", "", "", "", "", "", "");
 
       List<String> trueSalesDataOptions =
-          (allCategoriesState['Sales Data'] ?? {})
-              .entries
+          (allCategoriesState['Sales Data'] ?? {}).entries
               .where((entry) => entry.value)
               .map((entry) => entry.key)
               .toList();
@@ -3344,26 +3551,22 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           .toList();
 
       List<String> trueDimensionOptions =
-          (allCategoriesState['Dimension'] ?? {})
-              .entries
+          (allCategoriesState['Dimension'] ?? {}).entries
               .where((entry) => entry.value)
               .map((entry) => entry.key)
               .toList();
 
-      List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {})
-          .entries
+      List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
           .where((entry) => entry.value)
           .map((entry) => entry.key)
           .toList();
 
-      List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {})
-          .entries
+      List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
           .where((entry) => entry.value)
           .map((entry) => entry.key)
           .toList();
 
-      List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {})
-          .entries
+      List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
           .where((entry) => entry.value)
           .map((entry) => entry.key)
           .toList();
@@ -3375,8 +3578,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           .toList();
 
       List<String> trueAdvanceOptions =
-          (allCategoriesState['Advance/Receivables'] ?? {})
-              .entries
+          (allCategoriesState['Advance/Receivables'] ?? {}).entries
               .where((entry) => entry.value)
               .map((entry) => entry.key)
               .toList();
@@ -3391,8 +3593,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           }).toList();
         } else {
           filteredList = target
-              .where((person) =>
-                  trueSalesDataOptions.contains(person.salesManager))
+              .where(
+                (person) => trueSalesDataOptions.contains(person.salesManager),
+              )
               .toList();
         }
         target = filteredList;
@@ -3401,7 +3604,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       if (trueCategoryOptions.isNotEmpty) {
         filteredList = target
             .where(
-                (person) => trueCategoryOptions.contains(person.customerGroup))
+              (person) => trueCategoryOptions.contains(person.customerGroup),
+            )
             .toList();
         target = filteredList;
       }
@@ -3409,7 +3613,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       if (trueDimensionOptions.isNotEmpty) {
         filteredList = target
             .where(
-                (person) => trueDimensionOptions.contains(person.documentType))
+              (person) => trueDimensionOptions.contains(person.documentType),
+            )
             .toList();
         target = filteredList;
       }
@@ -3437,11 +3642,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
       if (trueDueOptions.isNotEmpty) {
         if (trueDueOptions.contains("Not Dues")) {
-          filteredList =
-              target.where((person) => person.future == "0").toList();
+          filteredList = target
+              .where((person) => person.future == "0")
+              .toList();
         } else if (trueDueOptions.contains("Overdue")) {
-          filteredList =
-              target.where((person) => person.future != "0").toList();
+          filteredList = target
+              .where((person) => person.future != "0")
+              .toList();
         }
         target = filteredList;
       }
@@ -3520,8 +3727,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
       advance = advanceSum;
 
-      advance = advanceCustomerList.agingData
-          .fold(0, (t, e) => t + e.agingGroupTotal);
+      advance = advanceCustomerList.agingData.fold(
+        0,
+        (t, e) => t + e.agingGroupTotal,
+      );
 
       advanceStr = formatAmount(advance.abs());
       netReceivables = sum - advance;
@@ -3533,9 +3742,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       if (overDue == 0 || receivablesAmount == 0) {
         receivablePercentage = 0;
       } else {
-        receivablePercentage = double.tryParse(
-                    ((overDue / (receivablesAmount)) * 100).toStringAsFixed(2))
-                ?.ceil() ??
+        receivablePercentage =
+            double.tryParse(
+              ((overDue / (receivablesAmount)) * 100).toStringAsFixed(2),
+            )?.ceil() ??
             0;
       }
 
@@ -3546,9 +3756,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       if (advance == 0 || netReceivables == 0) {
         netReceivablePercentage = 0;
       } else {
-        netReceivablePercentage = double.tryParse(
-                    ((advance / (netReceivables)) * 100).toStringAsFixed(2))
-                ?.ceil() ??
+        netReceivablePercentage =
+            double.tryParse(
+              ((advance / (netReceivables)) * 100).toStringAsFixed(2),
+            )?.ceil() ??
             0;
       }
 
@@ -3570,7 +3781,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           listOfTSM,
           ['Not Dues', 'Overdue'],
           ['Advance', 'Receivables'],
-          []
+          [],
         ];
 
         savedFinanceReceivablesOptions = filterOptions
@@ -3618,9 +3829,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     return GestureDetector(
       onTap: () => toggleCheckbox(),
       child: Checkbox(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(2.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2.0)),
         side: WidgetStateBorderSide.resolveWith(
           (states) => const BorderSide(width: 1.0, color: Color(0xFF8F8F8F)),
         ),
@@ -3631,7 +3840,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   String getSelectedFiltersText(
-      Map<String, Map<String, bool>> allCategoriesState) {
+    Map<String, Map<String, bool>> allCategoriesState,
+  ) {
     List<String> selectedFilters = [];
     allCategoriesState.forEach((category, options) {
       options.forEach((option, isSelected) {
@@ -3671,8 +3881,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         var itemSales = salesByItem[itemCode]!;
         var firstItemSale = itemSales.first;
 
-        var matchingItems =
-            itemCostList.where((test) => firstItemSale.code == test.itemCode);
+        var matchingItems = itemCostList.where(
+          (test) => firstItemSale.code == test.itemCode,
+        );
 
         bomCost = matchingItems.isNotEmpty ? matchingItems.first.itemCost : "0";
 
@@ -3681,8 +3892,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
         for (int i = 0; i < 12; i++) {
           DateTime startDate = addMonth(fiscalYearStartDate!, i);
-          DateTime endDate =
-              addMonth(startDate, 1).add(const Duration(days: -1));
+          DateTime endDate = addMonth(
+            startDate,
+            1,
+          ).add(const Duration(days: -1));
 
           for (var sale in itemSales) {
             DateTime invoiceDate = sale.invoiceDate;
@@ -3701,56 +3914,62 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         }
 
         if (monthlyValue.reduce((a, b) => a + b) != 0) {
-          ytdSalesDataList.add(ProductMarginData(
-            itemNo: firstItemSale.code,
-            itemDescription: firstItemSale.description,
-            itemSubGroup: firstItemSale.itemSubGroup,
-            quantity: monthlyQty.reduce((a, b) => a + b).toStringAsFixed(2),
-            saleAmt: monthlyValue.reduce((a, b) => a + b).toStringAsFixed(2),
-            avgSellingPrice: (monthlyValue.reduce((a, b) => a + b) /
-                    monthlyQty.reduce((a, b) => a + b))
-                .toStringAsFixed(2),
-            bomCost: double.parse(bomCost).toStringAsFixed(2),
-            perUnitMarginAmount: ((monthlyValue.reduce((a, b) => a + b) /
-                        monthlyQty.reduce((a, b) => a + b)) -
-                    double.parse(bomCost))
-                .toStringAsFixed(2),
-            totalMarginAmount: (((monthlyValue.reduce((a, b) => a + b) /
-                            monthlyQty.reduce((a, b) => a + b)) -
-                        double.parse(bomCost)) *
-                    monthlyQty.reduce((a, b) => a + b))
-                .toStringAsFixed(2),
-            marginPercent: (((monthlyValue.reduce((a, b) => a + b) /
-                        monthlyQty.reduce((a, b) => a + b)) -
-                    double.parse(bomCost)) /
-                (monthlyValue.reduce((a, b) => a + b) /
-                    monthlyQty.reduce((a, b) => a + b)) *
-                100),
-            // mayQty: monthlyQty[1],
-            // mayValue: monthlyValue[1],
-            // junQty: monthlyQty[2],
-            // junValue: monthlyValue[2],
-            // julQty: monthlyQty[3],
-            // julValue: monthlyQty[3],
-            // augQty: monthlyQty[4],
-            // augValue: monthlyValue[4],
-            // sepQty: monthlyQty[5],
-            // sepValue: monthlyValue[5],
-            // octQty: monthlyQty[6],
-            // octValue: monthlyValue[6],
-            // novQty: monthlyQty[7],
-            // novValue: monthlyValue[7],
-            // decQty: monthlyQty[8],
-            // decValue: monthlyValue[8],
-            // janQty: monthlyQty[9],
-            // janValue: monthlyValue[9],
-            // febQty: monthlyQty[10],
-            // febValue: monthlyValue[10],
-            // marQty: monthlyQty[11],
-            // marValue: monthlyValue[11],
-            // ytdTotalValue: monthlyValue.reduce((a, b) => a + b),
-            // ytdTotalQty: monthlyQty.reduce((a, b) => a + b),
-          ));
+          ytdSalesDataList.add(
+            ProductMarginData(
+              itemNo: firstItemSale.code,
+              itemDescription: firstItemSale.description,
+              itemSubGroup: firstItemSale.itemSubGroup,
+              quantity: monthlyQty.reduce((a, b) => a + b).toStringAsFixed(2),
+              saleAmt: monthlyValue.reduce((a, b) => a + b).toStringAsFixed(2),
+              avgSellingPrice:
+                  (monthlyValue.reduce((a, b) => a + b) /
+                          monthlyQty.reduce((a, b) => a + b))
+                      .toStringAsFixed(2),
+              bomCost: double.parse(bomCost).toStringAsFixed(2),
+              perUnitMarginAmount:
+                  ((monthlyValue.reduce((a, b) => a + b) /
+                              monthlyQty.reduce((a, b) => a + b)) -
+                          double.parse(bomCost))
+                      .toStringAsFixed(2),
+              totalMarginAmount:
+                  (((monthlyValue.reduce((a, b) => a + b) /
+                                  monthlyQty.reduce((a, b) => a + b)) -
+                              double.parse(bomCost)) *
+                          monthlyQty.reduce((a, b) => a + b))
+                      .toStringAsFixed(2),
+              marginPercent:
+                  (((monthlyValue.reduce((a, b) => a + b) /
+                          monthlyQty.reduce((a, b) => a + b)) -
+                      double.parse(bomCost)) /
+                  (monthlyValue.reduce((a, b) => a + b) /
+                      monthlyQty.reduce((a, b) => a + b)) *
+                  100),
+              // mayQty: monthlyQty[1],
+              // mayValue: monthlyValue[1],
+              // junQty: monthlyQty[2],
+              // junValue: monthlyValue[2],
+              // julQty: monthlyQty[3],
+              // julValue: monthlyQty[3],
+              // augQty: monthlyQty[4],
+              // augValue: monthlyValue[4],
+              // sepQty: monthlyQty[5],
+              // sepValue: monthlyValue[5],
+              // octQty: monthlyQty[6],
+              // octValue: monthlyValue[6],
+              // novQty: monthlyQty[7],
+              // novValue: monthlyValue[7],
+              // decQty: monthlyQty[8],
+              // decValue: monthlyValue[8],
+              // janQty: monthlyQty[9],
+              // janValue: monthlyValue[9],
+              // febQty: monthlyQty[10],
+              // febValue: monthlyValue[10],
+              // marQty: monthlyQty[11],
+              // marValue: monthlyValue[11],
+              // ytdTotalValue: monthlyValue.reduce((a, b) => a + b),
+              // ytdTotalQty: monthlyQty.reduce((a, b) => a + b),
+            ),
+          );
         }
         customerSales.clear();
       }
@@ -3760,11 +3979,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       ytdSalesDataList.sort((a, b) => a.itemNo.compareTo(b.itemNo));
 
       ytdSalesDataList.removeWhere(
-          (item) => item.itemSubGroup == "" || item.itemSubGroup.isEmpty);
+        (item) => item.itemSubGroup == "" || item.itemSubGroup.isEmpty,
+      );
 
       var filteredList = ytdSalesDataList
           .where(
-              (item) => item.itemSubGroup != "" && item.itemSubGroup.isNotEmpty)
+            (item) => item.itemSubGroup != "" && item.itemSubGroup.isNotEmpty,
+          )
           .toList();
 
       productMarginList = ProductMarginList(productMarginData: filteredList);
@@ -3777,43 +3998,45 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Item No.',
-      'Item Description',
-      'Item Sub Group',
-      'Quantity',
-      'Sales Amt',
-      'Avg Selling Price',
-      'BOMCost',
-      'Per Unit Margin Amount',
-      'Total Margin Amount',
-      'Margin %',
-    ]));
+    sheet.appendRow(
+      toCellRow([
+        'Item No.',
+        'Item Description',
+        'Item Sub Group',
+        'Quantity',
+        'Sales Amt',
+        'Avg Selling Price',
+        'BOMCost',
+        'Per Unit Margin Amount',
+        'Total Margin Amount',
+        'Margin %',
+      ]),
+    );
 
     for (int column = 0; column < 11; column++) {
       var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0));
-      cell.cellStyle = xl.CellStyle(
-        bold: true,
-        fontSize: 14,
+        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
       );
+      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
 
       // sheet.setColAutoFit(column);
     }
 
     for (var ytdData in productMarginList.productMarginData) {
-      sheet.appendRow(toCellRow([
-        ytdData.itemNo,
-        ytdData.itemDescription,
-        ytdData.itemSubGroup,
-        ytdData.quantity,
-        ytdData.saleAmt,
-        ytdData.avgSellingPrice,
-        ytdData.bomCost,
-        ytdData.perUnitMarginAmount,
-        ytdData.totalMarginAmount,
-        ytdData.marginPercent,
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          ytdData.itemNo,
+          ytdData.itemDescription,
+          ytdData.itemSubGroup,
+          ytdData.quantity,
+          ytdData.saleAmt,
+          ytdData.avgSellingPrice,
+          ytdData.bomCost,
+          ytdData.perUnitMarginAmount,
+          ytdData.totalMarginAmount,
+          ytdData.marginPercent,
+        ]),
+      );
     }
 
     xl.CellStyle centerCellStyle = xl.CellStyle(
@@ -3825,8 +4048,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
     for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
       for (int colIndex = 0; colIndex < 10; colIndex++) {
-        var cell = sheet.cell(xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex, rowIndex: rowIndex));
+        var cell = sheet.cell(
+          xl.CellIndex.indexByColumnRow(
+            columnIndex: colIndex,
+            rowIndex: rowIndex,
+          ),
+        );
         if (rowIndex != 0) {
           cell.cellStyle = centerCellStyle;
         }
@@ -3868,31 +4095,35 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item No.',
-        'Item Description',
-        'Item Sub Group',
-        'Quantity',
-        'Sales Amt',
-        'Avg Selling Price',
-        'BOMCost',
-        'Per Unit Margin Amount',
-        'Total Margin Amount',
-        'Margin %',
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          'Item No.',
+          'Item Description',
+          'Item Sub Group',
+          'Quantity',
+          'Sales Amt',
+          'Avg Selling Price',
+          'BOMCost',
+          'Per Unit Margin Amount',
+          'Total Margin Amount',
+          'Margin %',
+        ]),
+      );
       for (var element in productMarginList.productMarginData) {
-        sheet.appendRow(toCellRow([
-          element.itemNo,
-          element.itemDescription,
-          element.itemSubGroup,
-          element.quantity,
-          element.saleAmt,
-          element.avgSellingPrice,
-          element.bomCost,
-          element.perUnitMarginAmount,
-          element.totalMarginAmount,
-          element.marginPercent,
-        ]));
+        sheet.appendRow(
+          toCellRow([
+            element.itemNo,
+            element.itemDescription,
+            element.itemSubGroup,
+            element.quantity,
+            element.saleAmt,
+            element.avgSellingPrice,
+            element.bomCost,
+            element.perUnitMarginAmount,
+            element.totalMarginAmount,
+            element.marginPercent,
+          ]),
+        );
       }
       if (kIsWeb) {
         final excelBytes = excel.encode()!;
@@ -3904,9 +4135,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3953,14 +4182,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 15,
-                        ),
+                        const SizedBox(width: 15),
                         dateFilterFlag
                             ? Text(
-                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}")
+                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
+                              )
                             : Text(
-                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate)}"),
+                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate)}",
+                              ),
                       ],
                     ),
                     Row(
@@ -4164,9 +4393,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 20,
-                ),
+                const SizedBox(height: 20),
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -4175,8 +4402,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         child: Row(
                           children: [
                             Padding(
-                              padding:
-                                  const EdgeInsets.only(top: 4.0, right: 4.0),
+                              padding: const EdgeInsets.only(
+                                top: 4.0,
+                                right: 4.0,
+                              ),
                               child: CircularPercentIndicator(
                                 arcType: ArcType.HALF,
                                 radius: 70.0,
@@ -4190,9 +4419,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 center: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const SizedBox(
-                                      height: 70,
-                                    ),
+                                    const SizedBox(height: 70),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -4200,15 +4427,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         Text(
                                           "Receivables: $receivablesAmountStr",
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11.0,
-                                              color: Colors.black),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11.0,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
+                                    const SizedBox(height: 5),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -4218,21 +4444,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                           width: 10,
                                           color: const Color(0xFF2CA9DF),
                                         ),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
+                                        const SizedBox(width: 5),
                                         Text(
                                           "Over Due $overDueStr",
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
-                                              fontSize: 10.0,
-                                              color: Colors.black),
+                                            fontSize: 10.0,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
+                                    const SizedBox(height: 5),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -4242,15 +4465,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                           width: 10,
                                           color: const Color(0xFFB8ECFF),
                                         ),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
+                                        const SizedBox(width: 5),
                                         Text(
                                           "Not Due $notDueStr",
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
-                                              fontSize: 10.0,
-                                              color: Colors.black),
+                                            fontSize: 10.0,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -4258,12 +4480,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 ),
                               ),
                             ),
-                            const SizedBox(
-                              width: 30,
-                            ),
+                            const SizedBox(width: 30),
                             Padding(
-                              padding:
-                                  const EdgeInsets.only(top: 4.0, right: 4.0),
+                              padding: const EdgeInsets.only(
+                                top: 4.0,
+                                right: 4.0,
+                              ),
                               child: CircularPercentIndicator(
                                 arcType: ArcType.HALF,
                                 radius: 70.0,
@@ -4277,9 +4499,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 center: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const SizedBox(
-                                      height: 70,
-                                    ),
+                                    const SizedBox(height: 70),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -4287,15 +4507,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         Text(
                                           "Net Receivables: $netReceivablesStr",
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11.0,
-                                              color: Colors.black),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11.0,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
+                                    const SizedBox(height: 5),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -4305,21 +4524,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                           width: 10,
                                           color: const Color(0xFF2CA9DF),
                                         ),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
+                                        const SizedBox(width: 5),
                                         Text(
                                           "Advance $advanceStr",
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
-                                              fontSize: 10.0,
-                                              color: Colors.black),
+                                            fontSize: 10.0,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
+                                    const SizedBox(height: 5),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -4329,15 +4545,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                           width: 10,
                                           color: const Color(0xFF97D7F3),
                                         ),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
+                                        const SizedBox(width: 5),
                                         Text(
                                           "Receivables $grossReceivablesStr",
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
-                                              fontSize: 10.0,
-                                              color: Colors.black),
+                                            fontSize: 10.0,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -4353,9 +4568,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
 
                 Visibility(
@@ -4368,12 +4581,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 15,
+                              SizedBox(width: 15),
+                              Text(
+                                "Receivables",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
-                              Text("Receivables",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Row(
@@ -4386,7 +4598,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateReceivablesExcel(
-                                              allReceivablesFinanceList);
+                                            allReceivablesFinanceList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download Excel"),
@@ -4395,7 +4608,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateReceivablesPDF(
-                                              allReceivablesFinanceList);
+                                            allReceivablesFinanceList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download PDF"),
@@ -4408,17 +4622,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                        ),
+                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                         child: _receivables(),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(
-                          thickness: 2,
-                        ),
+                        child: Divider(thickness: 2),
                       ),
                     ],
                   ),
@@ -4434,12 +4643,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 15,
+                              SizedBox(width: 15),
+                              Text(
+                                "Net Receivables",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
-                              Text("Net Receivables",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Row(
@@ -4452,7 +4660,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateNetReceivablesExcel(
-                                              receivablesFinanceList);
+                                            receivablesFinanceList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download Excel"),
@@ -4461,7 +4670,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateNetReceivablesPDF(
-                                              receivablesFinanceList);
+                                            receivablesFinanceList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download PDF"),
@@ -4474,17 +4684,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                        ),
+                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                         child: _netReceivables(),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(
-                          thickness: 2,
-                        ),
+                        child: Divider(thickness: 2),
                       ),
                     ],
                   ),
@@ -4500,12 +4705,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 15,
+                              SizedBox(width: 15),
+                              Text(
+                                "Advance From Customers",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
-                              Text("Advance From Customers",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Row(
@@ -4518,7 +4722,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateAdvanceExcel(
-                                              advanceCustomerList);
+                                            advanceCustomerList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download Excel"),
@@ -4527,7 +4732,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateAdvancePDF(
-                                              advanceCustomerList);
+                                            advanceCustomerList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download PDF"),
@@ -4540,17 +4746,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                        ),
+                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                         child: _advanceFromCustomers(),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(
-                          thickness: 2,
-                        ),
+                        child: Divider(thickness: 2),
                       ),
                     ],
                   ),
@@ -4566,12 +4767,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 15,
+                              SizedBox(width: 15),
+                              Text(
+                                "Customer Analysis",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
-                              Text("Customer Analysis",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Row(
@@ -4584,7 +4784,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateCustomerAnalysisExcel(
-                                              customerAnalysisFinanceList);
+                                            customerAnalysisFinanceList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download Excel"),
@@ -4593,7 +4794,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateCustomerAnalysisExcel(
-                                              customerAnalysisFinanceList);
+                                            customerAnalysisFinanceList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download PDF"),
@@ -4606,17 +4808,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                        ),
+                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                         child: _customerAnalysis(),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(
-                          thickness: 2,
-                        ),
+                        child: Divider(thickness: 2),
                       ),
                     ],
                   ),
@@ -4630,18 +4827,21 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            SizedBox(
-                              width: 15,
+                            SizedBox(width: 15),
+                            Text(
+                              "Customer Category wise Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
-                            Text("Customer Category wise Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
                     ),
                     Padding(
                       padding: const EdgeInsets.only(
-                          left: 16.0, right: 16.0, bottom: 16.0),
+                        left: 16.0,
+                        right: 16.0,
+                        bottom: 16.0,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -4653,22 +4853,22 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 pieTouchData: PieTouchData(
                                   touchCallback:
                                       (FlTouchEvent event, pieTouchResponse) {
-                                    setState(() {
-                                      if (!event.isInterestedForInteractions ||
-                                          pieTouchResponse == null ||
-                                          pieTouchResponse.touchedSection ==
-                                              null) {
-                                        touchedIndex = -1;
-                                        return;
-                                      }
-                                      touchedIndex = pieTouchResponse
-                                          .touchedSection!.touchedSectionIndex;
-                                    });
-                                  },
+                                        setState(() {
+                                          if (!event
+                                                  .isInterestedForInteractions ||
+                                              pieTouchResponse == null ||
+                                              pieTouchResponse.touchedSection ==
+                                                  null) {
+                                            touchedIndex = -1;
+                                            return;
+                                          }
+                                          touchedIndex = pieTouchResponse
+                                              .touchedSection!
+                                              .touchedSectionIndex;
+                                        });
+                                      },
                                 ),
-                                borderData: FlBorderData(
-                                  show: false,
-                                ),
+                                borderData: FlBorderData(show: false),
                                 sectionsSpace: 1,
                                 centerSpaceRadius: 0,
                                 startDegreeOffset: 180,
@@ -4687,32 +4887,26 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                     Column(
                                       children: [
                                         Container(
-                                            height: 8,
-                                            width: 16,
-                                            color: const Color(0xFFFF9F47)
-                                            // color: getCategoryColor(categoryData.categoryId),
-                                            ),
-                                        const SizedBox(
-                                          height: 6,
+                                          height: 8,
+                                          width: 16,
+                                          color: const Color(0xFFFF9F47),
+                                          // color: getCategoryColor(categoryData.categoryId),
                                         ),
+                                        const SizedBox(height: 6),
                                         Container(
-                                            height: 8,
-                                            width: 16,
-                                            color: const Color(0xFF97D7F3)
-                                            // color: getCategoryColor(categoryData.categoryId),
-                                            ),
-                                        const SizedBox(
-                                          height: 6,
+                                          height: 8,
+                                          width: 16,
+                                          color: const Color(0xFF97D7F3),
+                                          // color: getCategoryColor(categoryData.categoryId),
                                         ),
+                                        const SizedBox(height: 6),
                                         Container(
-                                            height: 8,
-                                            width: 16,
-                                            color: const Color(0xFF78E25D)
-                                            // color: getCategoryColor(categoryData.categoryId),
-                                            ),
-                                        const SizedBox(
-                                          height: 6,
+                                          height: 8,
+                                          width: 16,
+                                          color: const Color(0xFF78E25D),
+                                          // color: getCategoryColor(categoryData.categoryId),
                                         ),
+                                        const SizedBox(height: 6),
                                       ],
                                     ),
                                   ],
@@ -4756,9 +4950,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     ),
                     const Padding(
                       padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(
-                        thickness: 2,
-                      ),
+                      child: Divider(thickness: 2),
                     ),
                   ],
                 ),
@@ -4773,12 +4965,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 15,
+                              SizedBox(width: 15),
+                              Text(
+                                "Regional Manager Analysis",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
-                              Text("Regional Manager Analysis",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Row(
@@ -4791,7 +4982,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateRegionalManagerExcel(
-                                              rsmwiseCollectionList);
+                                            rsmwiseCollectionList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download Excel"),
@@ -4800,7 +4992,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateRegionalManagerPDF(
-                                              rsmwiseCollectionList);
+                                            rsmwiseCollectionList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download PDF"),
@@ -4813,17 +5006,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                        ),
+                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                         child: _regionalManagerAnalysis(),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(
-                          thickness: 2,
-                        ),
+                        child: Divider(thickness: 2),
                       ),
                     ],
                   ),
@@ -4839,12 +5027,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 15,
+                              SizedBox(width: 15),
+                              Text(
+                                "Sales Manager Analysis",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
-                              Text("Sales Manager Analysis",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Row(
@@ -4857,7 +5044,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateSalesManagerExcel(
-                                              asmwiseCollectionList);
+                                            asmwiseCollectionList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download Excel"),
@@ -4866,7 +5054,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateSalesManagerPDF(
-                                              asmwiseCollectionList);
+                                            asmwiseCollectionList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download PDF"),
@@ -4879,17 +5068,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                        ),
+                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                         child: _salesManagerAnalysis(),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(
-                          thickness: 2,
-                        ),
+                        child: Divider(thickness: 2),
                       ),
                     ],
                   ),
@@ -4905,12 +5089,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 15,
+                              SizedBox(width: 15),
+                              Text(
+                                "Sales Person Analysis",
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
-                              Text("Sales Person Analysis",
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Row(
@@ -4923,7 +5106,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateSalesPersonExcel(
-                                              tsmwiseCollectionList);
+                                            tsmwiseCollectionList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download Excel"),
@@ -4932,7 +5116,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       onTap: () {
                                         setState(() {
                                           generateSalesPersonPDF(
-                                              tsmwiseCollectionList);
+                                            tsmwiseCollectionList,
+                                          );
                                         });
                                       },
                                       child: const Text("Download PDF"),
@@ -4945,10 +5130,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                        ),
+                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                         child: _salesPersonAnalysis(),
                       ),
                     ],
@@ -4982,8 +5164,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     int len = allReceivablesFinanceList.agingData.length;
     double maxAmount = len > 0
         ? allReceivablesFinanceList.agingData
-            .map((data) => data.agingGroupTotal)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.agingGroupTotal)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -4997,40 +5179,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesReceivableAging, axisNameSize: 20),
+                sideTitles: _bottomTitlesReceivableAging,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _AllReceivableAgingChartData(
-                allReceivablesFinanceList.agingData),
+              allReceivablesFinanceList.agingData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5039,8 +5212,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedReceivables = touchedReceivables == ""
                           ? allReceivablesFinanceList
-                              .agingData[barTouchResponse.spot!.spot.x.toInt()]
-                              .agingGroup
+                                .agingData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .agingGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5060,87 +5234,92 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            '${allReceivablesFinanceList.agingData[0].agingGroup} :'
+                            ' ${(formatAmount(allReceivablesFinanceList.agingData[0].agingGroupTotal))} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              '${allReceivablesFinanceList.agingData[0].agingGroup} :'
-                              ' ${(formatAmount(allReceivablesFinanceList.agingData[0].agingGroupTotal))} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            '${allReceivablesFinanceList.agingData[1].agingGroup} '
+                            ': ${(formatAmount(allReceivablesFinanceList.agingData[1].agingGroupTotal))}\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${allReceivablesFinanceList.agingData[1].agingGroup} '
-                              ': ${(formatAmount(allReceivablesFinanceList.agingData[1].agingGroupTotal))}\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${allReceivablesFinanceList.agingData[2].agingGroup} '
+                            ': ${(formatAmount(allReceivablesFinanceList.agingData[2].agingGroupTotal))} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${allReceivablesFinanceList.agingData[2].agingGroup} '
-                              ': ${(formatAmount(allReceivablesFinanceList.agingData[2].agingGroupTotal))} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${allReceivablesFinanceList.agingData[3].agingGroup} '
+                            ':${(formatAmount(allReceivablesFinanceList.agingData[3].agingGroupTotal))}\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${allReceivablesFinanceList.agingData[3].agingGroup} '
-                              ':${(formatAmount(allReceivablesFinanceList.agingData[3].agingGroupTotal))}\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${allReceivablesFinanceList.agingData[4].agingGroup} '
+                            ': ${(formatAmount(allReceivablesFinanceList.agingData[4].agingGroupTotal))}\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${allReceivablesFinanceList.agingData[4].agingGroup} '
-                              ': ${(formatAmount(allReceivablesFinanceList.agingData[4].agingGroupTotal))}\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${allReceivablesFinanceList.agingData[5].agingGroup} '
+                            ': ${(formatAmount(allReceivablesFinanceList.agingData[5].agingGroupTotal))}\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${allReceivablesFinanceList.agingData[5].agingGroup} '
-                              ': ${(formatAmount(allReceivablesFinanceList.agingData[5].agingGroupTotal))}\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            'Total'
+                            ': ${formatAmount((allReceivablesFinanceList.agingData[5].agingGroupTotal + allReceivablesFinanceList.agingData[4].agingGroupTotal + allReceivablesFinanceList.agingData[3].agingGroupTotal + allReceivablesFinanceList.agingData[2].agingGroupTotal + allReceivablesFinanceList.agingData[1].agingGroupTotal + allReceivablesFinanceList.agingData[0].agingGroupTotal))} ',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: 'Total'
-                              ': ${formatAmount((allReceivablesFinanceList.agingData[5].agingGroupTotal + allReceivablesFinanceList.agingData[4].agingGroupTotal + allReceivablesFinanceList.agingData[3].agingGroupTotal + allReceivablesFinanceList.agingData[2].agingGroupTotal + allReceivablesFinanceList.agingData[1].agingGroupTotal + allReceivablesFinanceList.agingData[0].agingGroupTotal))} ',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5160,8 +5339,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     int len = receivablesFinanceList.agingData.length;
     double maxAmount = len > 0
         ? receivablesFinanceList.agingData
-            .map((data) => data.agingGroupTotal)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.agingGroupTotal)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -5175,41 +5354,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesNetReceivableAging,
-                  axisNameSize: 20),
+                sideTitles: _bottomTitlesNetReceivableAging,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups:
-                _netReceivableAgingChartData(receivablesFinanceList.agingData),
+            barGroups: _netReceivableAgingChartData(
+              receivablesFinanceList.agingData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5218,8 +5387,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedNetReceivables = touchedNetReceivables == ""
                           ? receivablesFinanceList
-                              .agingData[barTouchResponse.spot!.spot.x.toInt()]
-                              .agingGroup
+                                .agingData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .agingGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5239,87 +5409,92 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            '${receivablesFinanceList.agingData[0].agingGroup} :'
+                            ' ${formatAmount(receivablesFinanceList.agingData[0].agingGroupTotal)} \n ',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              '${receivablesFinanceList.agingData[0].agingGroup} :'
-                              ' ${formatAmount(receivablesFinanceList.agingData[0].agingGroupTotal)} \n ',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            '${receivablesFinanceList.agingData[1].agingGroup} '
+                            ': ${formatAmount(receivablesFinanceList.agingData[1].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesFinanceList.agingData[1].agingGroup} '
-                              ': ${formatAmount(receivablesFinanceList.agingData[1].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivablesFinanceList.agingData[2].agingGroup} '
+                            ':  ${formatAmount(receivablesFinanceList.agingData[2].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesFinanceList.agingData[2].agingGroup} '
-                              ':  ${formatAmount(receivablesFinanceList.agingData[2].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivablesFinanceList.agingData[3].agingGroup} '
+                            ':  ${formatAmount(receivablesFinanceList.agingData[3].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesFinanceList.agingData[3].agingGroup} '
-                              ':  ${formatAmount(receivablesFinanceList.agingData[3].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivablesFinanceList.agingData[4].agingGroup} '
+                            ':  ${formatAmount(receivablesFinanceList.agingData[4].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesFinanceList.agingData[4].agingGroup} '
-                              ':  ${formatAmount(receivablesFinanceList.agingData[4].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivablesFinanceList.agingData[5].agingGroup} '
+                            ':  ${formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesFinanceList.agingData[5].agingGroup} '
-                              ':  ${formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            'Total'
+                            ': ${(formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal + receivablesFinanceList.agingData[4].agingGroupTotal + receivablesFinanceList.agingData[3].agingGroupTotal + receivablesFinanceList.agingData[2].agingGroupTotal + receivablesFinanceList.agingData[1].agingGroupTotal + receivablesFinanceList.agingData[0].agingGroupTotal))} ',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: 'Total'
-                              ': ${(formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal + receivablesFinanceList.agingData[4].agingGroupTotal + receivablesFinanceList.agingData[3].agingGroupTotal + receivablesFinanceList.agingData[2].agingGroupTotal + receivablesFinanceList.agingData[1].agingGroupTotal + receivablesFinanceList.agingData[0].agingGroupTotal))} ',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5339,8 +5514,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     int len = advanceCustomerList.agingData.length;
     double maxAmount = len > 0
         ? advanceCustomerList.agingData
-            .map((data) => data.agingGroupTotal)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.agingGroupTotal)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -5354,41 +5529,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesAdvanceFromCustomer,
-                  axisNameSize: 20),
+                sideTitles: _bottomTitlesAdvanceFromCustomer,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups:
-                _advanceFromCustomerChartData(advanceCustomerList.agingData),
+            barGroups: _advanceFromCustomerChartData(
+              advanceCustomerList.agingData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5397,8 +5562,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedAdvance = touchedAdvance == ""
                           ? advanceCustomerList
-                              .agingData[barTouchResponse.spot!.spot.x.toInt()]
-                              .agingGroup
+                                .agingData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .agingGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5418,87 +5584,92 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            '${advanceCustomerList.agingData[0].agingGroup} :'
+                            ' ${formatAmount(advanceCustomerList.agingData[0].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              '${advanceCustomerList.agingData[0].agingGroup} :'
-                              ' ${formatAmount(advanceCustomerList.agingData[0].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            '${advanceCustomerList.agingData[1].agingGroup} '
+                            ': ${formatAmount(advanceCustomerList.agingData[1].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${advanceCustomerList.agingData[1].agingGroup} '
-                              ': ${formatAmount(advanceCustomerList.agingData[1].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${advanceCustomerList.agingData[2].agingGroup} '
+                            ': ${formatAmount(advanceCustomerList.agingData[2].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${advanceCustomerList.agingData[2].agingGroup} '
-                              ': ${formatAmount(advanceCustomerList.agingData[2].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${advanceCustomerList.agingData[3].agingGroup} '
+                            ': ${formatAmount(advanceCustomerList.agingData[3].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${advanceCustomerList.agingData[3].agingGroup} '
-                              ': ${formatAmount(advanceCustomerList.agingData[3].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${advanceCustomerList.agingData[4].agingGroup} '
+                            ': ${formatAmount(advanceCustomerList.agingData[4].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${advanceCustomerList.agingData[4].agingGroup} '
-                              ': ${formatAmount(advanceCustomerList.agingData[4].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${advanceCustomerList.agingData[5].agingGroup} '
+                            ': ${formatAmount(advanceCustomerList.agingData[5].agingGroupTotal)} \n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${advanceCustomerList.agingData[5].agingGroup} '
-                              ': ${formatAmount(advanceCustomerList.agingData[5].agingGroupTotal)} \n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            'Total'
+                            ': ${(formatAmount(advanceCustomerList.agingData[5].agingGroupTotal + advanceCustomerList.agingData[4].agingGroupTotal + advanceCustomerList.agingData[3].agingGroupTotal + advanceCustomerList.agingData[2].agingGroupTotal + advanceCustomerList.agingData[1].agingGroupTotal + advanceCustomerList.agingData[0].agingGroupTotal))} ',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: 'Total'
-                              ': ${(formatAmount(advanceCustomerList.agingData[5].agingGroupTotal + advanceCustomerList.agingData[4].agingGroupTotal + advanceCustomerList.agingData[3].agingGroupTotal + advanceCustomerList.agingData[2].agingGroupTotal + advanceCustomerList.agingData[1].agingGroupTotal + advanceCustomerList.agingData[0].agingGroupTotal))} ',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5533,10 +5704,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     double chartMaxY = 0;
 
     if (hasPositive && hasNegative) {
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -5561,40 +5734,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesCustomerAnalysis, axisNameSize: 20),
+                sideTitles: _bottomTitlesCustomerAnalysis,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _customerAnalysisChartData(
-                customerAnalysisFinanceList.customerData),
+              customerAnalysisFinanceList.customerData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5603,9 +5767,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedCustomer = touchedCustomer == ""
                           ? customerAnalysisFinanceList
-                              .customerData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .customerName
+                                .customerData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .customerName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5625,27 +5789,34 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${customerAnalysisFinanceList.customerData[grpIndex].customerName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(customerAnalysisFinanceList
-                              .customerData[grpIndex].collectionAmount),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    '${customerAnalysisFinanceList.customerData[grpIndex].customerName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          customerAnalysisFinanceList
+                              .customerData[grpIndex]
+                              .collectionAmount,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5682,10 +5853,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     double chartMaxY = 0;
 
     if (hasPositive && hasNegative) {
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -5710,40 +5883,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesRegionalManager, axisNameSize: 20),
+                sideTitles: _bottomTitlesRegionalManager,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _regionalManagerAnalysisChartData(
-                rsmwiseCollectionList.rsmwiseData),
+              rsmwiseCollectionList.rsmwiseData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5752,9 +5916,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedRegionalManager = touchedRegionalManager == ""
                           ? rsmwiseCollectionList
-                              .rsmwiseData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .rsmName
+                                .rsmwiseData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .rsmName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5774,27 +5938,34 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${rsmwiseCollectionList.rsmwiseData[grpIndex].rsmName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(rsmwiseCollectionList
-                              .rsmwiseData[grpIndex].collectionAmount),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    '${rsmwiseCollectionList.rsmwiseData[grpIndex].rsmName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          rsmwiseCollectionList
+                              .rsmwiseData[grpIndex]
+                              .collectionAmount,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5831,10 +6002,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     double chartMaxY = 0;
 
     if (hasPositive && hasNegative) {
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -5859,40 +6032,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesSalesManager, axisNameSize: 20),
+                sideTitles: _bottomTitlesSalesManager,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _salesManagerAnalysisChartData(
-                asmwiseCollectionList.asmwiseData),
+              asmwiseCollectionList.asmwiseData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5901,9 +6065,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedSalesManager = touchedSalesManager == ""
                           ? asmwiseCollectionList
-                              .asmwiseData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .asmName
+                                .asmwiseData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .asmName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5923,27 +6087,34 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${asmwiseCollectionList.asmwiseData[grpIndex].asmName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(asmwiseCollectionList
-                              .asmwiseData[grpIndex].collectionAmount),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    '${asmwiseCollectionList.asmwiseData[grpIndex].asmName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          asmwiseCollectionList
+                              .asmwiseData[grpIndex]
+                              .collectionAmount,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5979,10 +6150,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     double chartMaxY = 0;
 
     if (hasPositive && hasNegative) {
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -6007,40 +6180,31 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesSalesPerson, axisNameSize: 20),
+                sideTitles: _bottomTitlesSalesPerson,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _salesPersonAnalysisChartData(
-                tsmwiseCollectionList.tsmwiseData),
+              tsmwiseCollectionList.tsmwiseData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -6049,9 +6213,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedSalesPerson = touchedSalesPerson == ""
                           ? tsmwiseCollectionList
-                              .tsmwiseData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .tsmName
+                                .tsmwiseData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .tsmName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -6071,27 +6235,34 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${tsmwiseCollectionList.tsmwiseData[grpIndex].tsmName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(tsmwiseCollectionList
-                              .tsmwiseData[grpIndex].collectionAmount),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    '${tsmwiseCollectionList.tsmwiseData[grpIndex].tsmName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          tsmwiseCollectionList
+                              .tsmwiseData[grpIndex]
+                              .collectionAmount,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -6127,7 +6298,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                       const Text(
                         'Filter Options - Receivables',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -6162,8 +6335,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           child: Column(
                             children: [
                               Expanded(
-                                child: selectedCategoryIndex ==
-                                        categories.length - 1 // "Date" index
+                                child:
+                                    selectedCategoryIndex ==
+                                        categories.length -
+                                            1 // "Date" index
                                     ? Column(
                                         children: [
                                           // ListTile(
@@ -6194,21 +6369,27 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                           // ),
                                           ListTile(
                                             title: const Text("To Date"),
-                                            subtitle: Text(toDateFilter != null
-                                                ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
-                                                : formatDateString(
-                                                    currentDate!)),
+                                            subtitle: Text(
+                                              toDateFilter != null
+                                                  ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
+                                                  : formatDateString(
+                                                      currentDate!,
+                                                    ),
+                                            ),
                                             trailing: const Icon(
-                                                Icons.calendar_today),
+                                              Icons.calendar_today,
+                                            ),
                                             onTap: () async {
                                               final picked =
                                                   await showDatePicker(
-                                                context: context,
-                                                initialDate: toDateFilter ??
-                                                    DateTime.now(),
-                                                firstDate: fiscalYearStartDate!,
-                                                lastDate: currentDate!,
-                                              );
+                                                    context: context,
+                                                    initialDate:
+                                                        toDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
                                               if (picked != null) {
                                                 setState(() {
                                                   toDateFilter = picked;
@@ -6225,22 +6406,19 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                                 .length,
                                         itemBuilder: (context, index) {
                                           return CheckboxListTile(
-                                            title: Text(filterOptions[
-                                                selectedCategoryIndex][index]),
+                                            title: Text(
+                                              filterOptions[selectedCategoryIndex][index],
+                                            ),
                                             value:
-                                                savedFinanceReceivablesOptions[
-                                                        selectedCategoryIndex]
-                                                    [index],
+                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
                                             onChanged: (bool? value) {
                                               setState(() {
                                                 if (value == true) {
-                                                  selectedFinanceReceivablesOptions[
-                                                          selectedCategoryIndex]
-                                                      [index] = true;
+                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
+                                                      true;
                                                 } else {
-                                                  selectedFinanceReceivablesOptions[
-                                                          selectedCategoryIndex]
-                                                      [index] = false;
+                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
+                                                      false;
                                                 }
                                                 savedFinanceReceivablesOptionsTemp =
                                                     savedFinanceReceivablesOptions;
@@ -6270,35 +6448,37 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                     ),
                                     onPressed: () {
                                       List<String> selectedFilterOptions = [];
-                                      for (int i = 0;
-                                          i <
-                                              filterOptions[
-                                                      selectedCategoryIndex]
-                                                  .length;
-                                          i++) {
-                                        if (selectedFinanceReceivablesOptions[
-                                            selectedCategoryIndex][i]) {
+                                      for (
+                                        int i = 0;
+                                        i <
+                                            filterOptions[selectedCategoryIndex]
+                                                .length;
+                                        i++
+                                      ) {
+                                        if (selectedFinanceReceivablesOptions[selectedCategoryIndex][i]) {
                                           selectedFilterOptions.add(
-                                              filterOptions[
-                                                  selectedCategoryIndex][i]);
+                                            filterOptions[selectedCategoryIndex][i],
+                                          );
                                         }
                                       }
-                                      for (int catIndex = 0;
-                                          catIndex < categories.length;
-                                          catIndex++) {
+                                      for (
+                                        int catIndex = 0;
+                                        catIndex < categories.length;
+                                        catIndex++
+                                      ) {
                                         String categoryName =
                                             categories[catIndex];
                                         Map<String, bool> optionsState = {};
 
                                         // Ensure the lengths match for your filterOptions and selectedFinanceReceivablesOptions lists
-                                        for (int optionIndex = 0;
-                                            optionIndex <
-                                                filterOptions[catIndex].length;
-                                            optionIndex++) {
-                                          optionsState[filterOptions[catIndex]
-                                                  [optionIndex]] =
-                                              selectedFinanceReceivablesOptions[
-                                                  catIndex][optionIndex];
+                                        for (
+                                          int optionIndex = 0;
+                                          optionIndex <
+                                              filterOptions[catIndex].length;
+                                          optionIndex++
+                                        ) {
+                                          optionsState[filterOptions[catIndex][optionIndex]] =
+                                              selectedFinanceReceivablesOptions[catIndex][optionIndex];
                                         }
 
                                         allCategoriesState[categoryName] =
@@ -6329,9 +6509,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(
-                                    width: 15,
-                                  ),
+                                  const SizedBox(width: 15),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
@@ -6362,8 +6540,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       padding: EdgeInsets.all(8.0),
                                       child: Text(
                                         'Clear Filter',
-                                        style:
-                                            TextStyle(color: Color(0xff2ca9df)),
+                                        style: TextStyle(
+                                          color: Color(0xff2ca9df),
+                                        ),
                                       ),
                                     ),
                                   ),

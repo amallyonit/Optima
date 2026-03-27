@@ -29,7 +29,6 @@ class ProductionFI extends StatefulWidget {
 String menuPermissionMenuIds = "";
 
 class _ProductionFIState extends State<ProductionFI> {
-
   List<String> items = [
     "",
     "Production Reports\n(MIS)",
@@ -77,7 +76,10 @@ class _ProductionFIState extends State<ProductionFI> {
   }
 
   Future<void> _loadMenuPermission(
-      String userId, String userJwtToken, String userMailId) async {
+    String userId,
+    String userJwtToken,
+    String userMailId,
+  ) async {
     final data = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailId,
@@ -121,7 +123,7 @@ class _ProductionFIState extends State<ProductionFI> {
         22,
         23,
         24,
-        25
+        25,
       ]; // Add all available menu IDs here
     } else if (menuPermissionMenuIds.isNotEmpty) {
       menuIds = menuPermissionMenuIds
@@ -133,37 +135,37 @@ class _ProductionFIState extends State<ProductionFI> {
     final Map<int, dynamic> menuToPageMap = {
       36: {
         "title": "Production Reports\n(MIS)",
-        "page": const ProductionReportsMIS()
+        "page": const ProductionReportsMIS(),
       },
       18: {
         "title": "Production Order\n Analysis",
-        "page": const ProductionOrderAnalysis()
+        "page": const ProductionOrderAnalysis(),
       },
       19: {
         "title": "Open Production\n Order Analysis",
-        "page": const OpenProductionOrderAnalysis()
+        "page": const OpenProductionOrderAnalysis(),
       },
       20: {"title": "Product\n Analysis", "page": const ProductAnalysis()},
       21: {
         "title": "Production Orders\n Pending Report",
-        "page": const ProductionOrdersPendingReport()
+        "page": const ProductionOrdersPendingReport(),
       },
       22: {
         "title": "Day wise\n Production Details",
-        "page": const DayWiseProductionDetails()
+        "page": const DayWiseProductionDetails(),
       },
       23: {
         "title": "Sales Order vs Production\n Completed Report",
-        "page": const SalesOrderVsProductionCompletedReport()
+        "page": const SalesOrderVsProductionCompletedReport(),
       },
       24: {
         "title":
             "Day Wise Production Report w.r.t\n MP Present + OT + production Cost/Box",
-        "page": const DayWiseProductionReportwrtMPPresent()
+        "page": const DayWiseProductionReportwrtMPPresent(),
       },
       25: {
         "title": "Job Card Entry for\n Alternate Materials",
-        "page": const JobCartEntryForAlternateMaterials()
+        "page": const JobCartEntryForAlternateMaterials(),
       },
     };
 
@@ -189,13 +191,9 @@ class _ProductionFIState extends State<ProductionFI> {
         backgroundColor: Colors.white,
         leading: Builder(
           builder: (BuildContext context) {
-            return RotatedBox(
-              quarterTurns: 1,
+            return SizedBox(
               child: IconButton(
-                icon: const Icon(
-                  Icons.bar_chart_rounded,
-                  color: Color(0xFF454545),
-                ),
+                icon: const Icon(Icons.menu, color: Color(0xFF454545)),
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
             );
@@ -205,10 +203,11 @@ class _ProductionFIState extends State<ProductionFI> {
         title: const Text(
           "BI Dashboard - Production",
           style: TextStyle(
-              color: Colors.blue,
-              fontFamily: "Poppins",
-              fontWeight: FontWeight.bold,
-              fontSize: 18),
+            color: Colors.blue,
+            fontFamily: "Poppins",
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
       ),
@@ -226,69 +225,70 @@ class _ProductionFIState extends State<ProductionFI> {
                   child: SizedBox(
                     height: 50,
                     child: ListView.separated(
-                        shrinkWrap: true,
-                        separatorBuilder: (context, index) => const SizedBox(
-                              width: 8,
-                            ),
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: items.length,
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (ctx, index) {
-                          return Visibility(
-                            visible: index != 0,
-                            child: Column(
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      current = index;
-                                    });
-                                    pageController.animateToPage(
-                                      current,
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      curve: Curves.ease,
-                                    );
-                                  },
-                                  child: Container(
-                                    height: 50,
-                                    padding: const EdgeInsets.only(
-                                      left: 16,
-                                      right: 16,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white54,
-                                      borderRadius: current == index
-                                          ? BorderRadius.circular(10)
-                                          : BorderRadius.circular(10),
-                                      border: current == index
-                                          ? Border.all(
-                                              color: const Color(0xFF2CA9DF),
-                                              width: 1.5)
-                                          : Border.all(
-                                              color: Colors.black45,
-                                              width: 1.5),
-                                    ),
-                                    child: Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(2.0),
-                                        child: Text(
-                                          items[index],
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: current == index
-                                                ? const Color(0xFF2CA9DF)
-                                                : Colors.black45,
+                      shrinkWrap: true,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 8),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: items.length,
+                      scrollDirection: Axis.horizontal,
+                      itemBuilder: (ctx, index) {
+                        return Visibility(
+                          visible: index != 0,
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    current = index;
+                                  });
+                                  pageController.animateToPage(
+                                    current,
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.ease,
+                                  );
+                                },
+                                child: Container(
+                                  height: 50,
+                                  padding: const EdgeInsets.only(
+                                    left: 16,
+                                    right: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white54,
+                                    borderRadius: current == index
+                                        ? BorderRadius.circular(10)
+                                        : BorderRadius.circular(10),
+                                    border: current == index
+                                        ? Border.all(
+                                            color: const Color(0xFF2CA9DF),
+                                            width: 1.5,
+                                          )
+                                        : Border.all(
+                                            color: Colors.black45,
+                                            width: 1.5,
                                           ),
+                                  ),
+                                  child: Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(2.0),
+                                      child: Text(
+                                        items[index],
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: current == index
+                                              ? const Color(0xFF2CA9DF)
+                                              : Colors.black45,
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        }),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],

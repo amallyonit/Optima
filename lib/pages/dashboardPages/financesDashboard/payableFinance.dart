@@ -105,14 +105,17 @@ int currentQuarter = 0;
 PayablesGraphList payableGraphList = PayablesGraphList(agingData: []);
 AdvancePaidToSupplierPayablesList receivableList =
     AdvancePaidToSupplierPayablesList(agingData: []);
-SupplierAnalysisPayablesList supplierList =
-    SupplierAnalysisPayablesList(supplierData: []);
-SupplierAnalysisPayablesList advanceVendorList =
-    SupplierAnalysisPayablesList(supplierData: []);
+SupplierAnalysisPayablesList supplierList = SupplierAnalysisPayablesList(
+  supplierData: [],
+);
+SupplierAnalysisPayablesList advanceVendorList = SupplierAnalysisPayablesList(
+  supplierData: [],
+);
 VendorsPaymentProjectionList vendorProjectionList =
     VendorsPaymentProjectionList(vendorData: []);
-VendorsPaymentProjectionList capitalVendorsList =
-    VendorsPaymentProjectionList(vendorData: []);
+VendorsPaymentProjectionList capitalVendorsList = VendorsPaymentProjectionList(
+  vendorData: [],
+);
 SupplierCategoryWiseAnalysisPayablesList supplierCategoryList =
     SupplierCategoryWiseAnalysisPayablesList(supplierCategoryData: []);
 SupplierCategoryWiseAnalysisPayablesList bpGroupList =
@@ -131,17 +134,9 @@ double selectedChart = 0;
 
 List<String> selectedSalesData = [];
 
-final List<String> categories = [
-  'Category',
-  'Supplier',
-  'Date',
-];
+final List<String> categories = ['Category', 'Supplier', 'Date'];
 
-List<List<String>> filterOptions = [
-  listOfCategory,
-  listOfSupplier,
-  [],
-];
+List<List<String>> filterOptions = [listOfCategory, listOfSupplier, []];
 
 List<List<bool>> selectedFinanceReceivablesOptions = [];
 
@@ -317,8 +312,10 @@ class _PayableFinanceState extends State<PayableFinance> {
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate =
-        addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1));
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
@@ -347,8 +344,9 @@ class _PayableFinanceState extends State<PayableFinance> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear =
-        currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1;
+    int fiscalYearStartYear = currentDate!.month >= 4
+        ? currentDate!.year
+        : currentDate!.year - 1;
 
     int fiscalYearEndYear = fiscalYearStartYear + 1;
     financialYear =
@@ -373,23 +371,20 @@ class _PayableFinanceState extends State<PayableFinance> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   SideTitles get _leftTitles => SideTitles(
-        reservedSize: 50,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String leftDouble = "";
-          leftDouble = formatAmount(value);
-          return Text(
-            leftDouble,
-            style: const TextStyle(fontSize: 12),
-          );
-        },
-      );
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -399,362 +394,388 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   SideTitles get _bottomTitlesPayables => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<PayablesGraphData> mData = payableGraphList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<PayablesGraphData> mData = payableGraphList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesAdvancePaid => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<AdvancePaidToSupplierPayablesData> mData =
-              receivableList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<AdvancePaidToSupplierPayablesData> mData = receivableList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesSupplierAnalysis => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<SupplierAnalysisPayablesData> mData = supplierList.supplierData;
-          text = mData.elementAt(value.toInt()).supplierName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<SupplierAnalysisPayablesData> mData = supplierList.supplierData;
+      text = mData.elementAt(value.toInt()).supplierName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesSupplierCategoryAnalysis => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<SupplierCategoryWiseAnalysisPayablesData> mData =
-              supplierCategoryList.supplierCategoryData;
-          text = mData.elementAt(value.toInt()).supplierCategoryName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<SupplierCategoryWiseAnalysisPayablesData> mData =
+          supplierCategoryList.supplierCategoryData;
+      text = mData.elementAt(value.toInt()).supplierCategoryName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesDocumentType => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<DocumentTypeData> mData = documentList.documentData;
-          text = mData.elementAt(value.toInt()).documentType;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<DocumentTypeData> mData = documentList.documentData;
+      text = mData.elementAt(value.toInt()).documentType;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesbpGroup => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<SupplierCategoryWiseAnalysisPayablesData> mData =
-              bpGroupList.supplierCategoryData;
-          text = mData.elementAt(value.toInt()).supplierCategoryName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<SupplierCategoryWiseAnalysisPayablesData> mData =
+          bpGroupList.supplierCategoryData;
+      text = mData.elementAt(value.toInt()).supplierCategoryName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesAdvanceVendors => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<SupplierAnalysisPayablesData> mData =
-              advanceVendorList.supplierData;
-          text = mData.elementAt(value.toInt()).supplierName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<SupplierAnalysisPayablesData> mData = advanceVendorList.supplierData;
+      text = mData.elementAt(value.toInt()).supplierName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesCapitalVendors => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<VendorsPaymentProjectionData> mData =
-              capitalVendorsList.vendorData;
-          text = mData.elementAt(value.toInt()).vendorName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<VendorsPaymentProjectionData> mData = capitalVendorsList.vendorData;
+      text = mData.elementAt(value.toInt()).vendorName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesFixedExpenses => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<SupplierCategoryWiseAnalysisPayablesData> mData =
-              fixedExpensesList.supplierCategoryData;
-          text = mData.elementAt(value.toInt()).supplierCategoryName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<SupplierCategoryWiseAnalysisPayablesData> mData =
+          fixedExpensesList.supplierCategoryData;
+      text = mData.elementAt(value.toInt()).supplierCategoryName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   List<BarChartGroupData> _payablesChartData(List<PayablesGraphData> data) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.agingGroupTotal,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.agingGroupTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _advancePaidChartData(
-      List<AdvancePaidToSupplierPayablesData> data) {
+    List<AdvancePaidToSupplierPayablesData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.agingGroupTotal,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.agingGroupTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _supplierAnalysisChartData(
-      List<SupplierAnalysisPayablesData> data) {
+    List<SupplierAnalysisPayablesData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.balance,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.balance,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _supplierCategoryAnalysisChartData(
-      List<SupplierCategoryWiseAnalysisPayablesData> data) {
+    List<SupplierCategoryWiseAnalysisPayablesData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.balance,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.balance,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _documentTypeChartData(List<DocumentTypeData> data) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.balance,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.balance,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _bpGroupChartData(
-      List<SupplierCategoryWiseAnalysisPayablesData> data) {
+    List<SupplierCategoryWiseAnalysisPayablesData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.balance,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.balance,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _advanceVendorChartData(
-      List<SupplierAnalysisPayablesData> data) {
+    List<SupplierAnalysisPayablesData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.balance,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.balance,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _capitalVendorsChartData(
-      List<VendorsPaymentProjectionData> data) {
+    List<VendorsPaymentProjectionData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.balanceDue,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.balanceDue,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _fixedExpensesChartData(
-      List<SupplierCategoryWiseAnalysisPayablesData> data) {
+    List<SupplierCategoryWiseAnalysisPayablesData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.balance,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.balance,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
-  Future<void> _loadUserList(String userId, String userJwtToken,
-      String userMailID, int userLevel) async {
+  Future<void> _loadUserList(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    int userLevel,
+  ) async {
     final body = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
@@ -782,9 +803,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                   .toList();
             });
           }
-          for (var parent in usersList.where((element) =>
-              element.parentMenuId == 0 &&
-              (element.userLevel == (userLevel > 3 ? 3 : 2)))) {
+          for (var parent in usersList.where(
+            (element) =>
+                element.parentMenuId == 0 &&
+                (element.userLevel == (userLevel > 3 ? 3 : 2)),
+          )) {
             final rsm = {
               "MenuId": parent.menuId,
               "MenuName": parent.menuName,
@@ -793,9 +816,11 @@ class _PayableFinanceState extends State<PayableFinance> {
               "UserLevel": parent.userLevel,
             };
             newUserList.add(rsm);
-            for (var child in childUsers.where((element) =>
-                element.parentMenuId == parent.menuId &&
-                (element.userLevel == (userLevel > 3 ? 2 : 1)))) {
+            for (var child in childUsers.where(
+              (element) =>
+                  element.parentMenuId == parent.menuId &&
+                  (element.userLevel == (userLevel > 3 ? 2 : 1)),
+            )) {
               final asm = {
                 "MenuId": child.menuId,
                 "MenuName": child.menuName,
@@ -804,8 +829,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                 "UserLevel": child.userLevel,
               };
               newUserList.add(asm);
-              for (var subChild in childUsers
-                  .where((element) => element.parentMenuId == child.menuId)) {
+              for (var subChild in childUsers.where(
+                (element) => element.parentMenuId == child.menuId,
+              )) {
                 final tsm = {
                   "MenuId": subChild.menuId,
                   "MenuName": subChild.menuName,
@@ -828,25 +854,18 @@ class _PayableFinanceState extends State<PayableFinance> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('User list not found.'),
-        );
+        const snackBar = SnackBar(content: Text('User list not found.'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
@@ -854,7 +873,10 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   Future<void> _loadPayables(
-      String UserName, String UserLevel, bool fromFilter) async {
+    String UserName,
+    String UserLevel,
+    bool fromFilter,
+  ) async {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
@@ -863,24 +885,14 @@ class _PayableFinanceState extends State<PayableFinance> {
       if (!fromFilter) {
         do {
           var body = {
-            // "FromDate": dateFilterFlag
-            //     ? formatDate(fromDateFilter!)
-            //     : formatDate(fiscalYearStartDate!),
-            // "ToDate": dateFilterFlag
-            //     ? formatDate(toDateFilter!)
-            //     : formatDate(currentDate!),
             "Index": index.toString(),
             "Limit": limit.toString(),
-            "sapToken": DataManager.readSapToken()
+            "sapToken": DataManager.readSapToken(),
           };
           const apiUrl = '${ApiHelper.baseUrl}BicxoCreditorsAgingList';
           final response = await http.post(
             Uri.parse(apiUrl),
-            headers: {
-              HttpHeaders.contentTypeHeader: 'application/json',
-              // HttpHeaders.authorizationHeader:
-              //     'Bearer    ${DataManager.readSapToken()}'
-            },
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
             body: jsonEncode(body),
           );
 
@@ -920,15 +932,13 @@ class _PayableFinanceState extends State<PayableFinance> {
         payablesListMaster = collectionList.toList();
 
         List<String> trueCategoryOptions =
-            (allCategoriesState['Category'] ?? {})
-                .entries
+            (allCategoriesState['Category'] ?? {}).entries
                 .where((entry) => entry.value)
                 .map((entry) => entry.key)
                 .toList();
 
         List<String> trueSupplierOptions =
-            (allCategoriesState['Supplier'] ?? {})
-                .entries
+            (allCategoriesState['Supplier'] ?? {}).entries
                 .where((entry) => entry.value)
                 .map((entry) => entry.key)
                 .toList();
@@ -938,7 +948,8 @@ class _PayableFinanceState extends State<PayableFinance> {
         if (trueCategoryOptions.isNotEmpty) {
           filteredList = payablesList
               .where(
-                  (person) => trueCategoryOptions.contains(person.vendorGroup))
+                (person) => trueCategoryOptions.contains(person.vendorGroup),
+              )
               .toList();
           payablesList = filteredList;
         }
@@ -946,7 +957,8 @@ class _PayableFinanceState extends State<PayableFinance> {
         if (trueSupplierOptions.isNotEmpty) {
           filteredList = payablesList
               .where(
-                  (person) => trueSupplierOptions.contains(person.vendorName))
+                (person) => trueSupplierOptions.contains(person.vendorName),
+              )
               .toList();
           payablesList = filteredList;
         }
@@ -975,12 +987,13 @@ class _PayableFinanceState extends State<PayableFinance> {
         payableStr = formatAmount(payablesSum.abs());
 
         advanceStr = formatAmount(advanceSum);
-        // payableStr = formatAmount(payableSum);
         payableAdvanceStr = formatAmount(payableSum.abs());
-        payableAdvancePercentage = double.tryParse(
-                    ((advanceSum.abs() / (payableSum.abs())) * 100)
-                        .toStringAsFixed(2))
-                ?.ceil() ??
+        payableAdvancePercentage =
+            double.tryParse(
+              ((advanceSum.abs() / (payableSum.abs())) * 100).toStringAsFixed(
+                2,
+              ),
+            )?.ceil() ??
             0;
         if (payableAdvancePercentage > 100) {
           payableAdvancePercentage = 100;
@@ -1019,9 +1032,10 @@ class _PayableFinanceState extends State<PayableFinance> {
         if (overDue == 0 || netPayable == 0) {
           netPayablePercentage = 0;
         } else {
-          netPayablePercentage = double.tryParse(
-                      ((overDue / (netPayable)) * 100).toStringAsFixed(2))
-                  ?.ceil() ??
+          netPayablePercentage =
+              double.tryParse(
+                ((overDue / (netPayable)) * 100).toStringAsFixed(2),
+              )?.ceil() ??
               0;
         }
 
@@ -1056,14 +1070,12 @@ class _PayableFinanceState extends State<PayableFinance> {
               : formatTestDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoTrialBalanceList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -1090,9 +1102,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       } while (fetchedCount == limit);
 
       setState(() {
-        context
-            .read<PayableTrialBalanceProvider>()
-            .updateCollectionList(tmpTrialBalanceList);
+        context.read<PayableTrialBalanceProvider>().updateCollectionList(
+          tmpTrialBalanceList,
+        );
         if (expensesList.isEmpty) {
           expensesList = tmpTrialBalanceList.toList();
         }
@@ -1124,7 +1136,7 @@ class _PayableFinanceState extends State<PayableFinance> {
               : formatTestDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoPaymentAnalysisList';
         final response = await http.post(
@@ -1183,11 +1195,12 @@ class _PayableFinanceState extends State<PayableFinance> {
       "FromDate": dateFilterFlag
           ? formatDate(fromDateFilter!)
           : formatDate(fiscalYearStartDate!),
-      "ToDate":
-          dateFilterFlag ? formatDate(toDateFilter!) : formatDate(currentDate!),
+      "ToDate": dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!),
       "Index": 0,
       "Limit": 0,
-      "sapToken": DataManager.readSapToken()
+      "sapToken": DataManager.readSapToken(),
     };
     const apiUrl = '${ApiHelper.baseUrl}BicxoSalesTargetList';
     var headers = {
@@ -1205,17 +1218,18 @@ class _PayableFinanceState extends State<PayableFinance> {
         if (responseJson["responseData"].toString().isNotEmpty) {
           List<dynamic> data = responseJson['responseData'];
           if (data.isNotEmpty) {
-            List<SalesTargetList> newSalesTargetList =
-                (data).map((item) => SalesTargetList.fromJson(item)).toList();
+            List<SalesTargetList> newSalesTargetList = (data)
+                .map((item) => SalesTargetList.fromJson(item))
+                .toList();
             setState(() {
               List<String> menuNames = usersList
                   .where((element) => element.parentMenuId == 0)
                   .map((user) => user.menuName)
                   .toList();
               menuNames.insert(0, UserName);
-              context
-                  .read<PayableSalesTargetProvider>()
-                  .updateSalesTargetList(newSalesTargetList);
+              context.read<PayableSalesTargetProvider>().updateSalesTargetList(
+                newSalesTargetList,
+              );
               if (int.parse(UserLevel) == 5) {
                 salesTarget = newSalesTargetList;
               } else if (int.parse(UserLevel) == 4) {
@@ -1235,10 +1249,7 @@ class _PayableFinanceState extends State<PayableFinance> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -1270,39 +1281,43 @@ class _PayableFinanceState extends State<PayableFinance> {
     DateFormat formatter = DateFormat('dd/MM/yyyy');
 
     setState(() {
-      context
-          .read<PayableTrialBalanceProvider>()
-          .updateCollectionList(expensesList);
+      context.read<PayableTrialBalanceProvider>().updateCollectionList(
+        expensesList,
+      );
       context.read<ActualPayableProvider>().updateTargetList(modeOfPayment);
-      context
-          .read<FinancePayablesCollectionBIProvider>()
-          .updateCollectionList(payablesList);
+      context.read<FinancePayablesCollectionBIProvider>().updateCollectionList(
+        payablesList,
+      );
 
       payablesList = payablesList.where((target) {
         DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-        return (/*dueon.isAtLeast(fromDateFilter!) &&*/
-            dueon.isAtMost(toDateFilter!));
+        return ( /*dueon.isAtLeast(fromDateFilter!) &&*/ dueon.isAtMost(
+          toDateFilter!,
+        ));
       }).toList();
       modeOfPayment = modeOfPayment.where((target) {
         DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-        return (/*dueon.isAtLeast(fromDateFilter!) &&*/
-            dueon.isAtMost(toDateFilter!));
+        return ( /*dueon.isAtLeast(fromDateFilter!) &&*/ dueon.isAtMost(
+          toDateFilter!,
+        ));
       }).toList();
       expensesList = expensesList.where((target) {
         DateTime toDt = formatter.parse('30/${target.monthYear}');
-        return (/*toDt.isAtLeast(fromDateFilter!) &&*/
-            toDt.isAtMost(toDateFilter!));
+        return ( /*toDt.isAtLeast(fromDateFilter!) &&*/ toDt.isAtMost(
+          toDateFilter!,
+        ));
       }).toList();
     });
   }
 
   AgingSummary summarizeCollectionTargets(
-      Iterable<PayablesList> collectionTargetList) {
+    Iterable<PayablesList> collectionTargetList,
+  ) {
     AgingSummary summary = AgingSummary();
     double balance = 0;
     var overDueDays = 0;
     for (var element
-        in collectionTargetList /*.where((element) => double.tryParse(element.future)! <= 0)*/) {
+        in collectionTargetList /*.where((element) => double.tryParse(element.future)! <= 0)*/ ) {
       overDueDays = int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
       balance = double.tryParse(element.balance) ?? 0;
       if (balance < 0) {}
@@ -1329,47 +1344,37 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   AgingSummary summarizeAdvancePaid(
-      Iterable<PayablesList> collectionTargetList) {
+    Iterable<PayablesList> collectionTargetList,
+  ) {
     AgingSummary summary = AgingSummary();
     double balance = 0;
     var overDueDays = 0;
-    for (var element in collectionTargetList.where((element) =>
-        (double.tryParse(element.future)! >= 0 &&
-            (double.tryParse(element.a0to30Days)! >= 0) &&
-            (double.tryParse(element.a31to60Days)! >= 0) &&
-            (double.tryParse(element.a61to90Days)! >= 0) &&
-            (double.tryParse(element.a91to180Days)! >= 0) &&
-            (double.tryParse(element.a181Days)! >=
-                0)) /*&& element.paymentTerms == "Advance")*/)) {
+    for (var element in collectionTargetList.where(
+      (element) =>
+          (double.tryParse(element.future)! >= 0 &&
+          (double.tryParse(element.a0to30Days)! >= 0) &&
+          (double.tryParse(element.a31to60Days)! >= 0) &&
+          (double.tryParse(element.a61to90Days)! >= 0) &&
+          (double.tryParse(element.a91to180Days)! >= 0) &&
+          (double.tryParse(element.a181Days)! >= 0)),
+    )) {
       overDueDays = int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
       balance = double.tryParse(element.balance) ?? 0;
       if (balance < 0) {}
-      // if(element.ageingBrackets == "Future") {
-      //   summary.afutureTotal += double.tryParse(element.future)!;
-      // }
-      // if(overDueDays.isNegative || element.ageingBrackets == "Future") {
-      //   print(overDueDays);
 
       summary.afutureTotal += double.tryParse(element.future)!;
-      // }
 
       if (overDueDays <= 30) {
-        // summary.a0to30DaysTotal += (balance);
         summary.a0to30DaysTotal += double.tryParse(element.a0to30Days)!;
       } else if (overDueDays >= 31 && overDueDays <= 60) {
-        // summary.a31to60DaysTotal += balance;
         summary.a31to60DaysTotal += double.tryParse(element.a31to60Days)!;
       } else if (overDueDays >= 61 && overDueDays <= 90) {
-        // summary.a61to90DaysTotal += balance;
         summary.a61to90DaysTotal += double.tryParse(element.a61to90Days)!;
       } else if (overDueDays >= 91 && overDueDays <= 180) {
-        // summary.a91to180DaysTotal += balance;
         summary.a91to180DaysTotal += double.tryParse(element.a91to180Days)!;
       } else if (overDueDays >= 181) {
-        // summary.a181DaysTotal += balance;
         summary.a181DaysTotal += double.tryParse(element.a181Days)!;
       }
-      // summary.afutureTotal += balance;
     }
     return summary;
   }
@@ -1458,19 +1463,21 @@ class _PayableFinanceState extends State<PayableFinance> {
       "31-60 Days",
       "61-90 Days",
       "91-180 Days",
-      "180+"
+      "180+",
     ];
 
     for (var i = 0; i < 6; i++) {
       final groupTotal = bucketSums[i] * -1;
-      data.add(PayablesGraphData(
-        agingGroup: labels[i],
-        agingGroupTotal: double.parse(groupTotal.toStringAsFixed(2)),
-        agingPercentage: total != 0
-            ? double.parse(((groupTotal / total) * 100).toStringAsFixed(2))
-            : 0.0,
-        agingTotal: total,
-      ));
+      data.add(
+        PayablesGraphData(
+          agingGroup: labels[i],
+          agingGroupTotal: double.parse(groupTotal.toStringAsFixed(2)),
+          agingPercentage: total != 0
+              ? double.parse(((groupTotal / total) * 100).toStringAsFixed(2))
+              : 0.0,
+          agingTotal: total,
+        ),
+      );
     }
 
     payableGraphList = PayablesGraphList(agingData: data);
@@ -1561,20 +1568,22 @@ class _PayableFinanceState extends State<PayableFinance> {
       "31-60 Days",
       "61-90 Days",
       "91-180 Days",
-      "180+"
+      "180+",
     ];
     final List<AdvancePaidToSupplierPayablesData> data = [];
 
     for (var i = 0; i < 6; i++) {
       final grpTotal = bucketSums[i];
-      data.add(AdvancePaidToSupplierPayablesData(
-        agingGroup: labels[i],
-        agingGroupTotal: double.parse(grpTotal.toStringAsFixed(2)),
-        agingPercentage: total != 0
-            ? double.parse(((grpTotal / total) * 100).toStringAsFixed(2))
-            : 0.0,
-        agingTotal: total,
-      ));
+      data.add(
+        AdvancePaidToSupplierPayablesData(
+          agingGroup: labels[i],
+          agingGroupTotal: double.parse(grpTotal.toStringAsFixed(2)),
+          agingPercentage: total != 0
+              ? double.parse(((grpTotal / total) * 100).toStringAsFixed(2))
+              : 0.0,
+          agingTotal: total,
+        ),
+      );
     }
 
     receivableList = AdvancePaidToSupplierPayablesList(agingData: data);
@@ -1643,10 +1652,12 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     final List<SupplierAnalysisPayablesData> customerWiseDataList = [];
     balanceByVendor.forEach((code, sum) {
-      customerWiseDataList.add(SupplierAnalysisPayablesData(
-        supplierName: nameByVendor[code]!,
-        balance: sum * -1,
-      ));
+      customerWiseDataList.add(
+        SupplierAnalysisPayablesData(
+          supplierName: nameByVendor[code]!,
+          balance: sum * -1,
+        ),
+      );
     });
     customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
 
@@ -1677,40 +1688,47 @@ class _PayableFinanceState extends State<PayableFinance> {
       final vendorName = payableItem.vendorName;
 
       aggregatedPayableData.putIfAbsent(
-          vendorCode,
-          () => {
-                'vendorCode': vendorCode,
-                'vendorName': vendorName,
-                'balance': 0.0,
-                'a0to30': 0.0,
-                'a31to60': 0.0,
-                'a61to90': 0.0,
-                'a90to180': 0.0,
-                'a180above': 0.0,
-              });
+        vendorCode,
+        () => {
+          'vendorCode': vendorCode,
+          'vendorName': vendorName,
+          'balance': 0.0,
+          'a0to30': 0.0,
+          'a31to60': 0.0,
+          'a61to90': 0.0,
+          'a90to180': 0.0,
+          'a180above': 0.0,
+        },
+      );
 
       final vendorData = aggregatedPayableData[vendorCode]!;
 
-      vendorData['balance'] = (vendorData['balance'] as double) +
+      vendorData['balance'] =
+          (vendorData['balance'] as double) +
           (double.tryParse(payableItem.balance) ?? 0.0);
 
       final overDueDaysString = payableItem.dueDays.replaceAll(' Days', '');
       final overDueDays = int.tryParse(overDueDaysString) ?? 0;
 
       if (overDueDays <= 30) {
-        vendorData['a0to30'] = (vendorData['a0to30'] as double) +
+        vendorData['a0to30'] =
+            (vendorData['a0to30'] as double) +
             (double.tryParse(payableItem.a0to30Days) ?? 0.0);
       } else if (overDueDays >= 31 && overDueDays <= 60) {
-        vendorData['a31to60'] = (vendorData['a31to60'] as double) +
+        vendorData['a31to60'] =
+            (vendorData['a31to60'] as double) +
             (double.tryParse(payableItem.a31to60Days) ?? 0.0);
       } else if (overDueDays >= 61 && overDueDays <= 90) {
-        vendorData['a61to90'] = (vendorData['a61to90'] as double) +
+        vendorData['a61to90'] =
+            (vendorData['a61to90'] as double) +
             (double.tryParse(payableItem.a61to90Days) ?? 0.0);
       } else if (overDueDays >= 91 && overDueDays <= 180) {
-        vendorData['a90to180'] = (vendorData['a90to180'] as double) +
+        vendorData['a90to180'] =
+            (vendorData['a90to180'] as double) +
             (double.tryParse(payableItem.a91to180Days) ?? 0.0);
       } else if (overDueDays >= 181) {
-        vendorData['a180above'] = (vendorData['a180above'] as double) +
+        vendorData['a180above'] =
+            (vendorData['a180above'] as double) +
             (double.tryParse(payableItem.a181Days) ?? 0.0);
       }
     }
@@ -1742,27 +1760,31 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       final actualPayable = actualPayableByVendorName[vendorName] ?? 0.0;
 
-      vendorWiseData.add(VendorsPaymentProjectionData(
-        vendorName: vendorName,
-        vendorCode: vendorCode,
-        balanceDue: balanceDue,
-        a0to30: a0to30,
-        a31to60: a31to60,
-        a61to90: a61to90,
-        a90to180: a90to180,
-        a180above: a180above,
-        commitment: 0,
-        actualPayable: actualPayable,
-      ));
+      vendorWiseData.add(
+        VendorsPaymentProjectionData(
+          vendorName: vendorName,
+          vendorCode: vendorCode,
+          balanceDue: balanceDue,
+          a0to30: a0to30,
+          a31to60: a31to60,
+          a61to90: a61to90,
+          a90to180: a90to180,
+          a180above: a180above,
+          commitment: 0,
+          actualPayable: actualPayable,
+        ),
+      );
     }
 
     vendorWiseData.sort((a, b) => a.vendorCode.compareTo(b.vendorCode));
-    vendorProjectionList =
-        VendorsPaymentProjectionList(vendorData: vendorWiseData);
+    vendorProjectionList = VendorsPaymentProjectionList(
+      vendorData: vendorWiseData,
+    );
 
     if (listOfSupplier.isEmpty) {
-      listOfSupplier =
-          supplierList.supplierData.map((ele) => ele.supplierName).toList();
+      listOfSupplier = supplierList.supplierData
+          .map((ele) => ele.supplierName)
+          .toList();
     }
   }
 
@@ -1833,10 +1855,12 @@ class _PayableFinanceState extends State<PayableFinance> {
     final List<SupplierCategoryWiseAnalysisPayablesData> customerWiseDataList =
         [];
     balanceByGroup.forEach((group, sum) {
-      customerWiseDataList.add(SupplierCategoryWiseAnalysisPayablesData(
-        supplierCategoryName: group,
-        balance: sum * -1,
-      ));
+      customerWiseDataList.add(
+        SupplierCategoryWiseAnalysisPayablesData(
+          supplierCategoryName: group,
+          balance: sum * -1,
+        ),
+      );
     });
     customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
 
@@ -1846,9 +1870,11 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     if (listOfCategory.isEmpty) {
       listOfCategory = supplierCategoryList.supplierCategoryData
-          .map((ele) => ele.supplierCategoryName.length >= 7
-              ? ele.supplierCategoryName.substring(7)
-              : ele.supplierCategoryName)
+          .map(
+            (ele) => ele.supplierCategoryName.length >= 7
+                ? ele.supplierCategoryName.substring(7)
+                : ele.supplierCategoryName,
+          )
           .toList();
     }
   }
@@ -1910,8 +1936,11 @@ class _PayableFinanceState extends State<PayableFinance> {
       final com = double.tryParse(t.commitment) ?? 0.0;
 
       balanceByGroup.update(grp, (value) => value + bal, ifAbsent: () => bal);
-      commitmentByGroup.update(grp, (value) => value + com,
-          ifAbsent: () => com);
+      commitmentByGroup.update(
+        grp,
+        (value) => value + com,
+        ifAbsent: () => com,
+      );
     }
 
     for (final p in modeOfPayment) {
@@ -1940,12 +1969,14 @@ class _PayableFinanceState extends State<PayableFinance> {
       final actSum = actualByGroup[grp] ?? 0.0;
 
       if (allowed.contains(grp)) {
-        list.add(SupplierCategoryWiseAnalysisPayablesData(
-          supplierCategoryName: grp,
-          balance: balSum * -1,
-          commitment: comSum,
-          actualPaid: actSum,
-        ));
+        list.add(
+          SupplierCategoryWiseAnalysisPayablesData(
+            supplierCategoryName: grp,
+            balance: balSum * -1,
+            commitment: comSum,
+            actualPaid: actSum,
+          ),
+        );
       } else {
         othersBal += balSum * -1;
         othersCom += comSum;
@@ -1954,20 +1985,24 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
 
     if (othersBal != 0 || othersCom != 0 || othersAct != 0) {
-      list.add(SupplierCategoryWiseAnalysisPayablesData(
-        supplierCategoryName: "Others",
-        balance: othersBal,
-        commitment: othersCom,
-        actualPaid: othersAct,
-      ));
+      list.add(
+        SupplierCategoryWiseAnalysisPayablesData(
+          supplierCategoryName: "Others",
+          balance: othersBal,
+          commitment: othersCom,
+          actualPaid: othersAct,
+        ),
+      );
     }
 
-    list.add(SupplierCategoryWiseAnalysisPayablesData(
-      supplierCategoryName: "Fixed Expenses",
-      balance: totalFixedExpensesCommitment * -1,
-      commitment: totalFixedExpensesCommitment,
-      actualPaid: totalFixedExpensesActualPaid,
-    ));
+    list.add(
+      SupplierCategoryWiseAnalysisPayablesData(
+        supplierCategoryName: "Fixed Expenses",
+        balance: totalFixedExpensesCommitment * -1,
+        commitment: totalFixedExpensesCommitment,
+        actualPaid: totalFixedExpensesActualPaid,
+      ),
+    );
 
     list.sort((a, b) => b.balance.compareTo(a.balance));
     bpGroupList = SupplierCategoryWiseAnalysisPayablesList(
@@ -2002,8 +2037,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       try {
         DateTime toDt = formatter.parse('01/${target.monthYear}');
         DateTime lastDayOfMonth = DateTime(toDt.year, toDt.month + 1, 0);
-        return lastDayOfMonth
-                .isBefore(currentMonthToDate!.add(const Duration(days: 1))) &&
+        return lastDayOfMonth.isBefore(
+              currentMonthToDate!.add(const Duration(days: 1)),
+            ) &&
             target.subSubGroup.isNotEmpty;
       } catch (e) {
         return false;
@@ -2047,11 +2083,13 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       double commitment = tempTarget
           .where(
-              (e) => e.salesRep.trim().toUpperCase() == "$vendorGroup TARGET")
+            (e) => e.salesRep.trim().toUpperCase() == "$vendorGroup TARGET",
+          )
           .fold(
-              0.0,
-              (sum, e) =>
-                  sum + (double.tryParse(e.getTargetForMonth(month)) ?? 0.0));
+            0.0,
+            (sum, e) =>
+                sum + (double.tryParse(e.getTargetForMonth(month)) ?? 0.0),
+          );
 
       // if (commitment == 0) continue;
 
@@ -2095,8 +2133,9 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     currentMonthActualPayable = modeOfPayment.where((target) {
       DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return /*dueon.isAtLeast(currentMonthFromDate!) &&*/
-          dueon.isAtMost(currentMonthToDate!);
+      return /*dueon.isAtLeast(currentMonthFromDate!) &&*/ dueon.isAtMost(
+        currentMonthToDate!,
+      );
     });
 
     Set<String> processedVendorCodes = {};
@@ -2104,8 +2143,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       if (!processedVendorCodes.contains(customer.vendorCode)) {
         vendorCode = customer.vendorCode;
         vendorName = customer.vendorName;
-        for (var sales in customerTargetList
-            .where((saleelement) => saleelement.vendorCode == vendorCode)) {
+        for (var sales in customerTargetList.where(
+          (saleelement) => saleelement.vendorCode == vendorCode,
+        )) {
           balance += double.tryParse(sales.balance) ?? 0;
         }
 
@@ -2113,11 +2153,13 @@ class _PayableFinanceState extends State<PayableFinance> {
             .where((entry) => entry.vendorName == vendorName)
             .fold(0.0, (sum, entry) => sum + double.parse(entry.total));
 
-        customerWiseDataList.add(SupplierAnalysisPayablesData(
-          supplierName: vendorName,
-          balance: balance.abs(),
-          actualPaid: actualPayable,
-        ));
+        customerWiseDataList.add(
+          SupplierAnalysisPayablesData(
+            supplierName: vendorName,
+            balance: balance.abs(),
+            actualPaid: actualPayable,
+          ),
+        );
         processedVendorCodes.add(vendorCode);
       }
       vendorCode = "";
@@ -2126,8 +2168,9 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
 
     customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
-    advanceVendorList =
-        SupplierAnalysisPayablesList(supplierData: customerWiseDataList);
+    advanceVendorList = SupplierAnalysisPayablesList(
+      supplierData: customerWiseDataList,
+    );
   }
 
   Future<void> _loadCapitalVendors() async {
@@ -2153,8 +2196,9 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     currentMonthActualPayable = modeOfPayment.where((target) {
       DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return /*dueon.isAtLeast(currentMonthFromDate!) &&*/
-          dueon.isAtMost(currentMonthToDate!);
+      return /*dueon.isAtLeast(currentMonthFromDate!) &&*/ dueon.isAtMost(
+        currentMonthToDate!,
+      );
     });
 
     Set<String> processedVendorCodes = {};
@@ -2162,8 +2206,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       if (!processedVendorCodes.contains(customer.vendorCode)) {
         vendorCode = customer.vendorCode;
         vendorName = customer.vendorName;
-        for (var sales in customerTargetList
-            .where((saleelement) => saleelement.vendorCode == vendorCode)) {
+        for (var sales in customerTargetList.where(
+          (saleelement) => saleelement.vendorCode == vendorCode,
+        )) {
           balance += double.tryParse(sales.balance) ?? 0;
           overDueDays =
               int.tryParse(sales.dueDays.replaceAll(' Days', '')) ?? 0;
@@ -2186,18 +2231,20 @@ class _PayableFinanceState extends State<PayableFinance> {
             .where((entry) => entry.vendorName == vendorName)
             .fold(0.0, (sum, entry) => sum + double.parse(entry.total));
 
-        vendorWiseData.add(VendorsPaymentProjectionData(
-          vendorName: vendorName,
-          vendorCode: vendorCode,
-          balanceDue: balance,
-          a0to30: a0to30,
-          a31to60: a31to60,
-          a61to90: a61to90,
-          a90to180: a90to180,
-          a180above: a180above,
-          commitment: commitment,
-          actualPayable: actualPayable,
-        ));
+        vendorWiseData.add(
+          VendorsPaymentProjectionData(
+            vendorName: vendorName,
+            vendorCode: vendorCode,
+            balanceDue: balance,
+            a0to30: a0to30,
+            a31to60: a31to60,
+            a61to90: a61to90,
+            a90to180: a90to180,
+            a180above: a180above,
+            commitment: commitment,
+            actualPayable: actualPayable,
+          ),
+        );
         processedVendorCodes.add(vendorCode);
       }
       vendorCode = "";
@@ -2211,8 +2258,9 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
 
     vendorWiseData.sort((a, b) => a.vendorCode.compareTo(b.vendorCode));
-    capitalVendorsList =
-        VendorsPaymentProjectionList(vendorData: vendorWiseData);
+    capitalVendorsList = VendorsPaymentProjectionList(
+      vendorData: vendorWiseData,
+    );
   }
 
   // Future<void> _loadDocumentTypeAnalysis(String payable, String advancePaid,
@@ -2302,13 +2350,14 @@ class _PayableFinanceState extends State<PayableFinance> {
       balanceByDoc[doc] = (balanceByDoc[doc] ?? 0.0) + amt;
     }
 
-    final List<DocumentTypeData> customerWiseDataList = balanceByDoc.entries
-        .map((e) => DocumentTypeData(
-              documentType: e.key,
-              balance: e.value * -1,
-            ))
-        .toList()
-      ..sort((a, b) => b.balance.compareTo(a.balance));
+    final List<DocumentTypeData> customerWiseDataList =
+        balanceByDoc.entries
+            .map(
+              (e) =>
+                  DocumentTypeData(documentType: e.key, balance: e.value * -1),
+            )
+            .toList()
+          ..sort((a, b) => b.balance.compareTo(a.balance));
 
     documentList = DocumentTypeList(documentData: customerWiseDataList);
   }
@@ -2318,74 +2367,33 @@ class _PayableFinanceState extends State<PayableFinance> {
     final userId = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     await _loadUserList(
-        userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
+      userId,
+      userJwtToken,
+      userMailID,
+      int.tryParse(userLevel) ?? 0,
+    );
     await _loadPayables(userName, userLevel, fromFilter);
     await _loadExpenses(userName, userLevel);
     await _loadModeOfPayment(userName, userLevel);
     await _loadSalesTarget(userName, userLevel);
-    await _loadPayablesData(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadAdvancePaidData(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadSupplierAnalysis(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
+    await _loadPayablesData("", "", "", "", "", "");
+    await _loadAdvancePaidData("", "", "", "", "", "");
+    await _loadSupplierAnalysis("", "", "", "", "", "");
     await _loadVendorPaymentProjection();
-    await _loadSupplierCategoryAnalysis(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadDocumentTypeAnalysis(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
+    await _loadSupplierCategoryAnalysis("", "", "", "", "", "");
+    await _loadDocumentTypeAnalysis("", "", "", "", "", "");
     await _loadFixedExpenses();
-    await _loadbpGroup(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
+    await _loadbpGroup("", "", "", "", "", "");
     await _loadAdvanceVendors();
     await _loadCapitalVendors();
 
-    filterOptions = [
-      listOfCategory,
-      listOfSupplier,
-      [],
-    ];
+    filterOptions = [listOfCategory, listOfSupplier, []];
 
     savedFinanceReceivablesOptions = filterOptions
         .map((options) => List<bool>.filled(options.length, false))
@@ -2401,12 +2409,14 @@ class _PayableFinanceState extends State<PayableFinance> {
     chartDataLoadedPayables = true;
   }
 
-  List<PayablesList> filterPayablesList(List<PayablesList> payableList,
-      {String? payable,
-      String? advancePaid,
-      String? supplier,
-      String? supplierCategory,
-      String? documentType}) {
+  List<PayablesList> filterPayablesList(
+    List<PayablesList> payableList, {
+    String? payable,
+    String? advancePaid,
+    String? supplier,
+    String? supplierCategory,
+    String? documentType,
+  }) {
     List<PayablesList> filteredCollectionTargetList = [];
     double dueFromReceivable = 0.0;
     double dueToReceivable = double.infinity;
@@ -2566,8 +2576,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       payableGraphList = PayablesGraphList(agingData: []);
       receivableList = AdvancePaidToSupplierPayablesList(agingData: []);
       supplierList = SupplierAnalysisPayablesList(supplierData: []);
-      supplierCategoryList =
-          SupplierCategoryWiseAnalysisPayablesList(supplierCategoryData: []);
+      supplierCategoryList = SupplierCategoryWiseAnalysisPayablesList(
+        supplierCategoryData: [],
+      );
       documentList = DocumentTypeList(documentData: []);
       touchedPayables = "";
       touchedAdvancePaid = "";
@@ -2583,8 +2594,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       payableGraphList = PayablesGraphList(agingData: []);
       receivableList = AdvancePaidToSupplierPayablesList(agingData: []);
       supplierList = SupplierAnalysisPayablesList(supplierData: []);
-      supplierCategoryList =
-          SupplierCategoryWiseAnalysisPayablesList(supplierCategoryData: []);
+      supplierCategoryList = SupplierCategoryWiseAnalysisPayablesList(
+        supplierCategoryData: [],
+      );
       documentList = DocumentTypeList(documentData: []);
     });
   }
@@ -2602,15 +2614,11 @@ class _PayableFinanceState extends State<PayableFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Ageing Group',
-        'Ageing Group Total',
-      ]));
+      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingGroupTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -2623,9 +2631,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2639,8 +2645,10 @@ class _PayableFinanceState extends State<PayableFinance> {
             return pw.Center(
               child: pw.Text(
                 'Payables',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2653,24 +2661,44 @@ class _PayableFinanceState extends State<PayableFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Ageing Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Ageing Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Ageing Group Total',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Ageing Group Total',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in payableGraphList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingGroupTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingGroupTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2687,27 +2715,22 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateAdvanceExcel(
-      AdvancePaidToSupplierPayablesList list) async {
+    AdvancePaidToSupplierPayablesList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Ageing Group',
-        'Ageing Group Total',
-      ]));
+      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingGroupTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -2720,15 +2743,14 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateAdvancePDF(
-      AdvancePaidToSupplierPayablesList list) async {
+    AdvancePaidToSupplierPayablesList list,
+  ) async {
     try {
       final pdf = pw.Document();
       pdf.addPage(
@@ -2737,8 +2759,10 @@ class _PayableFinanceState extends State<PayableFinance> {
             return pw.Center(
               child: pw.Text(
                 'Advance Paid To Supplier',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2751,24 +2775,44 @@ class _PayableFinanceState extends State<PayableFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Ageing Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Ageing Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Ageing Group Total',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Ageing Group Total',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in receivableList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingGroupTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingGroupTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2785,9 +2829,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2796,15 +2838,11 @@ class _PayableFinanceState extends State<PayableFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Supplier Name',
-        'Amount',
-      ]));
+      sheet.appendRow(toCellRow(['Supplier Name', 'Amount']));
       for (var monthlyData in list.supplierData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.supplierName,
-          monthlyData.balance,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.supplierName, monthlyData.balance]),
+        );
       }
 
       if (kIsWeb) {
@@ -2817,9 +2855,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2833,8 +2869,10 @@ class _PayableFinanceState extends State<PayableFinance> {
             return pw.Center(
               child: pw.Text(
                 'Supplier Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2847,24 +2885,44 @@ class _PayableFinanceState extends State<PayableFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Supplier Name',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Supplier Name',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Amount',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Amount',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in supplierList.supplierData)
-                  pw.TableRow(children: [
-                    pw.Text(data.supplierName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.supplierName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.balance.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.balance.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2881,27 +2939,22 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateSupplierCategoryExcel(
-      SupplierCategoryWiseAnalysisPayablesList list) async {
+    SupplierCategoryWiseAnalysisPayablesList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Supplier Category',
-        'Amount',
-      ]));
+      sheet.appendRow(toCellRow(['Supplier Category', 'Amount']));
       for (var monthlyData in list.supplierCategoryData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.supplierCategoryName,
-          monthlyData.balance,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.supplierCategoryName, monthlyData.balance]),
+        );
       }
 
       if (kIsWeb) {
@@ -2914,15 +2967,14 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> generateSupplierCategoryPDF(
-      SupplierCategoryWiseAnalysisPayablesList list) async {
+    SupplierCategoryWiseAnalysisPayablesList list,
+  ) async {
     try {
       final pdf = pw.Document();
       pdf.addPage(
@@ -2931,8 +2983,10 @@ class _PayableFinanceState extends State<PayableFinance> {
             return pw.Center(
               child: pw.Text(
                 'Supplier Category Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -2945,24 +2999,44 @@ class _PayableFinanceState extends State<PayableFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Supplier Category',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Supplier Category',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Amount',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Amount',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in supplierCategoryList.supplierCategoryData)
-                  pw.TableRow(children: [
-                    pw.Text(data.supplierCategoryName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.supplierCategoryName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.balance.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.balance.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -2979,9 +3053,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2990,15 +3062,11 @@ class _PayableFinanceState extends State<PayableFinance> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Document Type',
-        'Amount',
-      ]));
+      sheet.appendRow(toCellRow(['Document Type', 'Amount']));
       for (var monthlyData in list.documentData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.documentType,
-          monthlyData.balance,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.documentType, monthlyData.balance]),
+        );
       }
 
       if (kIsWeb) {
@@ -3011,9 +3079,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3027,8 +3093,10 @@ class _PayableFinanceState extends State<PayableFinance> {
             return pw.Center(
               child: pw.Text(
                 'Document Type',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -3041,24 +3109,44 @@ class _PayableFinanceState extends State<PayableFinance> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Document Type',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Document Type',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Amount',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Amount',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in documentList.documentData)
-                  pw.TableRow(children: [
-                    pw.Text(data.documentType,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.documentType,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.balance.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.balance.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -3075,9 +3163,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3098,55 +3184,13 @@ class _PayableFinanceState extends State<PayableFinance> {
     });
     payablesList = payablesListMaster;
     _dateFilterTarget();
-    await _loadPayablesData(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadAdvancePaidData(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadSupplierAnalysis(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
+    await _loadPayablesData("", "", "", "", "", "");
+    await _loadAdvancePaidData("", "", "", "", "", "");
+    await _loadSupplierAnalysis("", "", "", "", "", "");
     await _loadVendorPaymentProjection();
-    await _loadSupplierCategoryAnalysis(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadDocumentTypeAnalysis(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
-    await _loadbpGroup(
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    );
+    await _loadSupplierCategoryAnalysis("", "", "", "", "", "");
+    await _loadDocumentTypeAnalysis("", "", "", "", "", "");
+    await _loadbpGroup("", "", "", "", "", "");
     await _loadAdvanceVendors();
     await _loadCapitalVendors();
     await _loadFixedExpenses();
@@ -3188,11 +3232,7 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       chartDataLoadedPayables = true;
 
-      filterOptions = [
-        listOfCategory,
-        listOfSupplier,
-        [],
-      ];
+      filterOptions = [listOfCategory, listOfSupplier, []];
 
       savedFinanceReceivablesOptions = filterOptions
           .map((options) => List<bool>.filled(options.length, false))
@@ -3233,10 +3273,10 @@ class _PayableFinanceState extends State<PayableFinance> {
       advanceStr = formatAmount(advanceSum);
       // payableStr = formatAmount(payableSum);
       payableAdvanceStr = formatAmount(payableSum.abs());
-      payableAdvancePercentage = double.tryParse(
-                  ((advanceSum.abs() / (payableSum.abs())) * 100)
-                      .toStringAsFixed(0))
-              ?.ceil() ??
+      payableAdvancePercentage =
+          double.tryParse(
+            ((advanceSum.abs() / (payableSum.abs())) * 100).toStringAsFixed(0),
+          )?.ceil() ??
           0;
       if (payableAdvancePercentage > 100) {
         payableAdvancePercentage = 100;
@@ -3278,9 +3318,10 @@ class _PayableFinanceState extends State<PayableFinance> {
         netPayablePercentage = 0;
       } else {
         netPayablePercentage =
-            double.tryParse(((overDue / (netPayable)) * 100).toStringAsFixed(2))
-                    ?.ceil() ??
-                0;
+            double.tryParse(
+              ((overDue / (netPayable)) * 100).toStringAsFixed(2),
+            )?.ceil() ??
+            0;
       }
 
       if (netPayablePercentage > 100) {
@@ -3293,7 +3334,8 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   String getSelectedFiltersText(
-      Map<String, Map<String, bool>> allCategoriesState) {
+    Map<String, Map<String, bool>> allCategoriesState,
+  ) {
     List<String> selectedFilters = [];
     allCategoriesState.forEach((category, options) {
       options.forEach((option, isSelected) {
@@ -3311,32 +3353,36 @@ class _PayableFinanceState extends State<PayableFinance> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Vendor Code',
-      'Vendor Name',
-      'Balance Due',
-      '0-30',
-      '31-60',
-      '61-90',
-      '91-180',
-      '180+',
-      'Commitment',
-      'Actual Paid'
-    ]));
+    sheet.appendRow(
+      toCellRow([
+        'Vendor Code',
+        'Vendor Name',
+        'Balance Due',
+        '0-30',
+        '31-60',
+        '61-90',
+        '91-180',
+        '180+',
+        'Commitment',
+        'Actual Paid',
+      ]),
+    );
 
     for (var vendorData in vendorProjectionList.vendorData) {
-      sheet.appendRow(toCellRow([
-        vendorData.vendorCode,
-        vendorData.vendorName,
-        vendorData.balanceDue,
-        vendorData.a0to30,
-        vendorData.a31to60,
-        vendorData.a61to90,
-        vendorData.a90to180,
-        vendorData.a180above,
-        vendorData.commitment,
-        vendorData.actualPayable,
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          vendorData.vendorCode,
+          vendorData.vendorName,
+          vendorData.balanceDue,
+          vendorData.a0to30,
+          vendorData.a31to60,
+          vendorData.a61to90,
+          vendorData.a90to180,
+          vendorData.a180above,
+          vendorData.commitment,
+          vendorData.actualPayable,
+        ]),
+      );
     }
 
     setState(() {
@@ -3373,20 +3419,24 @@ class _PayableFinanceState extends State<PayableFinance> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Payables',
-      'Commitment',
-      'Actual Paid',
-      'Deficit(-)/Surplus(+)',
-    ]));
+    sheet.appendRow(
+      toCellRow([
+        'Payables',
+        'Commitment',
+        'Actual Paid',
+        'Deficit(-)/Surplus(+)',
+      ]),
+    );
 
     for (var vendorData in bpGroupList.supplierCategoryData) {
-      sheet.appendRow(toCellRow([
-        vendorData.supplierCategoryName,
-        vendorData.commitment,
-        vendorData.actualPaid,
-        vendorData.actualPaid! - vendorData.commitment!,
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          vendorData.supplierCategoryName,
+          vendorData.commitment,
+          vendorData.actualPaid,
+          vendorData.actualPaid! - vendorData.commitment!,
+        ]),
+      );
     }
 
     setState(() {
@@ -3423,20 +3473,24 @@ class _PayableFinanceState extends State<PayableFinance> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Particulars',
-      // 'Balance',
-      'Target',
-      'Actual Paid',
-    ]));
+    sheet.appendRow(
+      toCellRow([
+        'Particulars',
+        // 'Balance',
+        'Target',
+        'Actual Paid',
+      ]),
+    );
 
     for (var vendorData in fixedExpensesList.supplierCategoryData) {
-      sheet.appendRow(toCellRow([
-        vendorData.supplierCategoryName,
-        // vendorData.balance.toStringAsFixed(0),
-        vendorData.commitment!.toStringAsFixed(0),
-        vendorData.actualPaid!.toStringAsFixed(0),
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          vendorData.supplierCategoryName,
+          // vendorData.balance.toStringAsFixed(0),
+          vendorData.commitment!.toStringAsFixed(0),
+          vendorData.actualPaid!.toStringAsFixed(0),
+        ]),
+      );
     }
 
     setState(() {
@@ -3473,18 +3527,16 @@ class _PayableFinanceState extends State<PayableFinance> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Vendor Name',
-      'Balance Due',
-      'Actual Paid',
-    ]));
+    sheet.appendRow(toCellRow(['Vendor Name', 'Balance Due', 'Actual Paid']));
 
     for (var vendorData in advanceVendorList.supplierData) {
-      sheet.appendRow(toCellRow([
-        vendorData.supplierName,
-        vendorData.balance,
-        vendorData.actualPaid,
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          vendorData.supplierName,
+          vendorData.balance,
+          vendorData.actualPaid,
+        ]),
+      );
     }
 
     setState(() {
@@ -3508,32 +3560,36 @@ class _PayableFinanceState extends State<PayableFinance> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Vendor Code',
-      'Vendor Name',
-      'Balance Due',
-      '0-30',
-      '31-60',
-      '61-90',
-      '91-180',
-      '180+',
-      'Commitment',
-      'Actual Paid'
-    ]));
+    sheet.appendRow(
+      toCellRow([
+        'Vendor Code',
+        'Vendor Name',
+        'Balance Due',
+        '0-30',
+        '31-60',
+        '61-90',
+        '91-180',
+        '180+',
+        'Commitment',
+        'Actual Paid',
+      ]),
+    );
 
     for (var vendorData in capitalVendorsList.vendorData) {
-      sheet.appendRow(toCellRow([
-        vendorData.vendorCode,
-        vendorData.vendorName,
-        vendorData.balanceDue,
-        vendorData.a0to30,
-        vendorData.a31to60,
-        vendorData.a61to90,
-        vendorData.a90to180,
-        vendorData.a180above,
-        vendorData.commitment,
-        vendorData.actualPayable,
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          vendorData.vendorCode,
+          vendorData.vendorName,
+          vendorData.balanceDue,
+          vendorData.a0to30,
+          vendorData.a31to60,
+          vendorData.a61to90,
+          vendorData.a90to180,
+          vendorData.a180above,
+          vendorData.commitment,
+          vendorData.actualPayable,
+        ]),
+      );
     }
 
     setState(() {
@@ -3610,11 +3666,7 @@ class _PayableFinanceState extends State<PayableFinance> {
   void initState() {
     super.initState();
 
-    filterOptions = [
-      listOfCategory,
-      listOfSupplier,
-      [],
-    ];
+    filterOptions = [listOfCategory, listOfSupplier, []];
 
     selectedFinanceReceivablesOptions = filterOptions
         .map((options) => List<bool>.filled(options.length, false))
@@ -3642,14 +3694,14 @@ class _PayableFinanceState extends State<PayableFinance> {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 15,
-                        ),
+                        const SizedBox(width: 15),
                         dateFilterFlag
                             ? Text(
-                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}")
+                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
+                              )
                             : Text(
-                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate)}"),
+                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate)}",
+                              ),
                       ],
                     ),
                     Row(
@@ -3660,9 +3712,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                           },
                           icon: const Icon(Icons.filter_alt_outlined),
                         ),
-                        const SizedBox(
-                          width: 5,
-                        ),
+                        const SizedBox(width: 5),
                         PopupMenuButton(
                           onSelected: (value) {},
                           itemBuilder: (BuildContext bc) {
@@ -3672,9 +3722,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                   generatebgGroup();
                                 },
                                 child: const Row(
-                                  children: [
-                                    Text("Download BP Group Summary"),
-                                  ],
+                                  children: [Text("Download BP Group Summary")],
                                 ),
                               ),
                               PopupMenuItem(
@@ -3744,24 +3792,21 @@ class _PayableFinanceState extends State<PayableFinance> {
                         center: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(
-                              height: 70,
-                            ),
+                            const SizedBox(height: 70),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   "Payables: $netPayableStr",
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12.0,
-                                      color: Colors.black),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12.0,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(
-                              height: 5,
-                            ),
+                            const SizedBox(height: 5),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -3770,20 +3815,18 @@ class _PayableFinanceState extends State<PayableFinance> {
                                   width: 10,
                                   color: const Color(0xFF97D7F3),
                                 ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
+                                const SizedBox(width: 5),
                                 Text(
                                   "OverDue $overDueStr",
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                      fontSize: 10.0, color: Colors.black),
+                                    fontSize: 10.0,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(
-                              height: 5,
-                            ),
+                            const SizedBox(height: 5),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -3792,14 +3835,14 @@ class _PayableFinanceState extends State<PayableFinance> {
                                   width: 10,
                                   color: const Color(0xFF2CA9DF),
                                 ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
+                                const SizedBox(width: 5),
                                 Text(
                                   "Not Due $notDueStr",
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                      fontSize: 10.0, color: Colors.black),
+                                    fontSize: 10.0,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ],
                             ),
@@ -3822,24 +3865,21 @@ class _PayableFinanceState extends State<PayableFinance> {
                         center: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(
-                              height: 70,
-                            ),
+                            const SizedBox(height: 70),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   "Net Payables: $payableAdvanceStr",
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12.0,
-                                      color: Colors.black),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12.0,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(
-                              height: 5,
-                            ),
+                            const SizedBox(height: 5),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -3848,20 +3888,18 @@ class _PayableFinanceState extends State<PayableFinance> {
                                   width: 10,
                                   color: const Color(0xFF2CA9DF),
                                 ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
+                                const SizedBox(width: 5),
                                 Text(
                                   "Advance $advanceStr",
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                      fontSize: 10.0, color: Colors.black),
+                                    fontSize: 10.0,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(
-                              height: 5,
-                            ),
+                            const SizedBox(height: 5),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -3870,14 +3908,14 @@ class _PayableFinanceState extends State<PayableFinance> {
                                   width: 10,
                                   color: const Color(0xFF97D7F3),
                                 ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
+                                const SizedBox(width: 5),
                                 Text(
                                   "Payable $payableStr",
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                      fontSize: 10.0, color: Colors.black),
+                                    fontSize: 10.0,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ],
                             ),
@@ -3914,9 +3952,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 // ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3924,11 +3960,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Vendor Payment Projection",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Vendor Payment Projection",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -3944,7 +3980,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                                   });
                                 },
                                 child: const Text(
-                                    "Download Vendor Payment Projection"),
+                                  "Download Vendor Payment Projection",
+                                ),
                               ),
                               PopupMenuItem(
                                 onTap: () {
@@ -3970,17 +4007,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _payables(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3988,11 +4020,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "BP Group Summary",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("BP Group Summary",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4017,17 +4049,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _bpGroup(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4035,11 +4062,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Advance Vendors",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Advance Vendors",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4064,17 +4091,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _advanceVendors(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4082,11 +4104,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Capital Vendors",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Capital Vendors",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4111,17 +4133,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _capitalVendors(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4129,11 +4146,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Fixed Expenses",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Fixed Expenses",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4158,17 +4175,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _fixedExpenses(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4176,11 +4188,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Advance Paid to Supplier",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Advance Paid to Supplier",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4213,17 +4225,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _advancePaidToSupplier(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4231,11 +4238,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Supplier Analysis",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Supplier Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4268,17 +4275,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _supplierAnalysis(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4286,11 +4288,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Supplier Category Wise Analysis",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Supplier Category Wise Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4303,7 +4305,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                                 onTap: () {
                                   setState(() {
                                     generateSupplierCategoryExcel(
-                                        supplierCategoryList);
+                                      supplierCategoryList,
+                                    );
                                   });
                                 },
                                 child: const Text("Download Excel"),
@@ -4312,7 +4315,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                                 onTap: () {
                                   setState(() {
                                     generateSupplierCategoryPDF(
-                                        supplierCategoryList);
+                                      supplierCategoryList,
+                                    );
                                   });
                                 },
                                 child: const Text("Download PDF"),
@@ -4325,17 +4329,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _supplierCategoryWiseAnalysis(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4343,11 +4342,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Document Type",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Document Type",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -4380,10 +4379,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _documentTypeAnalysis(),
                 ),
               ],
@@ -4425,10 +4421,12 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     if (hasPositive && hasNegative) {
       // Both positive and negative
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -4453,36 +4451,26 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesPayables, axisNameSize: 20),
+                sideTitles: _bottomTitlesPayables,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _payablesChartData(payableGraphList.agingData),
@@ -4494,8 +4482,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedPayables = touchedPayables == ""
                           ? payableGraphList
-                              .agingData[barTouchResponse.spot!.spot.x.toInt()]
-                              .agingGroup
+                                .agingData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .agingGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -4514,81 +4503,92 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            '${payableGraphList.agingData[0].agingGroup} :'
+                            ' ${(payableGraphList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: '${payableGraphList.agingData[0].agingGroup} :'
-                              ' ${(payableGraphList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            '${payableGraphList.agingData[1].agingGroup} '
+                            ': ${(payableGraphList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${payableGraphList.agingData[1].agingGroup} '
-                              ': ${(payableGraphList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${payableGraphList.agingData[2].agingGroup} '
+                            ': ${(payableGraphList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${payableGraphList.agingData[2].agingGroup} '
-                              ': ${(payableGraphList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${payableGraphList.agingData[3].agingGroup} '
+                            ': ${(payableGraphList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${payableGraphList.agingData[3].agingGroup} '
-                              ': ${(payableGraphList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${payableGraphList.agingData[4].agingGroup} '
+                            ': ${(payableGraphList.agingData[4].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${payableGraphList.agingData[4].agingGroup} '
-                              ': ${(payableGraphList.agingData[4].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${payableGraphList.agingData[5].agingGroup} '
+                            ': ${(payableGraphList.agingData[5].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${payableGraphList.agingData[5].agingGroup} '
-                              ': ${(payableGraphList.agingData[5].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            'Total'
+                            ': ${((payableGraphList.agingData[5].agingGroupTotal + payableGraphList.agingData[4].agingGroupTotal + payableGraphList.agingData[3].agingGroupTotal + payableGraphList.agingData[2].agingGroupTotal + payableGraphList.agingData[1].agingGroupTotal + payableGraphList.agingData[0].agingGroupTotal) / 100000).toStringAsFixed(2)} L',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: 'Total'
-                              ': ${((payableGraphList.agingData[5].agingGroupTotal + payableGraphList.agingData[4].agingGroupTotal + payableGraphList.agingData[3].agingGroupTotal + payableGraphList.agingData[2].agingGroupTotal + payableGraphList.agingData[1].agingGroupTotal + payableGraphList.agingData[0].agingGroupTotal) / 100000).toStringAsFixed(2)} L',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -4619,10 +4619,12 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     if (hasPositive && hasNegative) {
       // Both positive and negative
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -4648,36 +4650,26 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesAdvancePaid, axisNameSize: 20),
+                sideTitles: _bottomTitlesAdvancePaid,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _advancePaidChartData(receivableList.agingData),
@@ -4689,8 +4681,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedAdvancePaid = touchedAdvancePaid == ""
                           ? receivableList
-                              .agingData[barTouchResponse.spot!.spot.x.toInt()]
-                              .agingGroup
+                                .agingData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .agingGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -4709,81 +4702,92 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            '${receivableList.agingData[0].agingGroup} :'
+                            ' ${(receivableList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: '${receivableList.agingData[0].agingGroup} :'
-                              ' ${(receivableList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            '${receivableList.agingData[1].agingGroup} '
+                            ': ${(receivableList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${receivableList.agingData[1].agingGroup} '
-                              ': ${(receivableList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivableList.agingData[2].agingGroup} '
+                            ': ${(receivableList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${receivableList.agingData[2].agingGroup} '
-                              ': ${(receivableList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivableList.agingData[3].agingGroup} '
+                            ': ${(receivableList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${receivableList.agingData[3].agingGroup} '
-                              ': ${(receivableList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivableList.agingData[4].agingGroup} '
+                            ': ${(receivableList.agingData[4].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${receivableList.agingData[4].agingGroup} '
-                              ': ${(receivableList.agingData[4].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivableList.agingData[5].agingGroup} '
+                            ': ${(receivableList.agingData[5].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: '${receivableList.agingData[5].agingGroup} '
-                              ': ${(receivableList.agingData[5].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            'Total'
+                            ': ${((receivableList.agingData[5].agingGroupTotal + receivableList.agingData[4].agingGroupTotal + receivableList.agingData[3].agingGroupTotal + receivableList.agingData[2].agingGroupTotal + receivableList.agingData[1].agingGroupTotal + receivableList.agingData[0].agingGroupTotal) / 100000).toStringAsFixed(2)} L',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: 'Total'
-                              ': ${((receivableList.agingData[5].agingGroupTotal + receivableList.agingData[4].agingGroupTotal + receivableList.agingData[3].agingGroupTotal + receivableList.agingData[2].agingGroupTotal + receivableList.agingData[1].agingGroupTotal + receivableList.agingData[0].agingGroupTotal) / 100000).toStringAsFixed(2)} L',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -4821,10 +4825,12 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     if (hasPositive && hasNegative) {
       // Both positive and negative
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -4849,36 +4855,26 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesSupplierAnalysis, axisNameSize: 20),
+                sideTitles: _bottomTitlesSupplierAnalysis,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _supplierAnalysisChartData(supplierList.supplierData),
@@ -4890,9 +4886,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedSupplier = touchedSupplier == ""
                           ? supplierList
-                              .supplierData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .supplierName
+                                .supplierData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .supplierName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -4911,27 +4907,32 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      "${supplierList.supplierData[grpIndex].supplierName}\n",
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(
-                              supplierList.supplierData[grpIndex].balance),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    "${supplierList.supplierData[grpIndex].supplierName}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          supplierList.supplierData[grpIndex].balance,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -4969,10 +4970,12 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     if (hasPositive && hasNegative) {
       // Both positive and negative
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -4997,41 +5000,31 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesSupplierCategoryAnalysis,
-                  axisNameSize: 20),
+                sideTitles: _bottomTitlesSupplierCategoryAnalysis,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _supplierCategoryAnalysisChartData(
-                supplierCategoryList.supplierCategoryData),
+              supplierCategoryList.supplierCategoryData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5040,9 +5033,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedSupplierType = touchedSupplierType == ""
                           ? supplierCategoryList
-                              .supplierCategoryData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .supplierCategoryName
+                                .supplierCategoryData[barTouchResponse
+                                    .spot!
+                                    .spot
+                                    .x
+                                    .toInt()]
+                                .supplierCategoryName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5061,27 +5057,34 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      "${supplierCategoryList.supplierCategoryData[grpIndex].supplierCategoryName}\n",
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(supplierCategoryList
-                              .supplierCategoryData[grpIndex].balance),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    "${supplierCategoryList.supplierCategoryData[grpIndex].supplierCategoryName}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          supplierCategoryList
+                              .supplierCategoryData[grpIndex]
+                              .balance,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5119,10 +5122,12 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     if (hasPositive && hasNegative) {
       // Both positive and negative
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -5147,36 +5152,26 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesDocumentType, axisNameSize: 20),
+                sideTitles: _bottomTitlesDocumentType,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _documentTypeChartData(documentList.documentData),
@@ -5188,9 +5183,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedDocumentType = touchedDocumentType == ""
                           ? documentList
-                              .documentData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .documentType
+                                .documentData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .documentType
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5209,27 +5204,32 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      "${documentList.documentData[grpIndex].documentType}\n",
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(
-                              documentList.documentData[grpIndex].balance),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    "${documentList.documentData[grpIndex].documentType}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          documentList.documentData[grpIndex].balance,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5267,10 +5267,12 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     if (hasPositive && hasNegative) {
       // Both positive and negative
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -5295,36 +5297,26 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesbpGroup, axisNameSize: 20),
+                sideTitles: _bottomTitlesbpGroup,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _bpGroupChartData(bpGroupList.supplierCategoryData),
@@ -5336,9 +5328,12 @@ class _PayableFinanceState extends State<PayableFinance> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedBPgroup = touchedBPgroup == ""
                           ? bpGroupList
-                              .supplierCategoryData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .supplierCategoryName
+                                .supplierCategoryData[barTouchResponse
+                                    .spot!
+                                    .spot
+                                    .x
+                                    .toInt()]
+                                .supplierCategoryName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -5357,27 +5352,32 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      "${bpGroupList.supplierCategoryData[grpIndex].supplierCategoryName}\n",
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(bpGroupList
-                              .supplierCategoryData[grpIndex].balance),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    "${bpGroupList.supplierCategoryData[grpIndex].supplierCategoryName}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          bpGroupList.supplierCategoryData[grpIndex].balance,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5403,8 +5403,8 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
     double maxAmount = len > 0
         ? advanceVendorList.supplierData
-            .map((data) => data.balance)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.balance)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -5418,36 +5418,26 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesAdvanceVendors, axisNameSize: 20),
+                sideTitles: _bottomTitlesAdvanceVendors,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _advanceVendorChartData(advanceVendorList.supplierData),
@@ -5479,27 +5469,32 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      "${advanceVendorList.supplierData[grpIndex].supplierName}\n",
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(
-                              advanceVendorList.supplierData[grpIndex].balance),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    "${advanceVendorList.supplierData[grpIndex].supplierName}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          advanceVendorList.supplierData[grpIndex].balance,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5536,10 +5531,12 @@ class _PayableFinanceState extends State<PayableFinance> {
     double chartMaxY = 0;
 
     if (hasPositive && hasNegative) {
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -5564,36 +5561,26 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesCapitalVendors, axisNameSize: 20),
+                sideTitles: _bottomTitlesCapitalVendors,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _capitalVendorsChartData(capitalVendorsList.vendorData),
@@ -5625,72 +5612,76 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      "${capitalVendorsList.vendorData[grpIndex].vendorName}\n",
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    "${capitalVendorsList.vendorData[grpIndex].vendorName}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            "Balance Due : ${formatAmount(capitalVendorsList.vendorData[grpIndex].balanceDue)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              "Balance Due : ${formatAmount(capitalVendorsList.vendorData[grpIndex].balanceDue)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            "0-30 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a0to30)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "0-30 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a0to30)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "31-60 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a31to60)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "31-60 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a31to60)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "61-90 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a61to90)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "61-90 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a61to90)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "91-180 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a90to180)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "91-180 : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a90to180)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "180+ : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a180above)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "180+ : ${formatAmount(capitalVendorsList.vendorData[grpIndex].a180above)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5716,8 +5707,8 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
     double maxAmount = len > 0
         ? fixedExpensesList.supplierCategoryData
-            .map((data) => data.balance)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.balance)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -5731,40 +5722,31 @@ class _PayableFinanceState extends State<PayableFinance> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesFixedExpenses, axisNameSize: 20),
+                sideTitles: _bottomTitlesFixedExpenses,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups:
-                _fixedExpensesChartData(fixedExpensesList.supplierCategoryData),
+            barGroups: _fixedExpensesChartData(
+              fixedExpensesList.supplierCategoryData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -5793,28 +5775,34 @@ class _PayableFinanceState extends State<PayableFinance> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      "${fixedExpensesList.supplierCategoryData[grpIndex].supplierCategoryName}\n",
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: formatAmount(fixedExpensesList
-                                  .supplierCategoryData[grpIndex].balance)
-                              .toString(),
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    "${fixedExpensesList.supplierCategoryData[grpIndex].supplierCategoryName}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          fixedExpensesList
+                              .supplierCategoryData[grpIndex]
+                              .balance,
+                        ).toString(),
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -5853,7 +5841,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                       const Text(
                         'Filter Options ',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -5888,8 +5878,10 @@ class _PayableFinanceState extends State<PayableFinance> {
                           child: Column(
                             children: [
                               Expanded(
-                                child: selectedCategoryIndex ==
-                                        categories.length - 1 // "Date" index
+                                child:
+                                    selectedCategoryIndex ==
+                                        categories.length -
+                                            1 // "Date" index
                                     ? Column(
                                         children: [
                                           // ListTile(
@@ -5920,21 +5912,27 @@ class _PayableFinanceState extends State<PayableFinance> {
                                           // ),
                                           ListTile(
                                             title: const Text("To Date"),
-                                            subtitle: Text(toDateFilter != null
-                                                ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
-                                                : formatDateString(
-                                                    currentDate!)),
+                                            subtitle: Text(
+                                              toDateFilter != null
+                                                  ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
+                                                  : formatDateString(
+                                                      currentDate!,
+                                                    ),
+                                            ),
                                             trailing: const Icon(
-                                                Icons.calendar_today),
+                                              Icons.calendar_today,
+                                            ),
                                             onTap: () async {
                                               final picked =
                                                   await showDatePicker(
-                                                context: context,
-                                                initialDate: toDateFilter ??
-                                                    DateTime.now(),
-                                                firstDate: fiscalYearStartDate!,
-                                                lastDate: currentDate!,
-                                              );
+                                                    context: context,
+                                                    initialDate:
+                                                        toDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
                                               if (picked != null) {
                                                 setState(() {
                                                   toDateFilter = picked;
@@ -5951,22 +5949,19 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                 .length,
                                         itemBuilder: (context, index) {
                                           return CheckboxListTile(
-                                            title: Text(filterOptions[
-                                                selectedCategoryIndex][index]),
+                                            title: Text(
+                                              filterOptions[selectedCategoryIndex][index],
+                                            ),
                                             value:
-                                                savedFinanceReceivablesOptions[
-                                                        selectedCategoryIndex]
-                                                    [index],
+                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
                                             onChanged: (bool? value) {
                                               setState(() {
                                                 if (value == true) {
-                                                  selectedFinanceReceivablesOptions[
-                                                          selectedCategoryIndex]
-                                                      [index] = true;
+                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
+                                                      true;
                                                 } else {
-                                                  selectedFinanceReceivablesOptions[
-                                                          selectedCategoryIndex]
-                                                      [index] = false;
+                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
+                                                      false;
                                                 }
                                                 savedFinanceReceivablesOptionsTemp =
                                                     savedFinanceReceivablesOptions;
@@ -5997,36 +5992,38 @@ class _PayableFinanceState extends State<PayableFinance> {
                                     ),
                                     onPressed: () {
                                       List<String> selectedFilterOptions = [];
-                                      for (int i = 0;
-                                          i <
-                                              filterOptions[
-                                                      selectedCategoryIndex]
-                                                  .length;
-                                          i++) {
-                                        if (selectedFinanceReceivablesOptions[
-                                            selectedCategoryIndex][i]) {
+                                      for (
+                                        int i = 0;
+                                        i <
+                                            filterOptions[selectedCategoryIndex]
+                                                .length;
+                                        i++
+                                      ) {
+                                        if (selectedFinanceReceivablesOptions[selectedCategoryIndex][i]) {
                                           selectedFilterOptions.add(
-                                              filterOptions[
-                                                  selectedCategoryIndex][i]);
+                                            filterOptions[selectedCategoryIndex][i],
+                                          );
                                         }
                                       }
 
-                                      for (int catIndex = 0;
-                                          catIndex < categories.length;
-                                          catIndex++) {
+                                      for (
+                                        int catIndex = 0;
+                                        catIndex < categories.length;
+                                        catIndex++
+                                      ) {
                                         String categoryName =
                                             categories[catIndex];
                                         Map<String, bool> optionsState = {};
 
                                         // Ensure the lengths match for your filterOptions and selectedFinanceReceivablesOptions lists
-                                        for (int optionIndex = 0;
-                                            optionIndex <
-                                                filterOptions[catIndex].length;
-                                            optionIndex++) {
-                                          optionsState[filterOptions[catIndex]
-                                                  [optionIndex]] =
-                                              selectedFinanceReceivablesOptions[
-                                                  catIndex][optionIndex];
+                                        for (
+                                          int optionIndex = 0;
+                                          optionIndex <
+                                              filterOptions[catIndex].length;
+                                          optionIndex++
+                                        ) {
+                                          optionsState[filterOptions[catIndex][optionIndex]] =
+                                              selectedFinanceReceivablesOptions[catIndex][optionIndex];
                                         }
 
                                         allCategoriesState[categoryName] =
@@ -6054,9 +6051,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(
-                                    width: 15,
-                                  ),
+                                  const SizedBox(width: 15),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
@@ -6079,8 +6074,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                                       padding: EdgeInsets.all(8.0),
                                       child: Text(
                                         'Clear Filter',
-                                        style:
-                                            TextStyle(color: Color(0xff2ca9df)),
+                                        style: TextStyle(
+                                          color: Color(0xff2ca9df),
+                                        ),
                                       ),
                                     ),
                                   ),

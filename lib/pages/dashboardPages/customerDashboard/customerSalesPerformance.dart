@@ -2,8 +2,6 @@
 
 import 'dart:convert';
 import 'dart:io';
-// import 'package:flutter/cupertino.dart';
-// import 'package:flutter/widgets.dart';
 import 'package:flutter_async_autocomplete/flutter_async_autocomplete.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
@@ -19,8 +17,6 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import '../../../classes/leads.dart';
 import '../../../login_screen.dart';
-
-bool loadingComplete = false;
 
 class Distributor {
   String CustomerName;
@@ -113,7 +109,9 @@ List<CollectionList> collection = [];
 List<Map<String, dynamic>> salesList = [];
 
 List<SalesList> sales = [];
+List<SalesList> allSales = [];
 List<PODetailList> poDetailListMain = [];
+List<PODetailList> allPODetails = [];
 bool noUserList = false;
 bool halfPieLoaded = false;
 DateTime? currentDate;
@@ -164,6 +162,7 @@ class ProductSale {
 
 class CustomerSalesPerformancePageState
     extends State<CustomerSalesPerformancePage> {
+  bool loadingComplete = false;
   bool showDrillDownChart = false;
   bool showProductSaleChart = false;
   bool showLastMonthBarChart = false;
@@ -439,15 +438,19 @@ class CustomerSalesPerformancePageState
       case 1:
         currentQuarterFromDate = DateTime(now.year, 4, 1);
         currentQuarterToDate = DateTime(now.year, 6, 30);
+        break;
       case 2:
         currentQuarterFromDate = DateTime(now.year, 7, 1);
         currentQuarterToDate = DateTime(now.year, 9, 30);
+        break;
       case 3:
         currentQuarterFromDate = DateTime(now.year, 10, 1);
         currentQuarterToDate = DateTime(now.year, 12, 31);
+        break;
       case 4:
         currentQuarterFromDate = DateTime(now.year, 1, 1);
         currentQuarterToDate = DateTime(now.year, 3, 31);
+        break;
       default:
         throw Error();
     }
@@ -573,91 +576,58 @@ class CustomerSalesPerformancePageState
   }
 
   Future<void> _loadMonthlySalesBarChartData() async {
+    final Map<String, double> monthSales = {};
+
+    for (var s in sales) {
+      if (selectedCustomerCode.isNotEmpty &&
+          s.customerCode != selectedCustomerCode) {
+        continue;
+      }
+
+      final d = s.invoiceDate;
+
+      double value = double.tryParse(s.rowTotal) ?? 0;
+      if (s.invoiceType == "Sales Return") value *= -1;
+
+      final key = "${d.year}-${d.month}";
+      monthSales[key] = (monthSales[key] ?? 0) + value;
+    }
+
     List<MonthlySalesData> monthlyDataList = [];
-    int currentYear = DateTime.now().year;
 
-    // Loop through fiscal months (April to March of next year)
-    for (int i = 4; i <= 15; i++) {
-      String monthName = getMonthName(i);
-      double monthlyTarget = 0.00;
-      double monthlySales = 0.00;
+    final fiscalStart = DateTime(
+      currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1,
+      4,
+      1,
+    );
 
-      // Get the three-month range for calculating targets
-      DateTime prevThreeMthFromDate = (i <= 12)
-          ? DateTime(currentDate!.year, i - 3, 1)
-          : DateTime(currentYear, i - 12 - 3, 1);
-      DateTime prevThreeMthToDate = (i <= 12)
-          ? DateTime(currentDate!.year, i, 0)
-          : addMonth(prevThreeMthFromDate, 3).add(const Duration(days: -1));
+    for (int i = 0; i < 12; i++) {
+      final monthDate = DateTime(fiscalStart.year, fiscalStart.month + i, 1);
 
-      // Get the month range for calculating sales
-      Map<String, DateTime> monthDates = getMonthStartEndDates(i);
+      final key = "${monthDate.year}-${monthDate.month}";
+      final salesAmt = monthSales[key] ?? 0;
 
-      // Filter sales data
-      Iterable<SalesList> curMthSalesTarget = _filterSalesByDate(
-        sales,
-        prevThreeMthFromDate,
-        prevThreeMthToDate,
-        selectedCustomerCode,
-      );
+      final prev1 = DateTime(monthDate.year, monthDate.month - 1, 1);
+      final prev2 = DateTime(monthDate.year, monthDate.month - 2, 1);
+      final prev3 = DateTime(monthDate.year, monthDate.month - 3, 1);
 
-      Iterable<SalesList> monthlySalesList = _filterSalesByDate(
-        sales,
-        monthDates['start']!,
-        monthDates['end']!,
-        selectedCustomerCode,
-      );
+      double target =
+          ((monthSales["${prev1.year}-${prev1.month}"] ?? 0) +
+              (monthSales["${prev2.year}-${prev2.month}"] ?? 0) +
+              (monthSales["${prev3.year}-${prev3.month}"] ?? 0)) /
+          3;
 
-      // Calculate monthly target (average of three months)
-      monthlyTarget = _calculateTotalSales(curMthSalesTarget) / 3;
-
-      // Calculate monthly sales
-      monthlySales = _calculateTotalSales(monthlySalesList);
-
-      // Add data to the monthly sales list
       monthlyDataList.add(
         MonthlySalesData(
-          monthName: monthName,
-          salesAmount: monthlySales,
-          salesTarget: double.parse(monthlyTarget.toStringAsFixed(2)),
+          monthName: getMonthName(monthDate.month),
+          salesAmount: salesAmt,
+          salesTarget: double.parse(target.toStringAsFixed(2)),
         ),
       );
     }
 
-    // Update the state or data model
     setState(() {
       monthlySalesList = MonthlySalesList(monthlyData: monthlyDataList);
-    });
-  }
-
-  // Helper to filter sales data by date and customer code
-  Iterable<SalesList> _filterSalesByDate(
-    Iterable<SalesList> sales,
-    DateTime startDate,
-    DateTime endDate,
-    String selectedCustomerCode,
-  ) {
-    return sales.where((target) {
-DateTime invoiceDate = target.invoiceDate;
-
-      bool withinDateRange =
-          invoiceDate.isAtLeast(startDate) && invoiceDate.isAtMost(endDate);
-
-      if (selectedCustomerCode.isNotEmpty) {
-        return withinDateRange && target.customerCode == selectedCustomerCode;
-      }
-      return withinDateRange;
-    }).toSet();
-  }
-
-  // Helper to calculate total sales for a given sales list
-  double _calculateTotalSales(Iterable<SalesList> salesList) {
-    return salesList.fold(0.0, (sum, target) {
-      double salesAmt = double.tryParse(target.rowTotal) ?? 0.0;
-      if (target.invoiceType == "Sales Return") {
-        salesAmt *= -1; // Negate for returns
-      }
-      return sum + salesAmt;
     });
   }
 
@@ -686,7 +656,7 @@ DateTime invoiceDate = target.invoiceDate;
       sum = 0.00;
       var curMthSalesTarget = sales.where((target) {
         if (selectedCustomerCode != "") {
-         DateTime invoiceDate = target.invoiceDate;
+          DateTime invoiceDate = target.invoiceDate;
 
           String customerCode = target.customerCode;
           return invoiceDate.isAtLeast(prevThreeMthFromDate) &&
@@ -701,7 +671,7 @@ DateTime invoiceDate = target.invoiceDate;
       });
 
       sum = 0;
-      for (var target in curMthSalesTarget.toList()) {
+      for (var target in curMthSalesTarget) {
         double salesAmt = 0;
         if (target.invoiceType != "Sales Return") {
           salesAmt = double.tryParse(target.rowTotal) ?? 0;
@@ -728,7 +698,7 @@ DateTime invoiceDate = target.invoiceDate;
         }
       });
 
-      for (var target in lastMonthSales.toList()) {
+      for (var target in lastMonthSales) {
         monthlySales += double.tryParse(target.rowTotal) ?? 0;
       }
       monthlyDataList.add(
@@ -760,7 +730,7 @@ DateTime invoiceDate = target.invoiceDate;
 
       monthlyTarget = 0;
       sum = 0;
-      for (var target in lastQtrSalesTarget.toList()) {
+      for (var target in lastQtrSalesTarget) {
         double salesAmt = 0;
         if (target.invoiceType != "Sales Return") {
           salesAmt = double.tryParse(target.rowTotal) ?? 0;
@@ -840,7 +810,7 @@ DateTime invoiceDate = target.invoiceDate;
 
     // Filter sales data once based on date range and customer code
     var filteredSales = sales.where((target) {
-DateTime invoiceDate = target.invoiceDate;
+      DateTime invoiceDate = target.invoiceDate;
 
       if (selectedCustomerCode.isNotEmpty) {
         return invoiceDate.isAtLeast(startDate) &&
@@ -889,10 +859,7 @@ DateTime invoiceDate = target.invoiceDate;
       "sapToken": DataManager.readSapToken(),
     };
     const apiUrl = '${ApiHelper.baseUrl}CRM_SOList';
-    var headers = {
-      HttpHeaders.contentTypeHeader: 'application/json',
-      // HttpHeaders.authorizationHeader: 'Bearer    ${DataManager.readSapToken()}'
-    };
+    var headers = {HttpHeaders.contentTypeHeader: 'application/json'};
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -910,15 +877,17 @@ DateTime invoiceDate = target.invoiceDate;
           salesList.addAll(newSalesList);
 
           setState(() {
-            if (selectedCustomerCode == "") {
-              poDetailListMain = salesList;
-            } else {
-              poDetailListMain = salesList
-                  .where(
-                    (element) => element.customerCode == selectedCustomerCode,
-                  )
-                  .toList();
-            }
+            allPODetails = salesList;
+            _applyPOFilter();
+            // if (selectedCustomerCode == "") {
+            //   poDetailListMain = salesList;
+            // } else {
+            //   poDetailListMain = salesList
+            //       .where(
+            //         (element) => element.customerCode == selectedCustomerCode,
+            //       )
+            //       .toList();
+            // }
           });
         } else {
           if (responseJson.containsKey("Error") &&
@@ -949,6 +918,16 @@ DateTime invoiceDate = target.invoiceDate;
         content: Text('Error: $e'),
       );
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+  }
+
+  void _applyPOFilter() {
+    if (selectedCustomerCode.isEmpty) {
+      poDetailListMain = allPODetails;
+    } else {
+      poDetailListMain = allPODetails
+          .where((e) => e.customerCode == selectedCustomerCode)
+          .toList();
     }
   }
 
@@ -1061,9 +1040,6 @@ DateTime invoiceDate = target.invoiceDate;
   }
 
   Future<void> _loadSalesTarget() async {
-    // Helper method to parse date
-    DateTime parseDate(String date) => DateFormat('dd/MM/yyyy').parse(date);
-
     // Helper method to calculate sales sum
     double calculateTarget(Set<SalesList> targets) {
       return targets.fold(0, (sum, target) {
@@ -1080,7 +1056,7 @@ DateTime invoiceDate = target.invoiceDate;
       bool isLastQuarter = false,
     }) {
       return sales.where((target) {
-DateTime invoiceDate = target.invoiceDate;
+        DateTime invoiceDate = target.invoiceDate;
         bool isWithinRange =
             invoiceDate.isAtLeast(fromDate) && invoiceDate.isAtMost(toDate);
 
@@ -1169,55 +1145,41 @@ DateTime invoiceDate = target.invoiceDate;
       const apiUrl = '${ApiHelper.baseUrl}Crm_SalesList';
       final response = await http.post(
         Uri.parse(apiUrl),
-        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+        headers: {
+          HttpHeaders.contentTypeHeader: 'application/json',
+          HttpHeaders.acceptEncodingHeader: 'gzip',
+        },
         body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        if (responseJson["responseData"].toString().isNotEmpty) {
-          List<SalesList> newSalesList = (responseJson['responseData'] as List)
-              .map((item) => SalesList.fromJson(item))
-              .toList();
-
-          salesList.addAll(newSalesList);
-          fetchedCount = newSalesList.length;
-          index++;
-        } else {
-          fetchedCount = 0;
-        }
+        final json = jsonDecode(response.body);
+        final List list = json['responseData'] ?? [];
+        final newSalesList = list.map((e) => SalesList.fromJson(e)).toList();
+        salesList.addAll(newSalesList);
+        fetchedCount = newSalesList.length;
+        index++;
       } else {
         fetchedCount = 0;
       }
     } while (fetchedCount == limit);
 
+    context
+        .read<SalesListCustomerSalesPerformancePageProvider>()
+        .updateSalesList(salesList);
     // Update Sales List and User-based Filtering
     setState(() {
-      context
-          .read<SalesListCustomerSalesPerformancePageProvider>()
-          .updateSalesList(salesList);
-
-      List<String> menuNames = usersList
-          .where((element) => element.parentMenuId == 0)
-          .map((user) => user.menuName)
-          .toList();
-      menuNames.insert(0, UserName);
-
-      if (int.parse(UserLevel) == 5) {
-        sales = salesList.toList();
-      } else if (int.parse(UserLevel) == 4) {
-        sales = salesList
-            .where((element) => element.regionalManager == UserName)
-            .toList();
-      } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-        sales = salesList
-            .where((element) => menuNames.contains(element.salesManager))
+      List<SalesList> filteredSales;
+      if (selectedCustomerCode.isNotEmpty) {
+        filteredSales = salesList
+            .where((e) => e.customerCode == selectedCustomerCode)
             .toList();
       } else {
-        sales = salesList
-            .where((element) => element.salesRep == UserName)
-            .toList();
+        filteredSales = salesList;
       }
+
+      sales = filteredSales;
+      allSales = sales;
       halfPieLoaded = true;
     });
 
@@ -1237,7 +1199,7 @@ DateTime invoiceDate = target.invoiceDate;
         ? (CurrentMonthSales / SalesGoal) * 100
         : 0;
     CurrentMonthSalesPercentageStr =
-        "${CurrentMonthSalesPercentage.clamp(0, 100).toStringAsFixed(2)} %";
+        "${CurrentMonthSalesPercentage.toStringAsFixed(2)} %";
 
     LastMonthSales = _calculateSales(
       sales,
@@ -1249,8 +1211,7 @@ DateTime invoiceDate = target.invoiceDate;
     LastMonthPercentage = (LastMonthTarget > 0)
         ? (LastMonthSales / LastMonthTarget) * 100
         : 0;
-    LastMonthPercentageStr =
-        "${LastMonthPercentage.clamp(0, 100).toStringAsFixed(2)} %";
+    LastMonthPercentageStr = "${LastMonthPercentage.toStringAsFixed(2)} %";
 
     CurrentQtrSales = _calculateSales(
       sales,
@@ -1262,8 +1223,7 @@ DateTime invoiceDate = target.invoiceDate;
     CurrentQtrPercentage = (CurrentQtrTarget > 0)
         ? (CurrentQtrSales / CurrentQtrTarget) * 100
         : 0;
-    CurrentQtrPercentageStr =
-        "${CurrentQtrPercentage.clamp(0, 100).toStringAsFixed(2)} %";
+    CurrentQtrPercentageStr = "${CurrentQtrPercentage.toStringAsFixed(2)} %";
 
     YtdSales = _calculateSales(
       sales,
@@ -1273,7 +1233,70 @@ DateTime invoiceDate = target.invoiceDate;
     );
     YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
     YtdPercentage = (YtdTarget > 0) ? (YtdSales / YtdTarget) * 100 : 0;
-    YtdPercentageStr = "${YtdPercentage.clamp(0, 100).toStringAsFixed(2)} %";
+    YtdPercentageStr = "${YtdPercentage.toStringAsFixed(2)} %";
+  }
+
+  void applyCustomerFilter(String customerCode) {
+    if (customerCode.isEmpty) {
+      sales = allSales;
+    } else {
+      sales = allSales.where((e) => e.customerCode == customerCode).toList();
+    }
+
+    _recalculateDashboard();
+  }
+
+  Future<void> _recalculateDashboard() async {
+    await _loadSalesTarget();
+
+    CurrentMonthSales = _calculateSales(
+      sales,
+      startDate: currentMonthFromDate!,
+      endDate: currentDate!,
+    );
+    CurrentMonthSalesStr =
+        "${(CurrentMonthSales / 100000).toStringAsFixed(2)} L";
+    CurrentMonthSalesPercentage = (SalesGoal > 0)
+        ? (CurrentMonthSales / SalesGoal) * 100
+        : 0;
+    CurrentMonthSalesPercentageStr =
+        "${CurrentMonthSalesPercentage.toStringAsFixed(2)} %";
+
+    LastMonthSales = _calculateSales(
+      sales,
+      startDate: lastMonthFromDate!,
+      endDate: lastMonthToDate!,
+    );
+    LastMonthSalesStr = "${(LastMonthSales / 100000).toStringAsFixed(2)} L";
+    LastMonthPercentage = (LastMonthTarget > 0)
+        ? (LastMonthSales / LastMonthTarget) * 100
+        : 0;
+    LastMonthPercentageStr = "${LastMonthPercentage.toStringAsFixed(2)} %";
+
+    CurrentQtrSales = _calculateSales(
+      sales,
+      startDate: currentQuarterFromDate!,
+      endDate: currentQuarterToDate!,
+    );
+    CurrentQtrSalesStr = "${(CurrentQtrSales / 100000).toStringAsFixed(2)} L";
+    CurrentQtrPercentage = (CurrentQtrTarget > 0)
+        ? (CurrentQtrSales / CurrentQtrTarget) * 100
+        : 0;
+    CurrentQtrPercentageStr = "${CurrentQtrPercentage.toStringAsFixed(2)} %";
+
+    YtdSales = _calculateSales(
+      sales,
+      startDate: fiscalYearStartDate!,
+      endDate: currentDate!,
+    );
+    YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
+    YtdPercentage = (YtdTarget > 0) ? (YtdSales / YtdTarget) * 100 : 0;
+    YtdPercentageStr = "${YtdPercentage.toStringAsFixed(2)} %";
+
+    await _loadMonthlySalesBarChartData();
+    await _loadMonthlyProductwiseSalesBarChartData(0);
+
+    setState(() {});
   }
 
   double _calculateSales(
@@ -1316,13 +1339,10 @@ DateTime invoiceDate = target.invoiceDate;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
 
-    await _loadUserList(
-      userId,
-      userJwtToken,
-      userMailID,
-      int.tryParse(userLevel) ?? 0,
-    );
-    await _loadcustomer(userId, userJwtToken, userMailID, userName);
+    await Future.wait([
+      _loadUserList(userId, userJwtToken, userMailID, int.parse(userLevel)),
+      _loadcustomer(userId, userJwtToken, userMailID, userName),
+    ]);
     await _loadSales(userName, userLevel);
     await _loadMonthlySalesBarChartData();
     showDrillDownChart = true;
@@ -1450,12 +1470,12 @@ DateTime invoiceDate = target.invoiceDate;
                             child: AsyncAutocomplete<Distributor>(
                               onChanged: (s) {
                                 setState(() {
-                                  customerController.text == s;
+                                  customerController.text = s;
                                 });
                               },
                               onSaved: (s) {
                                 setState(() {
-                                  customerController.text == s;
+                                  customerController.text = s ?? "";
                                 });
                               },
                               maxListHeight: deviceOrientation == "Portrait"
@@ -1500,7 +1520,8 @@ DateTime invoiceDate = target.invoiceDate;
                                       customer['CustomerCode'].toString();
                                   selectedCustomerName =
                                       distributor.CustomerName;
-                                  loadDataWithFilter(selectedCustomerCode);
+                                  applyCustomerFilter(selectedCustomerCode);
+                                  _applyPOFilter();
                                 });
                               },
                               suggestionBuilder: (data) =>
@@ -1522,6 +1543,8 @@ DateTime invoiceDate = target.invoiceDate;
                                       selectedCustomerName = "";
                                       customerController.clear();
                                     });
+                                    applyCustomerFilter("");
+                                    _applyPOFilter();
                                   },
                                   child: customerController.text == ""
                                       ? Container(
@@ -1562,27 +1585,6 @@ DateTime invoiceDate = target.invoiceDate;
                       ),
                     ),
                   ),
-                  // nodes.isNotEmpty
-                  //     ? Visibility(
-                  //         visible: noUserList,
-                  //         child: SizedBox(
-                  //           height: 125,
-                  //           child: TreeView<MyNode>(
-                  //             treeController: treeController,
-                  //             nodeBuilder: (BuildContext context,
-                  //                 TreeEntry<MyNode> entry) {
-                  //               return MyTreeTile(
-                  //                 key: ValueKey(entry.node),
-                  //                 entry: entry,
-                  //                 onTap: () {
-                  //                   treeController.toggleExpansion(entry.node);
-                  //                 },
-                  //               );
-                  //             },
-                  //           ),
-                  //         ),
-                  //       )
-                  //     : const Center(child: CircularProgressIndicator()),
                   SizedBox(
                     height: screenHeight / 2.5,
                     child: Stack(
@@ -1593,7 +1595,10 @@ DateTime invoiceDate = target.invoiceDate;
                             radius: 120.0,
                             lineWidth: 50.0,
                             animation: true,
-                            percent: CurrentMonthSalesPercentage / 100,
+                            percent: (CurrentMonthSalesPercentage / 100).clamp(
+                              0.0,
+                              1.0,
+                            ),
                             center: Column(
                               children: [
                                 Padding(
@@ -1660,7 +1665,8 @@ DateTime invoiceDate = target.invoiceDate;
                                       radius: 55.0,
                                       lineWidth: 20.0,
                                       animation: true,
-                                      percent: LastMonthPercentage / 100,
+                                      percent: (LastMonthPercentage / 100)
+                                          .clamp(0.0, 1.0),
                                       center: Column(
                                         children: [
                                           const SizedBox(height: 30),
@@ -1738,7 +1744,8 @@ DateTime invoiceDate = target.invoiceDate;
                                       radius: 55.0,
                                       lineWidth: 20.0,
                                       animation: true,
-                                      percent: CurrentQtrPercentage / 100,
+                                      percent: (CurrentQtrPercentage / 100)
+                                          .clamp(0.0, 1.0),
                                       center: Column(
                                         children: [
                                           const SizedBox(height: 30),
@@ -1812,7 +1819,10 @@ DateTime invoiceDate = target.invoiceDate;
                                       radius: 55.0,
                                       lineWidth: 20.0,
                                       animation: true,
-                                      percent: YtdPercentage / 100,
+                                      percent: (YtdPercentage / 100).clamp(
+                                        0.0,
+                                        1.0,
+                                      ),
                                       center: Column(
                                         children: [
                                           const SizedBox(height: 30),
@@ -1933,93 +1943,118 @@ DateTime invoiceDate = target.invoiceDate;
                   const SizedBox(height: 10),
                   SizedBox(
                     height: 400,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Center(
-                          child: Column(
-                            children: <Widget>[
-                              Container(
-                                margin: const EdgeInsets.all(20),
-                                child: Table(
-                                  defaultColumnWidth: const FixedColumnWidth(
-                                    150.0,
-                                  ),
-                                  border: TableBorder.all(
-                                    color: Colors.black,
-                                    style: BorderStyle.solid,
-                                    width: 0.5,
-                                  ),
-                                  children: [
-                                    const TableRow(
-                                      children: [
-                                        Column(
-                                          children: [
-                                            Text(
-                                              'Date',
-                                              style: TextStyle(
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Column(
-                                          children: [
-                                            Text(
-                                              'Value',
-                                              style: TextStyle(
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Column(
-                                          children: [
-                                            Text(
-                                              'Status',
-                                              style: TextStyle(
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Column(
-                                          children: [
-                                            Text(
-                                              'Remarks',
-                                              style: TextStyle(
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                    child: Column(
+                      children: [
+                        /// Header row (titles)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black, width: 0.5),
+                          ),
+                          child: const Row(
+                            children: [
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    'Date',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    for (var data in poDetailListMain)
-                                      TableRow(
-                                        children: [
-                                          Column(children: [Text(data.soDate)]),
-                                          Column(
-                                            children: [Text(data.orderValue)],
-                                          ),
-                                          Column(
-                                            children: [Text(data.soStatus)],
-                                          ),
-                                          Column(children: [Text(data.remark)]),
-                                        ],
-                                      ),
-                                  ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    'Value',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    'Status',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    'Remarks',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
+
+                        /// Scrollable rows
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: poDetailListMain.length,
+                            itemBuilder: (context, index) {
+                              final data = poDetailListMain[index];
+
+                              return Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    left: const BorderSide(
+                                      color: Colors.black,
+                                      width: 0.5,
+                                    ),
+                                    right: const BorderSide(
+                                      color: Colors.black,
+                                      width: 0.5,
+                                    ),
+                                    bottom: const BorderSide(
+                                      color: Colors.black,
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Center(child: Text(data.soDate)),
+                                    ),
+                                    Expanded(
+                                      child: Center(
+                                        child: Text(data.orderValue),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Center(child: Text(data.soStatus)),
+                                    ),
+                                    Expanded(
+                                      child: Center(child: Text(data.remark)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 10),

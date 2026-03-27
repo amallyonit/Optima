@@ -2,11 +2,18 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
+
+import 'package:excel/excel.dart' as xl;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:optima/excel_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_other.dart';
 
 class ScrapInputPage extends StatefulWidget {
   @override
@@ -46,9 +53,9 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
   DateTime? _from;
   DateTime? _to;
-
-  late List<List<TextEditingController>> controllers;
-  late List<List<FocusNode>> focusNodes;
+  Set<String> existingDbDates = {};
+  List<List<TextEditingController>> controllers = [];
+  List<List<FocusNode>> focusNodes = [];
   final _verticalController = ScrollController();
   final _headerHorizontalController = ScrollController();
   final _bodyHorizontalController = ScrollController();
@@ -60,6 +67,10 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
   bool isLoading = false;
 
   String? _selectedPlant = 'Rajapalayam Plant';
+
+  bool isNumericColumn(int colIndex) {
+    return colIndex < controllers[0].length - 1;
+  }
 
   Future<void> _pickFrom() async {
     final now = DateTime.now();
@@ -104,7 +115,74 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     });
     _from = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _to = DateTime.now();
-    loadData();
+    _generateDateArray();
+  }
+
+  Future<String> getStorageDirectory() async {
+    String? externalDir = (await getExternalStorageDirectory())?.path;
+
+    if (externalDir != null) {
+      return externalDir;
+    } else {
+      return (await getApplicationDocumentsDirectory()).path;
+    }
+  }
+
+  Future<void> _downloadExcel() async {
+    if (dates.isEmpty || controllers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No data available to export.")),
+      );
+      return;
+    }
+
+    final excel = xl.Excel.createExcel();
+    final sheet = excel['Scrap'];
+
+    String caption =
+        "${_selectedPlant ?? ''} (${_format(_from!)} to ${_format(_to!)})";
+
+    /// Caption
+    sheet.appendRow(toCellRow([caption]));
+
+    /// Blank row
+    sheet.appendRow([]);
+
+    /// Header row
+    sheet.appendRow(toCellRow(headers));
+
+    /// Data rows
+    for (int i = 0; i < dates.length; i++) {
+      List<dynamic> row = [dates[i]];
+
+      for (int j = 0; j < controllers[i].length; j++) {
+        row.add(controllers[i][j].text);
+      }
+
+      sheet.appendRow(toCellRow(row));
+    }
+
+    /// Total row
+    List<dynamic> totalRow = ["Total"];
+
+    for (int i = 0; i < totals.length; i++) {
+      totalRow.add(totals[i].toStringAsFixed(2));
+    }
+
+    /// Vehicle column has no total
+    totalRow.add("");
+
+    sheet.appendRow(toCellRow(totalRow));
+
+    if (kIsWeb) {
+      final excelBytes = excel.encode()!;
+      saveAndOpenExcel('scrap_report.xlsx', excelBytes);
+    } else {
+      String storageDir = await getStorageDirectory();
+      final file = File('$storageDir/scrap_report.xlsx');
+      await file.writeAsBytes(excel.encode()!);
+      OpenFile.open(file.path);
+    }
   }
 
   final inputFormat = DateFormat('dd-MM-yyyy');
@@ -142,6 +220,21 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
     List<Map<String, dynamic>> scrapData = [];
     for (int i = 0; i < dates.length; i++) {
+      bool existedInDb = existingDbDates.contains(dates[i]);
+      bool isRowEmpty = true;
+
+      for (int j = 0; j < controllers[i].length; j++) {
+        if (controllers[i][j].text.trim().isNotEmpty &&
+            controllers[i][j].text != "0") {
+          isRowEmpty = false;
+          break;
+        }
+      }
+
+      // Skip only if:
+      // empty AND never existed
+      if (isRowEmpty && !existedInDb) continue;
+
       Map<String, dynamic> row = {
         "UserId": userID,
         "ScrapPlant": _selectedPlant,
@@ -171,6 +264,13 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
       "ScrapData": scrapData,
     };
 
+    if (scrapData.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No data entered to save.")));
+
+      return;
+    }
     const apiUrl = '${ApiHelper.baseUrl}insertorupdatescrapdatainput';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
     try {
@@ -194,6 +294,62 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
         context,
       ).showSnackBar(SnackBar(content: Text("Failed to save: $e")));
     }
+  }
+
+  void emptyTableCreation() {
+    existingDbDates.clear();
+
+    controllers.clear();
+
+    for (int i = 0; i < dates.length; i++) {
+      final rowControllers = <TextEditingController>[
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: ''),
+      ];
+
+      for (var c in rowControllers) {
+        c.addListener(() => calculateTotals());
+      }
+
+      controllers.add(rowControllers);
+    }
+
+    focusNodes.clear();
+
+    for (int i = 0; i < controllers.length; i++) {
+      List<FocusNode> rowNodes = [];
+
+      for (int j = 0; j < controllers[i].length; j++) {
+        final node = FocusNode();
+
+        node.addListener(() {
+          if (node.hasFocus) {
+            controllers[i][j].selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: controllers[i][j].text.length,
+            );
+          }
+        });
+
+        rowNodes.add(node);
+      }
+
+      focusNodes.add(rowNodes);
+    }
+
+    calculateTotals();
   }
 
   Future<void> fetchScrapDetails(String plant) async {
@@ -230,67 +386,82 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
         final Map<String, dynamic> decoded = jsonDecode(response.body);
 
         if (decoded['Status'] == true && decoded['Data'] != null) {
+          existingDbDates.clear();
           final List<dynamic> result = decoded['Data'];
 
-          dates.clear();
+          Map<String, dynamic> apiDataByDate = {};
+
+          for (var row in result) {
+            String d = formatDate(row['ScrapDate']);
+            apiDataByDate[d] = row;
+            existingDbDates.add(d);
+          }
+
           controllers.clear();
 
-          for (int i = 0; i < result.length; i++) {
-            final row = result[i];
-            //dates.add(row['ScrapDate'] ?? '');
-            dates.add(formatDate(row['ScrapDate']));
+          for (int i = 0; i < dates.length; i++) {
+            final existingRow = apiDataByDate[dates[i]];
+
             final rowControllers = <TextEditingController>[
               TextEditingController(
-                text: row['FabricWasteCutting']?.toString() ?? '0',
+                text: existingRow?['FabricWasteCutting']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['PolyCoverWaste']?.toString() ?? '0',
+                text: existingRow?['PolyCoverWaste']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['WasteCorrugatedBox']?.toString() ?? '0',
+                text: existingRow?['WasteCorrugatedBox']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['QualityTubeRolls']?.toString() ?? '0',
+                text: existingRow?['QualityTubeRolls']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['NormalTubeRolls']?.toString() ?? '0',
+                text: existingRow?['NormalTubeRolls']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['LinenWasteFabric']?.toString() ?? '0',
-              ),
-              TextEditingController(text: row['WasteIron']?.toString() ?? '0'),
-              TextEditingController(text: row['WasteWood']?.toString() ?? '0'),
-              TextEditingController(
-                text: row['PlasticWasteMTCan']?.toString() ?? '0',
+                text: existingRow?['LinenWasteFabric']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['MaskTiewastage']?.toString() ?? '0',
+                text: existingRow?['WasteIron']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['MaskLoopWastage']?.toString() ?? '0',
+                text: existingRow?['WasteWood']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['BouffantCapWastage']?.toString() ?? '0',
+                text: existingRow?['PlasticWasteMTCan']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['SurgicalCap']?.toString() ?? '0',
+                text: existingRow?['MaskTiewastage']?.toString() ?? '0',
               ),
-              TextEditingController(text: row['VehicleNo']?.toString() ?? ''),
+              TextEditingController(
+                text: existingRow?['MaskLoopWastage']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['BouffantCapWastage']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['SurgicalCap']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['VehicleNo']?.toString() ?? '',
+              ),
             ];
 
-            for (var controller in rowControllers) {
-              controller.addListener(() {
-                calculateTotals();
-              });
+            for (var c in rowControllers) {
+              c.addListener(() => calculateTotals());
             }
-            setState(() {
-              controllers.add(rowControllers);
-            });
+
+            controllers.add(rowControllers);
           }
-          focusNodes = List.generate(
-            controllers.length,
-            (i) => List.generate(controllers[i].length, (j) {
+
+          focusNodes.clear();
+
+          for (int i = 0; i < controllers.length; i++) {
+            List<FocusNode> rowNodes = [];
+
+            for (int j = 0; j < controllers[i].length; j++) {
               final node = FocusNode();
+
               node.addListener(() {
                 if (node.hasFocus) {
                   controllers[i][j].selection = TextSelection(
@@ -299,20 +470,17 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
                   );
                 }
               });
-              return node;
-            }),
-          );
-          setState(() {
-            calculateTotals();
-          });
+
+              rowNodes.add(node);
+            }
+
+            focusNodes.add(rowNodes);
+          }
+
+          calculateTotals();
+          setState(() {});
         } else {
-          setState(() {
-            controllers.clear();
-          });
-          clearValues();
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("No data found.")));
+          emptyTableCreation();
         }
       } else {
         ScaffoldMessenger.of(
@@ -329,33 +497,11 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
   Future<void> loadData() async {
     setState(() => isLoading = true);
-    controllers = List.generate(
-      dates.length,
-      (_) => List.generate(
-        headers.length - 1,
-        (index) =>
-            TextEditingController(text: index == headers.length - 2 ? "" : "0"),
-      ),
-    );
 
-    focusNodes = List.generate(
-      dates.length,
-      (i) => List.generate(headers.length - 1, (j) {
-        final node = FocusNode();
-        node.addListener(() {
-          if (node.hasFocus) {
-            controllers[i][j].selection = TextSelection(
-              baseOffset: 0,
-              extentOffset: controllers[i][j].text.length,
-            );
-          }
-        });
-        return node;
-      }),
-    );
+    totals = List.filled(headers.length - 2, 0.0);
 
-    totals = List.filled(headers.length - 1, 0.0);
     await fetchScrapDetails(_selectedPlant!);
+
     setState(() => isLoading = false);
   }
 
@@ -376,20 +522,21 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
   }
 
   Future<void> calculateTotals() async {
-    List<double> newTotals = List.filled(headers.length - 2, 0.0);
+    if (controllers.isEmpty) return;
+
+    int numericColumns = controllers[0].length - 1;
+
+    List<double> newTotals = List.filled(numericColumns, 0.0);
 
     for (int row = 0; row < controllers.length; row++) {
-      for (int col = 1; col < headers.length - 1; col++) {
-        final txt = controllers[row][col - 1].text.trim();
-        final val = double.tryParse(txt) ?? 0.0;
+      for (int col = 0; col < numericColumns; col++) {
+        final val = double.tryParse(controllers[row][col].text) ?? 0;
 
-        newTotals[col - 1] += val;
+        newTotals[col] += val;
       }
     }
 
-    setState(() {
-      totals = newTotals;
-    });
+    setState(() => totals = newTotals);
   }
 
   void clearValues() {
@@ -408,14 +555,23 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
   void _generateDateArray() async {
     if (_from == null || _to == null) return;
+
     setState(() => isLoading = true);
-    dates.clear(); // clear old dates
+
+    // Clear previous data
+    dates.clear();
+    controllers.clear();
+    focusNodes.clear();
+
     DateTime current = _from!;
+
     while (current.isBefore(_to!) || current.isAtSameMomentAs(_to!)) {
-      dates.add(_format(current)); // or use your preferred format
+      dates.add(_format(current));
       current = current.add(const Duration(days: 1));
     }
+
     await loadData();
+
     setState(() => isLoading = false);
   }
 
@@ -512,17 +668,15 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
   Widget _buildHeaderTable() {
     return Table(
       border: TableBorder.all(color: Colors.black),
-      columnWidths: const {
-        0: FixedColumnWidth(120),
-        1: FixedColumnWidth(135),
-        2: FixedColumnWidth(135),
-        3: FixedColumnWidth(135),
-        4: FixedColumnWidth(135),
-        5: FixedColumnWidth(135),
-        6: FixedColumnWidth(135),
-        7: FixedColumnWidth(135),
-        8: FixedColumnWidth(135),
-        9: FixedColumnWidth(135),
+      columnWidths: {
+        for (int i = 0; i < headers.length; i++)
+          i: FixedColumnWidth(
+            i == 0
+                ? 120
+                : i == headers.length - 1
+                ? 160
+                : 135,
+          ),
       },
       children: [
         TableRow(
@@ -552,17 +706,15 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
   Widget _buildBodyTable() {
     return Table(
       border: TableBorder.all(color: Colors.black),
-      columnWidths: const {
-        0: FixedColumnWidth(120),
-        1: FixedColumnWidth(135),
-        2: FixedColumnWidth(135),
-        3: FixedColumnWidth(135),
-        4: FixedColumnWidth(135),
-        5: FixedColumnWidth(135),
-        6: FixedColumnWidth(135),
-        7: FixedColumnWidth(135),
-        8: FixedColumnWidth(135),
-        9: FixedColumnWidth(135),
+      columnWidths: {
+        for (int i = 0; i < headers.length; i++)
+          i: FixedColumnWidth(
+            i == 0
+                ? 120
+                : i == headers.length - 1
+                ? 160
+                : 135,
+          ),
       },
       children: [
         for (int i = 0; i < dates.length; i++) buildRow(i),
@@ -584,8 +736,8 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
               );
             }
 
-            // Column 9 → REMARK → no total
-            if (colIndex == 9) {
+            // Column VEHICLE NO → no total
+            if (colIndex == headers.length - 1) {
               return Container(
                 alignment: Alignment.center,
                 height: 55,
@@ -623,32 +775,61 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
       padding: const EdgeInsets.all(16.0),
       child: SafeArea(
         child: SizedBox(
-          width: double.infinity,
           height: 50,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xff2ca9df),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5.0),
+          child: Row(
+            children: [
+              /// SAVE BUTTON
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2ca9df),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                  ),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setState(() => isSaving = true);
+                          await _saveScrapDetails();
+                          setState(() => isSaving = false);
+                        },
+                  child: isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Save",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
               ),
-            ),
-            onPressed: isSaving
-                ? null
-                : () async {
-                    setState(() => isSaving = true);
-                    await _saveScrapDetails();
-                    setState(() => isSaving = false);
-                  },
-            child: isSaving
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text(
-                    "Save",
+
+              const SizedBox(width: 12),
+
+              /// DOWNLOAD EXCEL
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2ca9df),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                  ),
+                  onPressed: _downloadExcel,
+                  child: const Text(
+                    "Download Excel",
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -788,8 +969,12 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
             child: TextField(
               controller: controllers[rowIndex][colIndex],
               focusNode: focusNodes[rowIndex][colIndex],
-              // keyboardType: TextInputType.number,
-              textAlign: TextAlign.right,
+              keyboardType: isNumericColumn(colIndex)
+                  ? const TextInputType.numberWithOptions(decimal: true)
+                  : TextInputType.text,
+              textAlign: isNumericColumn(colIndex)
+                  ? TextAlign.right
+                  : TextAlign.left,
               onChanged: (_) => calculateTotals(),
               onTap: () {
                 controllers[rowIndex][colIndex].selection = TextSelection(

@@ -133,18 +133,34 @@ class _VersionCheckPageState extends State<VersionCheckPage> {
   }
 
   Future<void> _checkLocationPermission() async {
+    if (kIsWeb) {
+      // Web: do NOT use permission_handler logic
+      try {
+        await Permission.location.request();
+        locationGranted = true;
+      } catch (_) {
+        locationGranted = false;
+      }
+      return;
+    }
+
+    // Mobile (Android / iOS)
     final status = await Permission.location.request();
-    if (status != PermissionStatus.granted) {
-      ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
+
+    if (status == PermissionStatus.granted) {
+      locationGranted = true;
+    } else {
+      locationGranted = false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('You can\'t use this app without location permission.'),
+          content: Text('Location permission is required to continue'),
         ),
       );
+
       Future.delayed(const Duration(seconds: 2), () {
-        SystemNavigator.pop();
+        SystemNavigator.pop(); // OK for mobile
       });
-    } else {
-      locationGranted = true;
     }
   }
 
@@ -320,75 +336,45 @@ class _VersionCheckPageState extends State<VersionCheckPage> {
             )
           : _isPermissionChecked
           ? const LoginScreen()
+          : kIsWeb && !locationGranted
+          ? const WebLocationPermissionHelp()
           : const Center(child: CircularProgressIndicator()),
+      // : _isPermissionChecked
+      // ? const LoginScreen()
+      // : const Center(child: CircularProgressIndicator()),
     );
+  }
+}
 
-    // return Scaffold(
-    //   key: _scaffoldKey,
-    //   body: _showLogo
-    //       ? LayoutBuilder(
-    //           builder: (context, constraints) {
-    //             final screenHeight = constraints.maxHeight;
-    //             final screenWidth = constraints.maxWidth;
+class WebLocationPermissionHelp extends StatelessWidget {
+  const WebLocationPermissionHelp({super.key});
 
-    //             return Center(
-    //               child: SingleChildScrollView(
-    //                 child: ConstrainedBox(
-    //                   constraints: BoxConstraints(minHeight: screenHeight),
-    //                   child: Column(
-    //                     mainAxisAlignment: MainAxisAlignment.center,
-    //                     children: [
-    //                       // Company Logo
-    //                       Center(
-    //                         child: Image.asset(
-    //                           'assets/images/${ApiHelper.projectName}/companyName.png',
-    //                           width: screenWidth * 0.6, // responsive
-    //                           height: 100,
-    //                           fit: BoxFit.contain,
-    //                         ),
-    //                       ),
-
-    //                       const SizedBox(height: 20),
-
-    //                       // Splash Image
-    //                       Image.asset(
-    //                         'assets/images/${ApiHelper.projectName}/splashscreen.png',
-    //                         width: screenWidth * 0.7, // responsive
-    //                         height: screenHeight * 0.35,
-    //                         fit: BoxFit.contain,
-    //                       ),
-
-    //                       const SizedBox(height: 20),
-
-    //                       // Version + Powered By
-    //                       Column(
-    //                         children: [
-    //                           Text(
-    //                             'v $currentVersion',
-    //                             style: const TextStyle(
-    //                               fontWeight: FontWeight.w400,
-    //                               color: Color(0xFF878787),
-    //                             ),
-    //                           ),
-    //                           const Text(
-    //                             "Powered By LyonIT",
-    //                             style: TextStyle(
-    //                               fontWeight: FontWeight.w400,
-    //                               color: Color(0xFF878787),
-    //                             ),
-    //                           ),
-    //                         ],
-    //                       ),
-    //                     ],
-    //                   ),
-    //                 ),
-    //               ),
-    //             );
-    //           },
-    //         )
-    //       : _isPermissionChecked
-    //       ? const LoginScreen()
-    //       : const Center(child: CircularProgressIndicator()),
-    // );
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.location_off, size: 64, color: Colors.red),
+            SizedBox(height: 16),
+            Text(
+              'Location Permission Required',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'You previously denied location access.\n\n'
+              'To enable it:\n'
+              '1. Click the 🔒 lock icon in the browser address bar\n'
+              '2. Set Location to "Allow"\n'
+              '3. Refresh the page',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

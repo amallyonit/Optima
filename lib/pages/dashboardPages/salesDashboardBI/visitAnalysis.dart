@@ -153,6 +153,22 @@ class VisitAnalysisPage extends StatefulWidget {
   State<VisitAnalysisPage> createState() => _VisitAnalysisPageState();
 }
 
+Future<List<VisitAnalysisData>> parseVisitAnalysis(String body) {
+  return compute(_parseVisitAnalysis, body);
+}
+
+List<VisitAnalysisData> _parseVisitAnalysis(String body) {
+  final decoded = jsonDecode(body);
+
+  if (decoded["Status"] != true) {
+    return [];
+  }
+
+  final List data = decoded["Data"] ?? [];
+
+  return data.map((e) => VisitAnalysisData.fromJson(e)).toList();
+}
+
 class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -587,21 +603,21 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
   }
 
   Future<void> generateVisitAnalysisExcel() async {
+    visitAnalysisDataLoaded = false;
+    visitAnalysisList.visitAnalysisData.clear();
+    await _loadVisitAnalysis(userId, userJwtToken, userMailID);
     if (visitAnalysisList.visitAnalysisData.isEmpty) {
-      visitAnalysisDataLoaded = false;
-      await _loadVisitAnalysis(userId, userJwtToken, userMailID);
-      if (visitAnalysisList.visitAnalysisData.isEmpty) {
-        final snackBar = SnackBar(
-          content: Text('Visit Analysis Data loading failed please try again.'),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        return;
-      } else {
-        setState(() {
-          visitAnalysisDataLoaded = true;
-        });
-      }
+      final snackBar = SnackBar(
+        content: Text('Visit Analysis Data loading failed please try again.'),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      return;
+    } else {
+      setState(() {
+        visitAnalysisDataLoaded = true;
+      });
     }
+
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     sheet.appendRow(
@@ -707,21 +723,18 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     try {
       final response = await http.post(
         Uri.parse('${ApiHelper.baseUrl}selectvisitanalysisexcel'),
-        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+        headers: {
+          HttpHeaders.contentTypeHeader: 'application/json',
+          HttpHeaders.acceptEncodingHeader: 'gzip',
+        },
         body: jsonEncode(body),
       );
 
-      final json = jsonDecode(response.body);
-
-      if (response.statusCode != 200 || json["Status"] != true) {
-        final snackBar = SnackBar(content: Text('Error: $json'));
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        return;
+      if (response.statusCode != 200) {
+        throw Exception("Server error ${response.statusCode}");
       }
 
-      final list = (json['Data'] as List)
-          .map((e) => VisitAnalysisData.fromJson(e))
-          .toList();
+      final list = await parseVisitAnalysis(response.body);
 
       setState(() {
         visitAnalysisList = VisitAnalysisList(visitAnalysisData: list);
@@ -729,8 +742,9 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         visitAnalysisDataLoaded = true;
       });
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 

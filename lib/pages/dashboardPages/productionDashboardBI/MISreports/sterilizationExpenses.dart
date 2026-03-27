@@ -2,11 +2,18 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
+
+import 'package:excel/excel.dart' as xl;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:optima/excel_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_other.dart';
 
 class SterilizationExpensesPage extends StatefulWidget {
   @override
@@ -23,8 +30,10 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     "DATE",
     "NO. OF CTN BOX M1",
     "NO. OF CTN BOX M2",
-    "EO COMSUMED M1 (Kg)",
-    "EO COMSUMED M2 (Kg)",
+    "EO CONSUMED M1 (Kg)",
+    "EO CONSUMED M2 (Kg)",
+    "CO2 GAS CONSUMED (M1&M2)",
+    "GAS WASTAGE",
     "BIOLOGICAL INDICATOR (M1&M2)",
     "CHEMICAL INDICATOR (M1&M2)",
     "MAN POWER",
@@ -32,6 +41,8 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     "REMARK",
   ];
   final List<String> dates = [];
+  Set<String> existingDbDates = {};
+
   bool isSaving = false;
   String formatDate(String isoDate) {
     final dt = DateTime.parse(isoDate);
@@ -44,8 +55,8 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
   DateTime? _from;
   DateTime? _to;
 
-  late List<List<TextEditingController>> controllers;
-  late List<List<FocusNode>> focusNodes;
+  List<List<TextEditingController>> controllers = [];
+  List<List<FocusNode>> focusNodes = [];
 
   final _verticalController = ScrollController();
   final _headerHorizontalController = ScrollController();
@@ -59,6 +70,10 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
   String? _selectedPlant = 'Rajapalayam Plant';
   String? _selectedShift = 'DAY';
+
+  bool isNumericColumn(int colIndex) {
+    return colIndex < controllers[0].length - 1;
+  }
 
   Future<void> _pickFrom() async {
     final now = DateTime.now();
@@ -103,7 +118,77 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     });
     _from = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _to = DateTime.now();
-    loadData();
+    // loadData();
+    _generateDateArray();
+  }
+
+  Future<String> getStorageDirectory() async {
+    String? externalDir = (await getExternalStorageDirectory())?.path;
+
+    if (externalDir != null) {
+      return externalDir;
+    } else {
+      return (await getApplicationDocumentsDirectory()).path;
+    }
+  }
+
+  Future<void> _downloadExcel() async {
+    if (dates.isEmpty || controllers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No data available to export.")),
+      );
+      return;
+    }
+
+    final excel = xl.Excel.createExcel();
+    final sheet = excel['Sterilization'];
+
+    String caption =
+        "${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
+        "(${_format(_from!)} to ${_format(_to!)})";
+
+    /// Caption
+    sheet.appendRow(toCellRow([caption]));
+
+    /// Empty row
+    sheet.appendRow([]);
+
+    /// Header row
+    sheet.appendRow(toCellRow(headers));
+
+    /// Data rows
+    for (int i = 0; i < dates.length; i++) {
+      List<dynamic> row = [dates[i]];
+
+      for (int j = 0; j < controllers[i].length; j++) {
+        row.add(controllers[i][j].text);
+      }
+
+      sheet.appendRow(toCellRow(row));
+    }
+
+    /// Total row
+    List<dynamic> totalRow = ["Total"];
+
+    for (int i = 0; i < totals.length; i++) {
+      totalRow.add(totals[i].toStringAsFixed(2));
+    }
+
+    /// remark column has no total
+    totalRow.add("");
+
+    sheet.appendRow(toCellRow(totalRow));
+
+    /// Save / Download
+    if (kIsWeb) {
+      final excelBytes = excel.encode()!;
+      saveAndOpenExcel('sterilization_expenses_report.xlsx', excelBytes);
+    } else {
+      String storageDir = await getStorageDirectory();
+      final file = File('$storageDir/sterilization_expenses_report.xlsx');
+      await file.writeAsBytes(excel.encode()!);
+      OpenFile.open(file.path);
+    }
   }
 
   final inputFormat = DateFormat('dd-MM-yyyy');
@@ -126,29 +211,73 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
       );
       return;
     }
+
     final prefs = await SharedPreferences.getInstance();
     userID = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
 
     List<Map<String, dynamic>> sterilizeData = [];
+
     for (int i = 0; i < dates.length; i++) {
-      Map<String, dynamic> row = {
+      double m1 = double.tryParse(controllers[i][0].text) ?? 0.0;
+      double m2 = double.tryParse(controllers[i][1].text) ?? 0.0;
+      double eo1 = double.tryParse(controllers[i][2].text) ?? 0.0;
+      double eo2 = double.tryParse(controllers[i][3].text) ?? 0.0;
+      double co2 = double.tryParse(controllers[i][4].text) ?? 0.0;
+      double co2Wastage = double.tryParse(controllers[i][5].text) ?? 0.0;
+      double bio = double.tryParse(controllers[i][6].text) ?? 0.0;
+      double chem = double.tryParse(controllers[i][7].text) ?? 0.0;
+      double man = double.tryParse(controllers[i][8].text) ?? 0.0;
+      double micro = double.tryParse(controllers[i][9].text) ?? 0.0;
+      String remark = controllers[i][10].text.trim();
+
+      // Skip fully empty rows
+      bool isRowEmpty =
+          m1 == 0 &&
+          m2 == 0 &&
+          eo1 == 0 &&
+          eo2 == 0 &&
+          co2 == 0 &&
+          co2Wastage == 0 &&
+          bio == 0 &&
+          chem == 0 &&
+          man == 0 &&
+          micro == 0 &&
+          remark.isEmpty;
+
+      bool existedInDb = existingDbDates.contains(dates[i]);
+
+      // Skip only if:
+      // - Row is empty
+      // - AND it never existed before
+      if (isRowEmpty && !existedInDb) continue;
+
+      sterilizeData.add({
         "UserId": userID,
         "SterilizePlant": _selectedPlant,
         "SterilizeShift": _selectedShift,
         "SterilizeDate": convertToIso(dates[i]),
-        "NoOfCtnBoxM1": double.tryParse(controllers[i][0].text) ?? 0.0,
-        "NoOfCtnBoxM2": double.tryParse(controllers[i][1].text) ?? 0.0,
-        "EOConsumedM1": double.tryParse(controllers[i][2].text) ?? 0.0,
-        "EOConsumedM2": double.tryParse(controllers[i][3].text) ?? 0.0,
-        "BiologicalIndicator": double.tryParse(controllers[i][4].text) ?? 0.0,
-        "ChemicalIndicator": double.tryParse(controllers[i][5].text) ?? 0.0,
-        "ManPower": double.tryParse(controllers[i][6].text) ?? 0.0,
-        "Microtrol": double.tryParse(controllers[i][7].text) ?? 0.0,
-        "Remark": controllers[i][8].text.trim(),
-      };
-      sterilizeData.add(row);
+        "NoOfCtnBoxM1": m1,
+        "NoOfCtnBoxM2": m2,
+        "EOConsumedM1": eo1,
+        "EOConsumedM2": eo2,
+        "CO2ConsumedM1M2": co2,
+        "CO2Wastage": co2Wastage,
+        "BiologicalIndicator": bio,
+        "ChemicalIndicator": chem,
+        "ManPower": man,
+        "Microtrol": micro,
+        "Remark": remark,
+      });
+    }
+
+    // If nothing to save
+    if (sterilizeData.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No data entered to save.")));
+      return;
     }
 
     final payload = {
@@ -160,6 +289,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
     const apiUrl = '${ApiHelper.baseUrl}insertorupdatesterilizeexpenses';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
+
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -171,6 +301,8 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Data saved successfully")),
         );
+
+        await fetchSterilizationDetails(_selectedPlant!, _selectedShift!);
       } else {
         ScaffoldMessenger.of(
           context,
@@ -220,34 +352,62 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         if (decoded['Status'] == true && decoded['Data'] != null) {
           final List<dynamic> result = decoded['Data'];
 
-          dates.clear();
+          // Create map of API data by date
+          Map<String, dynamic> apiDataByDate = {};
+          existingDbDates.clear();
+
+          for (var row in result) {
+            String formatted = formatDate(row['SterilizeDate']);
+            apiDataByDate[formatted] = row;
+
+            existingDbDates.add(formatted);
+          }
+
+          // Now rebuild controllers for ALL generated dates
+          for (final row in controllers) {
+            for (final controller in row) {
+              controller.dispose();
+            }
+          }
           controllers.clear();
 
-          for (int i = 0; i < result.length; i++) {
-            final row = result[i];
-            dates.add(formatDate(row['SterilizeDate']));
+          for (int i = 0; i < dates.length; i++) {
+            final existingRow = apiDataByDate[dates[i]];
+
             final rowControllers = <TextEditingController>[
               TextEditingController(
-                text: row['NoOfCtnBoxM1']?.toString() ?? '0',
+                text: existingRow?['NoOfCtnBoxM1']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['NoOfCtnBoxM2']?.toString() ?? '0',
+                text: existingRow?['NoOfCtnBoxM2']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['EOConsumedM1']?.toString() ?? '0',
+                text: existingRow?['EOConsumedM1']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['EOConsumedM2']?.toString() ?? '0',
+                text: existingRow?['EOConsumedM2']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['BiologicalIndicator']?.toString() ?? '0',
+                text: existingRow?['CO2ConsumedM1M2']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: row['ChemicalIndicator']?.toString() ?? '0',
+                text: existingRow?['CO2Wastage']?.toString() ?? '0',
               ),
-              TextEditingController(text: row['ManPower']?.toString() ?? '0'),
-              TextEditingController(text: row['Microtrol']?.toString() ?? '0'),
-              TextEditingController(text: row['Remark']?.toString() ?? ''),
+              TextEditingController(
+                text: existingRow?['BiologicalIndicator']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['ChemicalIndicator']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['ManPower']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['Microtrol']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['Remark']?.toString() ?? '',
+              ),
             ];
 
             for (var controller in rowControllers) {
@@ -255,14 +415,24 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
                 calculateTotals();
               });
             }
-            setState(() {
-              controllers.add(rowControllers);
-            });
+
+            controllers.add(rowControllers);
           }
-          focusNodes = List.generate(
-            controllers.length,
-            (i) => List.generate(controllers[i].length, (j) {
+
+          // Rebuild focusNodes with same structure
+          for (final row in focusNodes) {
+            for (final node in row) {
+              node.dispose();
+            }
+          }
+          focusNodes.clear();
+
+          for (int i = 0; i < controllers.length; i++) {
+            List<FocusNode> rowFocusNodes = [];
+
+            for (int j = 0; j < controllers[i].length; j++) {
               final node = FocusNode();
+
               node.addListener(() {
                 if (node.hasFocus) {
                   controllers[i][j].selection = TextSelection(
@@ -271,20 +441,18 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
                   );
                 }
               });
-              return node;
-            }),
-          );
+
+              rowFocusNodes.add(node);
+            }
+
+            focusNodes.add(rowFocusNodes);
+          }
+
           setState(() {
             calculateTotals();
           });
         } else {
-          setState(() {
-            controllers.clear();
-          });
-          clearValues();
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("No data found.")));
+          emptyTableCreation();
         }
       } else {
         ScaffoldMessenger.of(
@@ -292,28 +460,51 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
       }
     } catch (e) {
-      //print(e);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Failed to fetch: $e")));
     }
   }
 
-  Future<void> loadData() async {
-    setState(() => isLoading = true);
-    controllers = List.generate(
-      dates.length,
-      (_) => List.generate(
-        headers.length - 1,
-        (index) =>
-            TextEditingController(text: index == headers.length - 2 ? "" : "0"),
-      ),
-    );
+  void emptyTableCreation() {
+    existingDbDates.clear();
 
-    focusNodes = List.generate(
-      dates.length,
-      (i) => List.generate(headers.length - 1, (j) {
+    // Create empty controllers for fresh entry
+    controllers.clear();
+
+    for (int i = 0; i < dates.length; i++) {
+      final rowControllers = <TextEditingController>[
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: ''),
+      ];
+
+      for (var controller in rowControllers) {
+        controller.addListener(() {
+          calculateTotals();
+        });
+      }
+
+      controllers.add(rowControllers);
+    }
+
+    // Build focusNodes
+    focusNodes.clear();
+
+    for (int i = 0; i < controllers.length; i++) {
+      List<FocusNode> rowFocusNodes = [];
+
+      for (int j = 0; j < controllers[i].length; j++) {
         final node = FocusNode();
+
         node.addListener(() {
           if (node.hasFocus) {
             controllers[i][j].selection = TextSelection(
@@ -322,12 +513,25 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
             );
           }
         });
-        return node;
-      }),
-    );
+
+        rowFocusNodes.add(node);
+      }
+
+      focusNodes.add(rowFocusNodes);
+    }
+
+    setState(() {
+      calculateTotals();
+    });
+  }
+
+  Future<void> loadData() async {
+    setState(() => isLoading = true);
 
     totals = List.filled(headers.length - 1, 0.0);
+
     await fetchSterilizationDetails(_selectedPlant!, _selectedShift!);
+
     setState(() => isLoading = false);
   }
 
@@ -348,14 +552,17 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
   }
 
   Future<void> calculateTotals() async {
-    List<double> newTotals = List.filled(headers.length - 2, 0.0);
+    if (controllers.isEmpty) return;
+
+    int numericColumnCount = controllers[0].length - 1; // exclude remark
+
+    List<double> newTotals = List.filled(numericColumnCount, 0.0);
 
     for (int row = 0; row < controllers.length; row++) {
-      for (int col = 1; col < headers.length - 1; col++) {
-        final txt = controllers[row][col - 1].text.trim();
+      for (int col = 0; col < numericColumnCount; col++) {
+        final txt = controllers[row][col].text.trim();
         final val = double.tryParse(txt) ?? 0.0;
-
-        newTotals[col - 1] += val;
+        newTotals[col] += val;
       }
     }
 
@@ -381,7 +588,11 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
   void _generateDateArray() async {
     if (_from == null || _to == null) return;
     setState(() => isLoading = true);
-    dates.clear(); // clear old dates
+    dates.clear();
+    controllers.clear();
+    focusNodes.clear();
+    existingDbDates.clear();
+
     DateTime current = _from!;
     while (current.isBefore(_to!) || current.isAtSameMomentAs(_to!)) {
       dates.add(_format(current)); // or use your preferred format
@@ -495,6 +706,8 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         7: FixedColumnWidth(135),
         8: FixedColumnWidth(135),
         9: FixedColumnWidth(135),
+        10: FixedColumnWidth(135),
+        11: FixedColumnWidth(180),
       },
       children: [
         TableRow(
@@ -504,10 +717,12 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
                 (text) => Container(
                   alignment: Alignment.center,
                   padding: const EdgeInsets.all(8.0),
-                  height: 60,
                   child: Text(
                     text,
                     textAlign: TextAlign.center,
+                    softWrap: true,
+                    maxLines: 3,
+                    overflow: TextOverflow.visible,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -535,11 +750,13 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         7: FixedColumnWidth(135),
         8: FixedColumnWidth(135),
         9: FixedColumnWidth(135),
+        10: FixedColumnWidth(135),
+        11: FixedColumnWidth(180),
       },
       children: [
         for (int i = 0; i < dates.length; i++) buildRow(i),
 
-        /// TOTAL (always 10 columns)
+        /// TOTAL (always 9 columns)
         TableRow(
           decoration: BoxDecoration(color: Colors.green.shade200),
           children: List.generate(headers.length, (colIndex) {
@@ -556,8 +773,8 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
               );
             }
 
-            // Column 9 → REMARK → no total
-            if (colIndex == 9) {
+            // Column 10 → REMARK → no total
+            if (colIndex == headers.length - 1) {
               return Container(
                 alignment: Alignment.center,
                 height: 55,
@@ -569,17 +786,13 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
             // Total index MUST match columnIndex - 1
             final totalIndex = colIndex - 1;
 
-            // Safely fetch total
-            final value = (totalIndex >= 0 && totalIndex < totals.length)
-                ? totals[totalIndex]
-                : 0.0;
-
             return Container(
               alignment: Alignment.centerRight,
               height: 55,
               padding: const EdgeInsets.all(8.0),
               child: Text(
-                value.toStringAsFixed(2),
+                // value.toStringAsFixed(2),
+                totals[totalIndex].toStringAsFixed(2),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             );
@@ -595,32 +808,61 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
       padding: const EdgeInsets.all(16.0),
       child: SafeArea(
         child: SizedBox(
-          width: double.infinity,
           height: 50,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xff2ca9df),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5.0),
+          child: Row(
+            children: [
+              /// SAVE
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2ca9df),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                  ),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setState(() => isSaving = true);
+                          await _saveSterilizationDetails();
+                          setState(() => isSaving = false);
+                        },
+                  child: isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Save",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
               ),
-            ),
-            onPressed: isSaving
-                ? null
-                : () async {
-                    setState(() => isSaving = true);
-                    await _saveSterilizationDetails();
-                    setState(() => isSaving = false);
-                  },
-            child: isSaving
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text(
-                    "Save",
+
+              const SizedBox(width: 12),
+
+              /// DOWNLOAD EXCEL
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2ca9df),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                  ),
+                  onPressed: _downloadExcel,
+                  child: const Text(
+                    "Download Excel",
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -786,6 +1028,12 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
   }
 
   TableRow buildRow(int rowIndex) {
+    if (controllers.length != dates.length ||
+        focusNodes.length != dates.length) {
+      return TableRow(
+        children: List.generate(headers.length, (_) => const SizedBox()),
+      );
+    }
     return TableRow(
       children: [
         // First cell: Department name
@@ -802,8 +1050,12 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
             child: TextField(
               controller: controllers[rowIndex][colIndex],
               focusNode: focusNodes[rowIndex][colIndex],
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.right,
+              keyboardType: isNumericColumn(colIndex)
+                  ? const TextInputType.numberWithOptions(decimal: true)
+                  : TextInputType.text,
+              textAlign: isNumericColumn(colIndex)
+                  ? TextAlign.right
+                  : TextAlign.left,
               onChanged: (_) => calculateTotals(),
               onTap: () {
                 controllers[rowIndex][colIndex].selection = TextSelection(
@@ -827,7 +1079,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
   @override
   void dispose() {
-    clearValues();
+    // clearValues();
     for (final row in controllers) {
       for (final controller in row) {
         controller.dispose();
@@ -838,6 +1090,9 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         node.dispose();
       }
     }
+    _verticalController.dispose();
+    _headerHorizontalController.dispose();
+    _bodyHorizontalController.dispose();
     super.dispose();
   }
 }
