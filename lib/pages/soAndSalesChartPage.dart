@@ -1,5 +1,4 @@
 // ignore_for_file: file_names
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -10,10 +9,14 @@ import '../sidemenu/sidemenu.dart';
 class SOAndSalesChartPage extends StatefulWidget {
   final List<SODetailsList> soList;
   final List<SalesList> salesList;
+  final List<SODetailsList> soDailyList;
+  final List<SalesList> salesDailyList;
   const SOAndSalesChartPage({
     super.key,
     required this.soList,
     required this.salesList,
+    required this.soDailyList,
+    required this.salesDailyList,
   });
 
   @override
@@ -27,7 +30,9 @@ class AxisConfig {
   AxisConfig(this.maxY, this.interval);
 }
 
+List<CombinedMonthData> combinedMonthData = [];
 List<CombinedCustomerData> combinedData = [];
+
 AxisConfig getAxisConfig(List<CustomerChartData> data) {
   double maxValue = data.map((e) => e.value).reduce((a, b) => a > b ? a : b);
 
@@ -101,9 +106,10 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
   @override
   void initState() {
     super.initState();
+    combinedMonthData = prepareCombinedMonthData();
     combinedData = prepareCombinedData();
-    soChartData = getSOChartData(widget.soList);
-    salesChartData = getSalesChartData(widget.salesList);
+    soChartData = getSOChartData(widget.soDailyList);
+    salesChartData = getSalesChartData(widget.salesDailyList);
   }
 
   List<CustomerChartData> getSOChartData(List<SODetailsList> list) {
@@ -174,7 +180,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
     final Map<String, List<String>> invoiceNosMap = {};
 
     // SO aggregation
-    for (var item in widget.soList) {
+    for (var item in widget.soDailyList) {
       final val = double.tryParse(item.orderValue) ?? 0;
 
       soMap[item.customerCode] = (soMap[item.customerCode] ?? 0) + val;
@@ -186,7 +192,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
     }
 
     // Sales aggregation
-    for (var item in widget.salesList) {
+    for (var item in widget.salesDailyList) {
       final val = double.tryParse(item.rowTotal) ?? 0;
 
       salesMap[item.customerCode] = (salesMap[item.customerCode] ?? 0) + val;
@@ -211,12 +217,69 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
     }).toList();
   }
 
+  List<CombinedMonthData> prepareCombinedMonthData() {
+    final Map<String, double> soMap = {};
+    final Map<String, double> salesMap = {};
+    final Map<String, String> dateMap = {};
+    final Map<String, List<String>> soNosMap = {};
+    final Map<String, List<String>> invoiceNosMap = {};
+
+    // required this.soList,
+    //     required this.salesList,
+
+    // SO aggregation
+    for (var item in widget.soList) {
+      final val = double.tryParse(item.orderValue) ?? 0;
+
+      soMap[item.soDate] = (soMap[item.soDate] ?? 0) + val;
+
+      dateMap[item.soDate] = item.soDate;
+
+      soNosMap.putIfAbsent(item.soDate, () => []);
+      soNosMap[item.soDate]!.add(item.soNo); // ADD
+    }
+
+    // Sales aggregation
+    for (var item in widget.salesList) {
+      final val = double.tryParse(item.rowTotal) ?? 0;
+      String? invDate = DateFormat(
+        'dd/MM/yyyy',
+      ).format(item.invoiceDate).toString();
+      salesMap[invDate] = (salesMap[invDate] ?? 0) + val;
+
+      dateMap[invDate] = invDate;
+
+      invoiceNosMap.putIfAbsent(invDate, () => []);
+      invoiceNosMap[invDate]!.add(item.invoiceNo); // ADD
+    }
+
+    final allCustomers = {...soMap.keys, ...salesMap.keys};
+
+    return allCustomers.map((date) {
+      return CombinedMonthData(
+        docDate: date,
+        soValue: soMap[date] ?? 0,
+        salesValue: salesMap[date] ?? 0,
+        soNos: (soNosMap[date] ?? []).toSet().toList(), // DISTINCT
+        invoiceNos: (invoiceNosMap[date] ?? []).toSet().toList(),
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     String? filterDate = DateFormat(
       'dd/MM/yyyy',
     ).format(DataManager.readSelectedDate()!).toString();
-
+    String? selectedMonth = DateFormat('MMM yyyy')
+        .format(
+          DateTime(
+            DateFormat('dd/MM/yyyy').parse(filterDate).year,
+            DateFormat('dd/MM/yyyy').parse(filterDate).month,
+            1,
+          ),
+        )
+        .toString();
     return Scaffold(
       key: _scaffoldKey,
       drawer: const SideMenu(),
@@ -230,16 +293,6 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
           },
         ),
         elevation: 0.0,
-        // title: Text(
-        //   "SO Vs Sales Analysis\n$filterDate",
-        //   textAlign: TextAlign.center,
-        //   style: TextStyle(
-        //     color: Colors.blue,
-        //     fontFamily: "Poppins",
-        //     fontWeight: FontWeight.bold,
-        //     fontSize: 18,
-        //   ),
-        // ),
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -282,6 +335,14 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              buildCombinedMonthBarChart(
+                context: context,
+                data: combinedMonthData,
+                title: "SO vs Sales - $selectedMonth",
+                color: Colors.green,
+              ),
+              const SizedBox(height: 30),
+
               buildCombinedBarChart(
                 context: context,
                 data: combinedData,
@@ -643,6 +704,197 @@ Widget buildCombinedBarChart({
                       _showDetails(context, item);
                     }
                   },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+Widget buildCombinedMonthBarChart({
+  required BuildContext context,
+  required List<CombinedMonthData> data,
+  required String title,
+  required Color color,
+}) {
+  data.sort((a, b) {
+    final aMax = a.soValue > a.salesValue ? a.soValue : a.salesValue;
+    final bMax = b.soValue > b.salesValue ? b.soValue : b.salesValue;
+    return bMax.compareTo(aMax);
+  });
+  final chartData = data.toList();
+  final axis = getCombinedAxisConfig(
+    data,
+    (e) => e.soValue > e.salesValue ? e.soValue : e.salesValue,
+  );
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.square, color: Colors.blue, size: 12),
+          SizedBox(width: 4),
+          Text("SO"),
+          SizedBox(width: 12),
+          Icon(Icons.square, color: Colors.green, size: 12),
+          SizedBox(width: 4),
+          Text("Sales"),
+        ],
+      ),
+      const SizedBox(height: 10),
+
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: chartData.length * 80,
+          height: 300,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: BarChart(
+              BarChartData(
+                maxY: axis.maxY,
+                minY: 0,
+                baselineY: 0,
+                alignment: BarChartAlignment.spaceAround,
+                gridData: FlGridData(show: false),
+                barGroups: List.generate(chartData.length, (index) {
+                  final item = chartData[index];
+                  return BarChartGroupData(
+                    x: index,
+
+                    barRods: [
+                      // SO BAR (Blue)
+                      BarChartRodData(
+                        toY: item.soValue,
+                        color: Colors.blue,
+                        width: 18,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+
+                      // SALES BAR (Green)
+                      BarChartRodData(
+                        toY: item.salesValue,
+                        color: Colors.green,
+                        width: 18,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  );
+                }),
+                borderData: FlBorderData(
+                  show: true,
+                  border: const Border(
+                    left: BorderSide(color: Colors.black12),
+                    bottom: BorderSide(color: Colors.black12),
+                    top: BorderSide.none,
+                    right: BorderSide.none,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: false,
+                    ), // remove top axis
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: false,
+                    ), // remove right axis
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: axis.interval,
+                      reservedSize: 50,
+                      getTitlesWidget: (value, meta) {
+                        // Prevent duplicate top label
+                        if (value >= axis.maxY - (axis.interval * 0.1)) {
+                          return const SizedBox();
+                        }
+                        if (value >= 10000000) {
+                          double cr = value / 10000000;
+                          return Text(
+                            "${cr % 1 == 0 ? cr.toInt() : cr.toStringAsFixed(1)} Cr",
+                            style: const TextStyle(fontSize: 10),
+                            maxLines: 1,
+                            overflow: TextOverflow.visible,
+                          );
+                        } else {
+                          return Text(
+                            "${(value / 100000).toStringAsFixed(0)} L",
+                            style: const TextStyle(fontSize: 10),
+                            maxLines: 1,
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 60, // important for rotated text
+                      getTitlesWidget: (value, meta) {
+                        if (value > axis.maxY) return const SizedBox();
+                        final index = value.toInt();
+                        if (index >= chartData.length) return const SizedBox();
+
+                        return Transform.rotate(
+                          angle: -0.785, // -45 degrees in radians
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Text(
+                              chartData[index].docDate, // using code now
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                //  TOOLTIP (important part)
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (group) => Colors.black87,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final item = chartData[group.x.toInt()];
+                      return BarTooltipItem(
+                        "${item.docDate}\n"
+                        "SO Value: ${item.soValue.toStringAsFixed(0)}\n"
+                        "Sales Value: ${item.salesValue.toStringAsFixed(0)}\n\n"
+                        "SO Count: ${item.soNos.length}\n"
+                        "Invoice Count: ${item.invoiceNos.length}\n\n",
+                        // "SO Nos:\n$soDocs\n\n"
+                        // "Invoice Nos:\n$invDocs",
+                        const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          height: 1.4,
+                        ),
+                      );
+                    },
+                  ),
+                  // touchCallback: (event, response) {
+                  //   if (event is FlTapUpEvent && // IMPORTANT FIX
+                  //       response != null &&
+                  //       response.spot != null) {
+                  //     final index = response.spot!.touchedBarGroupIndex;
+                  //     final item = chartData[index];
+
+                  //     _showDetails(context, item);
+                  //   }
+                  // },
                 ),
               ),
             ),

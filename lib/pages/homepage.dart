@@ -188,6 +188,8 @@ class HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> userList = [];
   Map<String, Map<String, bool>> allCategoriesState = {};
   final List<String> categories = ['RSM', 'ASM', 'TSM', 'Status', 'Date'];
+  String? selectedMonth;
+  String? selectedDate;
 
   @override
   void initState() {
@@ -405,6 +407,17 @@ class HomePageState extends State<HomePage> {
       'dd/MM/yyyy',
     ).format(DataManager.readSelectedDate()!).toString();
 
+    selectedDate = filterDate;
+    selectedMonth = DateFormat('MMM yyyy')
+        .format(
+          DateTime(
+            DateFormat('dd/MM/yyyy').parse(filterDate).year,
+            DateFormat('dd/MM/yyyy').parse(filterDate).month,
+            1,
+          ),
+        )
+        .toString();
+
     if (userRoleCode == "R1" || userRoleCode == "R2") {
       await Future.wait([
         _loadUserList(
@@ -554,13 +567,14 @@ class HomePageState extends State<HomePage> {
                 trueStatusOptions.contains(person.soStatus));
       }).toList();
 
-      var result = soDetailList.fold(
-        SumCount(0, 0),
-        (acc, item) => SumCount(
-          acc.sum + (double.tryParse(item.orderValue) ?? 0),
-          acc.count + 1,
-        ),
-      );
+      final Map<String, List<String>> soNosMap = {};
+      final totalValue = soDetailList.fold<double>(0, (sum, item) {
+        soNosMap.putIfAbsent(item.customerCode, () => []);
+        soNosMap[item.customerCode]!.add(item.soNo);
+        return sum + (double.tryParse(item.orderValue) ?? 0);
+      });
+      var result = SumCount(totalValue, soNosMap.length);
+
       setState(() {
         totalSOPunchedValue = result.sum;
         totalSOPunchedCount = result.count;
@@ -571,13 +585,13 @@ class HomePageState extends State<HomePage> {
               invDate.isAtMost(parsedDate));
         }).toList();
 
-        result = dailySales.fold(
-          SumCount(0, 0),
-          (acc, item) => SumCount(
-            acc.sum + (double.tryParse(item.rowTotal) ?? 0),
-            acc.count + 1,
-          ),
-        );
+        final Map<String, List<String>> soNosMap = {};
+        final totalValue = dailySoDetailList.fold<double>(0, (sum, item) {
+          soNosMap.putIfAbsent(item.customerCode, () => []);
+          soNosMap[item.customerCode]!.add(item.soNo);
+          return sum + (double.tryParse(item.orderValue) ?? 0);
+        });
+        result = SumCount(totalValue, soNosMap.length);
         totalDailySOPunchedValue = result.sum;
         totalDailySOPunchedCount = result.count;
       });
@@ -628,13 +642,14 @@ class HomePageState extends State<HomePage> {
         final List list = json['responseData'] ?? [];
         if (list.isEmpty) {
           hasMore = false;
-          var result = sales.fold(
-            SumCount(0, 0),
-            (acc, item) => SumCount(
-              acc.sum + (double.tryParse(item.rowTotal) ?? 0),
-              acc.count + 1,
-            ),
-          );
+          final Map<String, List<String>> invoiceNosMap = {};
+          final totalValue = sales.fold<double>(0, (sum, item) {
+            invoiceNosMap.putIfAbsent(item.customerCode, () => []);
+            invoiceNosMap[item.customerCode]!.add(item.invoiceNo);
+            return sum + (double.tryParse(item.rowTotal) ?? 0);
+          });
+          var result = SumCount(totalValue, invoiceNosMap.length);
+
           setState(() {
             totalInvoiceValue = result.sum;
             totalInvoiceCount = result.count;
@@ -645,13 +660,13 @@ class HomePageState extends State<HomePage> {
                   invDate.isAtMost(parsedDate));
             }).toList();
 
-            result = dailySales.fold(
-              SumCount(0, 0),
-              (acc, item) => SumCount(
-                acc.sum + (double.tryParse(item.rowTotal) ?? 0),
-                acc.count + 1,
-              ),
-            );
+            final Map<String, List<String>> invoiceNosMap = {};
+            final totalValue = dailySales.fold<double>(0, (sum, item) {
+              invoiceNosMap.putIfAbsent(item.customerCode, () => []);
+              invoiceNosMap[item.customerCode]!.add(item.invoiceNo);
+              return sum + (double.tryParse(item.rowTotal) ?? 0);
+            });
+            result = SumCount(totalValue, invoiceNosMap.length);
             totalDailyInvoiceValue = result.sum;
             totalDailyInvoiceCount = result.count;
           });
@@ -2531,6 +2546,8 @@ class HomePageState extends State<HomePage> {
                                     builder: (context) => SOAndSalesChartPage(
                                       soList: soDetailList,
                                       salesList: sales,
+                                      soDailyList: dailySoDetailList,
+                                      salesDailyList: dailySales,
                                     ),
                                   ),
                                 );
@@ -2552,9 +2569,12 @@ class HomePageState extends State<HomePage> {
                             // SO BOX
                             Expanded(
                               child: _buildSummaryBox(
-                                title: "SO Summary",
+                                title: selectedMonth!,
+                                dailyTitle: "SO Summary\n$selectedDate",
                                 value: totalSOPunchedValue,
                                 count: totalSOPunchedCount,
+                                dailyValue: totalDailySOPunchedValue,
+                                dailyCount: totalDailySOPunchedCount,
                                 color: Colors.blue,
                               ),
                             ),
@@ -2564,9 +2584,12 @@ class HomePageState extends State<HomePage> {
                             // INVOICE BOX
                             Expanded(
                               child: _buildSummaryBox(
-                                title: "Invoice Summary",
-                                value: totalInvoiceValue,
-                                count: totalInvoiceCount,
+                                title: selectedMonth!,
+                                dailyTitle: "Invoice Summary\n$selectedDate",
+                                value: totalDailyInvoiceValue,
+                                count: totalDailyInvoiceCount,
+                                dailyValue: totalDailyInvoiceValue,
+                                dailyCount: totalDailyInvoiceCount,
                                 color: Colors.green,
                               ),
                             ),
@@ -3887,12 +3910,15 @@ class HomePageState extends State<HomePage> {
 
   Widget _buildSummaryBox({
     required String title,
+    required String dailyTitle,
     required double value,
     required int count,
+    required double dailyValue,
+    required int dailyCount,
     required Color color,
   }) {
     return Container(
-      height: 110,
+      height: 200,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [color.withValues(alpha: 0.85), color],
@@ -3915,7 +3941,7 @@ class HomePageState extends State<HomePage> {
           children: [
             // Title
             Text(
-              title,
+              dailyTitle,
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 13,
@@ -3923,7 +3949,41 @@ class HomePageState extends State<HomePage> {
               ),
             ),
 
-            const Spacer(),
+            // Value
+            Text(
+              "₹ ${_formatValue(dailyValue)}",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            // Count
+            Text(
+              "Count: $dailyCount",
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+
+            Divider(
+              thickness: 1.5,
+              height: 16,
+              color: const Color.fromARGB(
+                255,
+                248,
+                246,
+                246,
+              ).withValues(alpha: 0.9),
+            ),
+
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
 
             // Value
             Text(
@@ -3934,8 +3994,6 @@ class HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
-            const SizedBox(height: 6),
 
             // Count
             Text(
