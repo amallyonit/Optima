@@ -2586,8 +2586,8 @@ class HomePageState extends State<HomePage> {
                               child: _buildSummaryBox(
                                 title: selectedMonth!,
                                 dailyTitle: "Invoice Summary\n$selectedDate",
-                                value: totalDailyInvoiceValue,
-                                count: totalDailyInvoiceCount,
+                                value: totalInvoiceValue,
+                                count: totalInvoiceCount,
                                 dailyValue: totalDailyInvoiceValue,
                                 dailyCount: totalDailyInvoiceCount,
                                 color: Colors.green,
