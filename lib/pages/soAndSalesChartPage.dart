@@ -169,63 +169,67 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
   }
 
   List<CustomerChartData> getSOChartData(List<SODetailsList> list) {
-    final Map<String, CustomerChartData> map = {};
+    final Map<String, double> soMap = {};
+    final Map<String, String> customerNameMap = {};
+    final Map<String, List<String>> soNosMap = {};
 
+    // SO aggregation
     for (var item in list) {
-      final key = item.customerName;
-      final value = double.tryParse(item.orderValue) ?? 0;
+      final val = double.tryParse(item.orderValue) ?? 0;
 
-      if (!map.containsKey(key)) {
-        map[key] = CustomerChartData(
-          customerName: key,
-          customerCode: item.customerCode,
-          value: value,
-          count: 1,
-          docNos: [item.soNo],
-        );
-      } else {
-        final existing = map[key]!;
-        map[key] = CustomerChartData(
-          customerName: key,
-          customerCode: item.customerCode,
-          value: existing.value + value,
-          count: existing.count + 1,
-          docNos: [...existing.docNos, item.soNo],
-        );
-      }
+      soMap[item.customerCode] = (soMap[item.customerCode] ?? 0) + val;
+
+      customerNameMap[item.customerCode] = item.customerName;
+
+      soNosMap.putIfAbsent(item.customerCode, () => []);
+      soNosMap[item.customerCode]!.add(item.soNo);
     }
 
-    return map.values.toList();
+    final allCustomers = {...soMap.keys};
+
+    return allCustomers.map((code) {
+      final docs = (soNosMap[code] ?? []).toSet().toList();
+
+      return CustomerChartData(
+        customerCode: code,
+        customerName: customerNameMap[code] ?? "",
+        value: soMap[code] ?? 0,
+        count: docs.length,
+        docNos: docs,
+      );
+    }).toList();
   }
 
   List<CustomerChartData> getSalesChartData(List<SalesList> list) {
-    final Map<String, CustomerChartData> map = {};
+    final Map<String, double> salesMap = {};
+    final Map<String, String> customerNameMap = {};
+    final Map<String, List<String>> invoiceNosMap = {};
 
+    // Sales aggregation
     for (var item in list) {
-      final key = item.customerName;
-      final value = double.tryParse(item.rowTotal) ?? 0;
+      final val = double.tryParse(item.rowTotal) ?? 0;
 
-      if (!map.containsKey(key)) {
-        map[key] = CustomerChartData(
-          customerName: key,
-          customerCode: item.customerCode,
-          value: value,
-          count: 1,
-          docNos: [item.invoiceNo],
-        );
-      } else {
-        final existing = map[key]!;
-        map[key] = CustomerChartData(
-          customerName: key,
-          customerCode: item.customerCode,
-          value: existing.value + value,
-          count: existing.count + 1,
-          docNos: [...existing.docNos, item.invoiceNo],
-        );
-      }
+      salesMap[item.customerCode] = (salesMap[item.customerCode] ?? 0) + val;
+
+      customerNameMap[item.customerCode] = item.customerName;
+
+      invoiceNosMap.putIfAbsent(item.customerCode, () => []);
+      invoiceNosMap[item.customerCode]!.add(item.invoiceNo);
     }
 
-    return map.values.toList();
+    final allCustomers = {...salesMap.keys};
+
+    return allCustomers.map((code) {
+      final docs = (invoiceNosMap[code] ?? []).toSet().toList();
+
+      return CustomerChartData(
+        customerCode: code,
+        customerName: customerNameMap[code] ?? "",
+        value: salesMap[code] ?? 0,
+        count: docs.length,
+        docNos: docs,
+      );
+    }).toList();
   }
 
   List<CombinedCustomerData> prepareCombinedData() {
@@ -482,16 +486,19 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
             : SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: chartData.length * 80,
+                  width: chartData.length == 1 ? 160 : chartData.length * 80,
                   height: 300,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: BarChart(
+                      duration: const Duration(milliseconds: 250),
                       BarChartData(
                         maxY: axis.maxY,
                         minY: 0,
                         baselineY: 0,
-                        alignment: BarChartAlignment.spaceAround,
+                        alignment: chartData.length <= 2
+                            ? BarChartAlignment.spaceEvenly
+                            : BarChartAlignment.spaceAround,
                         gridData: FlGridData(show: false),
                         barGroups: List.generate(chartData.length, (index) {
                           final item = chartData[index];
@@ -501,7 +508,11 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                             barRods: [
                               BarChartRodData(
                                 toY: item.value,
-                                width: 18,
+                                width: chartData.length == 1
+                                    ? 28
+                                    : chartData.length == 2
+                                    ? 22
+                                    : 18,
                                 color: color,
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -587,8 +598,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                             fitInsideHorizontally: true,
                             getTooltipItem: (group, groupIndex, rod, rodIndex) {
                               final item = chartData[group.x.toInt()];
-                              final docs = item.docNos.toSet().join(", ");
-
+                              final docs = item.docNos.toSet().join(",\n");
                               return BarTooltipItem(
                                 "${item.customerName}\n"
                                 "Value: ${item.value.toStringAsFixed(0)}\n"
@@ -678,11 +688,14 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
             : SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: chartData.length * 80,
+                  width: (chartData.length * 80)
+                      .clamp(160, double.infinity)
+                      .toDouble(),
                   height: 300,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: BarChart(
+                      duration: const Duration(milliseconds: 250),
                       BarChartData(
                         maxY: axis.maxY,
                         minY: 0,
@@ -897,7 +910,9 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
             : SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: chartData.length * 80,
+                  width: (chartData.length * 80)
+                      .clamp(160, double.infinity)
+                      .toDouble(),
                   height: 300,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -1266,12 +1281,32 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                             ),
                           ),
                           Center(
-                            child: Text(
-                              headerTitle,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSO
+                                    ? Colors.blue.withValues(alpha: 0.08)
+                                    : Colors.green.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSO
+                                      ? Colors.blue.withValues(alpha: 0.3)
+                                      : Colors.green.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                headerTitle,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSO
+                                      ? Colors.blue[800]
+                                      : Colors.green[800],
+                                ),
                               ),
                             ),
                           ),
@@ -1294,43 +1329,118 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      GestureDetector(
-                                        onTap: () {
-                                          setModalState(() {
-                                            expandedCustomers[cust.key] =
-                                                !(expandedCustomers[cust.key] ??
-                                                    false);
-                                          });
-                                        },
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                cust.key,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color.fromARGB(
-                                                    255,
-                                                    143,
-                                                    57,
-                                                    241,
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                            onTap: () {
+                                              setModalState(() {
+                                                expandedCustomers[cust.key] =
+                                                    !(expandedCustomers[cust
+                                                            .key] ??
+                                                        false);
+                                              });
+                                            },
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 200,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                    horizontal: 6,
                                                   ),
-                                                ),
-                                                softWrap: true, //allow wrapping
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    (expandedCustomers[cust
+                                                            .key] ??
+                                                        false)
+                                                    ? (isSO
+                                                          ? Colors.blue
+                                                                .withValues(
+                                                                  alpha: 0.08,
+                                                                )
+                                                          : Colors.green
+                                                                .withValues(
+                                                                  alpha: 0.08,
+                                                                ))
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      cust.key,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.blue
+                                                            .withValues(
+                                                              alpha: 2.08,
+                                                            ),
+                                                      ),
+                                                      softWrap: true,
+                                                    ),
+                                                  ),
+
+                                                  const SizedBox(width: 8),
+
+                                                  AnimatedRotation(
+                                                    turns:
+                                                        (expandedCustomers[cust
+                                                                .key] ??
+                                                            false)
+                                                        ? 0.5
+                                                        : 0.0,
+                                                    duration: const Duration(
+                                                      milliseconds: 250,
+                                                    ),
+                                                    curve: Curves.easeInOut,
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            6,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            (isSO
+                                                                    ? Colors
+                                                                          .blue
+                                                                    : Colors
+                                                                          .green)
+                                                                .withValues(
+                                                                  alpha: 0.1,
+                                                                ),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons
+                                                            .keyboard_arrow_down,
+                                                        size: 20,
+                                                        color: isSO
+                                                            ? Colors.blue[700]
+                                                            : Colors.green[700],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                            Icon(
-                                              (expandedCustomers[cust.key] ??
-                                                      false)
-                                                  ? Icons.expand_less
-                                                  : Icons.expand_more,
-                                            ),
-                                            const SizedBox(height: 50),
-                                          ],
+                                          ),
                                         ),
                                       ),
+
                                       AnimatedSize(
                                         duration: const Duration(
                                           milliseconds: 300,
@@ -1340,137 +1450,79 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                         child:
                                             (expandedCustomers[cust.key] ??
                                                 false)
-                                            ? Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  ...cust.value.entries.toList().asMap().entries.map((
-                                                    entry,
-                                                  ) {
-                                                    final index = entry.key;
-                                                    final doc = entry.value;
-
-                                                    double docTotal = 0;
-
-                                                    return Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          "SO: ${doc.key}",
-                                                          style: const TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            fontSize: 14,
-                                                            color:
-                                                                Color.fromARGB(
-                                                                  255,
-                                                                  50,
-                                                                  5,
-                                                                  212,
-                                                                ),
+                                            ? Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 10,
+                                                    ),
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.withValues(
+                                                    alpha: 0.2,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                            alpha: 0.08,
                                                           ),
+                                                      blurRadius: 10,
+                                                      offset: const Offset(
+                                                        0,
+                                                        4,
+                                                      ), // elevation feel
+                                                    ),
+                                                  ],
+                                                  border: Border.all(
+                                                    color: Colors.grey
+                                                        .withValues(
+                                                          alpha: 0.15,
                                                         ),
-                                                        const SizedBox(
-                                                          height: 6,
-                                                        ),
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    ...cust.value.entries.toList().asMap().entries.map((
+                                                      entry,
+                                                    ) {
+                                                      final index = entry.key;
+                                                      final doc = entry.value;
 
-                                                        // HEADER ROW
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                vertical: 6,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            border: Border(
-                                                              bottom: BorderSide(
-                                                                color: Colors
-                                                                    .grey
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.5,
-                                                                    ),
-                                                              ),
+                                                      double docTotal = 0;
+
+                                                      return Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            "SO: ${doc.key}",
+                                                            style: const TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 15,
+                                                              color:
+                                                                  Color.fromRGBO(
+                                                                    120,
+                                                                    36,
+                                                                    63,
+                                                                    1,
+                                                                  ),
                                                             ),
-                                                            color:
-                                                                const Color.fromARGB(
-                                                                  255,
-                                                                  82,
-                                                                  82,
-                                                                  82,
-                                                                ).withValues(
-                                                                  alpha: 0.08,
-                                                                ),
                                                           ),
-                                                          child: Row(
-                                                            children: [
-                                                              const Expanded(
-                                                                flex: 5,
-                                                                child: Text(
-                                                                  "Item Name",
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              _vDivider(),
-                                                              const Expanded(
-                                                                flex: 2,
-                                                                child: Text(
-                                                                  "Qty",
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .center,
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              _vDivider(),
-                                                              const Expanded(
-                                                                flex: 3,
-                                                                child: Text(
-                                                                  "Value",
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .right,
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
+                                                          const SizedBox(
+                                                            height: 6,
                                                           ),
-                                                        ),
 
-                                                        // PRODUCT ROWS
-                                                        ...doc.value.map((
-                                                          prod,
-                                                        ) {
-                                                          final qty =
-                                                              (double.tryParse(
-                                                                        prod.orderQuantity,
-                                                                      ) ??
-                                                                      0)
-                                                                  .toInt()
-                                                                  .toString();
-
-                                                          final val =
-                                                              double.tryParse(
-                                                                prod.orderValue,
-                                                              ) ??
-                                                              0.0;
-
-                                                          docTotal += val;
-
-                                                          return Container(
+                                                          // HEADER ROW
+                                                          Container(
                                                             padding:
                                                                 const EdgeInsets.symmetric(
                                                                   vertical: 6,
@@ -1482,155 +1534,262 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                                                       .grey
                                                                       .withValues(
                                                                         alpha:
-                                                                            0.2,
+                                                                            0.5,
                                                                       ),
                                                                 ),
                                                               ),
+                                                              color:
+                                                                  const Color.fromARGB(
+                                                                    255,
+                                                                    82,
+                                                                    82,
+                                                                    82,
+                                                                  ).withValues(
+                                                                    alpha: 0.08,
+                                                                  ),
                                                             ),
                                                             child: Row(
                                                               children: [
-                                                                Expanded(
+                                                                const Expanded(
                                                                   flex: 5,
                                                                   child: Text(
-                                                                    prod.productName,
-                                                                    softWrap:
-                                                                        true,
+                                                                    "Item Name",
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
                                                                   ),
                                                                 ),
                                                                 _vDivider(),
-                                                                Expanded(
+                                                                const Expanded(
                                                                   flex: 2,
                                                                   child: Text(
-                                                                    qty,
+                                                                    "Qty",
                                                                     textAlign:
                                                                         TextAlign
-                                                                            .center,
+                                                                            .right,
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
                                                                   ),
+                                                                ),
+                                                                _vDivider(),
+                                                                const Expanded(
+                                                                  flex: 3,
+                                                                  child: Text(
+                                                                    "Value",
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .right,
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+
+                                                          // PRODUCT ROWS
+                                                          ...doc.value.map((
+                                                            prod,
+                                                          ) {
+                                                            final qty =
+                                                                (double.tryParse(
+                                                                          prod.orderQuantity,
+                                                                        ) ??
+                                                                        0)
+                                                                    .toInt()
+                                                                    .toString();
+
+                                                            final val =
+                                                                double.tryParse(
+                                                                  prod.orderValue,
+                                                                ) ??
+                                                                0.0;
+
+                                                            docTotal += val;
+
+                                                            return Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    vertical: 6,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                border: Border(
+                                                                  bottom: BorderSide(
+                                                                    color: Colors
+                                                                        .grey
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.2,
+                                                                        ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              child: Row(
+                                                                children: [
+                                                                  Expanded(
+                                                                    flex: 5,
+                                                                    child: Text(
+                                                                      prod.productName,
+                                                                      softWrap:
+                                                                          true,
+                                                                    ),
+                                                                  ),
+                                                                  _vDivider(),
+                                                                  Expanded(
+                                                                    flex: 2,
+                                                                    child: Text(
+                                                                      qty,
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .right,
+                                                                    ),
+                                                                  ),
+                                                                  _vDivider(),
+                                                                  Expanded(
+                                                                    flex: 3,
+                                                                    child: Text(
+                                                                      val.toStringAsFixed(
+                                                                        2,
+                                                                      ),
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .right,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          }),
+
+                                                          // DOC TOTAL
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  vertical: 8,
+                                                                ),
+                                                            child: Row(
+                                                              children: [
+                                                                const Expanded(
+                                                                  flex: 5,
+                                                                  child: Text(
+                                                                    "SO. Total",
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                _vDivider(),
+                                                                const Expanded(
+                                                                  flex: 2,
+                                                                  child:
+                                                                      SizedBox(),
                                                                 ),
                                                                 _vDivider(),
                                                                 Expanded(
                                                                   flex: 3,
                                                                   child: Text(
-                                                                    val.toStringAsFixed(
-                                                                      2,
-                                                                    ),
+                                                                    docTotal
+                                                                        .toStringAsFixed(
+                                                                          2,
+                                                                        ),
                                                                     textAlign:
                                                                         TextAlign
                                                                             .right,
+                                                                    style: const TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
                                                                   ),
                                                                 ),
                                                               ],
                                                             ),
-                                                          );
-                                                        }),
-
-                                                        // DOC TOTAL
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                vertical: 8,
-                                                              ),
-                                                          child: Row(
-                                                            children: [
-                                                              const Expanded(
-                                                                flex: 5,
-                                                                child: Text(
-                                                                  "SO. Total",
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
+                                                          ),
+                                                          if (index !=
+                                                              cust
+                                                                      .value
+                                                                      .length -
+                                                                  1)
+                                                            const Divider(),
+                                                        ],
+                                                      );
+                                                    }),
+                                                    const SizedBox(height: 8),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        border: Border(
+                                                          top: BorderSide(
+                                                            color: Colors.grey
+                                                                .withValues(
+                                                                  alpha: 0.4,
                                                                 ),
-                                                              ),
-                                                              _vDivider(),
-                                                              const Expanded(
-                                                                flex: 2,
-                                                                child:
-                                                                    SizedBox(),
-                                                              ),
-                                                              _vDivider(),
-                                                              Expanded(
-                                                                flex: 3,
-                                                                child: Text(
-                                                                  docTotal
-                                                                      .toStringAsFixed(
-                                                                        2,
-                                                                      ),
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .right,
-                                                                  style: const TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
                                                           ),
                                                         ),
-                                                        if (index !=
-                                                            cust.value.length -
-                                                                1)
-                                                          const Divider(),
-                                                      ],
-                                                    );
-                                                  }),
-                                                ],
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          Expanded(
+                                                            flex: 5,
+                                                            child: Text(
+                                                              "Customer Total",
+                                                              style: const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ),
+
+                                                          _vDivider(),
+
+                                                          const Expanded(
+                                                            flex: 2,
+                                                            child: SizedBox(),
+                                                          ),
+
+                                                          _vDivider(),
+
+                                                          Expanded(
+                                                            flex: 3,
+                                                            child: Text(
+                                                              customerTotal
+                                                                  .toStringAsFixed(
+                                                                    2,
+                                                                  ),
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .right,
+                                                              style: const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               )
                                             : const SizedBox(),
                                       ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          border: Border(
-                                            top: BorderSide(
-                                              color: Colors.grey.withValues(
-                                                alpha: 0.4,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 5,
-                                              child: Text(
-                                                "Customer Total",
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
 
-                                            _vDivider(),
-
-                                            const Expanded(
-                                              flex: 2,
-                                              child: SizedBox(),
-                                            ),
-
-                                            _vDivider(),
-
-                                            Expanded(
-                                              flex: 3,
-                                              child: Text(
-                                                customerTotal.toStringAsFixed(
-                                                  2,
-                                                ),
-                                                textAlign: TextAlign.right,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const Divider(),
+                                      const SizedBox(height: 10),
                                     ],
                                   );
                                 })
@@ -1648,49 +1807,108 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // HEADER (same as SO)
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 8,
                                         ),
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            setModalState(() {
-                                              expandedCustomers[cust.key] =
-                                                  !(expandedCustomers[cust
-                                                          .key] ??
-                                                      false);
-                                            });
-                                          },
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  cust.key,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                    color: Color.fromARGB(
-                                                      255,
-                                                      143,
-                                                      57,
-                                                      241,
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                            onTap: () {
+                                              setModalState(() {
+                                                expandedCustomers[cust.key] =
+                                                    !(expandedCustomers[cust
+                                                            .key] ??
+                                                        false);
+                                              });
+                                            },
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 200,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                    horizontal: 6,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    (expandedCustomers[cust
+                                                            .key] ??
+                                                        false)
+                                                    ? Colors.green.withValues(
+                                                        alpha: 0.08,
+                                                      )
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      cust.key,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.green
+                                                            .withValues(
+                                                              alpha: 2.08,
+                                                            ),
+                                                      ),
+                                                      softWrap: true,
                                                     ),
                                                   ),
-                                                  softWrap: true,
-                                                ),
+
+                                                  const SizedBox(width: 8),
+
+                                                  AnimatedRotation(
+                                                    turns:
+                                                        (expandedCustomers[cust
+                                                                .key] ??
+                                                            false)
+                                                        ? 0.5
+                                                        : 0.0,
+                                                    duration: const Duration(
+                                                      milliseconds: 250,
+                                                    ),
+                                                    curve: Curves.easeInOut,
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            6,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            (isSO
+                                                                    ? Colors
+                                                                          .blue
+                                                                    : Colors
+                                                                          .green)
+                                                                .withValues(
+                                                                  alpha: 0.1,
+                                                                ),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons
+                                                            .keyboard_arrow_down,
+                                                        size: 20,
+                                                        color: isSO
+                                                            ? Colors.blue[700]
+                                                            : Colors.green[700],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              const SizedBox(width: 8),
-                                              Icon(
-                                                (expandedCustomers[cust.key] ??
-                                                        false)
-                                                    ? Icons.expand_less
-                                                    : Icons.expand_more,
-                                              ),
-                                              const SizedBox(height: 30),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1705,129 +1923,75 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                         child:
                                             (expandedCustomers[cust.key] ??
                                                 false)
-                                            ? Column(
-                                                children: [
-                                                  ...cust.value.entries.toList().asMap().entries.map((
-                                                    entry,
-                                                  ) {
-                                                    final index = entry.key;
-                                                    final doc = entry.value;
-                                                    double docTotal = 0;
-
-                                                    return Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          "Invoice: ${doc.key}",
-                                                          style: const TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            fontSize: 14,
-                                                            color:
-                                                                Color.fromARGB(
-                                                                  255,
-                                                                  50,
-                                                                  5,
-                                                                  212,
-                                                                ),
+                                            ? Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 10,
+                                                    ),
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green
+                                                      .withValues(alpha: 0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                            alpha: 0.08,
                                                           ),
+                                                      blurRadius: 10,
+                                                      offset: const Offset(
+                                                        0,
+                                                        4,
+                                                      ), // elevation feel
+                                                    ),
+                                                  ],
+                                                  border: Border.all(
+                                                    color: Colors.grey
+                                                        .withValues(
+                                                          alpha: 0.15,
                                                         ),
-                                                        const SizedBox(
-                                                          height: 6,
-                                                        ),
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    ...cust.value.entries.toList().asMap().entries.map((
+                                                      entry,
+                                                    ) {
+                                                      final index = entry.key;
+                                                      final doc = entry.value;
+                                                      double docTotal = 0;
 
-                                                        // HEADER
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                vertical: 6,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            border: Border(
-                                                              bottom: BorderSide(
-                                                                color: Colors
-                                                                    .grey
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.5,
-                                                                    ),
-                                                              ),
+                                                      return Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            "Invoice: ${doc.key}",
+                                                            style: const TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 14,
+                                                              color:
+                                                                  Color.fromRGBO(
+                                                                    120,
+                                                                    36,
+                                                                    63,
+                                                                    1,
+                                                                  ),
                                                             ),
-                                                            color: Colors.green
-                                                                .withValues(
-                                                                  alpha: 0.08,
-                                                                ),
                                                           ),
-                                                          child: Row(
-                                                            children: [
-                                                              const Expanded(
-                                                                flex: 5,
-                                                                child: Text(
-                                                                  "Item Name",
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              _vDivider(),
-                                                              const Expanded(
-                                                                flex: 2,
-                                                                child: Text(
-                                                                  "Qty",
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .center,
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              _vDivider(),
-                                                              const Expanded(
-                                                                flex: 3,
-                                                                child: Text(
-                                                                  "Value",
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .right,
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
+                                                          const SizedBox(
+                                                            height: 6,
                                                           ),
-                                                        ),
 
-                                                        // ROWS
-                                                        ...doc.value.map((
-                                                          prod,
-                                                        ) {
-                                                          final qty =
-                                                              (double.tryParse(
-                                                                        prod.quantity,
-                                                                      ) ??
-                                                                      0)
-                                                                  .toInt()
-                                                                  .toString();
-
-                                                          final val =
-                                                              double.tryParse(
-                                                                prod.rowTotal,
-                                                              ) ??
-                                                              0.0;
-
-                                                          docTotal += val;
-
-                                                          return Container(
+                                                          // HEADER
+                                                          Container(
                                                             padding:
                                                                 const EdgeInsets.symmetric(
                                                                   vertical: 6,
@@ -1839,167 +2003,280 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                                                       .grey
                                                                       .withValues(
                                                                         alpha:
-                                                                            0.2,
+                                                                            0.5,
                                                                       ),
                                                                 ),
                                                               ),
+                                                              color: Colors
+                                                                  .green
+                                                                  .withValues(
+                                                                    alpha: 0.08,
+                                                                  ),
                                                             ),
                                                             child: Row(
                                                               children: [
-                                                                Expanded(
+                                                                const Expanded(
                                                                   flex: 5,
                                                                   child: Text(
-                                                                    prod.description,
-                                                                    softWrap:
-                                                                        true,
+                                                                    "Item Name",
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
                                                                   ),
                                                                 ),
                                                                 _vDivider(),
-                                                                Expanded(
+                                                                const Expanded(
                                                                   flex: 2,
                                                                   child: Text(
-                                                                    qty,
+                                                                    "Qty",
                                                                     textAlign:
                                                                         TextAlign
-                                                                            .center,
+                                                                            .right,
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
                                                                   ),
+                                                                ),
+                                                                _vDivider(),
+                                                                const Expanded(
+                                                                  flex: 3,
+                                                                  child: Text(
+                                                                    "Value",
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .right,
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+
+                                                          // ROWS
+                                                          ...doc.value.map((
+                                                            prod,
+                                                          ) {
+                                                            final qty =
+                                                                (double.tryParse(
+                                                                          prod.quantity,
+                                                                        ) ??
+                                                                        0)
+                                                                    .toInt()
+                                                                    .toString();
+
+                                                            final val =
+                                                                double.tryParse(
+                                                                  prod.rowTotal,
+                                                                ) ??
+                                                                0.0;
+
+                                                            docTotal += val;
+
+                                                            return Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    vertical: 6,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                border: Border(
+                                                                  bottom: BorderSide(
+                                                                    color: Colors
+                                                                        .grey
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.2,
+                                                                        ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              child: Row(
+                                                                children: [
+                                                                  Expanded(
+                                                                    flex: 5,
+                                                                    child: Text(
+                                                                      prod.description,
+                                                                      softWrap:
+                                                                          true,
+                                                                    ),
+                                                                  ),
+                                                                  _vDivider(),
+                                                                  Expanded(
+                                                                    flex: 2,
+                                                                    child: Text(
+                                                                      qty,
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .right,
+                                                                    ),
+                                                                  ),
+                                                                  _vDivider(),
+                                                                  Expanded(
+                                                                    flex: 3,
+                                                                    child: Text(
+                                                                      val.toStringAsFixed(
+                                                                        2,
+                                                                      ),
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .right,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          }),
+
+                                                          // DOC TOTAL
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  vertical: 8,
+                                                                ),
+                                                            child: Row(
+                                                              children: [
+                                                                const Expanded(
+                                                                  flex: 5,
+                                                                  child: Text(
+                                                                    "Inv. Total",
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                _vDivider(),
+                                                                const Expanded(
+                                                                  flex: 2,
+                                                                  child:
+                                                                      SizedBox(),
                                                                 ),
                                                                 _vDivider(),
                                                                 Expanded(
                                                                   flex: 3,
                                                                   child: Text(
-                                                                    val.toStringAsFixed(
-                                                                      2,
-                                                                    ),
+                                                                    docTotal
+                                                                        .toStringAsFixed(
+                                                                          2,
+                                                                        ),
                                                                     textAlign:
                                                                         TextAlign
                                                                             .right,
+                                                                    style: const TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
                                                                   ),
                                                                 ),
                                                               ],
                                                             ),
-                                                          );
-                                                        }),
-
-                                                        // DOC TOTAL
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                vertical: 8,
-                                                              ),
-                                                          child: Row(
-                                                            children: [
-                                                              const Expanded(
-                                                                flex: 5,
-                                                                child: Text(
-                                                                  "Inv. Total",
-                                                                  style: TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
+                                                          ),
+                                                          if (index !=
+                                                              cust
+                                                                      .value
+                                                                      .length -
+                                                                  1)
+                                                            const Divider(),
+                                                        ],
+                                                      );
+                                                    }),
+                                                    const SizedBox(height: 8),
+                                                    // CUSTOMER TOTAL
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        border: Border(
+                                                          top: BorderSide(
+                                                            color: Colors.grey
+                                                                .withValues(
+                                                                  alpha: 0.4,
                                                                 ),
-                                                              ),
-                                                              _vDivider(),
-                                                              const Expanded(
-                                                                flex: 2,
-                                                                child:
-                                                                    SizedBox(),
-                                                              ),
-                                                              _vDivider(),
-                                                              Expanded(
-                                                                flex: 3,
-                                                                child: Text(
-                                                                  docTotal
-                                                                      .toStringAsFixed(
-                                                                        2,
-                                                                      ),
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .right,
-                                                                  style: const TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
                                                           ),
                                                         ),
-                                                        if (index !=
-                                                            cust.value.length -
-                                                                1)
-                                                          const Divider(),
-                                                      ],
-                                                    );
-                                                  }),
-                                                ],
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          const Expanded(
+                                                            flex: 5,
+                                                            child: Text(
+                                                              "Customer Total",
+                                                              style: TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          _vDivider(),
+                                                          const Expanded(
+                                                            flex: 2,
+                                                            child: SizedBox(),
+                                                          ),
+                                                          _vDivider(),
+                                                          Expanded(
+                                                            flex: 3,
+                                                            child: Text(
+                                                              customerTotal
+                                                                  .toStringAsFixed(
+                                                                    2,
+                                                                  ),
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .right,
+                                                              style: const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               )
                                             : const SizedBox(),
                                       ),
-
-                                      // CUSTOMER TOTAL
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          border: Border(
-                                            top: BorderSide(
-                                              color: Colors.grey.withValues(
-                                                alpha: 0.4,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Expanded(
-                                              flex: 5,
-                                              child: Text(
-                                                "Customer Total",
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            _vDivider(),
-                                            const Expanded(
-                                              flex: 2,
-                                              child: SizedBox(),
-                                            ),
-                                            _vDivider(),
-                                            Expanded(
-                                              flex: 3,
-                                              child: Text(
-                                                customerTotal.toStringAsFixed(
-                                                  2,
-                                                ),
-                                                textAlign: TextAlign.right,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      const Divider(),
                                       const SizedBox(height: 10),
                                     ],
                                   );
                                 })),
                           const SizedBox(height: 10),
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 12,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.08),
-                              border: Border(
-                                top: BorderSide(
-                                  color: Colors.blue.withValues(alpha: 0.5),
+                              color: isSO
+                                  ? Colors.blue.withValues(alpha: 0.08)
+                                  : Colors.green.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
+                              ],
+                              border: Border.all(
+                                color: isSO
+                                    ? Colors.blue.withValues(alpha: 0.4)
+                                    : Colors.green.withValues(alpha: 0.4),
                               ),
                             ),
                             child: Row(
@@ -2008,9 +2285,12 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                   flex: 5,
                                   child: Text(
                                     "Day Grand Total",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      fontSize: 15,
+                                      color: isSO
+                                          ? Colors.blue[800]
+                                          : Colors.green[800],
                                     ),
                                   ),
                                 ),
@@ -2026,9 +2306,12 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                   child: Text(
                                     dayTotal.toStringAsFixed(2),
                                     textAlign: TextAlign.right,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      fontSize: 15,
+                                      color: isSO
+                                          ? Colors.blue[800]
+                                          : Colors.green[800],
                                     ),
                                   ),
                                 ),

@@ -573,7 +573,12 @@ class HomePageState extends State<HomePage> {
         soNosMap[item.customerCode]!.add(item.soNo);
         return sum + (double.tryParse(item.orderValue) ?? 0);
       });
-      var result = SumCount(totalValue, soNosMap.length);
+      final distinctSOCount = soNosMap.values
+          .expand((list) => list)
+          .toSet()
+          .length;
+
+      var result = SumCount(totalValue, distinctSOCount);
 
       setState(() {
         totalSOPunchedValue = result.sum;
@@ -591,7 +596,12 @@ class HomePageState extends State<HomePage> {
           soNosMap[item.customerCode]!.add(item.soNo);
           return sum + (double.tryParse(item.orderValue) ?? 0);
         });
-        result = SumCount(totalValue, soNosMap.length);
+        final distinctSOCount = soNosMap.values
+            .expand((list) => list)
+            .toSet()
+            .length;
+
+        result = SumCount(totalValue, distinctSOCount);
         totalDailySOPunchedValue = result.sum;
         totalDailySOPunchedCount = result.count;
       });
@@ -648,7 +658,12 @@ class HomePageState extends State<HomePage> {
             invoiceNosMap[item.customerCode]!.add(item.invoiceNo);
             return sum + (double.tryParse(item.rowTotal) ?? 0);
           });
-          var result = SumCount(totalValue, invoiceNosMap.length);
+          final distinctInvoiceCount = invoiceNosMap.values
+              .expand((list) => list)
+              .toSet()
+              .length;
+
+          var result = SumCount(totalValue, distinctInvoiceCount);
 
           setState(() {
             totalInvoiceValue = result.sum;
@@ -666,7 +681,12 @@ class HomePageState extends State<HomePage> {
               invoiceNosMap[item.customerCode]!.add(item.invoiceNo);
               return sum + (double.tryParse(item.rowTotal) ?? 0);
             });
-            result = SumCount(totalValue, invoiceNosMap.length);
+            final distinctInvoiceCount = invoiceNosMap.values
+                .expand((list) => list)
+                .toSet()
+                .length;
+
+            result = SumCount(totalValue, distinctInvoiceCount);
             totalDailyInvoiceValue = result.sum;
             totalDailyInvoiceCount = result.count;
           });
