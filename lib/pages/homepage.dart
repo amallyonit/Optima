@@ -3937,90 +3937,118 @@ class HomePageState extends State<HomePage> {
     required int dailyCount,
     required Color color,
   }) {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.85), color],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            blurRadius: 6,
-            color: Color(0x33000000),
-            offset: Offset(0, 3),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        splashColor: Colors.white.withValues(alpha: 0.2),
+        highlightColor: Colors.white.withValues(alpha: 0.1),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SOAndSalesChartPage(
+                soList: soDetailList,
+                salesList: sales,
+                soDailyList: dailySoDetailList,
+                salesDailyList: dailySales,
+              ),
+            ),
+          );
+        },
+        child: Ink(
+          height: 215,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color.withValues(alpha: 0.85), color],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                blurRadius: 10,
+                color: Color(0x33000000),
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title
-            Text(
-              dailyTitle,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// Top row with arrow (key visual hint)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      dailyTitle,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.white70,
+                    ),
+                  ],
+                ),
 
-            // Value
-            Text(
-              "₹ ${_formatValue(dailyValue)}",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+                const SizedBox(height: 4),
 
-            // Count
-            Text(
-              "Count: $dailyCount",
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
+                Text(
+                  "₹ ${_formatValue(dailyValue)}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
 
-            Divider(
-              thickness: 1.5,
-              height: 16,
-              color: const Color.fromARGB(
-                255,
-                248,
-                246,
-                246,
-              ).withValues(alpha: 0.9),
-            ),
+                Text(
+                  "Count: $dailyCount",
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
 
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+                const SizedBox(height: 8),
 
-            // Value
-            Text(
-              "₹ ${_formatValue(value)}",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+                Divider(
+                  thickness: 1.2,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
 
-            // Count
-            Text(
-              "Count: $count",
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+                const SizedBox(height: 6),
+
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                Text(
+                  "₹ ${_formatValue(value)}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                Text(
+                  "Count: $count",
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

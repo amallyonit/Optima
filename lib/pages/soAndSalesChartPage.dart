@@ -1385,10 +1385,9 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                                       style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color: Colors.blue
-                                                            .withValues(
-                                                              alpha: 2.08,
-                                                            ),
+                                                        color: isSO
+                                                            ? Colors.blue[800]
+                                                            : Colors.green[800],
                                                       ),
                                                       softWrap: true,
                                                     ),
@@ -1857,10 +1856,9 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                                       style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color: Colors.green
-                                                            .withValues(
-                                                              alpha: 2.08,
-                                                            ),
+                                                        color: isSO
+                                                            ? Colors.blue[800]
+                                                            : Colors.green[800],
                                                       ),
                                                       softWrap: true,
                                                     ),
