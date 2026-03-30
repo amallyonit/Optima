@@ -175,7 +175,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
 
     // SO aggregation
     for (var item in list) {
-      final val = double.tryParse(item.orderValue) ?? 0;
+      final val = double.tryParse(item.pendingValue) ?? 0;
 
       soMap[item.customerCode] = (soMap[item.customerCode] ?? 0) + val;
 
@@ -239,9 +239,20 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
     final Map<String, List<String>> soNosMap = {};
     final Map<String, List<String>> invoiceNosMap = {};
 
+    final parsedFilterDate = DateFormat('dd/MM/yyyy').parse(filterDate!);
+    final selectedMonth = parsedFilterDate.month;
+    final selectedYear = parsedFilterDate.year;
+
     // SO aggregation
     for (var item in filteredSoList) {
-      final val = double.tryParse(item.orderValue) ?? 0;
+      final soParsedDate = DateFormat('dd/MM/yyyy').parse(item.soDate);
+
+      if (soParsedDate.month != selectedMonth ||
+          soParsedDate.year != selectedYear) {
+        continue; // skip other months
+      }
+
+      final val = double.tryParse(item.pendingValue) ?? 0;
 
       soMap[item.customerCode] = (soMap[item.customerCode] ?? 0) + val;
 
@@ -284,9 +295,20 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
     final Map<String, List<String>> soNosMap = {};
     final Map<String, List<String>> invoiceNosMap = {};
 
+    final parsedFilterDate = DateFormat('dd/MM/yyyy').parse(filterDate!);
+    final selectedMonth = parsedFilterDate.month;
+    final selectedYear = parsedFilterDate.year;
+
     // SO aggregation
     for (var item in widget.soList) {
-      final val = double.tryParse(item.orderValue) ?? 0;
+      final soParsedDate = DateFormat('dd/MM/yyyy').parse(item.soDate);
+
+      if (soParsedDate.month != selectedMonth ||
+          soParsedDate.year != selectedYear) {
+        continue; // skip other months
+      }
+
+      final val = double.tryParse(item.pendingValue) ?? 0;
 
       soMap[item.soDate] = (soMap[item.soDate] ?? 0) + val;
 
@@ -450,6 +472,12 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
     } else {
       axis = AxisConfig(10, 2);
     }
+    final minValue = data.fold<double>(0, (prev, e) {
+      final val = e.value;
+      return val < prev ? val : prev;
+    });
+    final minY = minValue < 0 ? minValue * 1.5 : 0;
+    final interval = (axis.maxY - minY) / 5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,12 +522,23 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                       duration: const Duration(milliseconds: 250),
                       BarChartData(
                         maxY: axis.maxY,
-                        minY: 0,
+                        // minY: 0,
+                        minY: minValue < 0 ? minValue : 0,
                         baselineY: 0,
                         alignment: chartData.length <= 2
                             ? BarChartAlignment.spaceEvenly
                             : BarChartAlignment.spaceAround,
                         gridData: FlGridData(show: false),
+                        extraLinesData: ExtraLinesData(
+                          horizontalLines: [
+                            HorizontalLine(
+                              y: 0,
+                              color: Colors.grey,
+                              strokeWidth: 1,
+                              dashArray: [5, 5], // optional dashed line
+                            ),
+                          ],
+                        ),
                         barGroups: List.generate(chartData.length, (index) {
                           final item = chartData[index];
                           return BarChartGroupData(
@@ -523,7 +562,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                           show: true,
                           border: const Border(
                             left: BorderSide(color: Colors.black12),
-                            bottom: BorderSide(color: Colors.black12),
+                            bottom: BorderSide.none,
                             top: BorderSide.none,
                             right: BorderSide.none,
                           ),
@@ -542,7 +581,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                           leftTitles: AxisTitles(
                             sideTitles: SideTitles(
                               showTitles: true,
-                              interval: axis.interval,
+                              interval: interval,
                               reservedSize: 50,
                               getTitlesWidget: (value, meta) {
                                 if (value >= 10000000) {
@@ -640,6 +679,12 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
       data,
       (e) => e.soValue > e.salesValue ? e.soValue : e.salesValue,
     );
+
+    final minValue = data.fold<double>(0, (prev, e) {
+      final val = e.salesValue;
+      return val < prev ? val : prev;
+    });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -698,7 +743,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                       duration: const Duration(milliseconds: 250),
                       BarChartData(
                         maxY: axis.maxY,
-                        minY: 0,
+                        minY: minValue < 0 ? minValue * 1.2 : 0,
                         baselineY: 0,
                         alignment: BarChartAlignment.spaceAround,
                         gridData: FlGridData(show: false),
@@ -862,6 +907,12 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
       data,
       (e) => e.soValue > e.salesValue ? e.soValue : e.salesValue,
     );
+
+    final minValue = data.fold<double>(0, (prev, e) {
+      final val = e.salesValue;
+      return val < prev ? val : prev;
+    });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -919,7 +970,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                     child: BarChart(
                       BarChartData(
                         maxY: axis.maxY,
-                        minY: 0,
+                        minY: minValue < 0 ? minValue * 1.2 : 0,
                         baselineY: 0,
                         alignment: BarChartAlignment.spaceAround,
                         gridData: FlGridData(show: false),
@@ -1180,9 +1231,12 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
   ) {
     final selectedDate = item.docDate;
     double dayTotal = 0;
-    final soData = widget.soList
-        .where((e) => e.soDate == selectedDate)
-        .toList();
+    final parsedSelectedDate = DateFormat('dd/MM/yyyy').parse(selectedDate);
+    final soData = widget.soList.where((e) {
+      final parsedSoDate = DateFormat('dd/MM/yyyy').parse(e.soDate);
+      return parsedSoDate.isBefore(parsedSelectedDate) ||
+          parsedSoDate.isAtSameMomentAs(parsedSelectedDate);
+    }).toList();
 
     final salesData = widget.salesList
         .where(
@@ -1207,7 +1261,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
 
     if (isSO) {
       for (var item in soData) {
-        dayTotal += double.tryParse(item.orderValue) ?? 0;
+        dayTotal += double.tryParse(item.pendingValue) ?? 0;
       }
     } else {
       for (var item in salesData) {
@@ -1216,7 +1270,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
     }
 
     final headerTitle = isSO
-        ? "Sales Orders - $selectedDate"
+        ? "Pending Sales Orders Upto - $selectedDate"
         : "Invoices - $selectedDate";
 
     showModalBottomSheet(
@@ -1322,7 +1376,8 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                   for (var doc in cust.value.values) {
                                     for (var item in doc) {
                                       customerTotal +=
-                                          double.tryParse(item.orderValue) ?? 0;
+                                          double.tryParse(item.pendingValue) ??
+                                          0;
                                     }
                                   }
                                   return Column(
@@ -1600,7 +1655,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                                           ) {
                                                             final qty =
                                                                 (double.tryParse(
-                                                                          prod.orderQuantity,
+                                                                          prod.pendingQuantity,
                                                                         ) ??
                                                                         0)
                                                                     .toInt()
@@ -1608,7 +1663,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
 
                                                             final val =
                                                                 double.tryParse(
-                                                                  prod.orderValue,
+                                                                  prod.pendingValue,
                                                                 ) ??
                                                                 0.0;
 

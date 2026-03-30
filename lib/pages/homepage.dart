@@ -457,12 +457,15 @@ class HomePageState extends State<HomePage> {
     int fetchedCount = 0;
     soDetailList.clear();
     dailySoDetailList.clear();
-    DateTime? selectedMonthFromDate = DateTime(
-      DateFormat('dd/MM/yyyy').parse(FilterDate).year,
-      DateFormat('dd/MM/yyyy').parse(FilterDate).month,
+
+    final parsedDate = DateFormat('dd/MM/yyyy').parse(FilterDate);
+    DateTime selectedMonthFromDate = DateTime(
+      parsedDate.year,
+      parsedDate.month -
+          3, // go back 3 months (current month included = 4 months range)
       1,
     );
-    final parsedDate = DateFormat('dd/MM/yyyy').parse(FilterDate);
+
     try {
       do {
         var body = {
@@ -487,10 +490,11 @@ class HomePageState extends State<HomePage> {
 
           final newSalesOrder = list
               .map((e) => SODetailsList.fromJson(e))
+              .where((e) => e.soStatus == "Open")
               .toList();
 
           soDetailList.addAll(newSalesOrder);
-          fetchedCount = newSalesOrder.length;
+          fetchedCount = list.length;
           index++;
         } else {
           fetchedCount = 0;
@@ -571,7 +575,7 @@ class HomePageState extends State<HomePage> {
       final totalValue = soDetailList.fold<double>(0, (sum, item) {
         soNosMap.putIfAbsent(item.customerCode, () => []);
         soNosMap[item.customerCode]!.add(item.soNo);
-        return sum + (double.tryParse(item.orderValue) ?? 0);
+        return sum + (double.tryParse(item.pendingValue) ?? 0);
       });
       final distinctSOCount = soNosMap.values
           .expand((list) => list)
@@ -594,7 +598,7 @@ class HomePageState extends State<HomePage> {
         final totalValue = dailySoDetailList.fold<double>(0, (sum, item) {
           soNosMap.putIfAbsent(item.customerCode, () => []);
           soNosMap[item.customerCode]!.add(item.soNo);
-          return sum + (double.tryParse(item.orderValue) ?? 0);
+          return sum + (double.tryParse(item.pendingValue) ?? 0);
         });
         final distinctSOCount = soNosMap.values
             .expand((list) => list)
@@ -2590,7 +2594,7 @@ class HomePageState extends State<HomePage> {
                             Expanded(
                               child: _buildSummaryBox(
                                 title: selectedMonth!,
-                                dailyTitle: "SO Summary\n$selectedDate",
+                                dailyTitle: "Pending SO\n$selectedDate",
                                 value: totalSOPunchedValue,
                                 count: totalSOPunchedCount,
                                 dailyValue: totalDailySOPunchedValue,
@@ -2605,7 +2609,7 @@ class HomePageState extends State<HomePage> {
                             Expanded(
                               child: _buildSummaryBox(
                                 title: selectedMonth!,
-                                dailyTitle: "Invoice Summary\n$selectedDate",
+                                dailyTitle: "Invoices\n$selectedDate",
                                 value: totalInvoiceValue,
                                 count: totalInvoiceCount,
                                 dailyValue: totalDailyInvoiceValue,
@@ -4025,7 +4029,7 @@ class HomePageState extends State<HomePage> {
                 const SizedBox(height: 6),
 
                 Text(
-                  title,
+                  'Upto $title',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
