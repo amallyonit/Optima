@@ -476,8 +476,28 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
       final val = e.value;
       return val < prev ? val : prev;
     });
-    final minY = minValue < 0 ? minValue * 1.5 : 0;
-    final interval = (axis.maxY - minY) / 5;
+    //final minY = minValue < 0 ? minValue * 1.5 : 0;
+
+    final hasNegative = minValue < 0;
+    final hasPositive = axis.maxY > 0;
+
+    double minY;
+    double maxY;
+
+    if (hasNegative && !hasPositive) {
+      // Only negative values
+      minY = minValue * 1.2;
+      maxY = 0;
+    } else if (!hasNegative && hasPositive) {
+      // Only positive values
+      minY = 0;
+      maxY = axis.maxY;
+    } else {
+      // Mixed values
+      minY = minValue * 1.2;
+      maxY = axis.maxY;
+    }
+    final interval = (maxY - minY) / 5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,9 +541,8 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                     child: BarChart(
                       duration: const Duration(milliseconds: 250),
                       BarChartData(
-                        maxY: axis.maxY,
-                        // minY: 0,
-                        minY: minValue < 0 ? minValue : 0,
+                        maxY: maxY,
+                        minY: minY,
                         baselineY: 0,
                         alignment: chartData.length <= 2
                             ? BarChartAlignment.spaceEvenly
@@ -593,8 +612,23 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                     overflow: TextOverflow.visible,
                                   );
                                 } else {
+                                  double val = value / 100000;
+
+                                  // normalize -0.0
+                                  if (val.abs() < 0.01) val = 0;
+
+                                  String text;
+
+                                  if (val.abs() < 1) {
+                                    // small values → show 2 decimals
+                                    text = "${val.abs().toStringAsFixed(2)} L";
+                                  } else {
+                                    // bigger values → 1 decimal is enough
+                                    text = "${val.toStringAsFixed(1)} L";
+                                  }
+
                                   return Text(
-                                    "${(value / 100000).toStringAsFixed(0)} L",
+                                    text,
                                     style: const TextStyle(fontSize: 10),
                                     maxLines: 1,
                                   );
@@ -685,6 +719,25 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
       return val < prev ? val : prev;
     });
 
+    final hasNegative = minValue < 0;
+    final hasPositive = axis.maxY > 0;
+
+    double minY;
+    double maxY;
+
+    if (hasNegative && !hasPositive) {
+      minY = minValue * 1.2;
+      maxY = 0;
+    } else if (!hasNegative && hasPositive) {
+      minY = 0;
+      maxY = axis.maxY;
+    } else {
+      minY = minValue * 1.2;
+      maxY = axis.maxY;
+    }
+
+    final interval = (maxY - minY) / 5;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -742,9 +795,9 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                     child: BarChart(
                       duration: const Duration(milliseconds: 250),
                       BarChartData(
-                        maxY: axis.maxY,
-                        minY: minValue < 0 ? minValue * 1.2 : 0,
-                        baselineY: 0,
+                        maxY: maxY,
+                        minY: minY,
+                        // baselineY: 0,
                         alignment: BarChartAlignment.spaceAround,
                         gridData: FlGridData(show: false),
                         barGroups: List.generate(chartData.length, (index) {
@@ -796,7 +849,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                           leftTitles: AxisTitles(
                             sideTitles: SideTitles(
                               showTitles: true,
-                              interval: axis.interval,
+                              interval: interval,
                               reservedSize: 50,
                               getTitlesWidget: (value, meta) {
                                 // Prevent duplicate top label
@@ -813,8 +866,21 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                     overflow: TextOverflow.visible,
                                   );
                                 } else {
+                                  double val = value / 100000;
+
+                                  // remove -0.0
+                                  if (val.abs() < 0.01) val = 0;
+
+                                  String text;
+
+                                  if (val.abs() < 1) {
+                                    text = "${val.abs().toStringAsFixed(2)} L";
+                                  } else {
+                                    text = "${val.toStringAsFixed(1)} L";
+                                  }
+
                                   return Text(
-                                    "${(value / 100000).toStringAsFixed(0)} L",
+                                    text,
                                     style: const TextStyle(fontSize: 10),
                                     maxLines: 1,
                                   );
@@ -915,6 +981,25 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
       return val < prev ? val : prev;
     });
 
+    final hasNegative = minValue < 0;
+    final hasPositive = axis.maxY > 0;
+
+    double minY;
+    double maxY;
+
+    if (hasNegative && !hasPositive) {
+      minY = minValue * 1.2;
+      maxY = 0;
+    } else if (!hasNegative && hasPositive) {
+      minY = 0;
+      maxY = axis.maxY;
+    } else {
+      minY = minValue * 1.2;
+      maxY = axis.maxY;
+    }
+
+    final interval = (maxY - minY) / 5;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -971,9 +1056,8 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                     padding: const EdgeInsets.only(top: 12),
                     child: BarChart(
                       BarChartData(
-                        maxY: axis.maxY,
-                        minY: minValue < 0 ? minValue * 1.2 : 0,
-                        baselineY: 0,
+                        maxY: maxY,
+                        minY: minY,
                         alignment: BarChartAlignment.spaceAround,
                         gridData: FlGridData(show: false),
                         barGroups: List.generate(chartData.length, (index) {
@@ -1025,7 +1109,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                           leftTitles: AxisTitles(
                             sideTitles: SideTitles(
                               showTitles: true,
-                              interval: axis.interval,
+                              interval: interval,
                               reservedSize: 50,
                               getTitlesWidget: (value, meta) {
                                 // Prevent duplicate top label
@@ -1042,8 +1126,21 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                     overflow: TextOverflow.visible,
                                   );
                                 } else {
+                                  double val = value / 100000;
+
+                                  // remove -0.0
+                                  if (val.abs() < 0.01) val = 0;
+
+                                  String text;
+
+                                  if (val.abs() < 1) {
+                                    text = "${val.abs().toStringAsFixed(2)} L";
+                                  } else {
+                                    text = "${val.toStringAsFixed(1)} L";
+                                  }
+
                                   return Text(
-                                    "${(value / 100000).toStringAsFixed(0)} L",
+                                    text,
                                     style: const TextStyle(fontSize: 10),
                                     maxLines: 1,
                                   );
