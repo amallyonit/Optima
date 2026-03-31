@@ -552,7 +552,7 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                                     : chartData.length == 2
                                     ? 22
                                     : 18,
-                                color: color,
+                                color: item.value < 0 ? Colors.red : color,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ],
@@ -764,7 +764,9 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                               // SALES BAR (Green)
                               BarChartRodData(
                                 toY: item.salesValue,
-                                color: Colors.green,
+                                color: item.salesValue < 0
+                                    ? Colors.red
+                                    : Colors.green,
                                 width: 18,
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -991,7 +993,9 @@ class _SOAndSalesChartPageState extends State<SOAndSalesChartPage> {
                               // SALES BAR (Green)
                               BarChartRodData(
                                 toY: item.salesValue,
-                                color: Colors.green,
+                                color: item.salesValue < 0
+                                    ? Colors.red
+                                    : Colors.green,
                                 width: 25,
                                 borderRadius: BorderRadius.circular(4),
                               ),
