@@ -6141,3 +6141,19 @@ class CombinedCustomerData {
     required this.invoiceNos,
   });
 }
+
+class CombinedMonthData {
+  final String docDate;
+  final double soValue;
+  final double salesValue;
+  final List<String> soNos;
+  final List<String> invoiceNos;
+
+  CombinedMonthData({
+    required this.docDate,
+    required this.soValue,
+    required this.salesValue,
+    required this.soNos,
+    required this.invoiceNos,
+  });
+}

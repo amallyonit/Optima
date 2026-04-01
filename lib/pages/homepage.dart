@@ -188,6 +188,8 @@ class HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> userList = [];
   Map<String, Map<String, bool>> allCategoriesState = {};
   final List<String> categories = ['RSM', 'ASM', 'TSM', 'Status', 'Date'];
+  String? selectedMonth;
+  String? selectedDate;
 
   @override
   void initState() {
@@ -405,6 +407,17 @@ class HomePageState extends State<HomePage> {
       'dd/MM/yyyy',
     ).format(DataManager.readSelectedDate()!).toString();
 
+    selectedDate = filterDate;
+    selectedMonth = DateFormat('MMM yyyy')
+        .format(
+          DateTime(
+            DateFormat('dd/MM/yyyy').parse(filterDate).year,
+            DateFormat('dd/MM/yyyy').parse(filterDate).month,
+            1,
+          ),
+        )
+        .toString();
+
     if (userRoleCode == "R1" || userRoleCode == "R2") {
       await Future.wait([
         _loadUserList(
@@ -444,12 +457,15 @@ class HomePageState extends State<HomePage> {
     int fetchedCount = 0;
     soDetailList.clear();
     dailySoDetailList.clear();
-    DateTime? selectedMonthFromDate = DateTime(
-      DateFormat('dd/MM/yyyy').parse(FilterDate).year,
-      DateFormat('dd/MM/yyyy').parse(FilterDate).month,
+
+    final parsedDate = DateFormat('dd/MM/yyyy').parse(FilterDate);
+    DateTime selectedMonthFromDate = DateTime(
+      parsedDate.year,
+      parsedDate.month -
+          3, // go back 3 months (current month included = 4 months range)
       1,
     );
-    final parsedDate = DateFormat('dd/MM/yyyy').parse(FilterDate);
+
     try {
       do {
         var body = {
@@ -474,10 +490,11 @@ class HomePageState extends State<HomePage> {
 
           final newSalesOrder = list
               .map((e) => SODetailsList.fromJson(e))
+              .where((e) => e.soStatus == "Open")
               .toList();
 
           soDetailList.addAll(newSalesOrder);
-          fetchedCount = newSalesOrder.length;
+          fetchedCount = list.length;
           index++;
         } else {
           fetchedCount = 0;
@@ -554,13 +571,19 @@ class HomePageState extends State<HomePage> {
                 trueStatusOptions.contains(person.soStatus));
       }).toList();
 
-      var result = soDetailList.fold(
-        SumCount(0, 0),
-        (acc, item) => SumCount(
-          acc.sum + (double.tryParse(item.orderValue) ?? 0),
-          acc.count + 1,
-        ),
-      );
+      final Map<String, List<String>> soNosMap = {};
+      final totalValue = soDetailList.fold<double>(0, (sum, item) {
+        soNosMap.putIfAbsent(item.customerCode, () => []);
+        soNosMap[item.customerCode]!.add(item.soNo);
+        return sum + (double.tryParse(item.pendingValue) ?? 0);
+      });
+      final distinctSOCount = soNosMap.values
+          .expand((list) => list)
+          .toSet()
+          .length;
+
+      var result = SumCount(totalValue, distinctSOCount);
+
       setState(() {
         totalSOPunchedValue = result.sum;
         totalSOPunchedCount = result.count;
@@ -571,13 +594,18 @@ class HomePageState extends State<HomePage> {
               invDate.isAtMost(parsedDate));
         }).toList();
 
-        result = dailySales.fold(
-          SumCount(0, 0),
-          (acc, item) => SumCount(
-            acc.sum + (double.tryParse(item.rowTotal) ?? 0),
-            acc.count + 1,
-          ),
-        );
+        final Map<String, List<String>> soNosMap = {};
+        final totalValue = dailySoDetailList.fold<double>(0, (sum, item) {
+          soNosMap.putIfAbsent(item.customerCode, () => []);
+          soNosMap[item.customerCode]!.add(item.soNo);
+          return sum + (double.tryParse(item.pendingValue) ?? 0);
+        });
+        final distinctSOCount = soNosMap.values
+            .expand((list) => list)
+            .toSet()
+            .length;
+
+        result = SumCount(totalValue, distinctSOCount);
         totalDailySOPunchedValue = result.sum;
         totalDailySOPunchedCount = result.count;
       });
@@ -628,13 +656,19 @@ class HomePageState extends State<HomePage> {
         final List list = json['responseData'] ?? [];
         if (list.isEmpty) {
           hasMore = false;
-          var result = sales.fold(
-            SumCount(0, 0),
-            (acc, item) => SumCount(
-              acc.sum + (double.tryParse(item.rowTotal) ?? 0),
-              acc.count + 1,
-            ),
-          );
+          final Map<String, List<String>> invoiceNosMap = {};
+          final totalValue = sales.fold<double>(0, (sum, item) {
+            invoiceNosMap.putIfAbsent(item.customerCode, () => []);
+            invoiceNosMap[item.customerCode]!.add(item.invoiceNo);
+            return sum + (double.tryParse(item.rowTotal) ?? 0);
+          });
+          final distinctInvoiceCount = invoiceNosMap.values
+              .expand((list) => list)
+              .toSet()
+              .length;
+
+          var result = SumCount(totalValue, distinctInvoiceCount);
+
           setState(() {
             totalInvoiceValue = result.sum;
             totalInvoiceCount = result.count;
@@ -645,13 +679,18 @@ class HomePageState extends State<HomePage> {
                   invDate.isAtMost(parsedDate));
             }).toList();
 
-            result = dailySales.fold(
-              SumCount(0, 0),
-              (acc, item) => SumCount(
-                acc.sum + (double.tryParse(item.rowTotal) ?? 0),
-                acc.count + 1,
-              ),
-            );
+            final Map<String, List<String>> invoiceNosMap = {};
+            final totalValue = dailySales.fold<double>(0, (sum, item) {
+              invoiceNosMap.putIfAbsent(item.customerCode, () => []);
+              invoiceNosMap[item.customerCode]!.add(item.invoiceNo);
+              return sum + (double.tryParse(item.rowTotal) ?? 0);
+            });
+            final distinctInvoiceCount = invoiceNosMap.values
+                .expand((list) => list)
+                .toSet()
+                .length;
+
+            result = SumCount(totalValue, distinctInvoiceCount);
             totalDailyInvoiceValue = result.sum;
             totalDailyInvoiceCount = result.count;
           });
@@ -2531,6 +2570,8 @@ class HomePageState extends State<HomePage> {
                                     builder: (context) => SOAndSalesChartPage(
                                       soList: soDetailList,
                                       salesList: sales,
+                                      soDailyList: dailySoDetailList,
+                                      salesDailyList: dailySales,
                                     ),
                                   ),
                                 );
@@ -2552,9 +2593,12 @@ class HomePageState extends State<HomePage> {
                             // SO BOX
                             Expanded(
                               child: _buildSummaryBox(
-                                title: "SO Summary",
+                                title: selectedMonth!,
+                                dailyTitle: "Pending SO\n$selectedDate",
                                 value: totalSOPunchedValue,
                                 count: totalSOPunchedCount,
+                                dailyValue: totalDailySOPunchedValue,
+                                dailyCount: totalDailySOPunchedCount,
                                 color: Colors.blue,
                               ),
                             ),
@@ -2564,9 +2608,12 @@ class HomePageState extends State<HomePage> {
                             // INVOICE BOX
                             Expanded(
                               child: _buildSummaryBox(
-                                title: "Invoice Summary",
+                                title: selectedMonth!,
+                                dailyTitle: "Invoices\n$selectedDate",
                                 value: totalInvoiceValue,
                                 count: totalInvoiceCount,
+                                dailyValue: totalDailyInvoiceValue,
+                                dailyCount: totalDailyInvoiceCount,
                                 color: Colors.green,
                               ),
                             ),
@@ -3887,62 +3934,125 @@ class HomePageState extends State<HomePage> {
 
   Widget _buildSummaryBox({
     required String title,
+    required String dailyTitle,
     required double value,
     required int count,
+    required double dailyValue,
+    required int dailyCount,
     required Color color,
   }) {
-    return Container(
-      height: 110,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.85), color],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            blurRadius: 6,
-            color: Color(0x33000000),
-            offset: Offset(0, 3),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        splashColor: Colors.white.withValues(alpha: 0.2),
+        highlightColor: Colors.white.withValues(alpha: 0.1),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SOAndSalesChartPage(
+                soList: soDetailList,
+                salesList: sales,
+                soDailyList: dailySoDetailList,
+                salesDailyList: dailySales,
+              ),
+            ),
+          );
+        },
+        child: Ink(
+          height: 215,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color.withValues(alpha: 0.85), color],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                blurRadius: 10,
+                color: Color(0x33000000),
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// Top row with arrow (key visual hint)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      dailyTitle,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.white70,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 4),
+
+                Text(
+                  "₹ ${_formatValue(dailyValue)}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                Text(
+                  "Count: $dailyCount",
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+
+                const SizedBox(height: 8),
+
+                Divider(
+                  thickness: 1.2,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  'Upto $title',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                Text(
+                  "₹ ${_formatValue(value)}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                Text(
+                  "Count: $count",
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
             ),
-
-            const Spacer(),
-
-            // Value
-            Text(
-              "₹ ${_formatValue(value)}",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            // Count
-            Text(
-              "Count: $count",
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-          ],
+          ),
         ),
       ),
     );
