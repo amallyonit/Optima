@@ -3367,259 +3367,502 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   //   );
   // }
 
-  Future<void> generateDailyCostingReport() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
+  // Future<void> generateDailyCostingReport() async {
+  //   final excel = xl.Excel.createExcel();
+  //   final sheet = excel['Sheet1'];
+  //   // sheet.getColAutoFits;
 
-    sheet.appendRow(
-      toCellRow(toCellRow([(DateTime.now().toString().substring(0, 10))])),
-    );
-    sheet.appendRow(toCellRow(toCellRow(["Financial Year for 25-26"])));
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "",
-        "Target - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
-        "Achievement - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
-        "Percentage - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
-      ]),
-    );
+  //   sheet.appendRow(
+  //     toCellRow(toCellRow([(DateTime.now().toString().substring(0, 10))])),
+  //   );
+  //   sheet.appendRow(toCellRow(toCellRow(["Financial Year for 25-26"])));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "",
+  //       "Target - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
+  //       "Achievement - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
+  //       "Percentage - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
+  //     ]),
+  //   );
 
-    sheet.appendRow(
-      toCellRow([
-        "Revenue",
-        "",
-        (medicalDeviceTarget + ipdTarget).toStringAsFixed(0),
-        monthlySales.toStringAsFixed(0),
-        ((monthlySales / (medicalDeviceTarget + ipdTarget)) * 100)
-            .toStringAsFixed(0),
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "Medical Devices",
-        medicalDeviceTarget.toStringAsFixed(0),
-        medicalDevicesSales.toStringAsFixed(0),
-        ((medicalDevicesSales / medicalDeviceTarget) * 100).toStringAsFixed(0),
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "IPD",
-        ipdTarget.toStringAsFixed(0),
-        ipdSales.toStringAsFixed(0),
-        ((ipdSales / ipdTarget) * 100).toStringAsFixed(0),
-      ]),
-    );
-    sheet.appendRow(toCellRow([""]));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "Revenue",
+  //       "",
+  //       (medicalDeviceTarget + ipdTarget).toStringAsFixed(0),
+  //       monthlySales.toStringAsFixed(0),
+  //       ((monthlySales / (medicalDeviceTarget + ipdTarget)) * 100)
+  //           .toStringAsFixed(0),
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "Medical Devices",
+  //       medicalDeviceTarget.toStringAsFixed(0),
+  //       medicalDevicesSales.toStringAsFixed(0),
+  //       ((medicalDevicesSales / medicalDeviceTarget) * 100).toStringAsFixed(0),
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "IPD",
+  //       ipdTarget.toStringAsFixed(0),
+  //       ipdSales.toStringAsFixed(0),
+  //       ((ipdSales / ipdTarget) * 100).toStringAsFixed(0),
+  //     ]),
+  //   );
+  //   sheet.appendRow(toCellRow([""]));
 
-    sheet.appendRow(
-      toCellRow([
-        "Pending Sales Order",
-        "",
-        "",
-        monthlySOvalue.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow(["", "Low Priority", "", lowVal.toStringAsFixed(0), ""]),
-    );
-    sheet.appendRow(
-      toCellRow(["", "Medium Priority", "", mediumVal.toStringAsFixed(0), ""]),
-    );
-    sheet.appendRow(
-      toCellRow(["", "High Priority", "", highVal.toStringAsFixed(0), ""]),
-    );
-    sheet.appendRow(toCellRow([""]));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "Pending Sales Order",
+  //       "",
+  //       "",
+  //       monthlySOvalue.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow(["", "Low Priority", "", lowVal.toStringAsFixed(0), ""]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow(["", "Medium Priority", "", mediumVal.toStringAsFixed(0), ""]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow(["", "High Priority", "", highVal.toStringAsFixed(0), ""]),
+  //   );
+  //   sheet.appendRow(toCellRow([""]));
 
-    sheet.appendRow(
-      toCellRow([
-        "Pending Sales Order",
-        "",
-        "",
-        (karnatakaPOSum + tamilNaduPOSum + othersPOSum).toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow(["", "Bangalore", "", karnatakaPOSum.toStringAsFixed(0), ""]),
-    );
-    sheet.appendRow(
-      toCellRow(["", "Rajapalayam", "", tamilNaduPOSum.toStringAsFixed(0), ""]),
-    );
-    sheet.appendRow(
-      toCellRow(["", "Others", "", othersPOSum.toStringAsFixed(0), ""]),
-    );
-    sheet.appendRow(toCellRow([""]));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "Pending Sales Order",
+  //       "",
+  //       "",
+  //       (karnatakaPOSum + tamilNaduPOSum + othersPOSum).toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow(["", "Bangalore", "", karnatakaPOSum.toStringAsFixed(0), ""]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow(["", "Rajapalayam", "", tamilNaduPOSum.toStringAsFixed(0), ""]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow(["", "Others", "", othersPOSum.toStringAsFixed(0), ""]),
+  //   );
+  //   sheet.appendRow(toCellRow([""]));
 
-    sheet.appendRow(
-      toCellRow([
-        "Purchases",
-        "",
-        purchaseTarget.toStringAsFixed(0),
-        monthlyPurchasePriceGrnSum.toStringAsFixed(0),
-        ((monthlyPurchasePriceGrnSum / purchaseTarget) * 100).toStringAsFixed(
-          0,
-        ),
-      ]),
-    );
-    sheet.appendRow(toCellRow([""]));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "Purchases",
+  //       "",
+  //       purchaseTarget.toStringAsFixed(0),
+  //       monthlyPurchasePriceGrnSum.toStringAsFixed(0),
+  //       ((monthlyPurchasePriceGrnSum / purchaseTarget) * 100).toStringAsFixed(
+  //         0,
+  //       ),
+  //     ]),
+  //   );
+  //   sheet.appendRow(toCellRow([""]));
 
-    sheet.appendRow(
-      toCellRow([
-        "Pending Purchase Order",
-        "",
-        "",
-        monthlyPOSum.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "Till ${getMonthName(DateTime.now().month - 2)}",
-        "",
-        tillLastMonthPOSum.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "${getMonthName(DateTime.now().month - 1)} ${DateTime.now().year}",
-        "",
-        lastMonthPOSum.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "${getMonthName(DateTime.now().month - 0)} ${DateTime.now().year}",
-        "",
-        currentMonthPOSum.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(toCellRow([""]));
-    sheet.appendRow(
-      toCellRow([
-        "Opening Stock",
-        "",
-        '',
-        inventoryOpeningValue.toStringAsFixed(0),
-      ]),
-    );
-    sheet.appendRow(toCellRow([""]));
-    sheet.appendRow(
-      toCellRow([
-        "Inventory Aging",
-        "",
-        inventoryTarget.toStringAsFixed(0),
-        (inventoryClosingValue).toStringAsFixed(0),
-        (((lessThan30DaysValue +
-                        a30to60DaysValue +
-                        a60to90DaysValue +
-                        nearExpiryValue +
-                        expiredValue) /
-                    inventoryTarget) *
-                100)
-            .toStringAsFixed(0),
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "<30 Days",
-        "",
-        lessThan30DaysValue.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "31-60 Days",
-        "",
-        a30to60DaysValue.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "61-90 Days",
-        "",
-        a60to90DaysValue.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow(["", "> 90 Days", "", (a91DaysValue).toStringAsFixed(0), ""]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "Near Expiry",
-        "",
-        nearExpiryValue.toStringAsFixed(0),
-        "",
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        "Expired Stock",
-        "",
-        (expiredValue.toStringAsFixed(0)),
-        "",
-      ]),
-    );
-    sheet.appendRow(toCellRow([""]));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "Pending Purchase Order",
+  //       "",
+  //       "",
+  //       monthlyPOSum.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "Till ${getMonthName(DateTime.now().month - 2)}",
+  //       "",
+  //       tillLastMonthPOSum.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "${getMonthName(DateTime.now().month - 1)} ${DateTime.now().year}",
+  //       "",
+  //       lastMonthPOSum.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "${getMonthName(DateTime.now().month - 0)} ${DateTime.now().year}",
+  //       "",
+  //       currentMonthPOSum.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(toCellRow([""]));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "Opening Stock",
+  //       "",
+  //       '',
+  //       inventoryOpeningValue.toStringAsFixed(0),
+  //     ]),
+  //   );
+  //   sheet.appendRow(toCellRow([""]));
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "Inventory Aging",
+  //       "",
+  //       inventoryTarget.toStringAsFixed(0),
+  //       (inventoryClosingValue).toStringAsFixed(0),
+  //       (((lessThan30DaysValue +
+  //                       a30to60DaysValue +
+  //                       a60to90DaysValue +
+  //                       nearExpiryValue +
+  //                       expiredValue) /
+  //                   inventoryTarget) *
+  //               100)
+  //           .toStringAsFixed(0),
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "<30 Days",
+  //       "",
+  //       lessThan30DaysValue.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "31-60 Days",
+  //       "",
+  //       a30to60DaysValue.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "61-90 Days",
+  //       "",
+  //       a60to90DaysValue.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow(["", "> 90 Days", "", (a91DaysValue).toStringAsFixed(0), ""]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "Near Expiry",
+  //       "",
+  //       nearExpiryValue.toStringAsFixed(0),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "",
+  //       "Expired Stock",
+  //       "",
+  //       (expiredValue.toStringAsFixed(0)),
+  //       "",
+  //     ]),
+  //   );
+  //   sheet.appendRow(toCellRow([""]));
 
-    sheet.appendRow(
-      toCellRow([
-        "COGS",
-        "",
-        cogsTarget.toStringAsFixed(0),
-        cogsValue.toStringAsFixed(0),
-        ((cogsValue / cogsTarget) * 100).toStringAsFixed(0),
-      ]),
-    );
+  //   sheet.appendRow(
+  //     toCellRow([
+  //       "COGS",
+  //       "",
+  //       cogsTarget.toStringAsFixed(0),
+  //       cogsValue.toStringAsFixed(0),
+  //       ((cogsValue / cogsTarget) * 100).toStringAsFixed(0),
+  //     ]),
+  //   );
 
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
+  //   setState(() {
+  //     // YtdSalesBarChartData = true;
+  //   });
 
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
+  //   if (kIsWeb) {
+  //     // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
 
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('DailyCostingReport.xlsx', excelBytes);
+  //     final excelBytes = excel.encode()!;
+  //     saveAndOpenExcel('DailyCostingReport.xlsx', excelBytes);
 
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/DailyCostingReport.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
+  //     // var fileBytes = excel.encode();
+  //     //
+  //     // final blob = html.Blob([fileBytes]);
+  //     // final url = html.Url.createObjectUrlFromBlob(blob);
+  //     // final anchor = html.AnchorElement()
+  //     //   ..href = url
+  //     //   ..download = 'monthly_sales_report.xlsx'
+  //     //   ..style.display = 'none';
+  //     // html.document.body!.append(anchor);
+  //     // anchor.click();
+  //     // anchor.remove();
+  //     // html.Url.revokeObjectUrl(url);
+  //   } else {
+  //     String storageDir = await getStorageDirectory();
+  //     final file = File('$storageDir/DailyCostingReport.xlsx');
+  //     await file.writeAsBytes(excel.encode()!);
+  //     OpenFile.open(file.path);
+  //   }
+  // }
+
+Future<void> generateDailyCostingReport() async {
+  final excel = xl.Excel.createExcel();
+  final sheet = excel['Sheet1'];
+
+  // ================= SAFE HELPERS =================
+  double safeNum(num? v) => v?.toDouble() ?? 0;
+
+  double safePercent(num? value, num? target) {
+    final v = safeNum(value);
+    final t = safeNum(target);
+    if (t == 0) return 0;
+    return (v / t) * 100;
   }
+
+  // ================= STYLE =================
+  xl.CellStyle borderedStyle(
+    dynamic value, {
+    bool bold = false,
+    bool center = false,
+  }) {
+    return xl.CellStyle(
+      bold: bold,
+      horizontalAlign: center
+          ? xl.HorizontalAlign.Center
+          : (value is num
+              ? xl.HorizontalAlign.Right
+              : xl.HorizontalAlign.Left),
+      verticalAlign: xl.VerticalAlign.Center,
+      topBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+      bottomBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+      leftBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+      rightBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+    );
+  }
+
+  // ================= CELL HELPER =================
+  void setCell({
+    required int row,
+    required int col,
+    required dynamic value,
+    bool bold = false,
+    bool center = false,
+  }) {
+    final cell = sheet.cell(
+      xl.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row),
+    );
+
+    if (value is num) {
+      if (value.isNaN || value.isInfinite) {
+        cell.value = xl.DoubleCellValue(0);
+      } else {
+        cell.value = xl.DoubleCellValue(value.toDouble());
+      }
+    } else {
+      cell.value = xl.TextCellValue(value?.toString() ?? "");
+    }
+
+    cell.cellStyle = borderedStyle(value, bold: bold, center: center);
+  }
+
+  int row = 0;
+
+  // ================= HEADER =================
+  setCell(
+    row: row,
+    col: 0,
+    value: DateTime.now().toString().substring(0, 10),
+    bold: true,
+    center: true,
+  );
+
+  sheet.merge(
+    xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+    xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
+  );
+  sheet.setRowHeight(row, 25);
+  row++;
+
+  setCell(
+    row: row,
+    col: 0,
+    value: "Financial Target for FY 25-26",
+    bold: true,
+    center: true,
+  );
+
+  sheet.merge(
+    xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+    xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
+  );
+  sheet.setRowHeight(row, 30);
+  row++;
+
+  // ================= TARGET HEADER =================
+  setCell(row: row, col: 0, value: "");
+  setCell(row: row, col: 1, value: "Target", bold: true, center: true);
+  setCell(row: row, col: 2, value: "Achievement", bold: true, center: true);
+  setCell(row: row, col: 3, value: "Percentage", bold: true, center: true);
+  setCell(row: row, col: 4, value: "");
+  row++;
+
+  // ================= COLUMN HEADERS =================
+  setCell(row: row, col: 0, value: "");
+  setCell(row: row, col: 1, value: "Mar-26 Target", bold: true);
+  setCell(row: row, col: 2, value: "");
+  setCell(row: row, col: 3, value: "Mar-26", bold: true);
+  setCell(row: row, col: 4, value: "%", bold: true);
+  row++;
+
+  // ================= REVENUE =================
+  double totalTarget = safeNum(medicalDeviceTarget) + safeNum(ipdTarget);
+
+  setCell(row: row, col: 0, value: "Revenue", bold: true);
+  setCell(row: row, col: 1, value: totalTarget);
+  setCell(row: row, col: 2, value: "");
+  setCell(row: row, col: 3, value: safeNum(monthlySales));
+  setCell(row: row, col: 4, value: safePercent(monthlySales, totalTarget));
+  row++;
+
+  setCell(row: row, col: 1, value: "Medical Devices");
+  setCell(row: row, col: 2, value: safeNum(medicalDeviceTarget));
+  setCell(row: row, col: 3, value: safeNum(medicalDevicesSales));
+  setCell(
+      row: row,
+      col: 4,
+      value: safePercent(medicalDevicesSales, medicalDeviceTarget));
+  row++;
+
+  setCell(row: row, col: 1, value: "IPD");
+  setCell(row: row, col: 2, value: safeNum(ipdTarget));
+  setCell(row: row, col: 3, value: safeNum(ipdSales));
+  setCell(row: row, col: 4, value: safePercent(ipdSales, ipdTarget));
+  row++;
+
+  // ================= PENDING SALES =================
+  row++;
+
+  setCell(row: row, col: 0, value: "Pending Sales Order", bold: true);
+  setCell(row: row, col: 3, value: safeNum(monthlySOvalue));
+  row++;
+
+  setCell(row: row, col: 1, value: "Low Priority");
+  setCell(row: row, col: 3, value: safeNum(lowVal));
+  row++;
+
+  setCell(row: row, col: 1, value: "Medium Priority");
+  setCell(row: row, col: 3, value: safeNum(mediumVal));
+  row++;
+
+  setCell(row: row, col: 1, value: "High Priority");
+  setCell(row: row, col: 3, value: safeNum(highVal));
+  row++;
+
+  // ================= RIGHT PANEL =================
+  int rightCol = 6;
+
+  setCell(row: 2, col: rightCol, value: "Pending Sales Order", bold: true);
+
+  setCell(row: 3, col: rightCol, value: "Bangalore");
+  setCell(row: 3, col: rightCol + 1, value: safeNum(karnatakaPOSum));
+
+  setCell(row: 4, col: rightCol, value: "Rajapalayam");
+  setCell(row: 4, col: rightCol + 1, value: safeNum(tamilNaduPOSum));
+
+  setCell(row: 5, col: rightCol, value: "Others");
+  setCell(row: 5, col: rightCol + 1, value: safeNum(othersPOSum));
+
+  setCell(row: 6, col: rightCol, value: "Total", bold: true);
+  setCell(
+      row: 6,
+      col: rightCol + 1,
+      value: safeNum(karnatakaPOSum) +
+          safeNum(tamilNaduPOSum) +
+          safeNum(othersPOSum));
+
+  // ================= PURCHASE =================
+  row += 2;
+
+  setCell(row: row, col: 0, value: "Purchases", bold: true);
+  setCell(row: row, col: 1, value: safeNum(purchaseTarget));
+  setCell(row: row, col: 3, value: safeNum(monthlyPurchasePriceGrnSum));
+  setCell(row: row, col: 4,
+      value: safePercent(monthlyPurchasePriceGrnSum, purchaseTarget));
+  row++;
+
+  // ================= INVENTORY =================
+  row++;
+
+  setCell(row: row, col: 0, value: "Inventory Aging", bold: true);
+  setCell(row: row, col: 1, value: safeNum(inventoryTarget));
+  setCell(row: row, col: 3, value: safeNum(inventoryClosingValue));
+  row++;
+
+  setCell(row: row, col: 1, value: "<30 Days");
+  setCell(row: row, col: 3, value: safeNum(lessThan30DaysValue));
+  row++;
+
+  setCell(row: row, col: 1, value: "31-60 Days");
+  setCell(row: row, col: 3, value: safeNum(a30to60DaysValue));
+  row++;
+
+  setCell(row: row, col: 1, value: "61-90 Days");
+  setCell(row: row, col: 3, value: safeNum(a60to90DaysValue));
+  row++;
+
+  setCell(row: row, col: 1, value: ">90 Days");
+  setCell(row: row, col: 3, value: safeNum(a91DaysValue));
+  row++;
+
+  // ================= COGS =================
+  row++;
+
+  setCell(row: row, col: 0, value: "COGS", bold: true);
+  setCell(row: row, col: 1, value: safeNum(cogsTarget));
+  setCell(row: row, col: 3, value: safeNum(cogsValue));
+  setCell(row: row, col: 4, value: safePercent(cogsValue, cogsTarget));
+
+  // ================= COLUMN WIDTH =================
+  sheet.setColumnWidth(0, 28);
+  sheet.setColumnWidth(1, 18);
+  sheet.setColumnWidth(2, 10);
+  sheet.setColumnWidth(3, 18);
+  sheet.setColumnWidth(4, 12);
+  sheet.setColumnWidth(6, 18);
+  sheet.setColumnWidth(7, 18);
+
+  // ================= SAVE =================
+  final bytes = excel.encode();
+  if (bytes == null) {
+    print("Excel encoding failed");
+    return;
+  }
+
+  if (kIsWeb) {
+    saveAndOpenExcel('DailyCostingReport.xlsx', bytes);
+  } else {
+    String dir = await getStorageDirectory();
+    final file = File('$dir/DailyCostingReport.xlsx');
+    await file.writeAsBytes(bytes);
+    OpenFile.open(file.path);
+  }
+}
 
   String formatDateString(DateTime date) {
     final formatter = DateFormat('dd/MM/yyyy');
