@@ -189,6 +189,7 @@ class HomePageState extends State<HomePage> {
   Map<String, Map<String, bool>> allCategoriesState = {};
   final List<String> categories = ['RSM', 'ASM', 'TSM', 'Status', 'Date'];
   String? selectedMonth;
+  String? selectedSalesMonth;
   String? selectedDate;
 
   @override
@@ -408,15 +409,12 @@ class HomePageState extends State<HomePage> {
     ).format(DataManager.readSelectedDate()!).toString();
 
     selectedDate = filterDate;
-    selectedMonth = DateFormat('MMM yyyy')
-        .format(
-          DateTime(
-            DateFormat('dd/MM/yyyy').parse(filterDate).year,
-            DateFormat('dd/MM/yyyy').parse(filterDate).month,
-            1,
-          ),
-        )
-        .toString();
+
+    final parsedDate = DateFormat('dd/MM/yyyy').parse(filterDate);
+    selectedMonth = DateFormat('MMM dd yyyy').format(parsedDate).toString();
+    selectedSalesMonth = DateFormat(
+      'MMM yyyy',
+    ).format(DateTime(parsedDate.year, parsedDate.month, 1));
 
     if (userRoleCode == "R1" || userRoleCode == "R2") {
       await Future.wait([
@@ -2593,7 +2591,7 @@ class HomePageState extends State<HomePage> {
                             // SO BOX
                             Expanded(
                               child: _buildSummaryBox(
-                                title: selectedMonth!,
+                                title: 'Upto $selectedMonth',
                                 dailyTitle: "Pending SO\n$selectedDate",
                                 value: totalSOPunchedValue,
                                 count: totalSOPunchedCount,
@@ -2608,7 +2606,7 @@ class HomePageState extends State<HomePage> {
                             // INVOICE BOX
                             Expanded(
                               child: _buildSummaryBox(
-                                title: selectedMonth!,
+                                title: selectedSalesMonth!,
                                 dailyTitle: "Invoices\n$selectedDate",
                                 value: totalInvoiceValue,
                                 count: totalInvoiceCount,
@@ -4029,7 +4027,7 @@ class HomePageState extends State<HomePage> {
                 const SizedBox(height: 6),
 
                 Text(
-                  'Upto $title',
+                  title,
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,

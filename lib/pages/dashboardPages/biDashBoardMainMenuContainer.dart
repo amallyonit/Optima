@@ -75,53 +75,6 @@ class DashboardBIPageState extends State<DashboardBIPage>
       const Text(""),
       const Text(""),
     ];
-    // switch (userRoleCode) {
-    //   case 'R1': // Access to all pages
-    //     items = [
-    //       "Sales",
-    //       "Finance",
-    //       "Purchase",
-    //       "Production",
-    //       "Inventory",
-    //       "Opportunity",
-    //       "Data Integrity",
-    //     ];
-
-    //     icons = [
-    //       Icons.show_chart_outlined,
-    //       Icons.cases_outlined,
-    //       Icons.price_change_outlined,
-    //       Icons.factory_outlined,
-    //       Icons.inventory_2_outlined,
-    //       Icons.link,
-    //       Icons.data_saver_off_outlined,
-    //     ];
-    //     pages = [
-    //       const SalesBI(),
-    //       const FinanceBIPage(),
-    //       const PurchaseBI(),
-    //       const ProductionFI(),
-    //       const InventoryBI(),
-    //       const Text(""),
-    //       const Text(""),
-    //     ];
-    //     break;
-
-    //   case 'R2': // Access only to SalesBI
-    //     items = ["Sales"];
-    //     icons = [Icons.show_chart_outlined];
-    //     pages = [const SalesBI()];
-    //     break;
-
-    //   case 'R3': // Access only to FinanceBIPage
-    //     items = ["Finance"];
-    //     icons = [Icons.cases_outlined];
-    //     pages = [const FinanceBIPage()];
-    //     break;
-
-    //   // Add other user roles similarly
-    // }
-
     setState(() {}); // Update the UI
   }
 

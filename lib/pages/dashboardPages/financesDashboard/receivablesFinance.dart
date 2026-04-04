@@ -21,6 +21,7 @@ import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../ReportService.dart';
 import '../platform_excel_helper.dart';
 import '../platform_pdf_helper.dart';
 
@@ -64,6 +65,8 @@ AsmwiseCollectionList asmwiseCollectionList = AsmwiseCollectionList(
 RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
   rsmwiseData: [],
 );
+
+final reportService = ReportService();
 
 double Collections = 0;
 String CollectionsStr = "";
@@ -2102,120 +2105,132 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   Future<void> generateReceivablesExcel(AllReceivablesFinanceList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
-      for (var monthlyData in list.agingData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
-        );
-      }
+    await reportService.generateExcel(
+      sheetName: 'Receivables',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
+          .toList(),
+      fileName: 'receivables.xlsx',
+    );
 
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('allReceivables.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/allReceivables.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    // try {
+    //   final excel = xl.Excel.createExcel();
+    //   final sheet = excel['Sheet1'];
+    //   sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
+    //   for (var monthlyData in list.agingData) {
+    //     sheet.appendRow(
+    //       toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
+    //     );
+    //   }
+
+    //   if (kIsWeb) {
+    //     final excelBytes = excel.encode()!;
+    //     saveAndOpenExcel('allReceivables.xlsx', excelBytes);
+    //   } else {
+    //     String storageDir = await getStorageDirectory();
+    //     final file = File('$storageDir/allReceivables.xlsx');
+    //     await file.writeAsBytes(excel.encode()!);
+    //     OpenFile.open(file.path);
+    //   }
+    // } catch (e) {
+    //   final snackBar = SnackBar(content: Text('Error: $e'));
+    //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    // }
   }
 
   Future<void> generateReceivablesPDF(AllReceivablesFinanceList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Receivables',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Ageing Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ageing Group Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in allReceivablesFinanceList.agingData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.agingGroup,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.agingGroupTotal.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
+    await reportService.generatePDF(
+      title: 'Receivables',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal.toStringAsFixed(2)])
+          .toList(),
+      fileName: 'receivables.pdf',
+    );
+    // try {
+    //   final pdf = pw.Document();
+    //   pdf.addPage(
+    //     pw.Page(
+    //       build: (pw.Context context) {
+    //         return pw.Center(
+    //           child: pw.Text(
+    //             'Receivables',
+    //             style: pw.TextStyle(
+    //               fontSize: 20,
+    //               fontWeight: pw.FontWeight.bold,
+    //             ),
+    //           ),
+    //         );
+    //       },
+    //     ),
+    //   );
+    //   pdf.addPage(
+    //     pw.Page(
+    //       build: (pw.Context context) {
+    //         return pw.Table(
+    //           border: pw.TableBorder.all(),
+    //           children: [
+    //             // Table header
+    //             pw.TableRow(
+    //               children: [
+    //                 pw.Text(
+    //                   'Ageing Group',
+    //                   style: pw.TextStyle(
+    //                     fontSize: 14,
+    //                     fontWeight: pw.FontWeight.bold,
+    //                   ),
+    //                 ),
+    //                 pw.Text(
+    //                   'Ageing Group Total',
+    //                   style: pw.TextStyle(
+    //                     fontSize: 14,
+    //                     fontWeight: pw.FontWeight.bold,
+    //                   ),
+    //                 ),
+    //               ],
+    //             ),
+    //             // Table data rows
+    //             for (var data in allReceivablesFinanceList.agingData)
+    //               pw.TableRow(
+    //                 children: [
+    //                   pw.Text(
+    //                     data.agingGroup,
+    //                     style: pw.TextStyle(
+    //                       fontSize: 14,
+    //                       fontWeight: pw.FontWeight.normal,
+    //                     ),
+    //                   ),
+    //                   pw.Text(
+    //                     data.agingGroupTotal.toString(),
+    //                     style: pw.TextStyle(
+    //                       fontSize: 14,
+    //                       fontWeight: pw.FontWeight.normal,
+    //                     ),
+    //                   ),
+    //                 ],
+    //               ),
+    //           ],
+    //         );
+    //       },
+    //     ),
+    //   );
 
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
+    //   if (kIsWeb) {
 
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/allReceivables.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    //     // Generate bytes
+    //     final pdfBytes = await pdf.save();
+    //     saveAndOpenPDF(pdfBytes);
+    //   } else {
+    //     String storageDir = await getStorageDirectory();
+    //     final file = File('$storageDir/allReceivables.pdf');
+    //     await file.writeAsBytes(await pdf.save());
+    //     OpenFile.open(file.path);
+    //   }
+    // } catch (e) {
+    //   final snackBar = SnackBar(content: Text('Error: $e'));
+    //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    // }
   }
 
   Future<void> generateAllReceivablesExcel() async {
@@ -4605,12 +4620,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       child: const Text("Download Excel"),
                                     ),
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateReceivablesPDF(
-                                            allReceivablesFinanceList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateReceivablesPDF(
+                                          allReceivablesFinanceList,
+                                        );
                                       },
                                       child: const Text("Download PDF"),
                                     ),

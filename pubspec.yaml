@@ -1,7 +1,7 @@
 name: optima
 description: "A CRM App"
 
-version: 1.0.14+1
+version: 1.0.15+1
 
 environment:
   sdk: ^3.9.2
@@ -56,6 +56,7 @@ dependencies:
   excel: ^4.0.6
   open_file: ^3.3.2
   path_provider: ^2.1.4
+  syncfusion_flutter_xlsio: ^24.1.41
 
   # Speech / Web
   speech_to_text: ^7.3.0
@@ -75,19 +76,19 @@ flutter:
   uses-material-design: true
 
   assets:
-    # - assets/images/Amaryllis/logo.png
-    # - assets/images/Amaryllis/ph_user-circle-thin.png
-    # - assets/images/Amaryllis/password-visibility.png
-    # - assets/images/Amaryllis/splashscreen.png
-    # - assets/images/Amaryllis/companyName.png
-    # - assets/images/Amaryllis/optima.png
+    - assets/images/Amaryllis/logo.png
+    - assets/images/Amaryllis/ph_user-circle-thin.png
+    - assets/images/Amaryllis/password-visibility.png
+    - assets/images/Amaryllis/splashscreen.png
+    - assets/images/Amaryllis/companyName.png
+    - assets/images/Amaryllis/optima.png
     
-    - assets/images/Bapuji/logo.png
-    - assets/images/Bapuji/ph_user-circle-thin.png
-    - assets/images/Bapuji/password-visibility.png
-    - assets/images/Bapuji/splashscreen.png
-    - assets/images/Bapuji/companyName.png
-    - assets/images/Bapuji/optima.png
+    # - assets/images/Bapuji/logo.png
+    # - assets/images/Bapuji/ph_user-circle-thin.png
+    # - assets/images/Bapuji/password-visibility.png
+    # - assets/images/Bapuji/splashscreen.png
+    # - assets/images/Bapuji/companyName.png
+    # - assets/images/Bapuji/optima.png
 
   fonts:
     - family: Roboto

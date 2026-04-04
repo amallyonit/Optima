@@ -1653,17 +1653,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         sheet.appendRow(toCellRow([itemData.dateName, itemData.visitCount]));
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'daily_number_of_visits.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('daily_number_of_visits.xlsx', excelBytes);
       } else {
@@ -1758,17 +1747,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'regional_managers_visit.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('regional_managers_visit.xlsx', excelBytes);
       } else {
@@ -1838,10 +1816,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
         final pdfBytes = await pdf.save();
         saveAndOpenPDF(pdfBytes);
       } else {
@@ -1871,17 +1845,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'sales_managers_visit.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('sales_managers_visit.xlsx', excelBytes);
       } else {
@@ -1951,10 +1914,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
         final pdfBytes = await pdf.save();
         saveAndOpenPDF(pdfBytes);
       } else {
@@ -1984,17 +1943,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'sales_person_visit.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('sales_person_visit.xlsx', excelBytes);
       } else {
@@ -2090,10 +2038,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
         final pdfBytes = await pdf.save();
         saveAndOpenPDF(pdfBytes);
       } else {
@@ -2121,17 +2065,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'number_of_visits_acc_wise.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('number_of_visits_acc_wise.xlsx', excelBytes);
       } else {
@@ -2260,17 +2193,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'promotion_analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('promotion_analysis.xlsx', excelBytes);
       } else {
@@ -2371,10 +2293,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
         final pdfBytes = await pdf.save();
         saveAndOpenPDF(pdfBytes);
       } else {
@@ -2402,17 +2320,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'product_wise_promotion_analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('product_wise_promotion_analysis.xlsx', excelBytes);
       } else {
@@ -2511,10 +2418,6 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       }
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
         final pdfBytes = await pdf.save();
         saveAndOpenPDF(pdfBytes);
       } else {

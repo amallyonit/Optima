@@ -1483,7 +1483,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         break;
       }
     }
-    
+
     await _loadEachQtrValues();
     await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
     showDrillDownChart = true;
