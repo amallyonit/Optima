@@ -1,5 +1,5 @@
 // ignore_for_file: file_names, use_build_context_synchronously, non_constant_identifier_names
-import 'package:optima/excel_helper.dart';
+// import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:excel/excel.dart' as xl;
@@ -3621,248 +3621,254 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   //   }
   // }
 
-Future<void> generateDailyCostingReport() async {
-  final excel = xl.Excel.createExcel();
-  final sheet = excel['Sheet1'];
+  Future<void> generateDailyCostingReport() async {
+    final excel = xl.Excel.createExcel();
+    final sheet = excel['Sheet1'];
 
-  // ================= SAFE HELPERS =================
-  double safeNum(num? v) => v?.toDouble() ?? 0;
+    // ================= SAFE HELPERS =================
+    double safeNum(num? v) => v?.toDouble() ?? 0;
 
-  double safePercent(num? value, num? target) {
-    final v = safeNum(value);
-    final t = safeNum(target);
-    if (t == 0) return 0;
-    return (v / t) * 100;
-  }
-
-  // ================= STYLE =================
-  xl.CellStyle borderedStyle(
-    dynamic value, {
-    bool bold = false,
-    bool center = false,
-  }) {
-    return xl.CellStyle(
-      bold: bold,
-      horizontalAlign: center
-          ? xl.HorizontalAlign.Center
-          : (value is num
-              ? xl.HorizontalAlign.Right
-              : xl.HorizontalAlign.Left),
-      verticalAlign: xl.VerticalAlign.Center,
-      topBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-      bottomBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-      leftBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-      rightBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-    );
-  }
-
-  // ================= CELL HELPER =================
-  void setCell({
-    required int row,
-    required int col,
-    required dynamic value,
-    bool bold = false,
-    bool center = false,
-  }) {
-    final cell = sheet.cell(
-      xl.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row),
-    );
-
-    if (value is num) {
-      if (value.isNaN || value.isInfinite) {
-        cell.value = xl.DoubleCellValue(0);
-      } else {
-        cell.value = xl.DoubleCellValue(value.toDouble());
-      }
-    } else {
-      cell.value = xl.TextCellValue(value?.toString() ?? "");
+    double safePercent(num? value, num? target) {
+      final v = safeNum(value);
+      final t = safeNum(target);
+      if (t == 0) return 0;
+      return (v / t) * 100;
     }
 
-    cell.cellStyle = borderedStyle(value, bold: bold, center: center);
-  }
+    // ================= STYLE =================
+    xl.CellStyle borderedStyle(
+      dynamic value, {
+      bool bold = false,
+      bool center = false,
+    }) {
+      return xl.CellStyle(
+        bold: bold,
+        horizontalAlign: center
+            ? xl.HorizontalAlign.Center
+            : (value is num
+                  ? xl.HorizontalAlign.Right
+                  : xl.HorizontalAlign.Left),
+        verticalAlign: xl.VerticalAlign.Center,
+        topBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+        bottomBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+        leftBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+        rightBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
+      );
+    }
 
-  int row = 0;
+    // ================= CELL HELPER =================
+    void setCell({
+      required int row,
+      required int col,
+      required dynamic value,
+      bool bold = false,
+      bool center = false,
+    }) {
+      final cell = sheet.cell(
+        xl.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row),
+      );
 
-  // ================= HEADER =================
-  setCell(
-    row: row,
-    col: 0,
-    value: DateTime.now().toString().substring(0, 10),
-    bold: true,
-    center: true,
-  );
+      if (value is num) {
+        if (value.isNaN || value.isInfinite) {
+          cell.value = xl.DoubleCellValue(0);
+        } else {
+          cell.value = xl.DoubleCellValue(value.toDouble());
+        }
+      } else {
+        cell.value = xl.TextCellValue(value?.toString() ?? "");
+      }
 
-  sheet.merge(
-    xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
-    xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
-  );
-  sheet.setRowHeight(row, 25);
-  row++;
+      cell.cellStyle = borderedStyle(value, bold: bold, center: center);
+    }
 
-  setCell(
-    row: row,
-    col: 0,
-    value: "Financial Target for FY 25-26",
-    bold: true,
-    center: true,
-  );
+    int row = 0;
 
-  sheet.merge(
-    xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
-    xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
-  );
-  sheet.setRowHeight(row, 30);
-  row++;
+    // ================= HEADER =================
+    setCell(
+      row: row,
+      col: 0,
+      value: DateTime.now().toString().substring(0, 10),
+      bold: true,
+      center: true,
+    );
 
-  // ================= TARGET HEADER =================
-  setCell(row: row, col: 0, value: "");
-  setCell(row: row, col: 1, value: "Target", bold: true, center: true);
-  setCell(row: row, col: 2, value: "Achievement", bold: true, center: true);
-  setCell(row: row, col: 3, value: "Percentage", bold: true, center: true);
-  setCell(row: row, col: 4, value: "");
-  row++;
+    sheet.merge(
+      xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+      xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
+    );
+    sheet.setRowHeight(row, 25);
+    row++;
 
-  // ================= COLUMN HEADERS =================
-  setCell(row: row, col: 0, value: "");
-  setCell(row: row, col: 1, value: "Mar-26 Target", bold: true);
-  setCell(row: row, col: 2, value: "");
-  setCell(row: row, col: 3, value: "Mar-26", bold: true);
-  setCell(row: row, col: 4, value: "%", bold: true);
-  row++;
+    setCell(
+      row: row,
+      col: 0,
+      value: "Financial Target for FY 25-26",
+      bold: true,
+      center: true,
+    );
 
-  // ================= REVENUE =================
-  double totalTarget = safeNum(medicalDeviceTarget) + safeNum(ipdTarget);
+    sheet.merge(
+      xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
+      xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
+    );
+    sheet.setRowHeight(row, 30);
+    row++;
 
-  setCell(row: row, col: 0, value: "Revenue", bold: true);
-  setCell(row: row, col: 1, value: totalTarget);
-  setCell(row: row, col: 2, value: "");
-  setCell(row: row, col: 3, value: safeNum(monthlySales));
-  setCell(row: row, col: 4, value: safePercent(monthlySales, totalTarget));
-  row++;
+    // ================= TARGET HEADER =================
+    setCell(row: row, col: 0, value: "");
+    setCell(row: row, col: 1, value: "Target", bold: true, center: true);
+    setCell(row: row, col: 2, value: "Achievement", bold: true, center: true);
+    setCell(row: row, col: 3, value: "Percentage", bold: true, center: true);
+    setCell(row: row, col: 4, value: "");
+    row++;
 
-  setCell(row: row, col: 1, value: "Medical Devices");
-  setCell(row: row, col: 2, value: safeNum(medicalDeviceTarget));
-  setCell(row: row, col: 3, value: safeNum(medicalDevicesSales));
-  setCell(
+    // ================= COLUMN HEADERS =================
+    setCell(row: row, col: 0, value: "");
+    setCell(row: row, col: 1, value: "Mar-26 Target", bold: true);
+    setCell(row: row, col: 2, value: "");
+    setCell(row: row, col: 3, value: "Mar-26", bold: true);
+    setCell(row: row, col: 4, value: "%", bold: true);
+    row++;
+
+    // ================= REVENUE =================
+    double totalTarget = safeNum(medicalDeviceTarget) + safeNum(ipdTarget);
+
+    setCell(row: row, col: 0, value: "Revenue", bold: true);
+    setCell(row: row, col: 1, value: totalTarget);
+    setCell(row: row, col: 2, value: "");
+    setCell(row: row, col: 3, value: safeNum(monthlySales));
+    setCell(row: row, col: 4, value: safePercent(monthlySales, totalTarget));
+    row++;
+
+    setCell(row: row, col: 1, value: "Medical Devices");
+    setCell(row: row, col: 2, value: safeNum(medicalDeviceTarget));
+    setCell(row: row, col: 3, value: safeNum(medicalDevicesSales));
+    setCell(
       row: row,
       col: 4,
-      value: safePercent(medicalDevicesSales, medicalDeviceTarget));
-  row++;
+      value: safePercent(medicalDevicesSales, medicalDeviceTarget),
+    );
+    row++;
 
-  setCell(row: row, col: 1, value: "IPD");
-  setCell(row: row, col: 2, value: safeNum(ipdTarget));
-  setCell(row: row, col: 3, value: safeNum(ipdSales));
-  setCell(row: row, col: 4, value: safePercent(ipdSales, ipdTarget));
-  row++;
+    setCell(row: row, col: 1, value: "IPD");
+    setCell(row: row, col: 2, value: safeNum(ipdTarget));
+    setCell(row: row, col: 3, value: safeNum(ipdSales));
+    setCell(row: row, col: 4, value: safePercent(ipdSales, ipdTarget));
+    row++;
 
-  // ================= PENDING SALES =================
-  row++;
+    // ================= PENDING SALES =================
+    row++;
 
-  setCell(row: row, col: 0, value: "Pending Sales Order", bold: true);
-  setCell(row: row, col: 3, value: safeNum(monthlySOvalue));
-  row++;
+    setCell(row: row, col: 0, value: "Pending Sales Order", bold: true);
+    setCell(row: row, col: 3, value: safeNum(monthlySOvalue));
+    row++;
 
-  setCell(row: row, col: 1, value: "Low Priority");
-  setCell(row: row, col: 3, value: safeNum(lowVal));
-  row++;
+    setCell(row: row, col: 1, value: "Low Priority");
+    setCell(row: row, col: 3, value: safeNum(lowVal));
+    row++;
 
-  setCell(row: row, col: 1, value: "Medium Priority");
-  setCell(row: row, col: 3, value: safeNum(mediumVal));
-  row++;
+    setCell(row: row, col: 1, value: "Medium Priority");
+    setCell(row: row, col: 3, value: safeNum(mediumVal));
+    row++;
 
-  setCell(row: row, col: 1, value: "High Priority");
-  setCell(row: row, col: 3, value: safeNum(highVal));
-  row++;
+    setCell(row: row, col: 1, value: "High Priority");
+    setCell(row: row, col: 3, value: safeNum(highVal));
+    row++;
 
-  // ================= RIGHT PANEL =================
-  int rightCol = 6;
+    // ================= RIGHT PANEL =================
+    int rightCol = 6;
 
-  setCell(row: 2, col: rightCol, value: "Pending Sales Order", bold: true);
+    setCell(row: 2, col: rightCol, value: "Pending Sales Order", bold: true);
 
-  setCell(row: 3, col: rightCol, value: "Bangalore");
-  setCell(row: 3, col: rightCol + 1, value: safeNum(karnatakaPOSum));
+    setCell(row: 3, col: rightCol, value: "Bangalore");
+    setCell(row: 3, col: rightCol + 1, value: safeNum(karnatakaPOSum));
 
-  setCell(row: 4, col: rightCol, value: "Rajapalayam");
-  setCell(row: 4, col: rightCol + 1, value: safeNum(tamilNaduPOSum));
+    setCell(row: 4, col: rightCol, value: "Rajapalayam");
+    setCell(row: 4, col: rightCol + 1, value: safeNum(tamilNaduPOSum));
 
-  setCell(row: 5, col: rightCol, value: "Others");
-  setCell(row: 5, col: rightCol + 1, value: safeNum(othersPOSum));
+    setCell(row: 5, col: rightCol, value: "Others");
+    setCell(row: 5, col: rightCol + 1, value: safeNum(othersPOSum));
 
-  setCell(row: 6, col: rightCol, value: "Total", bold: true);
-  setCell(
+    setCell(row: 6, col: rightCol, value: "Total", bold: true);
+    setCell(
       row: 6,
       col: rightCol + 1,
-      value: safeNum(karnatakaPOSum) +
+      value:
+          safeNum(karnatakaPOSum) +
           safeNum(tamilNaduPOSum) +
-          safeNum(othersPOSum));
+          safeNum(othersPOSum),
+    );
 
-  // ================= PURCHASE =================
-  row += 2;
+    // ================= PURCHASE =================
+    row += 2;
 
-  setCell(row: row, col: 0, value: "Purchases", bold: true);
-  setCell(row: row, col: 1, value: safeNum(purchaseTarget));
-  setCell(row: row, col: 3, value: safeNum(monthlyPurchasePriceGrnSum));
-  setCell(row: row, col: 4,
-      value: safePercent(monthlyPurchasePriceGrnSum, purchaseTarget));
-  row++;
+    setCell(row: row, col: 0, value: "Purchases", bold: true);
+    setCell(row: row, col: 1, value: safeNum(purchaseTarget));
+    setCell(row: row, col: 3, value: safeNum(monthlyPurchasePriceGrnSum));
+    setCell(
+      row: row,
+      col: 4,
+      value: safePercent(monthlyPurchasePriceGrnSum, purchaseTarget),
+    );
+    row++;
 
-  // ================= INVENTORY =================
-  row++;
+    // ================= INVENTORY =================
+    row++;
 
-  setCell(row: row, col: 0, value: "Inventory Aging", bold: true);
-  setCell(row: row, col: 1, value: safeNum(inventoryTarget));
-  setCell(row: row, col: 3, value: safeNum(inventoryClosingValue));
-  row++;
+    setCell(row: row, col: 0, value: "Inventory Aging", bold: true);
+    setCell(row: row, col: 1, value: safeNum(inventoryTarget));
+    setCell(row: row, col: 3, value: safeNum(inventoryClosingValue));
+    row++;
 
-  setCell(row: row, col: 1, value: "<30 Days");
-  setCell(row: row, col: 3, value: safeNum(lessThan30DaysValue));
-  row++;
+    setCell(row: row, col: 1, value: "<30 Days");
+    setCell(row: row, col: 3, value: safeNum(lessThan30DaysValue));
+    row++;
 
-  setCell(row: row, col: 1, value: "31-60 Days");
-  setCell(row: row, col: 3, value: safeNum(a30to60DaysValue));
-  row++;
+    setCell(row: row, col: 1, value: "31-60 Days");
+    setCell(row: row, col: 3, value: safeNum(a30to60DaysValue));
+    row++;
 
-  setCell(row: row, col: 1, value: "61-90 Days");
-  setCell(row: row, col: 3, value: safeNum(a60to90DaysValue));
-  row++;
+    setCell(row: row, col: 1, value: "61-90 Days");
+    setCell(row: row, col: 3, value: safeNum(a60to90DaysValue));
+    row++;
 
-  setCell(row: row, col: 1, value: ">90 Days");
-  setCell(row: row, col: 3, value: safeNum(a91DaysValue));
-  row++;
+    setCell(row: row, col: 1, value: ">90 Days");
+    setCell(row: row, col: 3, value: safeNum(a91DaysValue));
+    row++;
 
-  // ================= COGS =================
-  row++;
+    // ================= COGS =================
+    row++;
 
-  setCell(row: row, col: 0, value: "COGS", bold: true);
-  setCell(row: row, col: 1, value: safeNum(cogsTarget));
-  setCell(row: row, col: 3, value: safeNum(cogsValue));
-  setCell(row: row, col: 4, value: safePercent(cogsValue, cogsTarget));
+    setCell(row: row, col: 0, value: "COGS", bold: true);
+    setCell(row: row, col: 1, value: safeNum(cogsTarget));
+    setCell(row: row, col: 3, value: safeNum(cogsValue));
+    setCell(row: row, col: 4, value: safePercent(cogsValue, cogsTarget));
 
-  // ================= COLUMN WIDTH =================
-  sheet.setColumnWidth(0, 28);
-  sheet.setColumnWidth(1, 18);
-  sheet.setColumnWidth(2, 10);
-  sheet.setColumnWidth(3, 18);
-  sheet.setColumnWidth(4, 12);
-  sheet.setColumnWidth(6, 18);
-  sheet.setColumnWidth(7, 18);
+    // ================= COLUMN WIDTH =================
+    sheet.setColumnWidth(0, 28);
+    sheet.setColumnWidth(1, 18);
+    sheet.setColumnWidth(2, 10);
+    sheet.setColumnWidth(3, 18);
+    sheet.setColumnWidth(4, 12);
+    sheet.setColumnWidth(6, 18);
+    sheet.setColumnWidth(7, 18);
 
-  // ================= SAVE =================
-  final bytes = excel.encode();
-  if (bytes == null) {
-    print("Excel encoding failed");
-    return;
+    // ================= SAVE =================
+    final bytes = excel.encode();
+    if (bytes == null) {
+      // print("Excel encoding failed");
+      return;
+    }
+
+    if (kIsWeb) {
+      saveAndOpenExcel('DailyCostingReport.xlsx', bytes);
+    } else {
+      String dir = await getStorageDirectory();
+      final file = File('$dir/DailyCostingReport.xlsx');
+      await file.writeAsBytes(bytes);
+      OpenFile.open(file.path);
+    }
   }
-
-  if (kIsWeb) {
-    saveAndOpenExcel('DailyCostingReport.xlsx', bytes);
-  } else {
-    String dir = await getStorageDirectory();
-    final file = File('$dir/DailyCostingReport.xlsx');
-    await file.writeAsBytes(bytes);
-    OpenFile.open(file.path);
-  }
-}
 
   String formatDateString(DateTime date) {
     final formatter = DateFormat('dd/MM/yyyy');

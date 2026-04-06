@@ -1,14 +1,9 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -20,10 +15,8 @@ import '../../../classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
 import 'package:path_provider/path_provider.dart';
-
 import '../ReportService.dart';
-import '../platform_excel_helper.dart';
-import '../platform_pdf_helper.dart';
+// import '../platform_excel_helper.dart';
 
 class ReceivablesFinance extends StatefulWidget {
   const ReceivablesFinance({super.key});
@@ -2113,30 +2106,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           .toList(),
       fileName: 'receivables.xlsx',
     );
-
-    // try {
-    //   final excel = xl.Excel.createExcel();
-    //   final sheet = excel['Sheet1'];
-    //   sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
-    //   for (var monthlyData in list.agingData) {
-    //     sheet.appendRow(
-    //       toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
-    //     );
-    //   }
-
-    //   if (kIsWeb) {
-    //     final excelBytes = excel.encode()!;
-    //     saveAndOpenExcel('allReceivables.xlsx', excelBytes);
-    //   } else {
-    //     String storageDir = await getStorageDirectory();
-    //     final file = File('$storageDir/allReceivables.xlsx');
-    //     await file.writeAsBytes(excel.encode()!);
-    //     OpenFile.open(file.path);
-    //   }
-    // } catch (e) {
-    //   final snackBar = SnackBar(content: Text('Error: $e'));
-    //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    // }
   }
 
   Future<void> generateReceivablesPDF(AllReceivablesFinanceList list) async {
@@ -2144,101 +2113,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       title: 'Receivables',
       headers: ['Ageing Group', 'Ageing Group Total'],
       rows: list.agingData
-          .map((e) => [e.agingGroup, e.agingGroupTotal.toStringAsFixed(2)])
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
           .toList(),
       fileName: 'receivables.pdf',
     );
-    // try {
-    //   final pdf = pw.Document();
-    //   pdf.addPage(
-    //     pw.Page(
-    //       build: (pw.Context context) {
-    //         return pw.Center(
-    //           child: pw.Text(
-    //             'Receivables',
-    //             style: pw.TextStyle(
-    //               fontSize: 20,
-    //               fontWeight: pw.FontWeight.bold,
-    //             ),
-    //           ),
-    //         );
-    //       },
-    //     ),
-    //   );
-    //   pdf.addPage(
-    //     pw.Page(
-    //       build: (pw.Context context) {
-    //         return pw.Table(
-    //           border: pw.TableBorder.all(),
-    //           children: [
-    //             // Table header
-    //             pw.TableRow(
-    //               children: [
-    //                 pw.Text(
-    //                   'Ageing Group',
-    //                   style: pw.TextStyle(
-    //                     fontSize: 14,
-    //                     fontWeight: pw.FontWeight.bold,
-    //                   ),
-    //                 ),
-    //                 pw.Text(
-    //                   'Ageing Group Total',
-    //                   style: pw.TextStyle(
-    //                     fontSize: 14,
-    //                     fontWeight: pw.FontWeight.bold,
-    //                   ),
-    //                 ),
-    //               ],
-    //             ),
-    //             // Table data rows
-    //             for (var data in allReceivablesFinanceList.agingData)
-    //               pw.TableRow(
-    //                 children: [
-    //                   pw.Text(
-    //                     data.agingGroup,
-    //                     style: pw.TextStyle(
-    //                       fontSize: 14,
-    //                       fontWeight: pw.FontWeight.normal,
-    //                     ),
-    //                   ),
-    //                   pw.Text(
-    //                     data.agingGroupTotal.toString(),
-    //                     style: pw.TextStyle(
-    //                       fontSize: 14,
-    //                       fontWeight: pw.FontWeight.normal,
-    //                     ),
-    //                   ),
-    //                 ],
-    //               ),
-    //           ],
-    //         );
-    //       },
-    //     ),
-    //   );
-
-    //   if (kIsWeb) {
-
-    //     // Generate bytes
-    //     final pdfBytes = await pdf.save();
-    //     saveAndOpenPDF(pdfBytes);
-    //   } else {
-    //     String storageDir = await getStorageDirectory();
-    //     final file = File('$storageDir/allReceivables.pdf');
-    //     await file.writeAsBytes(await pdf.save());
-    //     OpenFile.open(file.path);
-    //   }
-    // } catch (e) {
-    //   final snackBar = SnackBar(content: Text('Error: $e'));
-    //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    // }
   }
 
   Future<void> generateAllReceivablesExcel() async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
+      final rows = _prepareAllReceivablesRows(target);
+      await reportService.generateExcel(
+        sheetName: 'AllReceivablesExcel',
+        headers: [
           'Sales Manager',
           'Regional Manager',
           'Sales Rep',
@@ -2270,81 +2156,70 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           '180+',
           'eKart No.',
           'Commitment',
-        ]),
+        ],
+        rows: rows,
+        fileName: 'AllReceivablesExcel.xlsx',
+        amountColumns: [8, 12, 22, 24, 25, 26, 27, 28, 29],
+        addTotalRow: true,
       );
-      for (var monthlyData in target) {
-        sheet.appendRow(
-          toCellRow([
-            monthlyData.salesManager,
-            monthlyData.regionalManager,
-            monthlyData.salesRep,
-            monthlyData.customerGroup,
-            monthlyData.bpGroup,
-            monthlyData.customerCode,
-            monthlyData.customerName,
-            monthlyData.creditLimit,
-            monthlyData.postingDate,
-            monthlyData.documentNumber,
-            monthlyData.documentRefNo,
-            monthlyData.accountBalance,
-            monthlyData.invoiceIssues,
-            monthlyData.expectedPayment,
-            monthlyData.expectedPaymentRemarks,
-            monthlyData.lastReceiptDate,
-            monthlyData.documentType,
-            monthlyData.paymentTermsDays,
-            monthlyData.paymentTerms,
-            monthlyData.dueon,
-            monthlyData.dueDays,
-            monthlyData.balance,
-            monthlyData.ageingBrackets,
-            monthlyData.future,
-            monthlyData.a0to30Days,
-            monthlyData.a31to60Days,
-            monthlyData.a61to90Days,
-            monthlyData.a91to180Days,
-            monthlyData.a181Days,
-            monthlyData.eKartNo,
-            monthlyData.commitment,
-          ]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('allReceivablesExcel.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/allReceivablesExcel.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
+  List<List<dynamic>> _prepareAllReceivablesRows(
+    List<DebtorsAgingList> target,
+  ) {
+    return List.generate(target.length, (i) {
+      final e = target[i];
+
+      return [
+        e.salesManager,
+        e.regionalManager,
+        e.salesRep,
+        e.customerGroup,
+        e.bpGroup,
+        e.customerCode,
+        e.customerName,
+        (double.tryParse(e.creditLimit) ?? 0.0).toStringAsFixed(2),
+        e.postingDate,
+        e.documentNumber,
+        e.documentRefNo,
+        (double.tryParse(e.accountBalance) ?? 0.0).toStringAsFixed(2),
+        e.invoiceIssues,
+        e.expectedPayment,
+        e.expectedPaymentRemarks,
+        e.lastReceiptDate,
+        e.documentType,
+        e.paymentTermsDays,
+        e.paymentTerms,
+        e.dueon,
+        e.dueDays,
+        (double.tryParse(e.balance) ?? 0.0).toStringAsFixed(2),
+        e.ageingBrackets,
+        (double.tryParse(e.future) ?? 0.0).toStringAsFixed(2),
+        (double.tryParse(e.a0to30Days) ?? 0.0).toStringAsFixed(2),
+        (double.tryParse(e.a31to60Days) ?? 0.0).toStringAsFixed(2),
+        (double.tryParse(e.a61to90Days) ?? 0.0).toStringAsFixed(2),
+        (double.tryParse(e.a91to180Days) ?? 0.0).toStringAsFixed(2),
+        (double.tryParse(e.a181Days) ?? 0.0).toStringAsFixed(2),
+        e.eKartNo,
+        e.commitment,
+      ];
+    });
+  }
+
   Future<void> generateNetReceivablesExcel(ReceivablesFinanceList list) async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
-      for (var monthlyData in list.agingData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('netReceivables.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/netReceivables.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
+      await reportService.generateExcel(
+        sheetName: 'NetReceivables',
+        headers: ['Ageing Group', 'Ageing Group Total'],
+        rows: list.agingData
+            .map((e) => [e.agingGroup, e.agingGroupTotal])
+            .toList(),
+        fileName: 'NetReceivables.xlsx',
+      );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2353,89 +2228,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateNetReceivablesPDF(ReceivablesFinanceList list) async {
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Net Receivables',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
+      await reportService.generatePDF(
+        title: 'Net Receivables',
+        headers: ['Ageing Group', 'Ageing Group Total'],
+        rows: list.agingData
+            .map((e) => [e.agingGroup, e.agingGroupTotal])
+            .toList(),
+        fileName: 'NetReceivables.pdf',
       );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Ageing Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ageing Group Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in receivablesFinanceList.agingData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.agingGroup,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.agingGroupTotal.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/netReceivables.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2444,24 +2244,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateAdvanceExcel(AdvanceFromCustomersList list) async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
-      for (var monthlyData in list.agingData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('advance_from_customers.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/advance_from_customer.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
+      await reportService.generateExcel(
+        sheetName: 'AdvanceFromCustomers',
+        headers: ['Ageing Group', 'Ageing Group Total'],
+        rows: list.agingData
+            .map((e) => [e.agingGroup, e.agingGroupTotal])
+            .toList(),
+        fileName: 'AdvanceFromCustomers.xlsx',
+      );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2470,89 +2260,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateAdvancePDF(AdvanceFromCustomersList list) async {
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Advance From Customers',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
+      await reportService.generatePDF(
+        title: 'Advance From Customers',
+        headers: ['Ageing Group', 'Ageing Group Total'],
+        rows: list.agingData
+            .map((e) => [e.agingGroup, e.agingGroupTotal])
+            .toList(),
+        fileName: 'AdvanceFromCustomers.pdf',
       );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Ageing Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ageing Group Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in advanceCustomerList.agingData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.agingGroup,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.agingGroupTotal.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/advance_from_customers.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2563,28 +2278,20 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     CustomerAnalysisFinanceList list,
   ) async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Customer Name', 'Customer Code', 'Amount']));
-      for (var data in list.customerData) {
-        sheet.appendRow(
-          toCellRow([
-            data.customerName,
-            data.customerCode,
-            data.collectionAmount,
-          ]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('customer_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/customer_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
+      await reportService.generateExcel(
+        sheetName: 'CustomerAnalysis',
+        headers: ['Customer Name', 'Customer Code', 'Collection Amount'],
+        rows: list.customerData
+            .map(
+              (e) => [
+                e.customerName,
+                e.customerCode,
+                e.collectionAmount.toStringAsFixed(2),
+              ],
+            )
+            .toList(),
+        fileName: 'CustomerAnalysis.xlsx',
+      );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2595,96 +2302,20 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     CustomerAnalysisFinanceList list,
   ) async {
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Customer Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Customer Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Customer Code',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in customerAnalysisFinanceList.customerData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.customerName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.customerCode,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.collectionAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
+      await reportService.generatePDF(
+        title: 'Customer Analysis',
+        headers: ['Customer Name', 'Customer Code', 'Collection Amount'],
+        rows: list.customerData
+            .map(
+              (e) => [
+                e.customerName,
+                e.customerCode,
+                e.collectionAmount.toStringAsFixed(2),
               ],
-            );
-          },
-        ),
+            )
+            .toList(),
+        fileName: 'CustomerAnalysis.pdf',
       );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/customer_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2693,22 +2324,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateRegionalManagerExcel(RsmwiseCollectionList list) async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Regional Manager', 'Amount']));
-      for (var data in list.rsmwiseData) {
-        sheet.appendRow(toCellRow([data.rsmName, data.collectionAmount]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('regional_manager_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regional_manager_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
+      await reportService.generateExcel(
+        sheetName: 'RegionalManagerReceivables',
+        headers: ['Regional Manager', 'Amount'],
+        rows: list.rsmwiseData
+            .map((e) => [e.rsmName, e.collectionAmount.toStringAsFixed(2)])
+            .toList(),
+        fileName: 'RegionalManagerReceivables.xlsx',
+      );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2717,89 +2340,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateRegionalManagerPDF(RsmwiseCollectionList list) async {
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Regional Manager Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
+      await reportService.generatePDF(
+        title: 'Regional Manager Receivables',
+        headers: ['Regional Manager', 'Amount'],
+        rows: list.rsmwiseData
+            .map((e) => [e.rsmName, e.collectionAmount.toStringAsFixed(2)])
+            .toList(),
+        fileName: 'RegionalManagerReceivables.pdf',
       );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Regional Manager',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in rsmwiseCollectionList.rsmwiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.rsmName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.collectionAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regional_manager_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2808,22 +2356,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateSalesManagerExcel(AsmwiseCollectionList list) async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Sale Manager', 'Amount']));
-      for (var data in list.asmwiseData) {
-        sheet.appendRow(toCellRow([data.asmName, data.collectionAmount]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('sales_manager_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_manager_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
+      await reportService.generateExcel(
+        sheetName: 'SalesManagerReceivables',
+        headers: ['Sales Manager', 'Amount'],
+        rows: list.asmwiseData
+            .map((e) => [e.asmName, e.collectionAmount.toStringAsFixed(2)])
+            .toList(),
+        fileName: 'SalesManagerReceivables.xlsx',
+      );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2832,89 +2372,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateSalesManagerPDF(AsmwiseCollectionList list) async {
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sales Manager Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
+      await reportService.generatePDF(
+        title: 'Sales Manager Receivables',
+        headers: ['Sales Manager', 'Amount'],
+        rows: list.asmwiseData
+            .map((e) => [e.asmName, e.collectionAmount.toStringAsFixed(2)])
+            .toList(),
+        fileName: 'SalesManagerReceivables.pdf',
       );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Sales Manager',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in asmwiseCollectionList.asmwiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.asmName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.collectionAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_manager_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2923,22 +2388,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateSalesPersonExcel(TsmwiseCollectionList list) async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Sale Person', 'Amount']));
-      for (var data in list.tsmwiseData) {
-        sheet.appendRow(toCellRow([data.tsmName, data.collectionAmount]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('sales_person_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_person_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
+      await reportService.generateExcel(
+        sheetName: 'TSMReceivables',
+        headers: ['TSM Name', 'Amount'],
+        rows: list.tsmwiseData
+            .map((e) => [e.tsmName, e.collectionAmount.toStringAsFixed(2)])
+            .toList(),
+        fileName: 'TSMReceivables.xlsx',
+      );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -2947,89 +2404,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   Future<void> generateSalesPersonPDF(TsmwiseCollectionList list) async {
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sales Person Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
+      await reportService.generatePDF(
+        title: 'TSM Receivables',
+        headers: ['TSM Name', 'Amount'],
+        rows: list.tsmwiseData
+            .map((e) => [e.tsmName, e.collectionAmount.toStringAsFixed(2)])
+            .toList(),
+        fileName: 'TSMReceivables.pdf',
       );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Sales Person',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in tsmwiseCollectionList.tsmwiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.tsmName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.collectionAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_manager_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -3870,291 +3252,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     return selectedFilters.join(', ');
   }
 
-  Future<void> _loadYtdSalesBarChartData() async {
-    Map<String, List<SalesList>> salesByCustomer = {};
-    Map<String, List<SalesList>> salesByItem = {};
-    String bomCost = '';
-
-    List<ProductMarginData> ytdSalesDataList = [];
-    var tmpSales = sales.toList();
-
-    for (var sale in tmpSales) {
-      salesByCustomer.putIfAbsent(sale.code, () => []).add(sale);
-    }
-
-    for (var customerCode in salesByCustomer.keys) {
-      var customerSales = salesByCustomer[customerCode]!;
-
-      //only invoice
-
-      salesByItem.clear();
-      for (var sale in customerSales) {
-        salesByItem.putIfAbsent(sale.code, () => []).add(sale);
-      }
-
-      for (var itemCode in salesByItem.keys) {
-        var itemSales = salesByItem[itemCode]!;
-        var firstItemSale = itemSales.first;
-
-        var matchingItems = itemCostList.where(
-          (test) => firstItemSale.code == test.itemCode,
-        );
-
-        bomCost = matchingItems.isNotEmpty ? matchingItems.first.itemCost : "0";
-
-        List<double> monthlyQty = List.filled(12, 0.0);
-        List<double> monthlyValue = List.filled(12, 0.0);
-
-        for (int i = 0; i < 12; i++) {
-          DateTime startDate = addMonth(fiscalYearStartDate!, i);
-          DateTime endDate = addMonth(
-            startDate,
-            1,
-          ).add(const Duration(days: -1));
-
-          for (var sale in itemSales) {
-            DateTime invoiceDate = sale.invoiceDate;
-            if (invoiceDate.isAtLeast(startDate) &&
-                invoiceDate.isAtMost(endDate)) {
-              double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
-              double quantity = double.tryParse(sale.quantity) ?? 0.0;
-              if (sale.invoiceType == "Sales Return") {
-                rowTotal *= -1;
-                quantity *= -1;
-              }
-              monthlyValue[i] += rowTotal;
-              monthlyQty[i] += quantity;
-            }
-          }
-        }
-
-        if (monthlyValue.reduce((a, b) => a + b) != 0) {
-          ytdSalesDataList.add(
-            ProductMarginData(
-              itemNo: firstItemSale.code,
-              itemDescription: firstItemSale.description,
-              itemSubGroup: firstItemSale.itemSubGroup,
-              quantity: monthlyQty.reduce((a, b) => a + b).toStringAsFixed(2),
-              saleAmt: monthlyValue.reduce((a, b) => a + b).toStringAsFixed(2),
-              avgSellingPrice:
-                  (monthlyValue.reduce((a, b) => a + b) /
-                          monthlyQty.reduce((a, b) => a + b))
-                      .toStringAsFixed(2),
-              bomCost: double.parse(bomCost).toStringAsFixed(2),
-              perUnitMarginAmount:
-                  ((monthlyValue.reduce((a, b) => a + b) /
-                              monthlyQty.reduce((a, b) => a + b)) -
-                          double.parse(bomCost))
-                      .toStringAsFixed(2),
-              totalMarginAmount:
-                  (((monthlyValue.reduce((a, b) => a + b) /
-                                  monthlyQty.reduce((a, b) => a + b)) -
-                              double.parse(bomCost)) *
-                          monthlyQty.reduce((a, b) => a + b))
-                      .toStringAsFixed(2),
-              marginPercent:
-                  (((monthlyValue.reduce((a, b) => a + b) /
-                          monthlyQty.reduce((a, b) => a + b)) -
-                      double.parse(bomCost)) /
-                  (monthlyValue.reduce((a, b) => a + b) /
-                      monthlyQty.reduce((a, b) => a + b)) *
-                  100),
-              // mayQty: monthlyQty[1],
-              // mayValue: monthlyValue[1],
-              // junQty: monthlyQty[2],
-              // junValue: monthlyValue[2],
-              // julQty: monthlyQty[3],
-              // julValue: monthlyQty[3],
-              // augQty: monthlyQty[4],
-              // augValue: monthlyValue[4],
-              // sepQty: monthlyQty[5],
-              // sepValue: monthlyValue[5],
-              // octQty: monthlyQty[6],
-              // octValue: monthlyValue[6],
-              // novQty: monthlyQty[7],
-              // novValue: monthlyValue[7],
-              // decQty: monthlyQty[8],
-              // decValue: monthlyValue[8],
-              // janQty: monthlyQty[9],
-              // janValue: monthlyValue[9],
-              // febQty: monthlyQty[10],
-              // febValue: monthlyValue[10],
-              // marQty: monthlyQty[11],
-              // marValue: monthlyValue[11],
-              // ytdTotalValue: monthlyValue.reduce((a, b) => a + b),
-              // ytdTotalQty: monthlyQty.reduce((a, b) => a + b),
-            ),
-          );
-        }
-        customerSales.clear();
-      }
-    }
-
-    setState(() {
-      ytdSalesDataList.sort((a, b) => a.itemNo.compareTo(b.itemNo));
-
-      ytdSalesDataList.removeWhere(
-        (item) => item.itemSubGroup == "" || item.itemSubGroup.isEmpty,
-      );
-
-      var filteredList = ytdSalesDataList
-          .where(
-            (item) => item.itemSubGroup != "" && item.itemSubGroup.isNotEmpty,
-          )
-          .toList();
-
-      productMarginList = ProductMarginList(productMarginData: filteredList);
-      YtdSalesBarChartData = true;
-    });
-  }
-
-  Future<void> generateSalesAnalysisYTDExcel() async {
-    await _loadYtdSalesBarChartData();
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
-        'Item No.',
-        'Item Description',
-        'Item Sub Group',
-        'Quantity',
-        'Sales Amt',
-        'Avg Selling Price',
-        'BOMCost',
-        'Per Unit Margin Amount',
-        'Total Margin Amount',
-        'Margin %',
-      ]),
-    );
-
-    for (int column = 0; column < 11; column++) {
-      var cell = sheet.cell(
-        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-      );
-      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
-
-      // sheet.setColAutoFit(column);
-    }
-
-    for (var ytdData in productMarginList.productMarginData) {
-      sheet.appendRow(
-        toCellRow([
-          ytdData.itemNo,
-          ytdData.itemDescription,
-          ytdData.itemSubGroup,
-          ytdData.quantity,
-          ytdData.saleAmt,
-          ytdData.avgSellingPrice,
-          ytdData.bomCost,
-          ytdData.perUnitMarginAmount,
-          ytdData.totalMarginAmount,
-          ytdData.marginPercent,
-        ]),
-      );
-    }
-
-    xl.CellStyle centerCellStyle = xl.CellStyle(
-      verticalAlign: xl.VerticalAlign.Center,
-      horizontalAlign: xl.HorizontalAlign.Center,
-    );
-
-    int numberOfRows = productMarginList.productMarginData.length;
-
-    for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-      for (int colIndex = 0; colIndex < 10; colIndex++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex,
-            rowIndex: rowIndex,
-          ),
-        );
-        if (rowIndex != 0) {
-          cell.cellStyle = centerCellStyle;
-        }
-      }
-    }
-
-    setState(() {
-      YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('sales_analysis_ytd_report.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/sales_analysis_ytd_report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  Future<void> generatePendingOrderExcel() async {
-    await _loadYtdSalesBarChartData();
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Item No.',
-          'Item Description',
-          'Item Sub Group',
-          'Quantity',
-          'Sales Amt',
-          'Avg Selling Price',
-          'BOMCost',
-          'Per Unit Margin Amount',
-          'Total Margin Amount',
-          'Margin %',
-        ]),
-      );
-      for (var element in productMarginList.productMarginData) {
-        sheet.appendRow(
-          toCellRow([
-            element.itemNo,
-            element.itemDescription,
-            element.itemSubGroup,
-            element.quantity,
-            element.saleAmt,
-            element.avgSellingPrice,
-            element.bomCost,
-            element.perUnitMarginAmount,
-            element.totalMarginAmount,
-            element.marginPercent,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('pendingOrders.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/pendingOrders.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -4215,11 +3312,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                           },
                           icon: const Icon(Icons.filter_alt_outlined),
                         ),
-                        // IconButton(
-                        //     onPressed: () {
-                        //       showPopupMenu();
-                        //     },
-                        //     icon: const Icon(Icons.filter_alt_outlined)),
                         Row(
                           children: [
                             PopupMenuButton(
@@ -4243,159 +3335,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     ),
                   ],
                 ),
-                // Padding(
-                //   padding: const EdgeInsets.all(8.0),
-                //   child: Center(
-                //     child: ElevatedButton(
-                //       style: ElevatedButton.styleFrom(
-                //         backgroundColor: const Color(0xff2ca9df),
-                //         shape: RoundedRectangleBorder(
-                //           borderRadius: BorderRadius.circular(5.0),
-                //         ),
-                //       ),
-                //       onPressed: () {
-                //         generateSalesAnalysisYTDExcel();
-                //       },
-                //       child: const SizedBox(
-                //         width: 400,
-                //         child: Center(
-                //           child: Text(
-                //             "Download Pending Orders For Production",
-                //             style: TextStyle(fontSize: 14, color: Colors.white),
-                //           ),
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-                // ),
-
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //   children: [
-                //     const Row(
-                //       mainAxisAlignment: MainAxisAlignment.start,
-                //       children: [
-                //         SizedBox(
-                //           width: 15,
-                //         ),
-                //         Text("", style: TextStyle(fontWeight: FontWeight.w600)),
-                //       ],
-                //     ),
-                //     Row(
-                //       mainAxisAlignment: MainAxisAlignment.end,
-                //       children: [
-                //         PopupMenuButton(
-                //           onSelected: (value) {},
-                //           itemBuilder: (BuildContext bc) {
-                //             return [
-                //               PopupMenuItem(
-                //                 onTap: () {
-                //                   setState(() {});
-                //                 },
-                //                 child: const Text("Download Excel"),
-                //               ),
-                //               PopupMenuItem(
-                //                 onTap: () {
-                //                   setState(() {});
-                //                 },
-                //                 child: const Text("Download PDF"),
-                //               ),
-                //             ];
-                //           },
-                //         ),
-                //       ],
-                //     ),
-                //   ],
-                // ),
-
-                // const Text("Showing Data:"),
-
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.center,
-                //   crossAxisAlignment: CrossAxisAlignment.center,
-                //   children: [
-                //     const Column(
-                //       crossAxisAlignment:
-                //       CrossAxisAlignment.start,
-                //       mainAxisAlignment:
-                //       MainAxisAlignment.start,
-                //       children: [
-                //         Text(
-                //           "All",
-                //           textAlign: TextAlign.left,
-                //           style: TextStyle(
-                //               fontSize: 14,
-                //               fontWeight: FontWeight.w400,
-                //               color: Color(0xFF8F8F8F)),
-                //         ),
-                //         SizedBox(height: 25,),
-                //         Text(
-                //           "Office Customers",
-                //           textAlign: TextAlign.left,
-                //           style: TextStyle(
-                //               fontSize: 14,
-                //               fontWeight: FontWeight.w400,
-                //               color: Color(0xFF8F8F8F)),
-                //         ),
-                //       ],
-                //     ),
-                //     Column(
-                //       crossAxisAlignment:
-                //       CrossAxisAlignment.start,
-                //       mainAxisAlignment:
-                //       MainAxisAlignment.start,
-                //       children: [
-                //         Transform.scale(
-                //             scale: .7,
-                //             child: buildCheckbox(1),
-                //         ),
-                //         Transform.scale(
-                //             scale: .7,
-                //             child: buildCheckbox(2),
-                //         ),
-                //       ],
-                //     ),
-                //     const Column(
-                //       crossAxisAlignment:
-                //       CrossAxisAlignment.start,
-                //       mainAxisAlignment:
-                //       MainAxisAlignment.start,
-                //       children: [
-                //         Text(
-                //           "NH Group",
-                //           style: TextStyle(
-                //               fontSize: 14,
-                //               fontWeight: FontWeight.w400,
-                //               color: Color(0xFF8F8F8F)),
-                //         ),
-                //         SizedBox(height: 25,),
-                //         Text(
-                //           "Sales Team",
-                //           style: TextStyle(
-                //               fontSize: 14,
-                //               fontWeight: FontWeight.w400,
-                //               color: Color(0xFF8F8F8F)),
-                //         ),
-                //       ],
-                //     ),
-                //     Column(
-                //       crossAxisAlignment:
-                //       CrossAxisAlignment.start,
-                //       mainAxisAlignment:
-                //       MainAxisAlignment.start,
-                //       children: [
-                //         Transform.scale(
-                //             scale: .7,
-                //             child: buildCheckbox(3),
-                //         ),
-                //         Transform.scale(
-                //             scale: .7,
-                //             child: buildCheckbox(4)
-                //         ),
-                //       ],
-                //     ),
-                //   ],
-                // ),
                 Visibility(
                   visible: getSelectedFiltersText(allCategoriesState) != "",
                   child: Padding(
