@@ -18,7 +18,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 
-import '../platform_excel_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
 class MonthlyCollectionReport extends StatefulWidget {
   const MonthlyCollectionReport({super.key});

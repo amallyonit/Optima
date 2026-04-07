@@ -1,16 +1,12 @@
 // ignore_for_file: file_names
-
 import 'dart:io';
-
-// import 'package:excel/excel.dart' as xl;
 import 'package:flutter/foundation.dart';
 import 'package:open_file/open_file.dart';
-import 'package:optima/pages/dashboardPages/excel_helper_other.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_other.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
-// import '../../excel_helper.dart';
+import 'package:universal_html/html.dart' as html;
 
 class ReportService {
   Future<String> getStorageDirectory() async {
@@ -20,6 +16,12 @@ class ReportService {
     } else {
       return (await getApplicationDocumentsDirectory()).path;
     }
+  }
+
+  Future<String> getUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userName = prefs.getString('userName') ?? '';
+    return userName;
   }
 
   String _getExcelColumnName(int colIndex) {
@@ -38,71 +40,184 @@ class ReportService {
     required List<String> headers,
     required List<List<dynamic>> rows,
     required String fileName,
+    List<int>? numericColumns,
   }) async {
     try {
       final pdf = pw.Document();
+      // -------- Table Page --------
 
-      // -------- Title Page --------
-      pdf.addPage(
-        pw.Page(
-          build: (_) => pw.Center(
-            child: pw.Text(
-              title,
-              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-            ),
-          ),
-        ),
-      );
+      final columnTotals = List<double>.filled(headers.length, 0);
+
+      for (var row in rows) {
+        for (int i = 0; i < row.length; i++) {
+          final numValue = double.tryParse(row[i].toString());
+          if (numValue != null) {
+            columnTotals[i] += numValue;
+          }
+        }
+      }
+
+      final totalRow = List.generate(headers.length, (i) {
+        if (i == 0) return "Total";
+        final total = columnTotals[i];
+        if (total == 0) return "";
+        return total.toStringAsFixed(2);
+      });
 
       // -------- Table Page --------
       pdf.addPage(
-        pw.Page(
-          build: (_) => pw.Table(
-            border: pw.TableBorder.all(),
-            children: [
-              // Header
-              pw.TableRow(
-                children: headers.map((h) {
-                  return pw.Padding(
-                    padding: const pw.EdgeInsets.all(5),
-                    child: pw.Text(
-                      h,
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+        pw.MultiPage(
+          pageTheme: pw.PageTheme(
+            buildBackground: (context) => pw.Center(
+              child: pw.Transform.rotate(
+                angle: -0.5,
+                child: pw.Opacity(
+                  opacity: 0.08,
+                  child: pw.Text(
+                    "Optima CRM\n${await getUserName()}",
+                    style: pw.TextStyle(
+                      fontSize: 60,
+                      fontWeight: pw.FontWeight.bold,
                     ),
-                  );
-                }).toList(),
+                  ),
+                ),
               ),
+            ),
+          ),
+          header: (context) {
+            final now = DateTime.now();
 
-              // Rows
-              ...rows.map((row) {
-                return pw.TableRow(
-                  children: row.map((cell) {
-                    final isNumber = cell is num;
+            final formattedDate =
+                "${now.day.toString().padLeft(2, '0')}/"
+                "${now.month.toString().padLeft(2, '0')}/"
+                "${now.year} "
+                "${now.hour.toString().padLeft(2, '0')}:"
+                "${now.minute.toString().padLeft(2, '0')}";
+
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    // LEFT: Title
+                    pw.Text(
+                      title,
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+
+                    // RIGHT: Date Time
+                    pw.Text(
+                      "Created: $formattedDate",
+                      style: pw.TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+              ],
+            );
+          },
+          build: (context) => [
+            pw.Table(
+              border: pw.TableBorder.all(),
+              children: [
+                // Header
+                pw.TableRow(
+                  children: List.generate(headers.length, (i) {
+                    final isNumeric = numericColumns?.contains(i + 1) ?? false;
 
                     return pw.Padding(
                       padding: const pw.EdgeInsets.all(5),
                       child: pw.Align(
-                        alignment: isNumber
+                        alignment: isNumeric
                             ? pw.Alignment.centerRight
                             : pw.Alignment.centerLeft,
                         child: pw.Text(
-                          cell.toString(),
-                          style: pw.TextStyle(fontSize: 12),
+                          headers[i],
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+
+                // Rows
+                ...rows.map((row) {
+                  return pw.TableRow(
+                    children: row.asMap().entries.map((entry) {
+                      // final index = entry.key;
+                      final cell = entry.value;
+
+                      // final isNumeric =
+                      //     numericColumns?.contains(index + 1) ?? false;
+                      // final numValue = double.tryParse(cell.toString());
+                      final text = cell.toString().trim();
+
+                      final isNumeric = RegExp(
+                        r'^-?\d+(\.\d+)?$',
+                      ).hasMatch(text);
+                      final numValue = isNumeric ? double.parse(text) : null;
+
+                      return pw.Padding(
+                        padding: const pw.EdgeInsets.all(5),
+                        child: pw.Align(
+                          alignment: isNumeric
+                              ? pw.Alignment.centerRight
+                              : pw.Alignment.centerLeft,
+                          child: pw.Text(
+                            (isNumeric && numValue != null)
+                                ? numValue.toStringAsFixed(2)
+                                : cell.toString(),
+                            style: pw.TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }),
+
+                // TOTAL ROW
+                pw.TableRow(
+                  children: totalRow.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final cell = entry.value;
+
+                    final isNumeric =
+                        numericColumns?.contains(index + 1) ?? false;
+                    final numValue = double.tryParse(cell.toString());
+
+                    return pw.Padding(
+                      padding: const pw.EdgeInsets.all(5),
+                      child: pw.Align(
+                        alignment: isNumeric
+                            ? pw.Alignment.centerRight
+                            : pw.Alignment.centerLeft,
+                        child: pw.Text(
+                          (isNumeric && numValue != null)
+                              ? numValue.toStringAsFixed(2)
+                              : cell.toString(),
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
                         ),
                       ),
                     );
                   }).toList(),
-                );
-              }),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       );
 
       final bytes = await pdf.save();
 
       if (kIsWeb) {
-        saveAndOpenPDF(bytes);
+        _downloadPDFWeb(fileName, bytes);
       } else {
         final dir = await getStorageDirectory();
         final file = File('$dir/$fileName');
@@ -120,8 +235,8 @@ class ReportService {
     required List<String> headers,
     required List<List<dynamic>> rows,
     required String fileName,
-    List<int>? amountColumns, // 👈 optional
-    bool addTotalRow = false, // 👈 optional
+    List<int>? amountColumns, // optional
+    bool addTotalRow = false, // optional
   }) async {
     try {
       final workbook = xlsio.Workbook();
@@ -163,7 +278,10 @@ class ReportService {
         }
       }
 
-      final totalRows = rows.length + 1;
+      int totalRows = rows.length + 1;
+      if (addTotalRow) {
+        totalRows += 1;
+      }
       final totalCols = headers.length;
 
       if (amountColumns != null) {
@@ -242,7 +360,9 @@ class ReportService {
       if (addTotalRow && amountColumns != null) {
         final totalRowIndex = rows.length + 2;
 
-        sheet.getRangeByIndex(totalRowIndex, 1).setText("Total");
+        final totalLabelCell = sheet.getRangeByIndex(totalRowIndex, 1);
+        totalLabelCell.setText("Total");
+        totalLabelCell.cellStyle.bold = true;
 
         for (final col in amountColumns) {
           final columnLetter = _getExcelColumnName(col);
@@ -256,14 +376,27 @@ class ReportService {
           cell.cellStyle.hAlign = xlsio.HAlignType.right;
           cell.cellStyle.bold = true;
         }
+        sheet
+                .getRangeByIndex(totalRowIndex, 1, totalRowIndex, totalCols)
+                .cellStyle
+                .backColor =
+            "#FFF2CC";
+        for (int col = 1; col <= totalCols; col++) {
+          final cell = sheet.getRangeByIndex(totalRowIndex, col);
+
+          cell.cellStyle.borders.left.lineStyle = xlsio.LineStyle.thin;
+          cell.cellStyle.borders.right.lineStyle = xlsio.LineStyle.thin;
+          cell.cellStyle.borders.top.lineStyle = xlsio.LineStyle.thin;
+          cell.cellStyle.borders.bottom.lineStyle = xlsio.LineStyle.thin;
+        }
       }
 
       // ---------------- SAVE ----------------
-      final bytes = workbook.saveAsStream();
+      final bytes = List<int>.from(workbook.saveAsStream());
       workbook.dispose();
 
       if (kIsWeb) {
-        saveAndOpenExcel(fileName, bytes);
+        _downloadExcelWeb(fileName, bytes);
       } else {
         final dir = await getStorageDirectory();
         final file = File('$dir/$fileName');
@@ -273,5 +406,30 @@ class ReportService {
     } catch (e) {
       debugPrint("Excel Error: $e");
     }
+  }
+
+  void _downloadExcelWeb(String fileName, List<int> bytes) {
+    final blob = html.Blob([
+      Uint8List.fromList(bytes),
+    ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    html.AnchorElement(href: url)
+      ..setAttribute("download", fileName)
+      ..click();
+
+    html.Url.revokeObjectUrl(url);
+  }
+
+  void _downloadPDFWeb(String fileName, List<int> bytes) {
+    final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    html.AnchorElement(href: url)
+      ..download = fileName
+      ..click();
+
+    html.Url.revokeObjectUrl(url);
   }
 }

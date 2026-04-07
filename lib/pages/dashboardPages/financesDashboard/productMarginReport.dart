@@ -19,7 +19,7 @@ import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../platform_excel_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
 class ProductMarginReport extends StatefulWidget {
   const ProductMarginReport({super.key});
@@ -38,8 +38,9 @@ List<CollectionList> collection = [];
 List<DebtorsAgingList> target = [];
 
 List<SubGroupMarginTotal> itemSubGroupGraph = [];
-SubGroupMarginTotalList itemSubGroupGraphList =
-    SubGroupMarginTotalList(data: []);
+SubGroupMarginTotalList itemSubGroupGraphList = SubGroupMarginTotalList(
+  data: [],
+);
 
 class SubGroupMarginTotalList {
   final List<SubGroupMarginTotal> data;
@@ -64,22 +65,29 @@ class SubGroupMarginTotal {
 }
 
 List<Users> usersListForFilter = [];
-AllReceivablesFinanceList allReceivablesFinanceList =
-    AllReceivablesFinanceList(agingData: []);
-ReceivablesFinanceList receivablesFinanceList =
-    ReceivablesFinanceList(agingData: []);
-AdvanceFromCustomersList advanceCustomerList =
-    AdvanceFromCustomersList(agingData: []);
+AllReceivablesFinanceList allReceivablesFinanceList = AllReceivablesFinanceList(
+  agingData: [],
+);
+ReceivablesFinanceList receivablesFinanceList = ReceivablesFinanceList(
+  agingData: [],
+);
+AdvanceFromCustomersList advanceCustomerList = AdvanceFromCustomersList(
+  agingData: [],
+);
 CustomerAnalysisFinanceList customerAnalysisFinanceList =
     CustomerAnalysisFinanceList(customerData: []);
-ReceivablesCategoryList receivablesCategoryList =
-    ReceivablesCategoryList(categoryData: []);
-TsmwiseCollectionList tsmwiseCollectionList =
-    TsmwiseCollectionList(tsmwiseData: []);
-AsmwiseCollectionList asmwiseCollectionList =
-    AsmwiseCollectionList(asmwiseData: []);
-RsmwiseCollectionList rsmwiseCollectionList =
-    RsmwiseCollectionList(rsmwiseData: []);
+ReceivablesCategoryList receivablesCategoryList = ReceivablesCategoryList(
+  categoryData: [],
+);
+TsmwiseCollectionList tsmwiseCollectionList = TsmwiseCollectionList(
+  tsmwiseData: [],
+);
+AsmwiseCollectionList asmwiseCollectionList = AsmwiseCollectionList(
+  asmwiseData: [],
+);
+RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
+  rsmwiseData: [],
+);
 
 double Collections = 0;
 String CollectionsStr = "";
@@ -161,13 +169,9 @@ int selectedCheckbox = 1;
 
 List<String> selectedSalesData = [];
 
-final List<String> categories = [
-  'Dates',
-];
+final List<String> categories = ['Dates'];
 
-List<List<String>> filterOptions = [
-  [],
-];
+List<List<String>> filterOptions = [[]];
 
 List<List<bool>> selectedFinanceReceivablesOptions = [];
 
@@ -215,8 +219,9 @@ List<ItemCostList> itemCostList = [];
 List<ItemCostList> tempCostList = [];
 YTDSalesList ytdSalesList = YTDSalesList(ytdData: []);
 ProductMarginList productMarginList = ProductMarginList(productMarginData: []);
-ProductMarginList productMarginListGraph =
-    ProductMarginList(productMarginData: []);
+ProductMarginList productMarginListGraph = ProductMarginList(
+  productMarginData: [],
+);
 bool YtdSalesBarChartData = false;
 
 DateTime? fromDateFilter;
@@ -416,8 +421,10 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate =
-        addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1));
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
@@ -446,8 +453,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear =
-        currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1;
+    int fiscalYearStartYear = currentDate!.month >= 4
+        ? currentDate!.year
+        : currentDate!.year - 1;
 
     int fiscalYearEndYear = fiscalYearStartYear + 1;
     financialYear =
@@ -473,12 +481,14 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     int yearForMonth;
     if (now.month >= 1 && now.month <= 3) {
       // If the call is happening in Jan–Mar
-      yearForMonth =
-          (month >= 4 && month <= 12) ? currentYear - 1 : currentYear;
+      yearForMonth = (month >= 4 && month <= 12)
+          ? currentYear - 1
+          : currentYear;
     } else {
       // If the call is happening in Apr–Dec
-      yearForMonth =
-          (month >= 4 && month <= 12) ? currentYear : currentYear + 1;
+      yearForMonth = (month >= 4 && month <= 12)
+          ? currentYear
+          : currentYear + 1;
     }
 
     // Calculate the first and last days of the given month
@@ -491,13 +501,17 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
-  Future<void> _loadUserList(String userId, String userJwtToken,
-      String userMailID, int userLevel) async {
+  Future<void> _loadUserList(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    int userLevel,
+  ) async {
     final body = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
@@ -525,9 +539,11 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                   .toList();
             });
           }
-          for (var parent in usersList.where((element) =>
-              element.parentMenuId == 0 &&
-              (element.userLevel == (userLevel > 3 ? 3 : 2)))) {
+          for (var parent in usersList.where(
+            (element) =>
+                element.parentMenuId == 0 &&
+                (element.userLevel == (userLevel > 3 ? 3 : 2)),
+          )) {
             final rsm = {
               "MenuId": parent.menuId,
               "MenuName": parent.menuName,
@@ -536,9 +552,11 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               "UserLevel": parent.userLevel,
             };
             newUserList.add(rsm);
-            for (var child in childUsers.where((element) =>
-                element.parentMenuId == parent.menuId &&
-                (element.userLevel == (userLevel > 3 ? 2 : 1)))) {
+            for (var child in childUsers.where(
+              (element) =>
+                  element.parentMenuId == parent.menuId &&
+                  (element.userLevel == (userLevel > 3 ? 2 : 1)),
+            )) {
               final asm = {
                 "MenuId": child.menuId,
                 "MenuName": child.menuName,
@@ -547,8 +565,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                 "UserLevel": child.userLevel,
               };
               newUserList.add(asm);
-              for (var subChild in childUsers
-                  .where((element) => element.parentMenuId == child.menuId)) {
+              for (var subChild in childUsers.where(
+                (element) => element.parentMenuId == child.menuId,
+              )) {
                 final tsm = {
                   "MenuId": subChild.menuId,
                   "MenuName": subChild.menuName,
@@ -571,31 +590,28 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('User list not found.'),
-        );
+        const snackBar = SnackBar(content: Text('User list not found.'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
-  Future<void> _loadUserListForFilter(String userId, String userJwtToken,
-      String userMailID, int userLevel) async {
+  Future<void> _loadUserListForFilter(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    int userLevel,
+  ) async {
     final body = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
@@ -616,8 +632,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
           List<dynamic> data = responseJson['Data'];
           if (data.isNotEmpty) {
             setState(() {
-              usersListForFilter =
-                  (data).map((item) => Users.fromJson(item)).toList();
+              usersListForFilter = (data)
+                  .map((item) => Users.fromJson(item))
+                  .toList();
             });
           }
         } else {
@@ -627,10 +644,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -638,15 +652,11 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('User list not found.'),
-        );
+        const snackBar = SnackBar(content: Text('User list not found.'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -670,11 +680,12 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       do {
         var body = {
           "FromDate": formatDate(
-              monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
+            monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!,
+          ),
           "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}Crm_SalesList';
         final response = await http.post(
@@ -713,20 +724,25 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
             .map((user) => user.menuName)
             .toList();
         menuNames.insert(0, UserName);
-        salesTemp =
-            salesList.where((test) => test.invoiceType == "Sales").toList();
+        salesTemp = salesList
+            .where((test) => test.invoiceType == "Sales")
+            .toList();
         if (int.parse(UserLevel) == 5) {
-          sales =
-              salesList.where((test) => test.invoiceType == "Sales").toList();
+          sales = salesList
+              .where((test) => test.invoiceType == "Sales")
+              .toList();
         } else if (int.parse(UserLevel) == 4) {
-          sales =
-              salesList.where((test) => test.invoiceType == "Sales").toList();
+          sales = salesList
+              .where((test) => test.invoiceType == "Sales")
+              .toList();
         } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          sales =
-              salesList.where((test) => test.invoiceType == "Sales").toList();
+          sales = salesList
+              .where((test) => test.invoiceType == "Sales")
+              .toList();
         } else {
-          sales =
-              salesList.where((test) => test.invoiceType == "Sales").toList();
+          sales = salesList
+              .where((test) => test.invoiceType == "Sales")
+              .toList();
         }
       });
     } catch (e) {
@@ -745,10 +761,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     List<ItemCostList> salesList = [];
     try {
       do {
-        var body = {
-          "Index": index.toString(),
-          "Limit": limit.toString(),
-        };
+        var body = {"Index": index.toString(), "Limit": limit.toString()};
         const apiUrl = '${ApiHelper.baseUrl}BicxoItemCostList';
         final response = await http.post(
           Uri.parse(apiUrl),
@@ -780,9 +793,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       } while (fetchedCount == limit);
 
       setState(() {
-        context
-            .read<ProductWiseMarginItemCostProvider>()
-            .updateItemCostList(salesList);
+        context.read<ProductWiseMarginItemCostProvider>().updateItemCostList(
+          salesList,
+        );
 
         List<String> menuNames = usersList
             .where((element) => element.parentMenuId == 0)
@@ -816,14 +829,23 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     final userId = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     await _loadUserList(
-        userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
+      userId,
+      userJwtToken,
+      userMailID,
+      int.tryParse(userLevel) ?? 0,
+    );
     await _loadUserListForFilter(
-        userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
+      userId,
+      userJwtToken,
+      userMailID,
+      int.tryParse(userLevel) ?? 0,
+    );
 
     await _loadSales(userName, userLevel);
     await _loadItemCost(userName, userLevel);
@@ -837,8 +859,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       receivablesFinanceList = ReceivablesFinanceList(agingData: []);
       allReceivablesFinanceList = AllReceivablesFinanceList(agingData: []);
       advanceCustomerList = AdvanceFromCustomersList(agingData: []);
-      customerAnalysisFinanceList =
-          CustomerAnalysisFinanceList(customerData: []);
+      customerAnalysisFinanceList = CustomerAnalysisFinanceList(
+        customerData: [],
+      );
       tsmwiseCollectionList = TsmwiseCollectionList(tsmwiseData: []);
       asmwiseCollectionList = AsmwiseCollectionList(asmwiseData: []);
       rsmwiseCollectionList = RsmwiseCollectionList(rsmwiseData: []);
@@ -851,8 +874,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       receivablesFinanceList = ReceivablesFinanceList(agingData: []);
       // allReceivablesFinanceList = AllReceivablesFinanceList(agingData: []);
       advanceCustomerList = AdvanceFromCustomersList(agingData: []);
-      customerAnalysisFinanceList =
-          CustomerAnalysisFinanceList(customerData: []);
+      customerAnalysisFinanceList = CustomerAnalysisFinanceList(
+        customerData: [],
+      );
       tsmwiseCollectionList = TsmwiseCollectionList(tsmwiseData: []);
       asmwiseCollectionList = AsmwiseCollectionList(asmwiseData: []);
       rsmwiseCollectionList = RsmwiseCollectionList(rsmwiseData: []);
@@ -914,97 +938,100 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
 
   SideTitles get _leftProductTitles => SideTitles(
-        reservedSize: 50,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String leftDouble = "";
-          leftDouble = value.toStringAsFixed(0);
-          return Text(
-            leftDouble,
-            style: const TextStyle(fontSize: 12),
-          );
-        },
-      );
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = value.toStringAsFixed(0);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
 
   Widget getEmptyTopTitle(double val, TitleMeta meta) {
     return const Text("");
   }
 
   SideTitles get _bottomTitlesMonthlyAnalysis => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ProductMarginData> mData = productMarginList.productMarginData;
-          text = mData.elementAt(value.toInt()).itemDescription;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ProductMarginData> mData = productMarginList.productMarginData;
+      text = mData.elementAt(value.toInt()).itemDescription;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesItemSubGroup => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<SubGroupMarginTotal> mData = itemSubGroupGraphList.data;
-          text = mData.elementAt(value.toInt()).itemSubGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<SubGroupMarginTotal> mData = itemSubGroupGraphList.data;
+      text = mData.elementAt(value.toInt()).itemSubGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   List<BarChartGroupData> _monthlyAnalysisChartData(
-      List<ProductMarginData> data) {
+    List<ProductMarginData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.marginPercent,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.marginPercent,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _itemSubGroupChartData(
-      List<SubGroupMarginTotal> data) {
+    List<SubGroupMarginTotal> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.marginPercent,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.marginPercent,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
@@ -1012,9 +1039,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     return GestureDetector(
       onTap: () => toggleCheckbox(),
       child: Checkbox(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(2.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2.0)),
         side: WidgetStateBorderSide.resolveWith(
           (states) => const BorderSide(width: 1.0, color: Color(0xFF8F8F8F)),
         ),
@@ -1025,7 +1050,8 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
   }
 
   String getSelectedFiltersText(
-      Map<String, Map<String, bool>> allCategoriesState) {
+    Map<String, Map<String, bool>> allCategoriesState,
+  ) {
     List<String> selectedFilters = [];
     allCategoriesState.forEach((category, options) {
       options.forEach((option, isSelected) {
@@ -1039,170 +1065,172 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     return selectedFilters.join(', ');
   }
 
-//   Future<void> _loadYtdSalesBarChartData(String? itemGroup) async {
-//     Map<String, List<SalesList>> salesByCustomer = {};
-//     Map<String, List<SalesList>> salesByItem = {};
-//     String bomCost = '';
-//     List<ProductMarginData> ytdSalesDataList = [];
-//     var tmpSales = sales.toList();
-//
-//     for (var sale in tmpSales) {
-//       salesByCustomer.putIfAbsent(sale.code, () => []).add(sale);
-//     }
-//
-//     for (var customerCode in salesByCustomer.keys) {
-//       var customerSales = salesByCustomer[customerCode]!;
-//
-//       //only invoice
-//
-//       salesByItem.clear();
-//       for (var sale in customerSales) {
-//         salesByItem.putIfAbsent(sale.code, () => []).add(sale);
-//       }
-//
-//       for (var itemCode in salesByItem.keys) {
-//         var itemSales = salesByItem[itemCode]!;
-//         var firstItemSale = itemSales.first;
-//
-//         var matchingItems =
-//             itemCostList.where((test) => firstItemSale.code == test.itemCode);
-//
-//         bomCost = matchingItems.isNotEmpty ? matchingItems.first.itemCost : "0";
-//
-//         List<double> monthlyQty = List.filled(12, 0.0);
-//         List<double> monthlyValue = List.filled(12, 0.0);
-//
-//         for (int i = 0; i < 12; i++) {
-//           DateTime startDate = addMonth(fiscalYearStartDate!, i);
-//           DateTime endDate =
-//               addMonth(startDate, 1).add(const Duration(days: -1));
-//
-//           for (var sale in itemSales) {
-//             DateTime invoiceDate =
-//                 DateFormat('dd/MM/yyyy').parse(sale.invoiceDate);
-//             if (invoiceDate.isAtLeast(startDate) &&
-//                 invoiceDate.isAtMost(endDate)) {
-//               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
-//               double quantity = double.tryParse(sale.quantity) ?? 0.0;
-//               if (sale.invoiceType == "Sales Return") {
-//                 rowTotal *= -1;
-//                 quantity *= -1;
-//               }
-//               monthlyValue[i] += rowTotal;
-//               monthlyQty[i] += quantity;
-//             }
-//           }
-//         }
-//
-//         if (monthlyValue.reduce((a, b) => a + b) != 0) {
-//           ytdSalesDataList.add(ProductMarginData(
-//             itemNo: firstItemSale.code,
-//             itemDescription: firstItemSale.description,
-//             itemSubGroup: firstItemSale.itemSubGroup,
-//             quantity: monthlyQty.reduce((a, b) => a + b).toStringAsFixed(2),
-//             saleAmt: monthlyValue.reduce((a, b) => a + b).toStringAsFixed(2),
-//             avgSellingPrice: (monthlyValue.reduce((a, b) => a + b) /
-//                     monthlyQty.reduce((a, b) => a + b))
-//                 .toStringAsFixed(2),
-//             bomCost: double.parse(bomCost).toStringAsFixed(2),
-//             perUnitMarginAmount: ((monthlyValue.reduce((a, b) => a + b) /
-//                         monthlyQty.reduce((a, b) => a + b)) -
-//                     double.parse(bomCost))
-//                 .toStringAsFixed(2),
-//             totalMarginAmount: (((monthlyValue.reduce((a, b) => a + b) /
-//                             monthlyQty.reduce((a, b) => a + b)) -
-//                         double.parse(bomCost)) *
-//                     monthlyQty.reduce((a, b) => a + b))
-//                 .toStringAsFixed(2),
-//             marginPercent: (((monthlyValue.reduce((a, b) => a + b) /
-//                         monthlyQty.reduce((a, b) => a + b)) -
-//                     double.parse(bomCost)) /
-//                 (monthlyValue.reduce((a, b) => a + b) /
-//                     monthlyQty.reduce((a, b) => a + b)) *
-//                 100),
-//             // mayQty: monthlyQty[1],
-//             // mayValue: monthlyValue[1],
-//             // junQty: monthlyQty[2],
-//             // junValue: monthlyValue[2],
-//             // julQty: monthlyQty[3],
-//             // julValue: monthlyQty[3],
-//             // augQty: monthlyQty[4],
-//             // augValue: monthlyValue[4],
-//             // sepQty: monthlyQty[5],
-//             // sepValue: monthlyValue[5],
-//             // octQty: monthlyQty[6],
-//             // octValue: monthlyValue[6],
-//             // novQty: monthlyQty[7],
-//             // novValue: monthlyValue[7],
-//             // decQty: monthlyQty[8],
-//             // decValue: monthlyValue[8],
-//             // janQty: monthlyQty[9],
-//             // janValue: monthlyValue[9],
-//             // febQty: monthlyQty[10],
-//             // febValue: monthlyValue[10],
-//             // marQty: monthlyQty[11],
-//             // marValue: monthlyValue[11],
-//             // ytdTotalValue: monthlyValue.reduce((a, b) => a + b),
-//             // ytdTotalQty: monthlyQty.reduce((a, b) => a + b),
-//           ));
-//         }
-//         customerSales.clear();
-//       }
-//     }
-//
-//     setState(() {
-//       ytdSalesDataList.sort((a, b) => a.itemNo.compareTo(b.itemNo));
-//
-//       ytdSalesDataList.removeWhere(
-//           (item) => item.itemSubGroup == "" || item.itemSubGroup.isEmpty);
-//
-//       var filteredList = ytdSalesDataList
-//           .where(
-//               (item) => item.itemSubGroup != "" && item.itemSubGroup.isNotEmpty)
-//           .toList();
-//
-//       productMarginList = ProductMarginList(productMarginData: filteredList);
-//
-//       filteredList.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
-//       productMarginListGraph =
-//           ProductMarginList(productMarginData: filteredList);
-//
-//       YtdSalesBarChartData = true;
-//     });
-//
-//     List<ProductMarginData> data = productMarginList.productMarginData;
-//
-//     double overallTotal = data.fold(0.0, (sum, item) {
-//       return sum + (double.tryParse(item.totalMarginAmount) ?? 0.0);
-//     });
-//
-//     Map<String, double> subgroupSums = {};
-//     for (var item in data) {
-//       final margin = double.tryParse(item.totalMarginAmount) ?? 0.0;
-//       subgroupSums.update(
-//         item.itemSubGroup,
-//         (existing) => existing + margin,
-//         ifAbsent: () => margin,
-//       );
-//     }
-//
-//     itemSubGroupGraph = subgroupSums.entries.map((e) {
-//       final pct = overallTotal > 0 ? (e.value / overallTotal) * 100 : 0.0;
-//       return SubGroupMarginTotal(
-//         itemSubGroup: e.key,
-//         totalMarginAmount: e.value,
-//         marginPercent: pct,
-//       );
-//     }).toList();
-//
-//     itemSubGroupGraph.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
-//     itemSubGroupGraphList = SubGroupMarginTotalList(data: itemSubGroupGraph);
-//
-// // Helper class to store the result
-//   }
+  //   Future<void> _loadYtdSalesBarChartData(String? itemGroup) async {
+  //     Map<String, List<SalesList>> salesByCustomer = {};
+  //     Map<String, List<SalesList>> salesByItem = {};
+  //     String bomCost = '';
+  //     List<ProductMarginData> ytdSalesDataList = [];
+  //     var tmpSales = sales.toList();
+  //
+  //     for (var sale in tmpSales) {
+  //       salesByCustomer.putIfAbsent(sale.code, () => []).add(sale);
+  //     }
+  //
+  //     for (var customerCode in salesByCustomer.keys) {
+  //       var customerSales = salesByCustomer[customerCode]!;
+  //
+  //       //only invoice
+  //
+  //       salesByItem.clear();
+  //       for (var sale in customerSales) {
+  //         salesByItem.putIfAbsent(sale.code, () => []).add(sale);
+  //       }
+  //
+  //       for (var itemCode in salesByItem.keys) {
+  //         var itemSales = salesByItem[itemCode]!;
+  //         var firstItemSale = itemSales.first;
+  //
+  //         var matchingItems =
+  //             itemCostList.where((test) => firstItemSale.code == test.itemCode);
+  //
+  //         bomCost = matchingItems.isNotEmpty ? matchingItems.first.itemCost : "0";
+  //
+  //         List<double> monthlyQty = List.filled(12, 0.0);
+  //         List<double> monthlyValue = List.filled(12, 0.0);
+  //
+  //         for (int i = 0; i < 12; i++) {
+  //           DateTime startDate = addMonth(fiscalYearStartDate!, i);
+  //           DateTime endDate =
+  //               addMonth(startDate, 1).add(const Duration(days: -1));
+  //
+  //           for (var sale in itemSales) {
+  //             DateTime invoiceDate =
+  //                 DateFormat('dd/MM/yyyy').parse(sale.invoiceDate);
+  //             if (invoiceDate.isAtLeast(startDate) &&
+  //                 invoiceDate.isAtMost(endDate)) {
+  //               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
+  //               double quantity = double.tryParse(sale.quantity) ?? 0.0;
+  //               if (sale.invoiceType == "Sales Return") {
+  //                 rowTotal *= -1;
+  //                 quantity *= -1;
+  //               }
+  //               monthlyValue[i] += rowTotal;
+  //               monthlyQty[i] += quantity;
+  //             }
+  //           }
+  //         }
+  //
+  //         if (monthlyValue.reduce((a, b) => a + b) != 0) {
+  //           ytdSalesDataList.add(ProductMarginData(
+  //             itemNo: firstItemSale.code,
+  //             itemDescription: firstItemSale.description,
+  //             itemSubGroup: firstItemSale.itemSubGroup,
+  //             quantity: monthlyQty.reduce((a, b) => a + b).toStringAsFixed(2),
+  //             saleAmt: monthlyValue.reduce((a, b) => a + b).toStringAsFixed(2),
+  //             avgSellingPrice: (monthlyValue.reduce((a, b) => a + b) /
+  //                     monthlyQty.reduce((a, b) => a + b))
+  //                 .toStringAsFixed(2),
+  //             bomCost: double.parse(bomCost).toStringAsFixed(2),
+  //             perUnitMarginAmount: ((monthlyValue.reduce((a, b) => a + b) /
+  //                         monthlyQty.reduce((a, b) => a + b)) -
+  //                     double.parse(bomCost))
+  //                 .toStringAsFixed(2),
+  //             totalMarginAmount: (((monthlyValue.reduce((a, b) => a + b) /
+  //                             monthlyQty.reduce((a, b) => a + b)) -
+  //                         double.parse(bomCost)) *
+  //                     monthlyQty.reduce((a, b) => a + b))
+  //                 .toStringAsFixed(2),
+  //             marginPercent: (((monthlyValue.reduce((a, b) => a + b) /
+  //                         monthlyQty.reduce((a, b) => a + b)) -
+  //                     double.parse(bomCost)) /
+  //                 (monthlyValue.reduce((a, b) => a + b) /
+  //                     monthlyQty.reduce((a, b) => a + b)) *
+  //                 100),
+  //             // mayQty: monthlyQty[1],
+  //             // mayValue: monthlyValue[1],
+  //             // junQty: monthlyQty[2],
+  //             // junValue: monthlyValue[2],
+  //             // julQty: monthlyQty[3],
+  //             // julValue: monthlyQty[3],
+  //             // augQty: monthlyQty[4],
+  //             // augValue: monthlyValue[4],
+  //             // sepQty: monthlyQty[5],
+  //             // sepValue: monthlyValue[5],
+  //             // octQty: monthlyQty[6],
+  //             // octValue: monthlyValue[6],
+  //             // novQty: monthlyQty[7],
+  //             // novValue: monthlyValue[7],
+  //             // decQty: monthlyQty[8],
+  //             // decValue: monthlyValue[8],
+  //             // janQty: monthlyQty[9],
+  //             // janValue: monthlyValue[9],
+  //             // febQty: monthlyQty[10],
+  //             // febValue: monthlyValue[10],
+  //             // marQty: monthlyQty[11],
+  //             // marValue: monthlyValue[11],
+  //             // ytdTotalValue: monthlyValue.reduce((a, b) => a + b),
+  //             // ytdTotalQty: monthlyQty.reduce((a, b) => a + b),
+  //           ));
+  //         }
+  //         customerSales.clear();
+  //       }
+  //     }
+  //
+  //     setState(() {
+  //       ytdSalesDataList.sort((a, b) => a.itemNo.compareTo(b.itemNo));
+  //
+  //       ytdSalesDataList.removeWhere(
+  //           (item) => item.itemSubGroup == "" || item.itemSubGroup.isEmpty);
+  //
+  //       var filteredList = ytdSalesDataList
+  //           .where(
+  //               (item) => item.itemSubGroup != "" && item.itemSubGroup.isNotEmpty)
+  //           .toList();
+  //
+  //       productMarginList = ProductMarginList(productMarginData: filteredList);
+  //
+  //       filteredList.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
+  //       productMarginListGraph =
+  //           ProductMarginList(productMarginData: filteredList);
+  //
+  //       YtdSalesBarChartData = true;
+  //     });
+  //
+  //     List<ProductMarginData> data = productMarginList.productMarginData;
+  //
+  //     double overallTotal = data.fold(0.0, (sum, item) {
+  //       return sum + (double.tryParse(item.totalMarginAmount) ?? 0.0);
+  //     });
+  //
+  //     Map<String, double> subgroupSums = {};
+  //     for (var item in data) {
+  //       final margin = double.tryParse(item.totalMarginAmount) ?? 0.0;
+  //       subgroupSums.update(
+  //         item.itemSubGroup,
+  //         (existing) => existing + margin,
+  //         ifAbsent: () => margin,
+  //       );
+  //     }
+  //
+  //     itemSubGroupGraph = subgroupSums.entries.map((e) {
+  //       final pct = overallTotal > 0 ? (e.value / overallTotal) * 100 : 0.0;
+  //       return SubGroupMarginTotal(
+  //         itemSubGroup: e.key,
+  //         totalMarginAmount: e.value,
+  //         marginPercent: pct,
+  //       );
+  //     }).toList();
+  //
+  //     itemSubGroupGraph.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
+  //     itemSubGroupGraphList = SubGroupMarginTotalList(data: itemSubGroupGraph);
+  //
+  // // Helper class to store the result
+  //   }
 
   Future<void> _loadYtdSalesBarChartData(
-      String? itemGroup, String? item) async {
+    String? itemGroup,
+    String? item,
+  ) async {
     Map<String, List<SalesList>> salesByCustomer = {};
     List<ProductMarginData> ytdSalesDataList = [];
 
@@ -1223,8 +1251,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         var itemSales = salesByItem[itemCode]!;
         var firstItemSale = itemSales.first;
 
-        var matchingItems =
-            itemCostList.where((c) => firstItemSale.code == c.itemCode);
+        var matchingItems = itemCostList.where(
+          (c) => firstItemSale.code == c.itemCode,
+        );
         final double bomCost = matchingItems.isNotEmpty
             ? double.tryParse(matchingItems.first.itemCost) ?? 0.0
             : 0.0;
@@ -1234,8 +1263,10 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
 
         for (int i = 0; i < 12; i++) {
           DateTime startDate = addMonth(fiscalYearStartDate!, i);
-          DateTime endDate =
-              addMonth(startDate, 1).subtract(const Duration(days: 1));
+          DateTime endDate = addMonth(
+            startDate,
+            1,
+          ).subtract(const Duration(days: 1));
 
           for (var sale in itemSales) {
             DateTime invoiceDate = sale.invoiceDate;
@@ -1263,18 +1294,20 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               ? (perUnitMargin / avgSellingPrice) * 100
               : 0.0;
 
-          ytdSalesDataList.add(ProductMarginData(
-            itemNo: firstItemSale.code,
-            itemDescription: firstItemSale.description,
-            itemSubGroup: firstItemSale.itemSubGroup,
-            quantity: totalQty.toStringAsFixed(2),
-            saleAmt: totalValue.toStringAsFixed(2),
-            avgSellingPrice: avgSellingPrice.toStringAsFixed(2),
-            bomCost: bomCost.toStringAsFixed(2),
-            perUnitMarginAmount: perUnitMargin.toStringAsFixed(2),
-            totalMarginAmount: totalMargin.toStringAsFixed(2),
-            marginPercent: marginPct,
-          ));
+          ytdSalesDataList.add(
+            ProductMarginData(
+              itemNo: firstItemSale.code,
+              itemDescription: firstItemSale.description,
+              itemSubGroup: firstItemSale.itemSubGroup,
+              quantity: totalQty.toStringAsFixed(2),
+              saleAmt: totalValue.toStringAsFixed(2),
+              avgSellingPrice: avgSellingPrice.toStringAsFixed(2),
+              bomCost: bomCost.toStringAsFixed(2),
+              perUnitMarginAmount: perUnitMargin.toStringAsFixed(2),
+              totalMarginAmount: totalMargin.toStringAsFixed(2),
+              marginPercent: marginPct,
+            ),
+          );
         }
       }
     }
@@ -1285,21 +1318,24 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
 
     List<ProductMarginData> filteredData = productList;
     if (itemGroup != null && itemGroup.isNotEmpty) {
-      filteredData =
-          productList.where((d) => d.itemSubGroup == itemGroup).toList();
+      filteredData = productList
+          .where((d) => d.itemSubGroup == itemGroup)
+          .toList();
     }
 
     if (item != null && item.isNotEmpty) {
-      filteredData =
-          filteredData.where((d) => d.itemDescription.contains(item)).toList();
+      filteredData = filteredData
+          .where((d) => d.itemDescription.contains(item))
+          .toList();
     }
 
     setState(() {
       productMarginList = ProductMarginList(productMarginData: filteredData);
 
       filteredData.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
-      productMarginListGraph =
-          ProductMarginList(productMarginData: filteredData);
+      productMarginListGraph = ProductMarginList(
+        productMarginData: filteredData,
+      );
 
       double overallTotal = filteredData.fold(0.0, (sum, item) {
         return sum + (double.tryParse(item.totalMarginAmount) ?? 0.0);
@@ -1308,8 +1344,11 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       Map<String, double> subgroupSums = {};
       for (var item in filteredData) {
         final m = double.tryParse(item.totalMarginAmount) ?? 0.0;
-        subgroupSums.update(item.itemSubGroup, (ex) => ex + m,
-            ifAbsent: () => m);
+        subgroupSums.update(
+          item.itemSubGroup,
+          (ex) => ex + m,
+          ifAbsent: () => m,
+        );
       }
 
       itemSubGroupGraph = subgroupSums.entries.map((e) {
@@ -1320,8 +1359,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
           marginPercent: pct,
         );
       }).toList();
-      itemSubGroupGraph
-          .sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
+      itemSubGroupGraph.sort(
+        (a, b) => b.marginPercent.compareTo(a.marginPercent),
+      );
       itemSubGroupGraphList = SubGroupMarginTotalList(data: itemSubGroupGraph);
 
       YtdSalesBarChartData = true;
@@ -1332,46 +1372,49 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Item No.',
-      'Item Description',
-      'Item Sub Group',
-      'Quantity',
-      'Sales Amt',
-      'Avg Selling Price',
-      'BOMCost',
-      'Per Unit Margin Amount',
-      'Total Margin Amount',
-      'Margin %',
-    ]));
+    sheet.appendRow(
+      toCellRow([
+        'Item No.',
+        'Item Description',
+        'Item Sub Group',
+        'Quantity',
+        'Sales Amt',
+        'Avg Selling Price',
+        'BOMCost',
+        'Per Unit Margin Amount',
+        'Total Margin Amount',
+        'Margin %',
+      ]),
+    );
 
     for (int column = 0; column < 11; column++) {
       var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0));
-      cell.cellStyle = xl.CellStyle(
-        bold: true,
-        fontSize: 14,
+        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
       );
+      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
 
       // sheet.setColAutoFit(column);
     }
 
-    productMarginList.productMarginData
-        .removeWhere((item) => double.parse(item.quantity) < 0);
+    productMarginList.productMarginData.removeWhere(
+      (item) => double.parse(item.quantity) < 0,
+    );
 
     for (var ytdData in productMarginList.productMarginData) {
-      sheet.appendRow(toCellRow([
-        ytdData.itemNo,
-        ytdData.itemDescription,
-        ytdData.itemSubGroup,
-        ytdData.quantity,
-        ytdData.saleAmt,
-        ytdData.avgSellingPrice,
-        ytdData.bomCost,
-        ytdData.perUnitMarginAmount,
-        ytdData.totalMarginAmount,
-        ytdData.marginPercent.toStringAsFixed(0),
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          ytdData.itemNo,
+          ytdData.itemDescription,
+          ytdData.itemSubGroup,
+          ytdData.quantity,
+          ytdData.saleAmt,
+          ytdData.avgSellingPrice,
+          ytdData.bomCost,
+          ytdData.perUnitMarginAmount,
+          ytdData.totalMarginAmount,
+          ytdData.marginPercent.toStringAsFixed(0),
+        ]),
+      );
     }
 
     xl.CellStyle centerCellStyle = xl.CellStyle(
@@ -1383,8 +1426,12 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
 
     for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
       for (int colIndex = 0; colIndex < 10; colIndex++) {
-        var cell = sheet.cell(xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex, rowIndex: rowIndex));
+        var cell = sheet.cell(
+          xl.CellIndex.indexByColumnRow(
+            columnIndex: colIndex,
+            rowIndex: rowIndex,
+          ),
+        );
         if (rowIndex != 0) {
           cell.cellStyle = centerCellStyle;
         }
@@ -1425,29 +1472,27 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     final excel = xl.Excel.createExcel();
     final sheet = excel['Sheet1'];
     // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow([
-      'Name',
-      'Margin Percentage',
-      'Total Margin Amount',
-    ]));
+    sheet.appendRow(
+      toCellRow(['Name', 'Margin Percentage', 'Total Margin Amount']),
+    );
 
     for (int column = 0; column < 11; column++) {
       var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0));
-      cell.cellStyle = xl.CellStyle(
-        bold: true,
-        fontSize: 14,
+        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
       );
+      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
 
       // sheet.setColAutoFit(column);
     }
 
     for (var ytdData in itemSubGroupGraphList.data) {
-      sheet.appendRow(toCellRow([
-        ytdData.itemSubGroup,
-        ytdData.totalMarginAmount,
-        ytdData.marginPercent.toStringAsFixed(0),
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          ytdData.itemSubGroup,
+          ytdData.totalMarginAmount,
+          ytdData.marginPercent.toStringAsFixed(0),
+        ]),
+      );
     }
 
     xl.CellStyle centerCellStyle = xl.CellStyle(
@@ -1459,8 +1504,12 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
 
     for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
       for (int colIndex = 0; colIndex < 10; colIndex++) {
-        var cell = sheet.cell(xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex, rowIndex: rowIndex));
+        var cell = sheet.cell(
+          xl.CellIndex.indexByColumnRow(
+            columnIndex: colIndex,
+            rowIndex: rowIndex,
+          ),
+        );
         if (rowIndex != 0) {
           cell.cellStyle = centerCellStyle;
         }
@@ -1502,31 +1551,35 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item No.',
-        'Item Description',
-        'Item Sub Group',
-        'Quantity',
-        'Sales Amt',
-        'Avg Selling Price',
-        'BOMCost',
-        'Per Unit Margin Amount',
-        'Total Margin Amount',
-        'Margin %',
-      ]));
+      sheet.appendRow(
+        toCellRow([
+          'Item No.',
+          'Item Description',
+          'Item Sub Group',
+          'Quantity',
+          'Sales Amt',
+          'Avg Selling Price',
+          'BOMCost',
+          'Per Unit Margin Amount',
+          'Total Margin Amount',
+          'Margin %',
+        ]),
+      );
       for (var element in productMarginList.productMarginData) {
-        sheet.appendRow(toCellRow([
-          element.itemNo,
-          element.itemDescription,
-          element.itemSubGroup,
-          element.quantity,
-          element.saleAmt,
-          element.avgSellingPrice,
-          element.bomCost,
-          element.perUnitMarginAmount,
-          element.totalMarginAmount,
-          element.marginPercent,
-        ]));
+        sheet.appendRow(
+          toCellRow([
+            element.itemNo,
+            element.itemDescription,
+            element.itemSubGroup,
+            element.quantity,
+            element.saleAmt,
+            element.avgSellingPrice,
+            element.bomCost,
+            element.perUnitMarginAmount,
+            element.totalMarginAmount,
+            element.marginPercent,
+          ]),
+        );
         // totalOrderedQty += dailyData.orderedQty;
         // totalDispatchedQty += dailyData.dispatchedQty;
         // totalPendingQty += dailyData.pendingQty;
@@ -1544,9 +1597,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1606,14 +1657,14 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 15,
-                        ),
+                        const SizedBox(width: 15),
                         dateFilterFlag
                             ? Text(
-                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}")
+                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
+                              )
                             : Text(
-                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate!)}"),
+                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate!)}",
+                              ),
                       ],
                     ),
                     // Row(
@@ -1636,8 +1687,10 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                       const Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Product Margin Report - Item Wise",
-                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            "Product Margin Report - Item Wise",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                       Row(
@@ -1652,9 +1705,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                                     generateSalesAnalysisYTDExcel();
                                   },
                                   child: const Row(
-                                    children: [
-                                      Text("Download Excel"),
-                                    ],
+                                    children: [Text("Download Excel")],
                                   ),
                                 ),
                               ];
@@ -1666,17 +1717,12 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _dailyCostingGraph(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
@@ -1686,8 +1732,10 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                       const Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Product Margin Report - Item Group Wise",
-                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            "Product Margin Report - Item Group Wise",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                       Row(
@@ -1702,9 +1750,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                                     generateItemGroupWise();
                                   },
                                   child: const Row(
-                                    children: [
-                                      Text("Download Excel"),
-                                    ],
+                                    children: [Text("Download Excel")],
                                   ),
                                 ),
                               ];
@@ -1716,17 +1762,12 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemSubGroupWise(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
               ],
             ),
@@ -1773,10 +1814,12 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     double chartMaxY = 0;
 
     if (hasPositive && hasNegative) {
-      double maxPositive =
-          amounts.where((a) => a > 0).reduce((a, b) => a > b ? a : b);
-      double maxNegative =
-          amounts.where((a) => a < 0).reduce((a, b) => a < b ? a : b);
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
       chartMaxY = roundUpTo50Lakhs(maxPositive);
       chartMinY = roundDownTo50Lakhs(maxNegative);
     } else if (hasPositive) {
@@ -1799,43 +1842,36 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
             minY: chartMinY,
             titlesData: FlTitlesData(
               show: true,
-              leftTitles:
-                  AxisTitles(sideTitles: _leftProductTitles, axisNameSize: 14),
+              leftTitles: AxisTitles(
+                sideTitles: _leftProductTitles,
+                axisNameSize: 14,
+              ),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesMonthlyAnalysis, axisNameSize: 20),
+                sideTitles: _bottomTitlesMonthlyAnalysis,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _monthlyAnalysisChartData(
-                productMarginListGraph.productMarginData),
+              productMarginListGraph.productMarginData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -1844,9 +1880,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItem = touchedItem == ""
                           ? productMarginListGraph
-                              .productMarginData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .itemDescription
+                                .productMarginData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .itemDescription
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -1858,36 +1894,40 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${productMarginListGraph.productMarginData[grpIndex].itemDescription}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '${productMarginListGraph.productMarginData[grpIndex].itemDescription}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            'Margin Percentage: ${productMarginListGraph.productMarginData[grpIndex].marginPercent.toStringAsFixed(0)}\n',
+                        style: const TextStyle(
+                          color: Color(0xFF2CA9DF),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              'Margin Percentage: ${productMarginListGraph.productMarginData[grpIndex].marginPercent.toStringAsFixed(0)}\n',
-                          style: const TextStyle(
-                            color: Color(0xFF2CA9DF),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      TextSpan(
+                        text:
+                            'Total Margin Amount: ${formatAmount(double.parse(productMarginListGraph.productMarginData[grpIndex].totalMarginAmount))}\n',
+                        style: const TextStyle(
+                          color: Color(0xFF2CA9DF),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
-                        TextSpan(
-                          text:
-                              'Total Margin Amount: ${formatAmount(double.parse(productMarginListGraph.productMarginData[grpIndex].totalMarginAmount))}\n',
-                          style: const TextStyle(
-                            color: Color(0xFF2CA9DF),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -1913,8 +1953,8 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     }
     double maxAmount = len > 0
         ? itemSubGroupGraphList.data
-            .map((data) => data.marginPercent)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.marginPercent)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1926,39 +1966,31 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
             maxY: getMaxValue(maxAmount),
             titlesData: FlTitlesData(
               show: true,
-              leftTitles:
-                  AxisTitles(sideTitles: _leftProductTitles, axisNameSize: 14),
+              leftTitles: AxisTitles(
+                sideTitles: _leftProductTitles,
+                axisNameSize: 14,
+              ),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesItemSubGroup, axisNameSize: 20),
+                sideTitles: _bottomTitlesItemSubGroup,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _itemSubGroupChartData(itemSubGroupGraphList.data),
@@ -1970,15 +2002,12 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedGroup = touchedGroup == ""
                           ? itemSubGroupGraphList
-                              .data[barTouchResponse.spot!.spot.x.toInt()]
-                              .itemSubGroup
+                                .data[barTouchResponse.spot!.spot.x.toInt()]
+                                .itemSubGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedGroup,
-                        touchedItem,
-                      );
+                      loadDataWithFilter(touchedGroup, touchedItem);
                     }
                   });
                 }
@@ -1986,36 +2015,40 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${itemSubGroupGraphList.data[grpIndex].itemSubGroup}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '${itemSubGroupGraphList.data[grpIndex].itemSubGroup}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            'Margin Percentage: ${itemSubGroupGraphList.data[grpIndex].marginPercent.toStringAsFixed(0)}\n',
+                        style: const TextStyle(
+                          color: Color(0xFF2CA9DF),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              'Margin Percentage: ${itemSubGroupGraphList.data[grpIndex].marginPercent.toStringAsFixed(0)}\n',
-                          style: const TextStyle(
-                            color: Color(0xFF2CA9DF),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      TextSpan(
+                        text:
+                            'Total Margin Amount: ${formatAmount(itemSubGroupGraphList.data[grpIndex].totalMarginAmount)}\n',
+                        style: const TextStyle(
+                          color: Color(0xFF2CA9DF),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
-                        TextSpan(
-                          text:
-                              'Total Margin Amount: ${formatAmount(itemSubGroupGraphList.data[grpIndex].totalMarginAmount)}\n',
-                          style: const TextStyle(
-                            color: Color(0xFF2CA9DF),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -2054,7 +2087,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                       const Text(
                         'Filter Options',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -2091,28 +2126,35 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                           child: Column(
                             children: [
                               Expanded(
-                                child: selectedCategoryIndex ==
-                                        categories.length - 1 // "Date" index
+                                child:
+                                    selectedCategoryIndex ==
+                                        categories.length -
+                                            1 // "Date" index
                                     ? Column(
                                         children: [
                                           ListTile(
                                             title: const Text("From Date"),
-                                            subtitle: Text(fromDateFilter !=
-                                                    null
-                                                ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
-                                                : formatDateString(
-                                                    fiscalYearStartDate!)),
+                                            subtitle: Text(
+                                              fromDateFilter != null
+                                                  ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
+                                                  : formatDateString(
+                                                      fiscalYearStartDate!,
+                                                    ),
+                                            ),
                                             trailing: const Icon(
-                                                Icons.calendar_today),
+                                              Icons.calendar_today,
+                                            ),
                                             onTap: () async {
                                               final picked =
                                                   await showDatePicker(
-                                                context: context,
-                                                initialDate: fromDateFilter ??
-                                                    DateTime.now(),
-                                                firstDate: fiscalYearStartDate!,
-                                                lastDate: currentDate!,
-                                              );
+                                                    context: context,
+                                                    initialDate:
+                                                        fromDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
                                               if (picked != null) {
                                                 setState(() {
                                                   fromDateFilter = picked;
@@ -2123,21 +2165,27 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                                           ),
                                           ListTile(
                                             title: const Text("To Date"),
-                                            subtitle: Text(toDateFilter != null
-                                                ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
-                                                : formatDateString(
-                                                    currentDate!)),
+                                            subtitle: Text(
+                                              toDateFilter != null
+                                                  ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
+                                                  : formatDateString(
+                                                      currentDate!,
+                                                    ),
+                                            ),
                                             trailing: const Icon(
-                                                Icons.calendar_today),
+                                              Icons.calendar_today,
+                                            ),
                                             onTap: () async {
                                               final picked =
                                                   await showDatePicker(
-                                                context: context,
-                                                initialDate: toDateFilter ??
-                                                    DateTime.now(),
-                                                firstDate: fiscalYearStartDate!,
-                                                lastDate: currentDate!,
-                                              );
+                                                    context: context,
+                                                    initialDate:
+                                                        toDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
                                               if (picked != null) {
                                                 setState(() {
                                                   toDateFilter = picked;
@@ -2154,12 +2202,11 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                                                 .length,
                                         itemBuilder: (context, index) {
                                           return CheckboxListTile(
-                                            title: Text(filterOptions[
-                                                selectedCategoryIndex][index]),
+                                            title: Text(
+                                              filterOptions[selectedCategoryIndex][index],
+                                            ),
                                             value:
-                                                savedFinanceReceivablesOptions[
-                                                        selectedCategoryIndex]
-                                                    [index],
+                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
                                             onChanged: (bool? value) {
                                               // your checkbox logic
                                             },
@@ -2179,36 +2226,38 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                                     ),
                                     onPressed: () {
                                       List<String> selectedFilterOptions = [];
-                                      for (int i = 0;
-                                          i <
-                                              filterOptions[
-                                                      selectedCategoryIndex]
-                                                  .length;
-                                          i++) {
-                                        if (selectedFinanceReceivablesOptions[
-                                            selectedCategoryIndex][i]) {
+                                      for (
+                                        int i = 0;
+                                        i <
+                                            filterOptions[selectedCategoryIndex]
+                                                .length;
+                                        i++
+                                      ) {
+                                        if (selectedFinanceReceivablesOptions[selectedCategoryIndex][i]) {
                                           selectedFilterOptions.add(
-                                              filterOptions[
-                                                  selectedCategoryIndex][i]);
+                                            filterOptions[selectedCategoryIndex][i],
+                                          );
                                         }
                                       }
 
-                                      for (int catIndex = 0;
-                                          catIndex < categories.length;
-                                          catIndex++) {
+                                      for (
+                                        int catIndex = 0;
+                                        catIndex < categories.length;
+                                        catIndex++
+                                      ) {
                                         String categoryName =
                                             categories[catIndex];
                                         Map<String, bool> optionsState = {};
 
                                         // Ensure the lengths match for your filterOptions and selectedFinanceReceivablesOptions lists
-                                        for (int optionIndex = 0;
-                                            optionIndex <
-                                                filterOptions[catIndex].length;
-                                            optionIndex++) {
-                                          optionsState[filterOptions[catIndex]
-                                                  [optionIndex]] =
-                                              selectedFinanceReceivablesOptions[
-                                                  catIndex][optionIndex];
+                                        for (
+                                          int optionIndex = 0;
+                                          optionIndex <
+                                              filterOptions[catIndex].length;
+                                          optionIndex++
+                                        ) {
+                                          optionsState[filterOptions[catIndex][optionIndex]] =
+                                              selectedFinanceReceivablesOptions[catIndex][optionIndex];
                                         }
 
                                         allCategoriesState[categoryName] =
@@ -2236,9 +2285,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(
-                                    width: 15,
-                                  ),
+                                  const SizedBox(width: 15),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
@@ -2261,8 +2308,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                                       padding: EdgeInsets.all(8.0),
                                       child: Text(
                                         'Clear Filter',
-                                        style:
-                                            TextStyle(color: Color(0xff2ca9df)),
+                                        style: TextStyle(
+                                          color: Color(0xff2ca9df),
+                                        ),
                                       ),
                                     ),
                                   ),

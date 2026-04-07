@@ -16,7 +16,6 @@ import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
 import 'package:path_provider/path_provider.dart';
 import '../ReportService.dart';
-// import '../platform_excel_helper.dart';
 
 class ReceivablesFinance extends StatefulWidget {
   const ReceivablesFinance({super.key});
@@ -2105,17 +2104,20 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           .map((e) => [e.agingGroup, e.agingGroupTotal])
           .toList(),
       fileName: 'receivables.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
     );
   }
 
   Future<void> generateReceivablesPDF(AllReceivablesFinanceList list) async {
-    await reportService.generatePDF(
+    reportService.generatePDF(
       title: 'Receivables',
       headers: ['Ageing Group', 'Ageing Group Total'],
       rows: list.agingData
           .map((e) => [e.agingGroup, e.agingGroupTotal])
           .toList(),
       fileName: 'receivables.pdf',
+      numericColumns: [2],
     );
   }
 
@@ -2160,7 +2162,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         rows: rows,
         fileName: 'AllReceivablesExcel.xlsx',
         amountColumns: [8, 12, 22, 24, 25, 26, 27, 28, 29],
-        addTotalRow: true,
+        addTotalRow: false,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2219,6 +2221,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.agingGroup, e.agingGroupTotal])
             .toList(),
         fileName: 'NetReceivables.xlsx',
+        amountColumns: [2],
+        addTotalRow: true,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2235,6 +2239,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.agingGroup, e.agingGroupTotal])
             .toList(),
         fileName: 'NetReceivables.pdf',
+        numericColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2251,6 +2256,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.agingGroup, e.agingGroupTotal])
             .toList(),
         fileName: 'AdvanceFromCustomers.xlsx',
+        amountColumns: [2],
+        addTotalRow: true,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2267,6 +2274,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.agingGroup, e.agingGroupTotal])
             .toList(),
         fileName: 'AdvanceFromCustomers.pdf',
+        numericColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2291,6 +2299,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             )
             .toList(),
         fileName: 'CustomerAnalysis.xlsx',
+        amountColumns: [3],
+        addTotalRow: true,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2315,6 +2325,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             )
             .toList(),
         fileName: 'CustomerAnalysis.pdf',
+        numericColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2331,6 +2342,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.rsmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'RegionalManagerReceivables.xlsx',
+        amountColumns: [2],
+        addTotalRow: true,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2347,6 +2360,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.rsmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'RegionalManagerReceivables.pdf',
+        numericColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2363,6 +2377,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.asmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'SalesManagerReceivables.xlsx',
+        amountColumns: [2],
+        addTotalRow: true,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2379,6 +2395,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.asmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'SalesManagerReceivables.pdf',
+        numericColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2395,6 +2412,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.tsmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'TSMReceivables.xlsx',
+        amountColumns: [2],
+        addTotalRow: true,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2411,6 +2430,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.tsmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'TSMReceivables.pdf',
+        numericColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -3549,12 +3569,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 itemBuilder: (BuildContext bc) {
                                   return [
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateReceivablesExcel(
-                                            allReceivablesFinanceList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateReceivablesExcel(
+                                          allReceivablesFinanceList,
+                                        );
                                       },
                                       child: const Text("Download Excel"),
                                     ),
@@ -3609,22 +3627,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 itemBuilder: (BuildContext bc) {
                                   return [
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateNetReceivablesExcel(
-                                            receivablesFinanceList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateNetReceivablesExcel(
+                                          receivablesFinanceList,
+                                        );
                                       },
                                       child: const Text("Download Excel"),
                                     ),
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateNetReceivablesPDF(
-                                            receivablesFinanceList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateNetReceivablesPDF(
+                                          receivablesFinanceList,
+                                        );
                                       },
                                       child: const Text("Download PDF"),
                                     ),
@@ -3671,22 +3685,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 itemBuilder: (BuildContext bc) {
                                   return [
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateAdvanceExcel(
-                                            advanceCustomerList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateAdvanceExcel(
+                                          advanceCustomerList,
+                                        );
                                       },
                                       child: const Text("Download Excel"),
                                     ),
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateAdvancePDF(
-                                            advanceCustomerList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateAdvancePDF(
+                                          advanceCustomerList,
+                                        );
                                       },
                                       child: const Text("Download PDF"),
                                     ),
@@ -3733,22 +3743,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 itemBuilder: (BuildContext bc) {
                                   return [
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateCustomerAnalysisExcel(
-                                            customerAnalysisFinanceList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateCustomerAnalysisExcel(
+                                          customerAnalysisFinanceList,
+                                        );
                                       },
                                       child: const Text("Download Excel"),
                                     ),
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateCustomerAnalysisExcel(
-                                            customerAnalysisFinanceList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateCustomerAnalysisPDF(
+                                          customerAnalysisFinanceList,
+                                        );
                                       },
                                       child: const Text("Download PDF"),
                                     ),
@@ -3931,22 +3937,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 itemBuilder: (BuildContext bc) {
                                   return [
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateRegionalManagerExcel(
-                                            rsmwiseCollectionList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateRegionalManagerExcel(
+                                          rsmwiseCollectionList,
+                                        );
                                       },
                                       child: const Text("Download Excel"),
                                     ),
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateRegionalManagerPDF(
-                                            rsmwiseCollectionList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateRegionalManagerPDF(
+                                          rsmwiseCollectionList,
+                                        );
                                       },
                                       child: const Text("Download PDF"),
                                     ),
@@ -3993,22 +3995,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 itemBuilder: (BuildContext bc) {
                                   return [
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesManagerExcel(
-                                            asmwiseCollectionList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateSalesManagerExcel(
+                                          asmwiseCollectionList,
+                                        );
                                       },
                                       child: const Text("Download Excel"),
                                     ),
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesManagerPDF(
-                                            asmwiseCollectionList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateSalesManagerPDF(
+                                          asmwiseCollectionList,
+                                        );
                                       },
                                       child: const Text("Download PDF"),
                                     ),
@@ -4055,22 +4053,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 itemBuilder: (BuildContext bc) {
                                   return [
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesPersonExcel(
-                                            tsmwiseCollectionList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateSalesPersonExcel(
+                                          tsmwiseCollectionList,
+                                        );
                                       },
                                       child: const Text("Download Excel"),
                                     ),
                                     PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesPersonPDF(
-                                            tsmwiseCollectionList,
-                                          );
-                                        });
+                                      onTap: () async {
+                                        await generateSalesPersonPDF(
+                                          tsmwiseCollectionList,
+                                        );
                                       },
                                       child: const Text("Download PDF"),
                                     ),

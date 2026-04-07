@@ -18,8 +18,9 @@ import 'package:optima/classes/leads.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
 import '../../../api_helper.dart';
-import '../platform_excel_helper.dart';
-import '../platform_pdf_helper.dart';
+
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 class ExpensesFinance extends StatefulWidget {
   const ExpensesFinance({super.key});

@@ -19,8 +19,8 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 
-import '../platform_excel_helper.dart';
-import '../platform_pdf_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 class InventoryMovementAnalysis extends StatefulWidget {
   const InventoryMovementAnalysis({super.key});
@@ -56,8 +56,9 @@ double totalOutward = 0;
 double closingInventory = 0;
 double openingInventory = 0;
 
-ItemWiseInventoryMovementList itemList =
-    ItemWiseInventoryMovementList(itemData: []);
+ItemWiseInventoryMovementList itemList = ItemWiseInventoryMovementList(
+  itemData: [],
+);
 ItemGroupWiseInventoryMovementList itemGroupList =
     ItemGroupWiseInventoryMovementList(itemGroupData: []);
 ItemSubGroupWiseInventoryMovementList itemSubGroupList =
@@ -214,8 +215,10 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate =
-        addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1));
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
@@ -244,8 +247,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear =
-        currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1;
+    int fiscalYearStartYear = currentDate!.month >= 4
+        ? currentDate!.year
+        : currentDate!.year - 1;
 
     int fiscalYearEndYear = fiscalYearStartYear + 1;
     financialYear =
@@ -303,17 +307,14 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
   }
 
   SideTitles get _leftTitles => SideTitles(
-        reservedSize: 50,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String leftDouble = "";
-          leftDouble = formatAmount(value);
-          return Text(
-            leftDouble,
-            style: const TextStyle(fontSize: 12),
-          );
-        },
-      );
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -323,121 +324,130 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
   }
 
   SideTitles get _bottomTitlesItemWiseAnalysis => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ItemWiseInventoryMovementData> mData = itemList.itemData;
-          text = mData.elementAt(value.toInt()).itemName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ItemWiseInventoryMovementData> mData = itemList.itemData;
+      text = mData.elementAt(value.toInt()).itemName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesItemGroupWise => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ItemGroupWiseInventoryMovementData> mData =
-              itemGroupList.itemGroupData;
-          text = mData.elementAt(value.toInt()).itemGroupName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ItemGroupWiseInventoryMovementData> mData =
+          itemGroupList.itemGroupData;
+      text = mData.elementAt(value.toInt()).itemGroupName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   SideTitles get _bottomTitlesItemSubGroupWise => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ItemSubGroupWiseInventoryMovementData> mData =
-              itemSubGroupList.itemSubGroupData;
-          text = mData.elementAt(value.toInt()).itemSubGroupName;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ItemSubGroupWiseInventoryMovementData> mData =
+          itemSubGroupList.itemSubGroupData;
+      text = mData.elementAt(value.toInt()).itemSubGroupName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   List<BarChartGroupData> _itemWiseAnalysisChartData(
-      List<ItemWiseInventoryMovementData> data) {
+    List<ItemWiseInventoryMovementData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.cbQuantity,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.cbQuantity,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _itemGroupWiseChartData(
-      List<ItemGroupWiseInventoryMovementData> data) {
+    List<ItemGroupWiseInventoryMovementData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.cbQuantity,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.cbQuantity,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
   List<BarChartGroupData> _itemSubGroupWiseChartData(
-      List<ItemSubGroupWiseInventoryMovementData> data) {
+    List<ItemSubGroupWiseInventoryMovementData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFF97D7F3),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.cbQuantity,
-                  width: 30),
-            ]))
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.cbQuantity,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
@@ -453,7 +463,7 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
           "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoStockMovementList';
         final response = await http.post(
@@ -678,8 +688,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
     for (var item in inventoryList) {
       if (!processed.contains(item.itemDescription)) {
         itemName = item.itemDescription;
-        for (var target in inventoryList
-            .where((prdelement) => prdelement.itemDescription == itemName)) {
+        for (var target in inventoryList.where(
+          (prdelement) => prdelement.itemDescription == itemName,
+        )) {
           // obqty
           // inQty
           // outQt
@@ -705,13 +716,16 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
           cbValSum += cbVal;
         }
 
-        itemData.add(ItemWiseInventoryMovementData(
+        itemData.add(
+          ItemWiseInventoryMovementData(
             itemName: itemName,
             obQuantity: obQtySum,
             inQuantity: inQtySum,
             outQuantity: outQtySum,
             cbQuantity: cbQtySum,
-            cbValue: cbValSum));
+            cbValue: cbValSum,
+          ),
+        );
         processed.add(item.itemDescription);
       }
       obQtySum = 0;
@@ -775,8 +789,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
     for (var item in inventoryList) {
       if (!processed.contains(item.groupName)) {
         itemGroupName = item.groupName;
-        for (var target in inventoryList
-            .where((prdelement) => prdelement.groupName == itemGroupName)) {
+        for (var target in inventoryList.where(
+          (prdelement) => prdelement.groupName == itemGroupName,
+        )) {
           double obQty = qtyOrValCheck
               ? double.tryParse(target.obQty) ?? 0
               : double.tryParse(target.obVal) ?? 0;
@@ -799,13 +814,16 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
           cbValSum += cbVal;
         }
 
-        itemData.add(ItemGroupWiseInventoryMovementData(
+        itemData.add(
+          ItemGroupWiseInventoryMovementData(
             itemGroupName: itemGroupName,
             obQuantity: obQtySum,
             inQuantity: inQtySum,
             outQuantity: outQtySum,
             cbQuantity: cbQtySum,
-            cbValue: cbValSum));
+            cbValue: cbValSum,
+          ),
+        );
         processed.add(item.groupName);
       }
       obQtySum = 0;
@@ -850,8 +868,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
     for (var item in inventoryList) {
       if (!processed.contains(item.itemSubGroup)) {
         itemGroupName = item.itemSubGroup;
-        for (var target in inventoryList
-            .where((prdelement) => prdelement.itemSubGroup == itemGroupName)) {
+        for (var target in inventoryList.where(
+          (prdelement) => prdelement.itemSubGroup == itemGroupName,
+        )) {
           double obQty = qtyOrValCheck
               ? double.tryParse(target.obQty) ?? 0
               : double.tryParse(target.obVal) ?? 0;
@@ -874,13 +893,16 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
           cbValSum += cbVal;
         }
 
-        itemData.add(ItemSubGroupWiseInventoryMovementData(
+        itemData.add(
+          ItemSubGroupWiseInventoryMovementData(
             itemSubGroupName: itemGroupName,
             obQuantity: obQtySum,
             inQuantity: inQtySum,
             outQuantity: outQtySum,
             cbQuantity: cbQtySum,
-            cbValue: cbValSum));
+            cbValue: cbValSum,
+          ),
+        );
         processed.add(item.itemSubGroup);
       }
       obQtySum = 0;
@@ -893,16 +915,18 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
 
     itemData.sort((a, b) => b.cbQuantity.compareTo(a.cbQuantity));
 
-    itemSubGroupList =
-        ItemSubGroupWiseInventoryMovementList(itemSubGroupData: itemData);
+    itemSubGroupList = ItemSubGroupWiseInventoryMovementList(
+      itemSubGroupData: itemData,
+    );
     // totalInventory = itemGroupList.itemGroupData.fold(
     //     0, (prev, elem) => prev + itemGroupList.itemGroupData.first.quantity);
   }
 
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadInventoryMovement(userName, userLevel);
     await _loadItemWiseInventory("", "", "");
@@ -971,8 +995,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
       chartDataLoaded = false;
       itemList = ItemWiseInventoryMovementList(itemData: []);
       itemGroupList = ItemGroupWiseInventoryMovementList(itemGroupData: []);
-      itemSubGroupList =
-          ItemSubGroupWiseInventoryMovementList(itemSubGroupData: []);
+      itemSubGroupList = ItemSubGroupWiseInventoryMovementList(
+        itemSubGroupData: [],
+      );
       touchedItem = "";
       touchedItemGroup = "";
       touchedItemSubGroup = "";
@@ -984,8 +1009,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
       chartDataLoaded = false;
       itemList = ItemWiseInventoryMovementList(itemData: []);
       itemGroupList = ItemGroupWiseInventoryMovementList(itemGroupData: []);
-      itemSubGroupList =
-          ItemSubGroupWiseInventoryMovementList(itemSubGroupData: []);
+      itemSubGroupList = ItemSubGroupWiseInventoryMovementList(
+        itemSubGroupData: [],
+      );
     });
   }
 
@@ -1002,15 +1028,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item Name',
-        'Qty',
-      ]));
+      sheet.appendRow(toCellRow(['Item Name', 'Qty']));
       for (var monthlyData in list.itemData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.itemName,
-          monthlyData.outQuantity,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.itemName, monthlyData.outQuantity]),
+        );
       }
 
       if (kIsWeb) {
@@ -1023,9 +1045,7 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1039,8 +1059,10 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Item Wise Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1053,24 +1075,44 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Item Name',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Item Name',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Qty',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Qty',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in itemList.itemData)
-                  pw.TableRow(children: [
-                    pw.Text(data.itemName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.itemName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.outQuantity.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.outQuantity.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1088,28 +1130,23 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error: $e'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
   }
 
   Future<void> generateItemGroupWiseExcel(
-      ItemGroupWiseInventoryMovementList list) async {
+    ItemGroupWiseInventoryMovementList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item Group',
-        'Qty',
-      ]));
+      sheet.appendRow(toCellRow(['Item Group', 'Qty']));
       for (var monthlyData in list.itemGroupData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.itemGroupName,
-          monthlyData.outQuantity,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.itemGroupName, monthlyData.outQuantity]),
+        );
       }
 
       if (kIsWeb) {
@@ -1123,9 +1160,7 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error: $e'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1140,8 +1175,10 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Item Group Wise Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1154,24 +1191,44 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Item Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Item Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Qty',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Qty',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in itemGroupList.itemGroupData)
-                  pw.TableRow(children: [
-                    pw.Text(data.itemGroupName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.itemGroupName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.outQuantity.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.outQuantity.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1189,28 +1246,23 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error: $e'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
   }
 
   Future<void> generateItemSubGroupWiseExcel(
-      ItemSubGroupWiseInventoryMovementList list) async {
+    ItemSubGroupWiseInventoryMovementList list,
+  ) async {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Item Sub Group',
-        'Qty',
-      ]));
+      sheet.appendRow(toCellRow(['Item Sub Group', 'Qty']));
       for (var monthlyData in list.itemSubGroupData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.itemSubGroupName,
-          monthlyData.outQuantity,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.itemSubGroupName, monthlyData.outQuantity]),
+        );
       }
 
       if (kIsWeb) {
@@ -1224,9 +1276,7 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error: $e'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1241,8 +1291,10 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Item Sub Group Wise Analysis',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1255,24 +1307,44 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Item Sub Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Item Sub Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Qty',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Qty',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in itemSubGroupList.itemSubGroupData)
-                  pw.TableRow(children: [
-                    pw.Text(data.itemSubGroupName,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.itemSubGroupName,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.outQuantity.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.outQuantity.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1290,9 +1362,7 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error: $e'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1317,19 +1387,25 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
 
   @override
   Widget build(BuildContext context) {
-    String formattedFiscalYearStartDate =
-        DateFormat('dd/MM/yy').format(fiscalYearStartDate!);
-    String formattedQuarterStartDate =
-        DateFormat('dd/MM/yy').format(currentQuarterFromDate!);
-    String formattedQuarterLastDate =
-        DateFormat('dd/MM/yy').format(currentQuarterToDate!);
+    String formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(fiscalYearStartDate!);
+    String formattedQuarterStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterFromDate!);
+    String formattedQuarterLastDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterToDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month, 1));
+    String formattedDateFirstOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
+    String formattedDateLastOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
+    String formattedDateFirstOfThisMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
     return chartDataLoaded == true
         ? SingleChildScrollView(
             child: Column(
@@ -1339,32 +1415,33 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 15,
-                        ),
+                        const SizedBox(width: 15),
                         touchedMonthGoals == true
                             ? Text(
-                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth")
+                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
+                              )
                             : touchedQuarterGoals == true
-                                ? Text(
-                                    "$formattedQuarterStartDate - $formattedQuarterLastDate")
-                                : touchedYTDGoals == true
-                                    ? Text(
-                                        "$formattedFiscalYearStartDate - $formattedDateNow")
-                                    : Text(
-                                        "$formattedDateFirstOfThisMonth - $formattedDateNow"),
+                            ? Text(
+                                "$formattedQuarterStartDate - $formattedQuarterLastDate",
+                              )
+                            : touchedYTDGoals == true
+                            ? Text(
+                                "$formattedFiscalYearStartDate - $formattedDateNow",
+                              )
+                            : Text(
+                                "$formattedDateFirstOfThisMonth - $formattedDateNow",
+                              ),
                       ],
                     ),
                     Row(
                       children: [
                         IconButton(
-                            onPressed: () {
-                              showPopupMenu();
-                            },
-                            icon: const Icon(Icons.filter_alt_outlined)),
-                        const SizedBox(
-                          width: 5,
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
                         ),
+                        const SizedBox(width: 5),
                       ],
                     ),
                   ],
@@ -1375,18 +1452,14 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text("Showing Data:"),
-                      const SizedBox(
-                        width: 10,
-                      ),
+                      const SizedBox(width: 10),
                       const Text("Quantity"),
                       Checkbox(
                         checkColor: Colors.white,
                         value: qtyOrValCheck,
                         onChanged: (_) => toggleCheckbox(),
                       ),
-                      const SizedBox(
-                        width: 5,
-                      ),
+                      const SizedBox(width: 5),
                       const Text("Value"),
                       Checkbox(
                         checkColor: Colors.white,
@@ -1405,10 +1478,12 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                         child: Container(
                           width: 145,
                           decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius:
-                                  const BorderRadius.all(Radius.circular(10))),
+                            color: const Color(0xFF97D7F3),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Column(
@@ -1416,15 +1491,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                               children: [
                                 const Text(
                                   'Open Inventory',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: TextStyle(fontSize: 12),
                                 ),
                                 Text(
                                   formatAmount(openingInventory),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
@@ -1436,10 +1507,12 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                         child: Container(
                           width: 145,
                           decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius:
-                                  const BorderRadius.all(Radius.circular(10))),
+                            color: const Color(0xFF97D7F3),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Column(
@@ -1447,15 +1520,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                               children: [
                                 const Text(
                                   'Total Inwards',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: TextStyle(fontSize: 12),
                                 ),
                                 Text(
                                   formatAmount(totalInward),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
@@ -1467,10 +1536,12 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                         child: Container(
                           width: 145,
                           decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius:
-                                  const BorderRadius.all(Radius.circular(10))),
+                            color: const Color(0xFF97D7F3),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Column(
@@ -1478,15 +1549,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                               children: [
                                 const Text(
                                   'Total Outwards',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: TextStyle(fontSize: 12),
                                 ),
                                 Text(
                                   formatAmount(totalOutward),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
@@ -1498,10 +1565,12 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                         child: Container(
                           width: 145,
                           decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius:
-                                  const BorderRadius.all(Radius.circular(10))),
+                            color: const Color(0xFF97D7F3),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Column(
@@ -1509,15 +1578,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                               children: [
                                 const Text(
                                   'Closing Inventory',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: TextStyle(fontSize: 12),
                                 ),
                                 Text(
                                   formatAmount(closingInventory),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                  ),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
@@ -1533,11 +1598,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Item Wise Analysis",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Item Wise Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -1571,17 +1636,12 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemWiseAnalysis(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1589,11 +1649,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Item Group Wise Inventory",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Item Group Wise Inventory",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -1627,17 +1687,12 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemGroupWiseInventory(),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1645,11 +1700,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Item Sub Group Wise Inventory",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Item Sub Group Wise Inventory",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -1663,7 +1718,8 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                                 onTap: () {
                                   setState(() {
                                     generateItemSubGroupWiseExcel(
-                                        itemSubGroupList);
+                                      itemSubGroupList,
+                                    );
                                   });
                                 },
                                 child: const Text("Download Excel"),
@@ -1684,12 +1740,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemSubGroupWiseInventory(),
-                )
+                ),
               ],
             ),
           )
@@ -1725,8 +1778,8 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
 
     double maxAmount = len > 0
         ? itemList.itemData
-            .map((data) => data.cbQuantity)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.cbQuantity)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1740,36 +1793,26 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesItemWiseAnalysis, axisNameSize: 20),
+                sideTitles: _bottomTitlesItemWiseAnalysis,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _itemWiseAnalysisChartData(itemList.itemData),
@@ -1781,8 +1824,8 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItem = touchedItem == ""
                           ? itemList
-                              .itemData[barTouchResponse.spot!.spot.x.toInt()]
-                              .itemName
+                                .itemData[barTouchResponse.spot!.spot.x.toInt()]
+                                .itemName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -1798,68 +1841,72 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${itemList.itemData[grpIndex].itemName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '${itemList.itemData[grpIndex].itemName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "OB Qty: ${formatAmount(itemList.itemData[grpIndex].obQuantity)}\n"
+                            : "OB Val: ${formatAmount(itemList.itemData[grpIndex].obQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "OB Qty: ${formatAmount(itemList.itemData[grpIndex].obQuantity)}\n"
-                              : "OB Val: ${formatAmount(itemList.itemData[grpIndex].obQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "In Qty: ${formatAmount(itemList.itemData[grpIndex].inQuantity)}\n"
+                            : "In Val: ${formatAmount(itemList.itemData[grpIndex].inQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "In Qty: ${formatAmount(itemList.itemData[grpIndex].inQuantity)}\n"
-                              : "In Val: ${formatAmount(itemList.itemData[grpIndex].inQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "Out Qty: ${formatAmount(itemList.itemData[grpIndex].outQuantity)}\n"
+                            : "Out Val: ${formatAmount(itemList.itemData[grpIndex].outQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "Out Qty: ${formatAmount(itemList.itemData[grpIndex].outQuantity)}\n"
-                              : "Out Val: ${formatAmount(itemList.itemData[grpIndex].outQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "CB Qty: ${formatAmount(itemList.itemData[grpIndex].cbQuantity)}\n"
+                            : "CB Val: ${formatAmount(itemList.itemData[grpIndex].cbQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "CB Qty: ${formatAmount(itemList.itemData[grpIndex].cbQuantity)}\n"
-                              : "CB Val: ${formatAmount(itemList.itemData[grpIndex].cbQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "CB Val: ${formatAmount(itemList.itemData[grpIndex].cbValue)}\n"
+                            : "CB Qty: ${formatAmount(itemList.itemData[grpIndex].cbValue)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "CB Val: ${formatAmount(itemList.itemData[grpIndex].cbValue)}\n"
-                              : "CB Qty: ${formatAmount(itemList.itemData[grpIndex].cbValue)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -1885,8 +1932,8 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
     }
     double maxAmount = len > 0
         ? itemGroupList.itemGroupData
-            .map((data) => data.cbQuantity)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.cbQuantity)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1900,36 +1947,26 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesItemGroupWise, axisNameSize: 20),
+                sideTitles: _bottomTitlesItemGroupWise,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _itemGroupWiseChartData(itemGroupList.itemGroupData),
@@ -1941,9 +1978,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItemGroup = touchedItemGroup == ""
                           ? itemGroupList
-                              .itemGroupData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .itemGroupName
+                                .itemGroupData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .itemGroupName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -1959,68 +1996,72 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${itemGroupList.itemGroupData[grpIndex].itemGroupName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '${itemGroupList.itemGroupData[grpIndex].itemGroupName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "OB Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].obQuantity)}\n"
+                            : "OB Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].obQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "OB Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].obQuantity)}\n"
-                              : "OB Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].obQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "In Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].inQuantity)}\n"
+                            : "In Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].inQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "In Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].inQuantity)}\n"
-                              : "In Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].inQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "Out Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].outQuantity)}\n"
+                            : "Out Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].outQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "Out Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].outQuantity)}\n"
-                              : "Out Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].outQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "CB Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbQuantity)}\n"
+                            : "CB Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "CB Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbQuantity)}\n"
-                              : "CB Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "CB Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbValue)}"
+                            : "CB Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbValue)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "CB Val: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbValue)}"
-                              : "CB Qty: ${formatAmount(itemGroupList.itemGroupData[grpIndex].cbValue)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -2047,8 +2088,8 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
 
     double maxAmount = len > 0
         ? itemGroupList.itemGroupData
-            .map((data) => data.cbQuantity)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.cbQuantity)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -2062,40 +2103,31 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesItemSubGroupWise, axisNameSize: 20),
+                sideTitles: _bottomTitlesItemSubGroupWise,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups:
-                _itemSubGroupWiseChartData(itemSubGroupList.itemSubGroupData),
+            barGroups: _itemSubGroupWiseChartData(
+              itemSubGroupList.itemSubGroupData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -2104,9 +2136,9 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItemSubGroup = touchedItemSubGroup == ""
                           ? itemSubGroupList
-                              .itemSubGroupData[
-                                  barTouchResponse.spot!.spot.x.toInt()]
-                              .itemSubGroupName
+                                .itemSubGroupData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .itemSubGroupName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
@@ -2122,68 +2154,72 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      '${itemSubGroupList.itemSubGroupData[grpIndex].itemSubGroupName}\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    '${itemSubGroupList.itemSubGroupData[grpIndex].itemSubGroupName}\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "OB Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].obQuantity)}\n"
+                            : "OB Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].obQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "OB Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].obQuantity)}\n"
-                              : "OB Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].obQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "In Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].inQuantity)}\n"
+                            : "In Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].inQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "In Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].inQuantity)}\n"
-                              : "In Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].inQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "Out Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].outQuantity)}\n"
+                            : "Out Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].outQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "Out Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].outQuantity)}\n"
-                              : "Out Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].outQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "CB Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbQuantity)}\n"
+                            : "CB Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbQuantity)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "CB Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbQuantity)}\n"
-                              : "CB Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbQuantity)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text: qtyOrValCheck
+                            ? "CB Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbValue)}"
+                            : "CB Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbValue)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: qtyOrValCheck
-                              ? "CB Val: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbValue)}"
-                              : "CB Qty: ${formatAmount(itemSubGroupList.itemSubGroupData[grpIndex].cbValue)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,

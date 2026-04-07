@@ -19,8 +19,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
 import 'package:optima/classes/leads.dart';
 
-import '../platform_excel_helper.dart';
-import '../platform_pdf_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 import 'package:optima/excel_helper.dart';
 
@@ -53,8 +53,9 @@ int currentQuarter = 0;
 List<InventoryList> inventory = [];
 List<Users> usersList = [];
 
-ReceivablesFinanceList receivablesFinanceList =
-    ReceivablesFinanceList(agingData: []);
+ReceivablesFinanceList receivablesFinanceList = ReceivablesFinanceList(
+  agingData: [],
+);
 InventoryAgingList inventoryAgingList = InventoryAgingList(agingData: []);
 
 bool qtyOrValCheck = true;
@@ -241,8 +242,10 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate =
-        addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1));
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
@@ -271,8 +274,9 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear =
-        currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1;
+    int fiscalYearStartYear = currentDate!.month >= 4
+        ? currentDate!.year
+        : currentDate!.year - 1;
 
     int fiscalYearEndYear = fiscalYearStartYear + 1;
     financialYear =
@@ -292,17 +296,14 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
   Future<void> removeFilter() async {}
 
   SideTitles get _leftTitles => SideTitles(
-        reservedSize: 50,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String leftDouble = "";
-          leftDouble = formatAmount(value);
-          return Text(
-            leftDouble,
-            style: const TextStyle(fontSize: 12),
-          );
-        },
-      );
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -312,41 +313,44 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
   }
 
   SideTitles get _bottomTitlesInventoryAgeing => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<InventoryAgingData> mData = inventoryAgingList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 7
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<InventoryAgingData> mData = inventoryAgingList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   List<BarChartGroupData> _inventoryAgeingChartData(
-      List<InventoryAgingData> data) {
+    List<InventoryAgingData> data,
+  ) {
     return data
-        .map((chartData) =>
-            BarChartGroupData(x: data.indexOf(chartData), barRods: [
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
               BarChartRodData(
-                  color: const Color(0xFFFF9F47),
-                  borderRadius: BorderRadius.zero,
-                  toY: chartData.agingTotal,
-                  width: 30),
-            ]))
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.agingTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
@@ -363,7 +367,7 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
           "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
         final response = await http.post(
@@ -396,9 +400,9 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
       } while (fetchedCount == limit);
 
       setState(() {
-        context
-            .read<InventoryAgeingAnalysisProvider>()
-            .updateInventoryList(salesList);
+        context.read<InventoryAgeingAnalysisProvider>().updateInventoryList(
+          salesList,
+        );
         List<String> menuNames = usersList
             .where((element) => element.parentMenuId == 0)
             .map((user) => user.menuName)
@@ -563,7 +567,8 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
   }
 
   InventoryAgingSummary summarizeCollectionTargets(
-      Iterable<InventoryList> inventory) {
+    Iterable<InventoryList> inventory,
+  ) {
     InventoryAgingSummary summary = InventoryAgingSummary();
     String overDueDays = "";
     for (var element in inventory) {
@@ -628,8 +633,9 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
 
     var collectionTargetList = inventory;
 
-    InventoryAgingSummary summary =
-        summarizeCollectionTargets(collectionTargetList);
+    InventoryAgingSummary summary = summarizeCollectionTargets(
+      collectionTargetList,
+    );
     agingGroup30Total = summary.a0to30DaysTotal;
     agingGroup31to45Total = summary.a31to45DaysTotal;
     agingGroup46to60Total = summary.a46to60DaysTotal;
@@ -640,46 +646,60 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
     agingGroup181to365Total = summary.a181to365DaysTotal;
     agingGroup366to730Total = summary.a366to730DaysTotal;
     agingGroup730Total = summary.a730DaysTotal;
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "0-30",
-      agingTotal: agingGroup30Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "31-45",
-      agingTotal: agingGroup31to45Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "46-60",
-      agingTotal: agingGroup46to60Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "61-90",
-      agingTotal: agingGroup61to90Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "91-120",
-      agingTotal: agingGroup91to120Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "121-150",
-      agingTotal: agingGroup121to150Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "151-180",
-      agingTotal: agingGroup151to180Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "181-365",
-      agingTotal: agingGroup181to365Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "366-730",
-      agingTotal: agingGroup366to730Total,
-    ));
-    receivablesAgingDataList.add(InventoryAgingData(
-      agingGroup: "731+",
-      agingTotal: agingGroup730Total,
-    ));
+    receivablesAgingDataList.add(
+      InventoryAgingData(agingGroup: "0-30", agingTotal: agingGroup30Total),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "31-45",
+        agingTotal: agingGroup31to45Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "46-60",
+        agingTotal: agingGroup46to60Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "61-90",
+        agingTotal: agingGroup61to90Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "91-120",
+        agingTotal: agingGroup91to120Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "121-150",
+        agingTotal: agingGroup121to150Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "151-180",
+        agingTotal: agingGroup151to180Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "181-365",
+        agingTotal: agingGroup181to365Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(
+        agingGroup: "366-730",
+        agingTotal: agingGroup366to730Total,
+      ),
+    );
+    receivablesAgingDataList.add(
+      InventoryAgingData(agingGroup: "731+", agingTotal: agingGroup730Total),
+    );
 
     // for (InventoryAgingData agingData in receivablesAgingDataList) {
     //    agingData.agingPercentage = double.tryParse(
@@ -689,15 +709,17 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
     //    agingData.agingGroupTotal = double.tryParse((agingData.agingGroupTotal).toStringAsFixed(2)) ?? 0;
     // }
 
-    inventoryAgingList =
-        InventoryAgingList(agingData: receivablesAgingDataList);
+    inventoryAgingList = InventoryAgingList(
+      agingData: receivablesAgingDataList,
+    );
   }
 
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadInventory(userName, userLevel);
     await _loadInventoryAgingData();
@@ -717,15 +739,11 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Aging Group',
-        'Total',
-      ]));
+      sheet.appendRow(toCellRow(['Aging Group', 'Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -739,9 +757,7 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error: $e'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -756,8 +772,10 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
             return pw.Center(
               child: pw.Text(
                 'Inventory Aging',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -770,24 +788,44 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Type',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Type',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Qty',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Qty',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in inventoryAgingList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -805,9 +843,7 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error: $e'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -837,19 +873,25 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
 
   @override
   Widget build(BuildContext context) {
-    String formattedFiscalYearStartDate =
-        DateFormat('dd/MM/yy').format(fiscalYearStartDate!);
-    String formattedQuarterStartDate =
-        DateFormat('dd/MM/yy').format(currentQuarterFromDate!);
-    String formattedQuarterLastDate =
-        DateFormat('dd/MM/yy').format(currentQuarterToDate!);
+    String formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(fiscalYearStartDate!);
+    String formattedQuarterStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterFromDate!);
+    String formattedQuarterLastDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterToDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat('dd/MM/yy')
-        .format(DateTime(currentDate!.year, currentDate!.month, 1));
+    String formattedDateFirstOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
+    String formattedDateLastOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
+    String formattedDateFirstOfThisMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
     return chartDataLoaded == true
         ? SingleChildScrollView(
             child: Column(
@@ -859,32 +901,33 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 15,
-                        ),
+                        const SizedBox(width: 15),
                         touchedMonthGoals == true
                             ? Text(
-                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth")
+                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
+                              )
                             : touchedQuarterGoals == true
-                                ? Text(
-                                    "$formattedQuarterStartDate - $formattedQuarterLastDate")
-                                : touchedYTDGoals == true
-                                    ? Text(
-                                        "$formattedFiscalYearStartDate - $formattedDateNow")
-                                    : Text(
-                                        "$formattedDateFirstOfThisMonth - $formattedDateNow"),
+                            ? Text(
+                                "$formattedQuarterStartDate - $formattedQuarterLastDate",
+                              )
+                            : touchedYTDGoals == true
+                            ? Text(
+                                "$formattedFiscalYearStartDate - $formattedDateNow",
+                              )
+                            : Text(
+                                "$formattedDateFirstOfThisMonth - $formattedDateNow",
+                              ),
                       ],
                     ),
                     Row(
                       children: [
                         IconButton(
-                            onPressed: () {
-                              showPopupMenu();
-                            },
-                            icon: const Icon(Icons.filter_alt_outlined)),
-                        const SizedBox(
-                          width: 5,
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
                         ),
+                        const SizedBox(width: 5),
                       ],
                     ),
                   ],
@@ -895,28 +938,26 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text("Showing Data:"),
-                      const SizedBox(
-                        width: 10,
-                      ),
+                      const SizedBox(width: 10),
                       const Text("Quantity"),
                       Checkbox(
-                          checkColor: Colors.white,
-                          value: qtyOrValCheck,
-                          onChanged: (_) {
-                            setState(() {});
-                            toggleCheckbox();
-                          }),
-                      const SizedBox(
-                        width: 5,
+                        checkColor: Colors.white,
+                        value: qtyOrValCheck,
+                        onChanged: (_) {
+                          setState(() {});
+                          toggleCheckbox();
+                        },
                       ),
+                      const SizedBox(width: 5),
                       const Text("Value"),
                       Checkbox(
-                          checkColor: Colors.white,
-                          value: !qtyOrValCheck,
-                          onChanged: (_) {
-                            setState(() {});
-                            toggleCheckbox();
-                          }),
+                        checkColor: Colors.white,
+                        value: !qtyOrValCheck,
+                        onChanged: (_) {
+                          setState(() {});
+                          toggleCheckbox();
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -926,11 +967,11 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Inventory Analysis",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Inventory Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -944,7 +985,8 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
                                 onTap: () {
                                   setState(() {
                                     generateInventoryTypeExcel(
-                                        inventoryAgingList);
+                                      inventoryAgingList,
+                                    );
                                   });
                                 },
                                 child: const Text("Download Excel"),
@@ -965,10 +1007,7 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _inventoryAgeing(),
                 ),
               ],
@@ -1005,8 +1044,8 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
     }
     double maxAmount = len > 0
         ? inventoryAgingList.agingData
-            .map((data) => data.agingTotal)
-            .reduce((a, b) => a > b ? a : b)
+              .map((data) => data.agingTotal)
+              .reduce((a, b) => a > b ? a : b)
         : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1020,36 +1059,26 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesInventoryAgeing, axisNameSize: 20),
+                sideTitles: _bottomTitlesInventoryAgeing,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
             barGroups: _inventoryAgeingChartData(inventoryAgingList.agingData),
@@ -1065,117 +1094,121 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      'Production Aging\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    'Production Aging\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[0].agingGroup} : ${formatAmount(inventoryAgingList.agingData[0].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[0].agingGroup} : ${formatAmount(inventoryAgingList.agingData[0].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[1].agingGroup} : ${formatAmount(inventoryAgingList.agingData[1].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[1].agingGroup} : ${formatAmount(inventoryAgingList.agingData[1].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[2].agingGroup} : ${formatAmount(inventoryAgingList.agingData[2].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[2].agingGroup} : ${formatAmount(inventoryAgingList.agingData[2].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[3].agingGroup} : ${formatAmount(inventoryAgingList.agingData[3].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[3].agingGroup} : ${formatAmount(inventoryAgingList.agingData[3].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[4].agingGroup} : ${formatAmount(inventoryAgingList.agingData[4].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[4].agingGroup} : ${formatAmount(inventoryAgingList.agingData[4].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[5].agingGroup} : ${formatAmount(inventoryAgingList.agingData[5].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[5].agingGroup} : ${formatAmount(inventoryAgingList.agingData[5].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[6].agingGroup} : ${formatAmount(inventoryAgingList.agingData[6].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[6].agingGroup} : ${formatAmount(inventoryAgingList.agingData[6].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[7].agingGroup} : ${formatAmount(inventoryAgingList.agingData[7].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[7].agingGroup} : ${formatAmount(inventoryAgingList.agingData[7].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[8].agingGroup} : ${formatAmount(inventoryAgingList.agingData[8].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[8].agingGroup} : ${formatAmount(inventoryAgingList.agingData[8].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "${inventoryAgingList.agingData[9].agingGroup} : ${formatAmount(inventoryAgingList.agingData[9].agingTotal)}\n",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "${inventoryAgingList.agingData[9].agingGroup} : ${formatAmount(inventoryAgingList.agingData[9].agingTotal)}\n",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "Total : ${formatAmount(inventoryAgingList.agingData[0].agingTotal + inventoryAgingList.agingData[1].agingTotal + inventoryAgingList.agingData[2].agingTotal + inventoryAgingList.agingData[3].agingTotal + inventoryAgingList.agingData[4].agingTotal + inventoryAgingList.agingData[5].agingTotal + inventoryAgingList.agingData[6].agingTotal + inventoryAgingList.agingData[7].agingTotal + inventoryAgingList.agingData[8].agingTotal + inventoryAgingList.agingData[9].agingTotal)}",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "Total : ${formatAmount(inventoryAgingList.agingData[0].agingTotal + inventoryAgingList.agingData[1].agingTotal + inventoryAgingList.agingData[2].agingTotal + inventoryAgingList.agingData[3].agingTotal + inventoryAgingList.agingData[4].agingTotal + inventoryAgingList.agingData[5].agingTotal + inventoryAgingList.agingData[6].agingTotal + inventoryAgingList.agingData[7].agingTotal + inventoryAgingList.agingData[8].agingTotal + inventoryAgingList.agingData[9].agingTotal)}",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,

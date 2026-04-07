@@ -18,9 +18,9 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:http/http.dart' as http;
 import 'package:optima/classes/leads.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_other.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 import 'package:excel/excel.dart' hide Border, BorderStyle, TextSpan;
-import '../platform_excel_helper.dart';
 
 late Future<void> loadDataFuture;
 
@@ -1593,7 +1593,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         }).toList();
 
         totalSales = sales.where((target) {
-DateTime postingDate = target.invoiceDate;
+          DateTime postingDate = target.invoiceDate;
           return postingDate.isAtLeast(monthDates['start']!) &&
               postingDate.isAtMost(monthDates['end']!);
         }).toList();

@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:optima/excel_helper.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../../excel_helper_other.dart';
+
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
 class ManpowerExcelExporter {
   static Future<void> exportManpowerExcel(

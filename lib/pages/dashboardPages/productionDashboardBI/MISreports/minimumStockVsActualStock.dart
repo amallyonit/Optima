@@ -18,7 +18,7 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 
-import '../../platform_excel_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
 late Future<void> loadDataFuture;
 

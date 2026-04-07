@@ -2,10 +2,10 @@
 import 'package:universal_html/html.dart' as html;
 
 void saveAndOpenExcel(String fileName, List<int> bytes) {
-  final blob = html.Blob([bytes],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  final blob = html.Blob([
+    bytes,
+  ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   final url = html.Url.createObjectUrlFromBlob(blob);
-
   // Create a downloadable link
   final anchor = html.AnchorElement(href: url)
     ..target = 'blank'

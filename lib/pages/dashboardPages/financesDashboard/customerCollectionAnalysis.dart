@@ -21,14 +21,12 @@ import '../../../login_screen.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
 
-import '../platform_excel_helper.dart';
-import '../platform_pdf_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 class ReceivablesData {
   final double receivableAmount;
-  ReceivablesData({
-    required this.receivableAmount,
-  });
+  ReceivablesData({required this.receivableAmount});
 }
 
 class CollectionAnalysisTableData {
@@ -112,8 +110,9 @@ List<PieChartSectionData> showingSections() {
 
     // Create PieChartSectionData based on categoryData
     final sectionData = PieChartSectionData(
-      color: getCategoryColor(categoryData
-          .agingGroup), // Define a method to get color based on categoryId
+      color: getCategoryColor(
+        categoryData.agingGroup,
+      ), // Define a method to get color based on categoryId
       value: categoryData.agingPercentage,
       title: '${categoryData.agingPercentage.toStringAsFixed(2)} %',
       radius: radius,
@@ -164,8 +163,10 @@ int collectionPercentage = 0;
 String collectionPercentageStr = "";
 double totalOutstanding = 0;
 
-List<bool> collectionCheckList =
-    List.generate(invoiceList.length, (index) => false);
+List<bool> collectionCheckList = List.generate(
+  invoiceList.length,
+  (index) => false,
+);
 
 bool chartDataLoadedCustomerCollection = false;
 String? selectedModeOfPayment = "Payment Outstanding Invoice";
@@ -178,13 +179,9 @@ bool fromFilter = false;
 
 Map<String, Map<String, bool>> allCategoriesState = {};
 
-final List<String> categories = [
-  'Date',
-];
+final List<String> categories = ['Date'];
 
-List<List<String>> filterOptions = [
-  [],
-];
+List<List<String>> filterOptions = [[]];
 
 List<String> selectedSalesData = [];
 
@@ -234,10 +231,7 @@ class _CustomerCollectionAnalysisState
   }
 
   Widget getTitles(double value, TitleMeta meta) {
-    const style = TextStyle(
-      color: Colors.black,
-      fontSize: 10,
-    );
+    const style = TextStyle(color: Colors.black, fontSize: 10);
     Widget text;
     switch (value.toInt()) {
       case 0:
@@ -259,11 +253,7 @@ class _CustomerCollectionAnalysisState
         text = const Text('', style: style);
         break;
     }
-    return SideTitleWidget(
-      meta: meta,
-      space: 16,
-      child: text,
-    );
+    return SideTitleWidget(meta: meta, space: 16, child: text);
   }
 
   var distributorKey = GlobalKey();
@@ -276,10 +266,12 @@ class _CustomerCollectionAnalysisState
 
   List<Distributor> convertDist(List<Map<String, dynamic>> distributorList) {
     return distributorList
-        .map((map) => Distributor(
-              customerCode: map['CustomerCode']?.toString() ?? '',
-              customerName: map['CustomerName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => Distributor(
+            customerCode: map['CustomerCode']?.toString() ?? '',
+            customerName: map['CustomerName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
@@ -341,16 +333,20 @@ class _CustomerCollectionAnalysisState
 
   Future<List<UsersForSearch>> getASM(String search) async {
     asmList = invoiceList
-        .map((item) => UsersForSearch(
-              menuName: item.salesManager,
-              menuId: item.salesManager,
-            ))
+        .map(
+          (item) => UsersForSearch(
+            menuName: item.salesManager,
+            menuId: item.salesManager,
+          ),
+        )
         .toList();
 
     asmList = asmList.toSet().toList();
     List<UsersForSearch> filteredList = asmList
-        .where((element) =>
-            element.menuName.toLowerCase().startsWith(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.menuName.toLowerCase().startsWith(search.toLowerCase()),
+        )
         .toList();
 
     return filteredList;
@@ -358,8 +354,10 @@ class _CustomerCollectionAnalysisState
 
   Future<List<UsersForSearch>> getRSM(String search) async {
     List<UsersForSearch> filteredList = rsmList
-        .where((element) =>
-            element.menuName.toLowerCase().startsWith(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.menuName.toLowerCase().startsWith(search.toLowerCase()),
+        )
         .toList();
 
     return filteredList;
@@ -367,13 +365,15 @@ class _CustomerCollectionAnalysisState
 
   Future<List<UsersForSearch>> getUsers(String search) async {
     List<UsersForSearch> filteredList = usersList
-        .where((element) =>
-            element.userLevel == 2 &&
-            element.menuName.toLowerCase().startsWith(search.toLowerCase()))
-        .map((e) => UsersForSearch(
-              menuName: e.menuName,
-              menuId: e.menuId.toString(),
-            ))
+        .where(
+          (element) =>
+              element.userLevel == 2 &&
+              element.menuName.toLowerCase().startsWith(search.toLowerCase()),
+        )
+        .map(
+          (e) =>
+              UsersForSearch(menuName: e.menuName, menuId: e.menuId.toString()),
+        )
         .toList();
 
     return filteredList;
@@ -382,9 +382,9 @@ class _CustomerCollectionAnalysisState
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   DateTime addMonth(DateTime date, int addMonth) {
@@ -453,8 +453,10 @@ class _CustomerCollectionAnalysisState
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate =
-        addMonth(currentMonthFromDate!, 1).add(const Duration(days: -1));
+    currentMonthToDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
@@ -471,10 +473,16 @@ class _CustomerCollectionAnalysisState
         currentQuarterFromDate = DateTime(currentDate!.year, 10, 1);
         currentQuarterToDate = DateTime(currentDate!.year, 13, 0);
       case 4:
-        currentQuarterFromDate =
-            DateTime(currentDate!.year + 1, currentQuarter - 3, 1);
-        currentQuarterToDate =
-            DateTime(currentDate!.year + 1, currentQuarter, 0);
+        currentQuarterFromDate = DateTime(
+          currentDate!.year + 1,
+          currentQuarter - 3,
+          1,
+        );
+        currentQuarterToDate = DateTime(
+          currentDate!.year + 1,
+          currentQuarter,
+          0,
+        );
       default:
         throw Error();
     }
@@ -484,8 +492,9 @@ class _CustomerCollectionAnalysisState
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear =
-        currentDate!.month >= 4 ? currentDate!.year : currentDate!.year - 1;
+    int fiscalYearStartYear = currentDate!.month >= 4
+        ? currentDate!.year
+        : currentDate!.year - 1;
 
     int fiscalYearEndYear = fiscalYearStartYear + 1;
     financialYear =
@@ -527,21 +536,27 @@ class _CustomerCollectionAnalysisState
     final userId = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
-    final userName =
-        selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     LoadDates();
     await _loadUserList(
-        userId, userJwtToken, userMailID, int.tryParse(userLevel) ?? 0);
+      userId,
+      userJwtToken,
+      userMailID,
+      int.tryParse(userLevel) ?? 0,
+    );
     await _loadCollectionTarget(userName, userLevel);
     await _loadReceivablesAgingData(
-        0,
-        "",
-        "",
-        "",
-        ""
-            "",
-        "");
+      0,
+      "",
+      "",
+      "",
+      ""
+          "",
+      "",
+    );
     collectionCheckList = List.generate(invoiceList.length, (index) => false);
     for (var i = 0; i < collectionCheckList.length; i++) {
       totalOutstanding += double.parse(invoiceList[i].balance).abs();
@@ -550,8 +565,12 @@ class _CustomerCollectionAnalysisState
     chartDataLoadedCustomerCollection = true;
   }
 
-  Future<void> _loadUserList(String userId, String userJwtToken,
-      String userMailID, int userLevel) async {
+  Future<void> _loadUserList(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    int userLevel,
+  ) async {
     final body = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
@@ -582,10 +601,7 @@ class _CustomerCollectionAnalysisState
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -593,26 +609,24 @@ class _CustomerCollectionAnalysisState
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('User list not found.'),
-        );
+        const snackBar = SnackBar(content: Text('User list not found.'));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   AgingSummary summarizeCollectionTargets(
-      Iterable<DebtorsAgingList> collectionTargetList) {
+    Iterable<DebtorsAgingList> collectionTargetList,
+  ) {
     AgingSummary summary = AgingSummary();
     double balance = 0;
     var overDueDays = 0;
-    for (var element in collectionTargetList
-        .where((element) => double.tryParse(element.future)! <= 0)) {
+    for (var element in collectionTargetList.where(
+      (element) => double.tryParse(element.future)! <= 0,
+    )) {
       overDueDays = int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
       balance = double.tryParse(element.balance) ?? 0;
       if (balance < 0) {
@@ -632,12 +646,13 @@ class _CustomerCollectionAnalysisState
   }
 
   Future<void> _loadReceivablesAgingData(
-      int monthIndex,
-      String touchedRegionalManager,
-      String salesManager,
-      String salesRep,
-      String customerCode,
-      String touchedAgingCategory) async {
+    int monthIndex,
+    String touchedRegionalManager,
+    String salesManager,
+    String salesRep,
+    String customerCode,
+    String touchedAgingCategory,
+  ) async {
     List<ReceivablesAgingData> receivablesAgingDataList = [];
     double agingGroup1Total = 0;
     double agingGroup2Total = 0;
@@ -655,39 +670,50 @@ class _CustomerCollectionAnalysisState
     agingGroup2Total = summary.a31to60DaysTotal;
     agingGroup3Total = summary.a61to90DaysTotal;
     agingGroup4Total = summary.a91to180DaysTotal + summary.a181DaysTotal;
-    totalDueAmount = agingGroup1Total +
+    totalDueAmount =
+        agingGroup1Total +
         agingGroup2Total +
         agingGroup3Total +
         agingGroup4Total;
-    receivablesAgingDataList.add(ReceivablesAgingData(
-      agingGroup: "0-30",
-      agingGroupTotal: agingGroup1Total,
-      agingPercentage: 0,
-      agingTotal: totalDueAmount,
-    ));
-    receivablesAgingDataList.add(ReceivablesAgingData(
-      agingGroup: "31-60",
-      agingGroupTotal: agingGroup2Total,
-      agingPercentage: 0,
-      agingTotal: totalDueAmount,
-    ));
-    receivablesAgingDataList.add(ReceivablesAgingData(
-      agingGroup: "61-90",
-      agingGroupTotal: agingGroup3Total,
-      agingPercentage: 0,
-      agingTotal: totalDueAmount,
-    ));
-    receivablesAgingDataList.add(ReceivablesAgingData(
-      agingGroup: "90+",
-      agingGroupTotal: agingGroup4Total,
-      agingPercentage: 0,
-      agingTotal: totalDueAmount,
-    ));
+    receivablesAgingDataList.add(
+      ReceivablesAgingData(
+        agingGroup: "0-30",
+        agingGroupTotal: agingGroup1Total,
+        agingPercentage: 0,
+        agingTotal: totalDueAmount,
+      ),
+    );
+    receivablesAgingDataList.add(
+      ReceivablesAgingData(
+        agingGroup: "31-60",
+        agingGroupTotal: agingGroup2Total,
+        agingPercentage: 0,
+        agingTotal: totalDueAmount,
+      ),
+    );
+    receivablesAgingDataList.add(
+      ReceivablesAgingData(
+        agingGroup: "61-90",
+        agingGroupTotal: agingGroup3Total,
+        agingPercentage: 0,
+        agingTotal: totalDueAmount,
+      ),
+    );
+    receivablesAgingDataList.add(
+      ReceivablesAgingData(
+        agingGroup: "90+",
+        agingGroupTotal: agingGroup4Total,
+        agingPercentage: 0,
+        agingTotal: totalDueAmount,
+      ),
+    );
 
     for (ReceivablesAgingData agingData in receivablesAgingDataList) {
-      agingData.agingPercentage = double.tryParse(
-              ((agingData.agingGroupTotal / totalDueAmount) * 100)
-                  .toStringAsFixed(2)) ??
+      agingData.agingPercentage =
+          double.tryParse(
+            ((agingData.agingGroupTotal / totalDueAmount) * 100)
+                .toStringAsFixed(2),
+          ) ??
           0;
 
       agingData.agingGroupTotal =
@@ -702,28 +728,37 @@ class _CustomerCollectionAnalysisState
     if (collectionAgingGoal == 0) {
       collectionPercentage = 0;
     } else {
-      collectionPercentage = double.tryParse(
-                  ((collectionAchieved / collectionAgingGoal) * 100)
-                      .toStringAsFixed(2))
-              ?.ceil() ??
+      collectionPercentage =
+          double.tryParse(
+            ((collectionAchieved / collectionAgingGoal) * 100).toStringAsFixed(
+              2,
+            ),
+          )?.ceil() ??
           0;
     }
 
-    receivablesAgingList =
-        ReceivablesAgingList(agingData: receivablesAgingDataList);
+    receivablesAgingList = ReceivablesAgingList(
+      agingData: receivablesAgingDataList,
+    );
   }
 
   List<BarChartGroupData> _receivableAgingChartData(
-      List<ReceivablesAgingData> agingData) {
+    List<ReceivablesAgingData> agingData,
+  ) {
     return agingData
         .map(
-            (aging) => BarChartGroupData(x: agingData.indexOf(aging), barRods: [
-                  BarChartRodData(
-                      color: const Color(0xFF97D7F3),
-                      borderRadius: BorderRadius.zero,
-                      toY: aging.agingGroupTotal,
-                      width: 30),
-                ]))
+          (aging) => BarChartGroupData(
+            x: agingData.indexOf(aging),
+            barRods: [
+              BarChartRodData(
+                color: const Color(0xFF97D7F3),
+                borderRadius: BorderRadius.zero,
+                toY: aging.agingGroupTotal,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
@@ -743,7 +778,7 @@ class _CustomerCollectionAnalysisState
               : formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken()
+          "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}Bicxo_DebtorsAgingList';
         final response = await http.post(
@@ -826,26 +861,32 @@ class _CustomerCollectionAnalysisState
       invoiceListTemp = invoiceList;
 
       customers = invoiceList
-          .map((item) => InvoiceCustomers(
-                customerName: item.customerName,
-                customerCode: item.customerCode,
-                salesManager: item.salesManager,
-                regionalManager: item.regionalManager,
-              ))
+          .map(
+            (item) => InvoiceCustomers(
+              customerName: item.customerName,
+              customerCode: item.customerCode,
+              salesManager: item.salesManager,
+              regionalManager: item.regionalManager,
+            ),
+          )
           .toList();
 
       asmList = invoiceList
-          .map((item) => UsersForSearch(
-                menuName: item.salesManager,
-                menuId: item.salesManager,
-              ))
+          .map(
+            (item) => UsersForSearch(
+              menuName: item.salesManager,
+              menuId: item.salesManager,
+            ),
+          )
           .toList();
 
       rsmList = invoiceList
-          .map((item) => UsersForSearch(
-                menuName: item.regionalManager,
-                menuId: item.regionalManager,
-              ))
+          .map(
+            (item) => UsersForSearch(
+              menuName: item.regionalManager,
+              menuId: item.regionalManager,
+            ),
+          )
           .toList();
 
       customers = customers.toSet().toList();
@@ -875,61 +916,57 @@ class _CustomerCollectionAnalysisState
   }
 
   SideTitles get _leftTitles => SideTitles(
-        reservedSize: 50,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String leftDouble = "";
-          leftDouble = formatAmount(value);
-          return Text(
-            leftDouble,
-            style: const TextStyle(fontSize: 12),
-          );
-        },
-      );
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
 
   SideTitles get _bottomTitlesReceivableAging => SideTitles(
-        reservedSize: 30,
-        showTitles: true,
-        getTitlesWidget: (value, meta) {
-          String text = '';
-          List<ReceivablesAgingData> mData = receivablesAgingList.agingData;
-          text = mData.elementAt(value.toInt()).agingGroup;
-          return Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: RotationTransition(
-              turns: const AlwaysStoppedAnimation(-25 / 360),
-              child: text.length > 5
-                  ? Text(
-                      '${text.substring(0, 5)}...',
-                      style: const TextStyle(fontSize: 12),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-            ),
-          );
-        },
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<ReceivablesAgingData> mData = receivablesAgingList.agingData;
+      text = mData.elementAt(value.toInt()).agingGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 5
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
       );
+    },
+  );
 
   Future<void> submitLeads() async {
     String date = _dateController.text;
 
     selectedInvoices = selectedInvoiceList
         .whereType<DebtorsAgingList>()
-        .map((DebtorsAgingList item) => {
-              'InvoiceNo': item.documentNumber,
-              'InvoiceIssues': selectedModeOfPayment,
-              'InvoiceExpPayDate': date,
-              'InvoiceExpPayRemarks': paymentRemarksController.text,
-              'InvoiceOtherRemarks': remarksController.text,
-              'InvoiceCommitments': commitmentController.text,
-            })
+        .map(
+          (DebtorsAgingList item) => {
+            'InvoiceNo': item.documentNumber,
+            'InvoiceIssues': selectedModeOfPayment,
+            'InvoiceExpPayDate': date,
+            'InvoiceExpPayRemarks': paymentRemarksController.text,
+            'InvoiceOtherRemarks': remarksController.text,
+            'InvoiceCommitments': commitmentController.text,
+          },
+        )
         .toList();
 
     final leadmaster = {
       'SalesCommentUpdate': selectedInvoices,
-      "sapToken": DataManager.readSapToken()
+      "sapToken": DataManager.readSapToken(),
     };
     const apiUrl = '${ApiHelper.baseUrl}CRMSalesCommentsUpdate';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -948,10 +985,7 @@ class _CustomerCollectionAnalysisState
           duration: Duration(seconds: 1),
           content: Text(
             'Saved Successfully...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         );
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -976,8 +1010,10 @@ class _CustomerCollectionAnalysisState
       remarksController.clear();
       commitmentController.clear();
       paymentRemarksController.clear();
-      collectionCheckList =
-          List.generate(collectionCheckList.length, (_) => false);
+      collectionCheckList = List.generate(
+        collectionCheckList.length,
+        (_) => false,
+      );
       selectedInvoiceList.clear();
       valueController.clear();
       customerController.clear();
@@ -997,15 +1033,11 @@ class _CustomerCollectionAnalysisState
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow([
-        'Ageing Group',
-        'Ageing Group Total',
-      ]));
+      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
       for (var monthlyData in list.agingData) {
-        sheet.appendRow(toCellRow([
-          monthlyData.agingGroup,
-          monthlyData.agingGroupTotal,
-        ]));
+        sheet.appendRow(
+          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
+        );
       }
 
       if (kIsWeb) {
@@ -1018,9 +1050,7 @@ class _CustomerCollectionAnalysisState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1034,8 +1064,10 @@ class _CustomerCollectionAnalysisState
             return pw.Center(
               child: pw.Text(
                 'Receivables',
-                style:
-                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             );
           },
@@ -1048,24 +1080,44 @@ class _CustomerCollectionAnalysisState
               border: pw.TableBorder.all(),
               children: [
                 // Table header
-                pw.TableRow(children: [
-                  pw.Text('Ageing Group',
+                pw.TableRow(
+                  children: [
+                    pw.Text(
+                      'Ageing Group',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Ageing Group Total',
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'Ageing Group Total',
                       style: pw.TextStyle(
-                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                ]),
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 // Table data rows
                 for (var data in receivablesAgingList.agingData)
-                  pw.TableRow(children: [
-                    pw.Text(data.agingGroup,
+                  pw.TableRow(
+                    children: [
+                      pw.Text(
+                        data.agingGroup,
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                    pw.Text(data.agingGroupTotal.toString(),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                      pw.Text(
+                        data.agingGroupTotal.toString(),
                         style: pw.TextStyle(
-                            fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             );
           },
@@ -1089,9 +1141,7 @@ class _CustomerCollectionAnalysisState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1229,120 +1279,143 @@ class _CustomerCollectionAnalysisState
                 //   ],
                 // ),
                 kIsWeb
-                    ? const SizedBox(
-                        height: 10,
-                      )
-                    : const SizedBox(
-                        height: 20,
-                      ),
+                    ? const SizedBox(height: 10)
+                    : const SizedBox(height: 20),
                 kIsWeb
                     ? RawAutocomplete<UsersForSearch>(
                         textEditingController: rsmController,
                         focusNode: _focusRSM,
                         optionsBuilder: (TextEditingValue val) {
-                          return rsmList.where((user) => user.menuName
-                              .toLowerCase()
-                              .contains(val.text.toLowerCase()));
-                        },
-                        displayStringForOption: (UsersForSearch option) =>
-                            option.menuName,
-                        fieldViewBuilder: (context, textEditingController,
-                            focusNode, onFieldSubmitted) {
-                          return TextField(
-                            controller: textEditingController,
-                            focusNode: focusNode,
-                            onSubmitted: (value) => onFieldSubmitted(),
-                            decoration: InputDecoration(
-                              labelText: 'Enter RSM Name',
-                              labelStyle: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF8F8F8F)),
-                              suffixIcon: IconButton(
-                                icon: rsmController.text == ""
-                                    ? const Icon(
-                                        Icons.search,
-                                        color: Color(0xff2ca9df),
-                                      )
-                                    : const Icon(Icons.clear),
-                                onPressed: () {
-                                  setState(() {
-                                    selectedDistributorId = "";
-                                    selectedDistributorName = "";
-                                    rsmController.clear();
-                                    asmController.clear();
-                                    customerController.clear();
-                                    invoiceList = invoiceListTemp;
-                                    collectionCheckList = List<bool>.filled(
-                                        invoiceList.length, false);
-                                    _findCollectionTarget();
-                                  });
-                                },
-                              ),
+                          return rsmList.where(
+                            (user) => user.menuName.toLowerCase().contains(
+                              val.text.toLowerCase(),
                             ),
                           );
                         },
+                        displayStringForOption: (UsersForSearch option) =>
+                            option.menuName,
+                        fieldViewBuilder:
+                            (
+                              context,
+                              textEditingController,
+                              focusNode,
+                              onFieldSubmitted,
+                            ) {
+                              return TextField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                onSubmitted: (value) => onFieldSubmitted(),
+                                decoration: InputDecoration(
+                                  labelText: 'Enter RSM Name',
+                                  labelStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF8F8F8F),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: rsmController.text == ""
+                                        ? const Icon(
+                                            Icons.search,
+                                            color: Color(0xff2ca9df),
+                                          )
+                                        : const Icon(Icons.clear),
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedDistributorId = "";
+                                        selectedDistributorName = "";
+                                        rsmController.clear();
+                                        asmController.clear();
+                                        customerController.clear();
+                                        invoiceList = invoiceListTemp;
+                                        collectionCheckList = List<bool>.filled(
+                                          invoiceList.length,
+                                          false,
+                                        );
+                                        _findCollectionTarget();
+                                      });
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
                         onSelected: (UsersForSearch value) {
                           setState(() {
                             rsmController.text = value.menuName;
                             invoiceList = invoiceListTemp
-                                .where((invoice) =>
-                                    invoice.regionalManager == value.menuName)
+                                .where(
+                                  (invoice) =>
+                                      invoice.regionalManager == value.menuName,
+                                )
                                 .toList();
                             asmList = invoiceList
-                                .map((item) => UsersForSearch(
-                                      menuName: item.salesManager,
-                                      menuId: item.salesManager,
-                                    ))
+                                .map(
+                                  (item) => UsersForSearch(
+                                    menuName: item.salesManager,
+                                    menuId: item.salesManager,
+                                  ),
+                                )
                                 .toList();
                             customers = invoiceList
-                                .map((item) => InvoiceCustomers(
-                                      customerName: item.customerName,
-                                      customerCode: item.customerCode,
-                                      salesManager: item.salesManager,
-                                      regionalManager: item.regionalManager,
-                                    ))
+                                .map(
+                                  (item) => InvoiceCustomers(
+                                    customerName: item.customerName,
+                                    customerCode: item.customerCode,
+                                    salesManager: item.salesManager,
+                                    regionalManager: item.regionalManager,
+                                  ),
+                                )
                                 .toList();
 
                             customers = customers.toSet().toList();
                             asmList = asmList.toSet().toList();
                             _findCollectionTarget();
-                            collectionCheckList =
-                                List<bool>.filled(invoiceList.length, false);
+                            collectionCheckList = List<bool>.filled(
+                              invoiceList.length,
+                              false,
+                            );
                           });
                         },
-                        optionsViewBuilder: (BuildContext context,
-                            void Function(UsersForSearch) onSelected,
-                            Iterable<UsersForSearch> options) {
-                          return Material(
-                            elevation: 4.0,
-                            child: Container(
-                              constraints: const BoxConstraints(maxHeight: 200),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                physics: const ClampingScrollPhysics(),
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  final UsersForSearch option =
-                                      options.elementAt(index);
-                                  return GestureDetector(
-                                    onTap: () {
-                                      onSelected(option);
-                                    },
-                                    child: ListTile(
-                                      title: Text(option.menuName),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
+                        optionsViewBuilder:
+                            (
+                              BuildContext context,
+                              void Function(UsersForSearch) onSelected,
+                              Iterable<UsersForSearch> options,
+                            ) {
+                              return Material(
+                                elevation: 4.0,
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 200,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.zero,
+                                    physics: const ClampingScrollPhysics(),
+                                    shrinkWrap: true,
+                                    itemCount: options.length,
+                                    itemBuilder:
+                                        (BuildContext context, int index) {
+                                          final UsersForSearch option = options
+                                              .elementAt(index);
+                                          return GestureDetector(
+                                            onTap: () {
+                                              onSelected(option);
+                                            },
+                                            child: ListTile(
+                                              title: Text(option.menuName),
+                                            ),
+                                          );
+                                        },
+                                  ),
+                                ),
+                              );
+                            },
                       )
                     : Padding(
                         padding: const EdgeInsets.only(
-                            left: 16.0, right: 16.0, bottom: 32.0),
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 32.0,
+                        ),
                         child: SizedBox(
                           height: deviceOrientation == "Portrait"
                               ? containerHeight
@@ -1366,15 +1439,20 @@ class _CustomerCollectionAnalysisState
                                       : 220,
                                   decoration: InputDecoration(
                                     contentPadding: const EdgeInsets.only(
-                                        left: 0, right: 30, top: 0, bottom: 0),
+                                      left: 0,
+                                      right: 30,
+                                      top: 0,
+                                      bottom: 0,
+                                    ),
                                     border: UnderlineInputBorder(
                                       borderRadius: BorderRadius.circular(5),
                                     ),
                                     hintText: 'RSM Name',
                                     hintStyle: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w400,
-                                        color: Color(0xFF8F8F8F)),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: Color(0xFF8F8F8F),
+                                    ),
                                     focusedBorder: UnderlineInputBorder(
                                       borderSide: const BorderSide(
                                         color: Colors
@@ -1389,37 +1467,44 @@ class _CustomerCollectionAnalysisState
                                     setState(() {
                                       rsmController.text = users.menuName;
                                       invoiceList = invoiceList
-                                          .where((invoice) =>
-                                              invoice.regionalManager ==
-                                              users.menuName)
+                                          .where(
+                                            (invoice) =>
+                                                invoice.regionalManager ==
+                                                users.menuName,
+                                          )
                                           .toList();
                                       _findCollectionTarget();
                                       asmList = invoiceList
-                                          .map((item) => UsersForSearch(
-                                                menuName: item.salesManager,
-                                                menuId: item.salesManager,
-                                              ))
+                                          .map(
+                                            (item) => UsersForSearch(
+                                              menuName: item.salesManager,
+                                              menuId: item.salesManager,
+                                            ),
+                                          )
                                           .toList();
                                       customers = invoiceList
-                                          .map((item) => InvoiceCustomers(
-                                                customerName: item.customerName,
-                                                customerCode: item.customerCode,
-                                                salesManager: item.salesManager,
-                                                regionalManager:
-                                                    item.regionalManager,
-                                              ))
+                                          .map(
+                                            (item) => InvoiceCustomers(
+                                              customerName: item.customerName,
+                                              customerCode: item.customerCode,
+                                              salesManager: item.salesManager,
+                                              regionalManager:
+                                                  item.regionalManager,
+                                            ),
+                                          )
                                           .toList();
 
                                       customers = customers.toSet().toList();
                                       asmList = asmList.toSet().toList();
 
                                       collectionCheckList = List<bool>.filled(
-                                          invoiceList.length, false);
+                                        invoiceList.length,
+                                        false,
+                                      );
                                     });
                                   },
-                                  suggestionBuilder: (data) => ListTile(
-                                    title: Text(data.menuName),
-                                  ),
+                                  suggestionBuilder: (data) =>
+                                      ListTile(title: Text(data.menuName)),
                                   asyncSuggestions: (searchValue) =>
                                       getRSM(searchValue),
                                 ),
@@ -1441,7 +1526,9 @@ class _CustomerCollectionAnalysisState
                                           customerController.clear();
                                           collectionCheckList =
                                               List<bool>.filled(
-                                                  invoiceList.length, false);
+                                                invoiceList.length,
+                                                false,
+                                              );
                                           _findCollectionTarget();
                                         });
                                       },
@@ -1452,7 +1539,9 @@ class _CustomerCollectionAnalysisState
                                               ),
                                               child: const Padding(
                                                 padding: EdgeInsets.only(
-                                                    top: 14, right: 2),
+                                                  top: 14,
+                                                  right: 2,
+                                                ),
                                                 child: Icon(
                                                   Icons.search,
                                                   color: Color(0xff2ca9df),
@@ -1465,7 +1554,9 @@ class _CustomerCollectionAnalysisState
                                               ),
                                               child: const Padding(
                                                 padding: EdgeInsets.only(
-                                                    top: 14, right: 2),
+                                                  top: 14,
+                                                  right: 2,
+                                                ),
                                                 child: Icon(
                                                   Icons.cancel_outlined,
                                                   color: Color(0xff2ca9df),
@@ -1485,106 +1576,131 @@ class _CustomerCollectionAnalysisState
                         textEditingController: asmController,
                         focusNode: _focus,
                         optionsBuilder: (TextEditingValue val) {
-                          return asmList.where((user) => user.menuName
-                              .toLowerCase()
-                              .contains(val.text.toLowerCase()));
-                        },
-                        displayStringForOption: (UsersForSearch option) =>
-                            option.menuName,
-                        fieldViewBuilder: (context, textEditingController,
-                            focusNode, onFieldSubmitted) {
-                          return TextField(
-                            controller: textEditingController,
-                            focusNode: focusNode,
-                            onSubmitted: (value) => onFieldSubmitted(),
-                            decoration: InputDecoration(
-                              labelText: 'Enter ASM Name',
-                              labelStyle: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF8F8F8F)),
-                              suffixIcon: IconButton(
-                                icon: asmController.text == ""
-                                    ? const Icon(
-                                        Icons.search,
-                                        color: Color(0xff2ca9df),
-                                      )
-                                    : const Icon(Icons.clear),
-                                onPressed: () {
-                                  setState(() {
-                                    selectedDistributorId = "";
-                                    selectedDistributorName = "";
-                                    asmController.clear();
-                                    customerController.clear();
-                                    _findCollectionTarget();
-                                    invoiceList = invoiceListTemp;
-                                    collectionCheckList = List<bool>.filled(
-                                        invoiceList.length, false);
-                                    getCustomer("");
-                                    getASM("");
-                                  });
-                                },
-                              ),
+                          return asmList.where(
+                            (user) => user.menuName.toLowerCase().contains(
+                              val.text.toLowerCase(),
                             ),
                           );
                         },
+                        displayStringForOption: (UsersForSearch option) =>
+                            option.menuName,
+                        fieldViewBuilder:
+                            (
+                              context,
+                              textEditingController,
+                              focusNode,
+                              onFieldSubmitted,
+                            ) {
+                              return TextField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                onSubmitted: (value) => onFieldSubmitted(),
+                                decoration: InputDecoration(
+                                  labelText: 'Enter ASM Name',
+                                  labelStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF8F8F8F),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: asmController.text == ""
+                                        ? const Icon(
+                                            Icons.search,
+                                            color: Color(0xff2ca9df),
+                                          )
+                                        : const Icon(Icons.clear),
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedDistributorId = "";
+                                        selectedDistributorName = "";
+                                        asmController.clear();
+                                        customerController.clear();
+                                        _findCollectionTarget();
+                                        invoiceList = invoiceListTemp;
+                                        collectionCheckList = List<bool>.filled(
+                                          invoiceList.length,
+                                          false,
+                                        );
+                                        getCustomer("");
+                                        getASM("");
+                                      });
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
                         onSelected: (UsersForSearch value) {
                           setState(() {
                             asmController.text = value.menuName;
                             invoiceList = invoiceListTemp
-                                .where((invoice) =>
-                                    invoice.salesManager == value.menuName)
+                                .where(
+                                  (invoice) =>
+                                      invoice.salesManager == value.menuName,
+                                )
                                 .toList();
 
                             customers = invoiceList
-                                .map((item) => InvoiceCustomers(
-                                      customerName: item.customerName,
-                                      customerCode: item.customerCode,
-                                      salesManager: item.salesManager,
-                                      regionalManager: item.regionalManager,
-                                    ))
+                                .map(
+                                  (item) => InvoiceCustomers(
+                                    customerName: item.customerName,
+                                    customerCode: item.customerCode,
+                                    salesManager: item.salesManager,
+                                    regionalManager: item.regionalManager,
+                                  ),
+                                )
                                 .toList();
 
                             customers = customers.toSet().toList();
 
                             _findCollectionTarget();
 
-                            collectionCheckList =
-                                List<bool>.filled(invoiceList.length, false);
+                            collectionCheckList = List<bool>.filled(
+                              invoiceList.length,
+                              false,
+                            );
                           });
                         },
-                        optionsViewBuilder: (BuildContext context,
-                            void Function(UsersForSearch) onSelected,
-                            Iterable<UsersForSearch> options) {
-                          return Material(
-                            elevation: 4.0,
-                            child: Container(
-                              constraints: const BoxConstraints(maxHeight: 200),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                physics: const ClampingScrollPhysics(),
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  final UsersForSearch option =
-                                      options.elementAt(index);
-                                  return GestureDetector(
-                                    onTap: () {
-                                      onSelected(option);
-                                    },
-                                    child: ListTile(
-                                      title: Text(option.menuName),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
+                        optionsViewBuilder:
+                            (
+                              BuildContext context,
+                              void Function(UsersForSearch) onSelected,
+                              Iterable<UsersForSearch> options,
+                            ) {
+                              return Material(
+                                elevation: 4.0,
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 200,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.zero,
+                                    physics: const ClampingScrollPhysics(),
+                                    shrinkWrap: true,
+                                    itemCount: options.length,
+                                    itemBuilder:
+                                        (BuildContext context, int index) {
+                                          final UsersForSearch option = options
+                                              .elementAt(index);
+                                          return GestureDetector(
+                                            onTap: () {
+                                              onSelected(option);
+                                            },
+                                            child: ListTile(
+                                              title: Text(option.menuName),
+                                            ),
+                                          );
+                                        },
+                                  ),
+                                ),
+                              );
+                            },
                       )
                     : Padding(
                         padding: const EdgeInsets.only(
-                            left: 16.0, right: 16.0, bottom: 32.0),
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 32.0,
+                        ),
                         child: SizedBox(
                           height: deviceOrientation == "Portrait"
                               ? containerHeight
@@ -1608,15 +1724,20 @@ class _CustomerCollectionAnalysisState
                                       : 220,
                                   decoration: InputDecoration(
                                     contentPadding: const EdgeInsets.only(
-                                        left: 0, right: 30, top: 0, bottom: 0),
+                                      left: 0,
+                                      right: 30,
+                                      top: 0,
+                                      bottom: 0,
+                                    ),
                                     border: UnderlineInputBorder(
                                       borderRadius: BorderRadius.circular(5),
                                     ),
                                     hintText: 'ASM Name',
                                     hintStyle: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w400,
-                                        color: Color(0xFF8F8F8F)),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: Color(0xFF8F8F8F),
+                                    ),
                                     focusedBorder: UnderlineInputBorder(
                                       borderSide: const BorderSide(
                                         color: Colors
@@ -1631,30 +1752,35 @@ class _CustomerCollectionAnalysisState
                                     setState(() {
                                       asmController.text = users.menuName;
                                       invoiceList = invoiceList
-                                          .where((invoice) =>
-                                              invoice.salesManager ==
-                                              users.menuName)
+                                          .where(
+                                            (invoice) =>
+                                                invoice.salesManager ==
+                                                users.menuName,
+                                          )
                                           .toList();
                                       _findCollectionTarget();
                                       collectionCheckList = List<bool>.filled(
-                                          invoiceList.length, false);
+                                        invoiceList.length,
+                                        false,
+                                      );
 
                                       customers = invoiceList
-                                          .map((item) => InvoiceCustomers(
-                                                customerName: item.customerName,
-                                                customerCode: item.customerCode,
-                                                salesManager: item.salesManager,
-                                                regionalManager:
-                                                    item.regionalManager,
-                                              ))
+                                          .map(
+                                            (item) => InvoiceCustomers(
+                                              customerName: item.customerName,
+                                              customerCode: item.customerCode,
+                                              salesManager: item.salesManager,
+                                              regionalManager:
+                                                  item.regionalManager,
+                                            ),
+                                          )
                                           .toList();
 
                                       customers = customers.toSet().toList();
                                     });
                                   },
-                                  suggestionBuilder: (data) => ListTile(
-                                    title: Text(data.menuName),
-                                  ),
+                                  suggestionBuilder: (data) =>
+                                      ListTile(title: Text(data.menuName)),
                                   asyncSuggestions: (searchValue) =>
                                       getASM(searchValue),
                                 ),
@@ -1675,7 +1801,9 @@ class _CustomerCollectionAnalysisState
                                           customerController.clear();
                                           collectionCheckList =
                                               List<bool>.filled(
-                                                  invoiceList.length, false);
+                                                invoiceList.length,
+                                                false,
+                                              );
                                           _findCollectionTarget();
                                           getCustomer("");
                                           getASM("");
@@ -1688,7 +1816,9 @@ class _CustomerCollectionAnalysisState
                                               ),
                                               child: const Padding(
                                                 padding: EdgeInsets.only(
-                                                    top: 14, right: 2),
+                                                  top: 14,
+                                                  right: 2,
+                                                ),
                                                 child: Icon(
                                                   Icons.search,
                                                   color: Color(0xff2ca9df),
@@ -1701,7 +1831,9 @@ class _CustomerCollectionAnalysisState
                                               ),
                                               child: const Padding(
                                                 padding: EdgeInsets.only(
-                                                    top: 14, right: 2),
+                                                  top: 14,
+                                                  right: 2,
+                                                ),
                                                 child: Icon(
                                                   Icons.cancel_outlined,
                                                   color: Color(0xff2ca9df),
@@ -1716,115 +1848,131 @@ class _CustomerCollectionAnalysisState
                           ),
                         ),
                       ),
-                kIsWeb
-                    ? const SizedBox(
-                        height: 10,
-                      )
-                    : const SizedBox(
-                        height: 0,
-                      ),
+                kIsWeb ? const SizedBox(height: 10) : const SizedBox(height: 0),
                 kIsWeb
                     ? RawAutocomplete<InvoiceCustomers>(
                         textEditingController: customerController,
                         focusNode: _focusInvoice,
                         optionsBuilder: (TextEditingValue val) {
                           return customers.where((InvoiceCustomers option) {
-                            return option.customerName
-                                .toLowerCase()
-                                .contains(val.text.toLowerCase());
+                            return option.customerName.toLowerCase().contains(
+                              val.text.toLowerCase(),
+                            );
                           });
                         },
                         displayStringForOption: (InvoiceCustomers option) =>
                             option.customerName,
-                        fieldViewBuilder: (context, textEditingController,
-                            focusNode, onFieldSubmitted) {
-                          return TextField(
-                            controller: textEditingController,
-                            focusNode: focusNode,
-                            onSubmitted: (value) => onFieldSubmitted(),
-                            decoration: InputDecoration(
-                              labelText: 'Enter Account Name',
-                              labelStyle: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF8F8F8F)),
-                              suffixIcon: IconButton(
-                                icon: customerController.text == ""
-                                    ? const Icon(
-                                        Icons.search,
-                                        color: Color(0xff2ca9df),
-                                      )
-                                    : const Icon(Icons.clear),
-                                onPressed: () {
-                                  setState(() {
-                                    selectedDistributorId = "";
-                                    selectedDistributorName = "";
-                                    asmController.clear();
-                                    rsmController.clear();
-                                    customerController.clear();
-                                    invoiceList = invoiceListTemp;
-                                    // invoiceList = invoiceListTemp
-                                    //     .where((invoice) =>
-                                    // invoice.salesManager ==
-                                    //     asmController.text)
-                                    //     .toList();
-                                    _findCollectionTarget();
-                                    collectionCheckList = List<bool>.filled(
-                                        invoiceList.length, false);
-                                    getCustomer("");
-                                    getASM("");
-                                  });
-                                },
-                              ),
-                            ),
-                          );
-                        },
+                        fieldViewBuilder:
+                            (
+                              context,
+                              textEditingController,
+                              focusNode,
+                              onFieldSubmitted,
+                            ) {
+                              return TextField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                onSubmitted: (value) => onFieldSubmitted(),
+                                decoration: InputDecoration(
+                                  labelText: 'Enter Account Name',
+                                  labelStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF8F8F8F),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: customerController.text == ""
+                                        ? const Icon(
+                                            Icons.search,
+                                            color: Color(0xff2ca9df),
+                                          )
+                                        : const Icon(Icons.clear),
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedDistributorId = "";
+                                        selectedDistributorName = "";
+                                        asmController.clear();
+                                        rsmController.clear();
+                                        customerController.clear();
+                                        invoiceList = invoiceListTemp;
+                                        // invoiceList = invoiceListTemp
+                                        //     .where((invoice) =>
+                                        // invoice.salesManager ==
+                                        //     asmController.text)
+                                        //     .toList();
+                                        _findCollectionTarget();
+                                        collectionCheckList = List<bool>.filled(
+                                          invoiceList.length,
+                                          false,
+                                        );
+                                        getCustomer("");
+                                        getASM("");
+                                      });
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
                         onSelected: (InvoiceCustomers value) {
                           customerController.text = value.customerName;
                           setState(() {
                             customerController.text = value.customerName;
                             selectedDistributorName = value.customerName;
                             invoiceList = invoiceList
-                                .where((invoice) =>
-                                    invoice.customerName == value.customerName)
+                                .where(
+                                  (invoice) =>
+                                      invoice.customerName ==
+                                      value.customerName,
+                                )
                                 .toList();
                             _findCollectionTarget();
-                            collectionCheckList =
-                                List<bool>.filled(invoiceList.length, false);
+                            collectionCheckList = List<bool>.filled(
+                              invoiceList.length,
+                              false,
+                            );
                           });
                         },
-                        optionsViewBuilder: (BuildContext context,
-                            void Function(InvoiceCustomers) onSelected,
-                            Iterable<InvoiceCustomers> options) {
-                          return Material(
-                            elevation: 4.0,
-                            child: Container(
-                              constraints: const BoxConstraints(maxHeight: 200),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                physics: const ClampingScrollPhysics(),
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  final InvoiceCustomers option =
-                                      options.elementAt(index);
-                                  return GestureDetector(
-                                    onTap: () {
-                                      onSelected(option);
-                                    },
-                                    child: ListTile(
-                                      title: Text(option.customerName),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
+                        optionsViewBuilder:
+                            (
+                              BuildContext context,
+                              void Function(InvoiceCustomers) onSelected,
+                              Iterable<InvoiceCustomers> options,
+                            ) {
+                              return Material(
+                                elevation: 4.0,
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 200,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.zero,
+                                    physics: const ClampingScrollPhysics(),
+                                    shrinkWrap: true,
+                                    itemCount: options.length,
+                                    itemBuilder:
+                                        (BuildContext context, int index) {
+                                          final InvoiceCustomers option =
+                                              options.elementAt(index);
+                                          return GestureDetector(
+                                            onTap: () {
+                                              onSelected(option);
+                                            },
+                                            child: ListTile(
+                                              title: Text(option.customerName),
+                                            ),
+                                          );
+                                        },
+                                  ),
+                                ),
+                              );
+                            },
                       )
                     : Padding(
                         padding: const EdgeInsets.only(
-                            left: 16.0, right: 16.0, bottom: 32.0),
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 32.0,
+                        ),
                         child: SizedBox(
                           height: deviceOrientation == "Portrait"
                               ? containerHeight
@@ -1848,15 +1996,20 @@ class _CustomerCollectionAnalysisState
                                       : 220,
                                   decoration: InputDecoration(
                                     contentPadding: const EdgeInsets.only(
-                                        left: 0, right: 30, top: 0, bottom: 0),
+                                      left: 0,
+                                      right: 30,
+                                      top: 0,
+                                      bottom: 0,
+                                    ),
                                     border: UnderlineInputBorder(
                                       borderRadius: BorderRadius.circular(5),
                                     ),
                                     hintText: 'Account Name',
                                     hintStyle: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w400,
-                                        color: Color(0xFF8F8F8F)),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: Color(0xFF8F8F8F),
+                                    ),
                                     focusedBorder: UnderlineInputBorder(
                                       borderSide: const BorderSide(
                                         color: Colors
@@ -1869,26 +2022,30 @@ class _CustomerCollectionAnalysisState
                                   inputKey: distributorKey,
                                   onTapItem:
                                       (InvoiceCustomers distributor) async {
-                                    setState(() {
-                                      customerController.text =
-                                          distributor.customerName;
-                                      selectedDistributorId =
-                                          distributor.customerCode;
-                                      selectedDistributorName =
-                                          distributor.customerName;
-                                      invoiceList = invoiceList
-                                          .where((invoice) =>
-                                              invoice.customerName ==
-                                              distributor.customerName)
-                                          .toList();
-                                      _findCollectionTarget();
-                                      collectionCheckList = List<bool>.filled(
-                                          invoiceList.length, false);
-                                    });
-                                  },
-                                  suggestionBuilder: (data) => ListTile(
-                                    title: Text(data.customerName),
-                                  ),
+                                        setState(() {
+                                          customerController.text =
+                                              distributor.customerName;
+                                          selectedDistributorId =
+                                              distributor.customerCode;
+                                          selectedDistributorName =
+                                              distributor.customerName;
+                                          invoiceList = invoiceList
+                                              .where(
+                                                (invoice) =>
+                                                    invoice.customerName ==
+                                                    distributor.customerName,
+                                              )
+                                              .toList();
+                                          _findCollectionTarget();
+                                          collectionCheckList =
+                                              List<bool>.filled(
+                                                invoiceList.length,
+                                                false,
+                                              );
+                                        });
+                                      },
+                                  suggestionBuilder: (data) =>
+                                      ListTile(title: Text(data.customerName)),
                                   asyncSuggestions: (searchValue) =>
                                       getCustomer(searchValue),
                                 ),
@@ -1915,7 +2072,9 @@ class _CustomerCollectionAnalysisState
                                           //     .toList();
                                           collectionCheckList =
                                               List<bool>.filled(
-                                                  invoiceList.length, false);
+                                                invoiceList.length,
+                                                false,
+                                              );
                                           _findCollectionTarget();
                                           getCustomer("");
                                           getASM("");
@@ -1928,7 +2087,9 @@ class _CustomerCollectionAnalysisState
                                               ),
                                               child: const Padding(
                                                 padding: EdgeInsets.only(
-                                                    top: 14, right: 2),
+                                                  top: 14,
+                                                  right: 2,
+                                                ),
                                                 child: Icon(
                                                   Icons.search,
                                                   color: Color(0xff2ca9df),
@@ -1941,7 +2102,9 @@ class _CustomerCollectionAnalysisState
                                               ),
                                               child: const Padding(
                                                 padding: EdgeInsets.only(
-                                                    top: 14, right: 2),
+                                                  top: 14,
+                                                  right: 2,
+                                                ),
                                                 child: Icon(
                                                   Icons.cancel_outlined,
                                                   color: Color(0xff2ca9df),
@@ -1956,13 +2119,7 @@ class _CustomerCollectionAnalysisState
                           ),
                         ),
                       ),
-                kIsWeb
-                    ? const SizedBox(
-                        height: 25,
-                      )
-                    : const SizedBox(
-                        height: 0,
-                      ),
+                kIsWeb ? const SizedBox(height: 25) : const SizedBox(height: 0),
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
@@ -1982,471 +2139,600 @@ class _CustomerCollectionAnalysisState
                     child: SingleChildScrollView(
                       scrollDirection: Axis.vertical,
                       child: Center(
-                          child: Column(children: <Widget>[
-                        Container(
-                          margin: const EdgeInsets.all(20),
-                          child: Table(
-                            defaultColumnWidth: const FixedColumnWidth(175.0),
-                            border: TableBorder.all(
-                                color: Colors.black,
-                                style: BorderStyle.solid,
-                                width: 0.5),
-                            children: [
-                              TableRow(children: [
-                                Row(children: [
-                                  Transform.scale(
-                                    scale: .7,
-                                    child: Checkbox(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(2.0),
-                                      ),
-                                      side: WidgetStateBorderSide.resolveWith(
-                                        (states) => const BorderSide(
-                                            width: 1.0,
-                                            color: Color(0xFF8F8F8F)),
-                                      ),
-                                      value: _allSelected,
-                                      onChanged: _toggleSelectAll,
-                                    ),
-                                  ),
-                                  const Text('Invoice No/Date',
-                                      style: TextStyle(
-                                          fontSize: 14.0,
-                                          fontWeight: FontWeight.w600))
-                                ]),
-                                const Column(children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 13),
-                                    child: Text('Customer Name',
-                                        style: TextStyle(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600)),
-                                  )
-                                ]),
-                                const Column(children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 13),
-                                    child: Text('Value',
-                                        style: TextStyle(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600)),
-                                  )
-                                ]),
-                                const Column(children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 13),
-                                    child: Text('Status',
-                                        style: TextStyle(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600)),
-                                  )
-                                ]),
-                                const Column(children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 13),
-                                    child: Text('Payment Issues',
-                                        style: TextStyle(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600)),
-                                  )
-                                ]),
-                                const Column(children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 13),
-                                    child: Text('Commitment',
-                                        style: TextStyle(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600)),
-                                  )
-                                ]),
-                                const Column(children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 13),
-                                    child: Text('Expected Payment Date',
-                                        style: TextStyle(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600)),
-                                  )
-                                ]),
-                                const Column(children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 5, left: 0),
-                                    child: Text('Expected Payment Remarks',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                            fontSize: 14.0,
-                                            fontWeight: FontWeight.w600)),
-                                  )
-                                ]),
-                              ]),
-                              for (var i = 0; i < invoiceList.length; i++)
-                                TableRow(children: [
-                                  Column(children: [
-                                    Row(
-                                      children: [
-                                        Transform.scale(
-                                          scale: .7,
-                                          child: Checkbox(
+                        child: Column(
+                          children: <Widget>[
+                            Container(
+                              margin: const EdgeInsets.all(20),
+                              child: Table(
+                                defaultColumnWidth: const FixedColumnWidth(
+                                  175.0,
+                                ),
+                                border: TableBorder.all(
+                                  color: Colors.black,
+                                  style: BorderStyle.solid,
+                                  width: 0.5,
+                                ),
+                                children: [
+                                  TableRow(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Transform.scale(
+                                            scale: .7,
+                                            child: Checkbox(
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(2.0),
                                               ),
-                                              side: WidgetStateBorderSide
-                                                  .resolveWith(
-                                                (states) => const BorderSide(
-                                                    width: 1.0,
-                                                    color: Color(0xFF8F8F8F)),
+                                              side:
+                                                  WidgetStateBorderSide.resolveWith(
+                                                    (states) =>
+                                                        const BorderSide(
+                                                          width: 1.0,
+                                                          color: Color(
+                                                            0xFF8F8F8F,
+                                                          ),
+                                                        ),
+                                                  ),
+                                              value: _allSelected,
+                                              onChanged: _toggleSelectAll,
+                                            ),
+                                          ),
+                                          const Text(
+                                            'Invoice No/Date',
+                                            style: TextStyle(
+                                              fontSize: 14.0,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Column(
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.only(top: 13),
+                                            child: Text(
+                                              'Customer Name',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
                                               ),
-                                              value: collectionCheckList[i],
-                                              onChanged: (bool? value) {
-                                                setState(() {
-                                                  collectionCheckList[i] =
-                                                      value ?? false;
-                                                  if (collectionCheckList[i] ==
-                                                      true) {
-                                                    totalValue += double.parse(
-                                                        invoiceList[i].balance);
-                                                    valueController.text =
-                                                        totalValue.toString();
-                                                    selectedInvoiceList
-                                                        .add(invoiceList[i]);
-                                                  }
-                                                  if (collectionCheckList[i] ==
-                                                      false) {
-                                                    if (totalValue != 0) {
-                                                      totalValue -=
-                                                          double.parse(
-                                                              invoiceList[i]
-                                                                  .balance);
-                                                      valueController.text =
-                                                          totalValue.toString();
-                                                      selectedInvoiceList
-                                                          .remove(
-                                                              invoiceList[i]);
-                                                    }
-                                                  }
-                                                });
-                                              }),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Column(
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.only(top: 13),
+                                            child: Text(
+                                              'Value',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Column(
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.only(top: 13),
+                                            child: Text(
+                                              'Status',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Column(
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.only(top: 13),
+                                            child: Text(
+                                              'Payment Issues',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Column(
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.only(top: 13),
+                                            child: Text(
+                                              'Commitment',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Column(
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.only(top: 13),
+                                            child: Text(
+                                              'Expected Payment Date',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Column(
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.only(
+                                              top: 5,
+                                              left: 0,
+                                            ),
+                                            child: Text(
+                                              'Expected Payment Remarks',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  for (var i = 0; i < invoiceList.length; i++)
+                                    TableRow(
+                                      children: [
+                                        Column(
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Transform.scale(
+                                                  scale: .7,
+                                                  child: Checkbox(
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            2.0,
+                                                          ),
+                                                    ),
+                                                    side:
+                                                        WidgetStateBorderSide.resolveWith(
+                                                          (states) =>
+                                                              const BorderSide(
+                                                                width: 1.0,
+                                                                color: Color(
+                                                                  0xFF8F8F8F,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                    value:
+                                                        collectionCheckList[i],
+                                                    onChanged: (bool? value) {
+                                                      setState(() {
+                                                        collectionCheckList[i] =
+                                                            value ?? false;
+                                                        if (collectionCheckList[i] ==
+                                                            true) {
+                                                          totalValue +=
+                                                              double.parse(
+                                                                invoiceList[i]
+                                                                    .balance,
+                                                              );
+                                                          valueController.text =
+                                                              totalValue
+                                                                  .toString();
+                                                          selectedInvoiceList
+                                                              .add(
+                                                                invoiceList[i],
+                                                              );
+                                                        }
+                                                        if (collectionCheckList[i] ==
+                                                            false) {
+                                                          if (totalValue != 0) {
+                                                            totalValue -=
+                                                                double.parse(
+                                                                  invoiceList[i]
+                                                                      .balance,
+                                                                );
+                                                            valueController
+                                                                    .text =
+                                                                totalValue
+                                                                    .toString();
+                                                            selectedInvoiceList
+                                                                .remove(
+                                                                  invoiceList[i],
+                                                                );
+                                                          }
+                                                        }
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "${invoiceList[i].documentNumber}/\n${invoiceList[i].postingDate}",
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                            "${invoiceList[i].documentNumber}/\n${invoiceList[i].postingDate}"),
+                                        TableCell(
+                                          verticalAlignment:
+                                              TableCellVerticalAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(
+                                              invoiceList[i].customerName
+                                                  .toString(),
+                                            ),
+                                          ),
+                                        ),
+                                        TableCell(
+                                          verticalAlignment:
+                                              TableCellVerticalAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                              right: 8.0,
+                                            ),
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text(
+                                                double.parse(
+                                                  invoiceList[i].balance,
+                                                ).abs().toStringAsFixed(2),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        TableCell(
+                                          verticalAlignment:
+                                              TableCellVerticalAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(invoiceList[i].dueDays),
+                                          ),
+                                        ),
+                                        TableCell(
+                                          verticalAlignment:
+                                              TableCellVerticalAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(
+                                              invoiceList[i].invoiceIssues,
+                                            ),
+                                          ),
+                                        ),
+                                        TableCell(
+                                          verticalAlignment:
+                                              TableCellVerticalAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                              right: 8.0,
+                                            ),
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text(
+                                                invoiceList[i].commitment != ""
+                                                    ? double.parse(
+                                                        invoiceList[i]
+                                                            .commitment,
+                                                      ).toStringAsFixed(2)
+                                                    : invoiceList[i].commitment,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        TableCell(
+                                          verticalAlignment:
+                                              TableCellVerticalAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(
+                                              invoiceList[i].expectedPayment,
+                                            ),
+                                          ),
+                                        ),
+                                        TableCell(
+                                          verticalAlignment:
+                                              TableCellVerticalAlignment.middle,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(
+                                              invoiceList[i]
+                                                  .expectedPaymentRemarks,
+                                            ),
+                                          ),
+                                        ),
                                       ],
-                                    )
-                                  ]),
-                                  TableCell(
-                                      verticalAlignment:
-                                          TableCellVerticalAlignment.middle,
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 8.0),
-                                        child: Text(invoiceList[i]
-                                            .customerName
-                                            .toString()),
-                                      )),
-                                  TableCell(
-                                      verticalAlignment:
-                                          TableCellVerticalAlignment.middle,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 8.0, right: 8.0),
-                                        child: Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Text(double.parse(
-                                                  invoiceList[i].balance)
-                                              .abs()
-                                              .toStringAsFixed(2)),
-                                        ),
-                                      )),
-                                  TableCell(
-                                      verticalAlignment:
-                                          TableCellVerticalAlignment.middle,
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 8.0),
-                                        child: Text(invoiceList[i].dueDays),
-                                      )),
-                                  TableCell(
-                                      verticalAlignment:
-                                          TableCellVerticalAlignment.middle,
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 8.0),
-                                        child:
-                                            Text(invoiceList[i].invoiceIssues),
-                                      )),
-                                  TableCell(
-                                      verticalAlignment:
-                                          TableCellVerticalAlignment.middle,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 8.0, right: 8.0),
-                                        child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Text(invoiceList[i]
-                                                        .commitment !=
-                                                    ""
-                                                ? double.parse(invoiceList[i]
-                                                        .commitment)
-                                                    .toStringAsFixed(2)
-                                                : invoiceList[i].commitment)),
-                                      )),
-                                  TableCell(
-                                      verticalAlignment:
-                                          TableCellVerticalAlignment.middle,
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 8.0),
-                                        child: Text(
-                                            invoiceList[i].expectedPayment),
-                                      )),
-                                  TableCell(
-                                      verticalAlignment:
-                                          TableCellVerticalAlignment.middle,
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 8.0),
-                                        child: Text(invoiceList[i]
-                                            .expectedPaymentRemarks),
-                                      )),
-                                ]),
-                            ],
-                          ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ])),
+                      ),
                     ),
                   ),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    const SizedBox(
-                      width: 20,
-                    ),
+                    const SizedBox(width: 20),
                     Container(
                       color: const Color(0xFFD9D9D9),
                       child: Padding(
                         padding: const EdgeInsets.all(10.0),
                         child: Text(
-                            "Total Outstanding - ${formatAmount(totalOutstanding)}"),
+                          "Total Outstanding - ${formatAmount(totalOutstanding)}",
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(
-                      left: 16.0, right: 16.0, top: 8.0, bottom: 16.0),
+                    left: 16.0,
+                    right: 16.0,
+                    top: 8.0,
+                    bottom: 16.0,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
                         flex: 1,
                         child: Padding(
-                            padding: const EdgeInsets.only(top: 0),
-                            child: AbsorbPointer(
-                              absorbing: true,
-                              child: TextField(
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF8F8F8F)),
-                                controller: valueController,
-                                decoration: const InputDecoration(
-                                  border: UnderlineInputBorder(),
-                                  hintText: '0.00 L',
-                                  hintStyle: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: Color(0xFF8F8F8F)),
-                                ),
+                          padding: const EdgeInsets.only(top: 0),
+                          child: AbsorbPointer(
+                            absorbing: true,
+                            child: TextField(
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF8F8F8F),
                               ),
-                            )),
-                      ),
-                      const SizedBox(
-                        width: 20,
-                      ),
-                      Flexible(
-                        child: TextField(
-                            canRequestFocus: false,
-                            style: const TextStyle(
-                              color: Color(0xFF8F8F8F),
-                            ),
-                            keyboardType: TextInputType.none,
-                            controller: _dateController,
-                            decoration: const InputDecoration(
-                              suffixIcon: Padding(
-                                padding: EdgeInsets.only(left: 20.0),
-                                child: Icon(
-                                  Icons.calendar_today,
-                                  color: Color(0xffD9D9D9),
-                                  size: 20,
-                                ),
-                              ),
-                              floatingLabelBehavior:
-                                  FloatingLabelBehavior.never,
-                              labelText: 'On',
-                              contentPadding: EdgeInsets.only(bottom: 0),
-                              labelStyle: TextStyle(
+                              controller: valueController,
+                              decoration: const InputDecoration(
+                                border: UnderlineInputBorder(),
+                                hintText: '0.00 L',
+                                hintStyle: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
-                                  color: Color(0xFF8F8F8F)),
-                            ),
-                            onTap: () async {
-                              DateTime? selectedDate = await showDatePicker(
-                                context: context,
-                                initialDate: DateTime.now(),
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2101),
-                                initialEntryMode: DatePickerEntryMode.calendar,
-                              );
-
-                              String formattedDateTime =
-                                  DateFormat('yyyy-MM-dd').format(
-                                DateTime(
-                                  selectedDate!.year,
-                                  selectedDate.month,
-                                  selectedDate.day,
+                                  color: Color(0xFF8F8F8F),
                                 ),
-                              );
-                              _dateController.text = formattedDateTime;
-                            }),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Flexible(
+                        child: TextField(
+                          canRequestFocus: false,
+                          style: const TextStyle(color: Color(0xFF8F8F8F)),
+                          keyboardType: TextInputType.none,
+                          controller: _dateController,
+                          decoration: const InputDecoration(
+                            suffixIcon: Padding(
+                              padding: EdgeInsets.only(left: 20.0),
+                              child: Icon(
+                                Icons.calendar_today,
+                                color: Color(0xffD9D9D9),
+                                size: 20,
+                              ),
+                            ),
+                            floatingLabelBehavior: FloatingLabelBehavior.never,
+                            labelText: 'On',
+                            contentPadding: EdgeInsets.only(bottom: 0),
+                            labelStyle: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF8F8F8F),
+                            ),
+                          ),
+                          onTap: () async {
+                            DateTime? selectedDate = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2101),
+                              initialEntryMode: DatePickerEntryMode.calendar,
+                            );
+
+                            String formattedDateTime = DateFormat('yyyy-MM-dd')
+                                .format(
+                                  DateTime(
+                                    selectedDate!.year,
+                                    selectedDate.month,
+                                    selectedDate.day,
+                                  ),
+                                );
+                            _dateController.text = formattedDateTime;
+                          },
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Padding(
-                  padding:
-                      const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0),
+                  padding: const EdgeInsets.only(
+                    left: 16.0,
+                    right: 16.0,
+                    top: 8.0,
+                  ),
                   child: SizedBox(
                     height: 70,
                     width: 400,
                     child: Padding(
-                        padding: const EdgeInsets.only(top: 0),
-                        child: DropdownButtonFormField<String>(
-                          hint: const Text(
-                            'Invoice Issues',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF8F8F8F)),
+                      padding: const EdgeInsets.only(top: 0),
+                      child: DropdownButtonFormField<String>(
+                        hint: const Text(
+                          'Invoice Issues',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF8F8F8F),
                           ),
-                          initialValue: selectedModeOfPayment,
-                          icon: const Icon(
-                            Icons.keyboard_arrow_down,
-                            color: Color(0xffD9D9D9),
-                            size: 30,
-                          ),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedModeOfPayment = newValue!;
-                            });
-                          },
-                          items: <String>[
-                            'Credit Note Issues Invoice',
-                            'Disputed Issues Invoice',
-                            'Legal Issues Invoice',
-                            'Payment Outstanding Invoice',
-                          ].map<DropdownMenuItem<String>>((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(
-                                value,
-                                style: const TextStyle(
+                        ),
+                        initialValue: selectedModeOfPayment,
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Color(0xffD9D9D9),
+                          size: 30,
+                        ),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedModeOfPayment = newValue!;
+                          });
+                        },
+                        items:
+                            <String>[
+                              'Credit Note Issues Invoice',
+                              'Disputed Issues Invoice',
+                              'Legal Issues Invoice',
+                              'Payment Outstanding Invoice',
+                            ].map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(
+                                  value,
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w400,
-                                    color: Color(0xFF8F8F8F)),
-                              ),
-                            );
-                          }).toList(),
-                        )),
+                                    color: Color(0xFF8F8F8F),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    ),
                   ),
                 ),
 
                 Padding(
                   padding: const EdgeInsets.only(
-                      left: 16.0, right: 16.0, top: 8.0, bottom: 16.0),
+                    left: 16.0,
+                    right: 16.0,
+                    top: 8.0,
+                    bottom: 16.0,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
                         flex: 1,
                         child: Padding(
-                            padding: const EdgeInsets.only(top: 0),
-                            child: TextField(
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF8F8F8F)),
-                              controller: commitmentController,
-                              decoration: const InputDecoration(
-                                border: UnderlineInputBorder(),
-                                hintText: 'Commitment',
-                                hintStyle: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF8F8F8F)),
+                          padding: const EdgeInsets.only(top: 0),
+                          child: TextField(
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF8F8F8F),
+                            ),
+                            controller: commitmentController,
+                            decoration: const InputDecoration(
+                              border: UnderlineInputBorder(),
+                              hintText: 'Commitment',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF8F8F8F),
                               ),
-                            )),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(
-                      left: 16.0, right: 16.0, bottom: 8.0),
+                    left: 16.0,
+                    right: 16.0,
+                    bottom: 8.0,
+                  ),
                   child: TextField(
                     controller: paymentRemarksController,
                     keyboardType: TextInputType.multiline,
                     maxLines: 3,
                     maxLength: 1000,
                     decoration: InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                          borderSide:
-                              const BorderSide(color: Color(0xFF8F8F8F)),
-                          borderRadius: BorderRadius.circular(1),
-                        ),
-                        hintText: "Payment Remarks",
-                        hintStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF8F8F8F)),
-                        focusedBorder: const OutlineInputBorder(
-                            borderSide:
-                                BorderSide(width: 1, color: Colors.grey))),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Color(0xFF8F8F8F)),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                      hintText: "Payment Remarks",
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF8F8F8F),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(width: 1, color: Colors.grey),
+                      ),
+                    ),
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(
-                      left: 16.0, right: 16.0, bottom: 8.0),
+                    left: 16.0,
+                    right: 16.0,
+                    bottom: 8.0,
+                  ),
                   child: TextField(
                     controller: remarksController,
                     keyboardType: TextInputType.multiline,
                     maxLines: 3,
                     maxLength: 1000,
                     decoration: InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                          borderSide:
-                              const BorderSide(color: Color(0xFF8F8F8F)),
-                          borderRadius: BorderRadius.circular(1),
-                        ),
-                        hintText: "Remarks",
-                        hintStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF8F8F8F)),
-                        focusedBorder: const OutlineInputBorder(
-                            borderSide:
-                                BorderSide(width: 1, color: Colors.grey))),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Color(0xFF8F8F8F)),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                      hintText: "Remarks",
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF8F8F8F),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(width: 1, color: Colors.grey),
+                      ),
+                    ),
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(
-                      left: 16.0, right: 16.0, bottom: 16.0),
+                    left: 16.0,
+                    right: 16.0,
+                    bottom: 16.0,
+                  ),
                   child: Center(
                     child: AbsorbPointer(
                       absorbing: disableSave,
@@ -2464,8 +2750,10 @@ class _CustomerCollectionAnalysisState
                           setState(() {
                             disableSave = true;
                             showAlertDialog(context);
-                            collectionCheckList =
-                                List<bool>.filled(invoiceList.length, false);
+                            collectionCheckList = List<bool>.filled(
+                              invoiceList.length,
+                              false,
+                            );
                           });
                         },
                         child: const SizedBox(
@@ -2473,8 +2761,10 @@ class _CustomerCollectionAnalysisState
                           child: Center(
                             child: Text(
                               "Save",
-                              style:
-                                  TextStyle(fontSize: 14, color: Colors.white),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -2484,30 +2774,28 @@ class _CustomerCollectionAnalysisState
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
-                const SizedBox(
-                  height: 30,
-                ),
+                const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     Tooltip(
                       preferBelow: false,
                       richMessage: WidgetSpan(
-                          child: Column(
-                        children: [
-                          Column(
-                            children: [
-                              Text("Target : $collectionAgingGoalStr"),
-                              Text(
-                                  "Achieved : ${formatAmount(collectionAchieved)}"),
-                            ],
-                          ),
-                        ],
-                      )),
+                        child: Column(
+                          children: [
+                            Column(
+                              children: [
+                                Text("Target : $collectionAgingGoalStr"),
+                                Text(
+                                  "Achieved : ${formatAmount(collectionAchieved)}",
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                       decoration: BoxDecoration(
                         boxShadow: [
                           BoxShadow(
@@ -2518,8 +2806,9 @@ class _CustomerCollectionAnalysisState
                           ),
                         ],
                         color: Colors.white,
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(4)),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(4),
+                        ),
                       ),
                       showDuration: const Duration(seconds: 7),
                       triggerMode: TooltipTriggerMode.tap,
@@ -2533,26 +2822,29 @@ class _CustomerCollectionAnalysisState
                           percent: collectionPercentage / 100,
                           center: Column(
                             children: [
-                              const SizedBox(
-                                height: 40,
-                              ),
+                              const SizedBox(height: 40),
                               Text(
                                 "$collectionPercentage%",
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20.0,
-                                    color: Colors.red),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20.0,
+                                  color: Colors.red,
+                                ),
                               ),
                               Text(
                                 formatAmount(collectionAchieved),
                                 style: const TextStyle(
-                                    fontSize: 14.0, color: Colors.black),
+                                  fontSize: 14.0,
+                                  color: Colors.black,
+                                ),
                               ),
                               const Center(
                                 child: Text(
                                   "Collection Progress (%)",
                                   style: TextStyle(
-                                      fontSize: 10.0, color: Colors.black),
+                                    fontSize: 10.0,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ),
                             ],
@@ -2567,22 +2859,27 @@ class _CustomerCollectionAnalysisState
                     Tooltip(
                       preferBelow: false,
                       richMessage: WidgetSpan(
-                          child: Column(
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                  "0-30 : ${formatAmount(receivablesAgingList.agingData[0].agingGroupTotal)}"),
-                              Text(
-                                  "31-60 : ${formatAmount(receivablesAgingList.agingData[1].agingGroupTotal)}"),
-                              Text(
-                                  "61-90 : ${formatAmount(receivablesAgingList.agingData[2].agingGroupTotal)}"),
-                              Text(
-                                  "90+ : ${formatAmount(receivablesAgingList.agingData[3].agingGroupTotal)}"),
-                            ],
-                          ),
-                        ],
-                      )),
+                        child: Column(
+                          children: [
+                            Column(
+                              children: [
+                                Text(
+                                  "0-30 : ${formatAmount(receivablesAgingList.agingData[0].agingGroupTotal)}",
+                                ),
+                                Text(
+                                  "31-60 : ${formatAmount(receivablesAgingList.agingData[1].agingGroupTotal)}",
+                                ),
+                                Text(
+                                  "61-90 : ${formatAmount(receivablesAgingList.agingData[2].agingGroupTotal)}",
+                                ),
+                                Text(
+                                  "90+ : ${formatAmount(receivablesAgingList.agingData[3].agingGroupTotal)}",
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                       decoration: BoxDecoration(
                         boxShadow: [
                           BoxShadow(
@@ -2593,8 +2890,9 @@ class _CustomerCollectionAnalysisState
                           ),
                         ],
                         color: Colors.white,
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(4)),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(4),
+                        ),
                       ),
                       showDuration: const Duration(seconds: 7),
                       triggerMode: TooltipTriggerMode.tap,
@@ -2610,24 +2908,23 @@ class _CustomerCollectionAnalysisState
                                   pieTouchData: PieTouchData(
                                     touchCallback:
                                         (FlTouchEvent event, pieTouchResponse) {
-                                      setState(() {
-                                        if (!event
-                                                .isInterestedForInteractions ||
-                                            pieTouchResponse == null ||
-                                            pieTouchResponse.touchedSection ==
-                                                null) {
-                                          touchedIndex = -1;
-                                          return;
-                                        }
-                                        touchedIndex = pieTouchResponse
-                                            .touchedSection!
-                                            .touchedSectionIndex;
-                                      });
-                                    },
+                                          setState(() {
+                                            if (!event
+                                                    .isInterestedForInteractions ||
+                                                pieTouchResponse == null ||
+                                                pieTouchResponse
+                                                        .touchedSection ==
+                                                    null) {
+                                              touchedIndex = -1;
+                                              return;
+                                            }
+                                            touchedIndex = pieTouchResponse
+                                                .touchedSection!
+                                                .touchedSectionIndex;
+                                          });
+                                        },
                                   ),
-                                  borderData: FlBorderData(
-                                    show: false,
-                                  ),
+                                  borderData: FlBorderData(show: false),
                                   sectionsSpace: 0,
                                   centerSpaceRadius: 0,
                                   startDegreeOffset: 180,
@@ -2636,9 +2933,7 @@ class _CustomerCollectionAnalysisState
                               ),
                             ),
                           ),
-                          const SizedBox(
-                            height: 40,
-                          ),
+                          const SizedBox(height: 40),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -2652,9 +2947,7 @@ class _CustomerCollectionAnalysisState
                                       width: 16,
                                       color: Colors.green,
                                     ),
-                                    const SizedBox(
-                                      height: 8,
-                                    ),
+                                    const SizedBox(height: 8),
                                     Container(
                                       height: 8,
                                       width: 16,
@@ -2676,8 +2969,10 @@ class _CustomerCollectionAnalysisState
                                   ),
                                   Padding(
                                     padding: EdgeInsets.only(left: 8.0),
-                                    child: Text("31-60",
-                                        style: TextStyle(fontSize: 10)),
+                                    child: Text(
+                                      "31-60",
+                                      style: TextStyle(fontSize: 10),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -2694,9 +2989,7 @@ class _CustomerCollectionAnalysisState
                                         color: Colors.orange,
                                       ),
                                     ),
-                                    const SizedBox(
-                                      height: 8,
-                                    ),
+                                    const SizedBox(height: 8),
                                     Padding(
                                       padding: const EdgeInsets.only(left: 8.0),
                                       child: Container(
@@ -2713,8 +3006,10 @@ class _CustomerCollectionAnalysisState
                                 children: [
                                   Padding(
                                     padding: EdgeInsets.only(left: 8.0),
-                                    child: Text("61-90",
-                                        style: TextStyle(fontSize: 10)),
+                                    child: Text(
+                                      "61-90",
+                                      style: TextStyle(fontSize: 10),
+                                    ),
                                   ),
                                   Padding(
                                     padding: EdgeInsets.only(left: 8.0),
@@ -2724,7 +3019,7 @@ class _CustomerCollectionAnalysisState
                                     ),
                                   ),
                                 ],
-                              )
+                              ),
                             ],
                           ),
                         ],
@@ -2734,9 +3029,7 @@ class _CustomerCollectionAnalysisState
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(
-                    thickness: 2,
-                  ),
+                  child: Divider(thickness: 2),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2744,11 +3037,11 @@ class _CustomerCollectionAnalysisState
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 15,
+                        SizedBox(width: 15),
+                        Text(
+                          "Receivables Aging",
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        Text("Receivables Aging",
-                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Row(
@@ -2760,7 +3053,8 @@ class _CustomerCollectionAnalysisState
                               PopupMenuItem(
                                 onTap: () {
                                   generateReceivablesExcel(
-                                      receivablesAgingList);
+                                    receivablesAgingList,
+                                  );
                                 },
                                 child: const Text("Download Excel"),
                               ),
@@ -2773,18 +3067,13 @@ class _CustomerCollectionAnalysisState
                             ];
                           },
                         ),
-                        const SizedBox(
-                          width: 5,
-                        ),
+                        const SizedBox(width: 5),
                       ],
                     ),
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                  ),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _receivablesAging(),
                 ),
               ],
@@ -2807,40 +3096,31 @@ class _CustomerCollectionAnalysisState
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesReceivableAging, axisNameSize: 20),
+                sideTitles: _bottomTitlesReceivableAging,
+                axisNameSize: 20,
+              ),
             ),
             gridData: FlGridData(
               show: true,
               checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade300,
-                strokeWidth: 1,
-              ),
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
               drawVerticalLine: false,
             ),
             borderData: FlBorderData(
               show: true,
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
-                top: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 0.7,
-                ),
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups:
-                _receivableAgingChartData(receivablesAgingList.agingData),
+            barGroups: _receivableAgingChartData(
+              receivablesAgingList.agingData,
+            ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -2850,67 +3130,71 @@ class _CustomerCollectionAnalysisState
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
-                    width: 2.0, color: Colors.black12, style: BorderStyle.none),
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                      'Overdue Receivables\n',
-                      const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    'Overdue Receivables\n',
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            '${receivablesAgingList.agingData[0].agingGroup} :'
+                            ' ${(receivablesAgingList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      children: <TextSpan>[
-                        TextSpan(
-                          text:
-                              '${receivablesAgingList.agingData[0].agingGroup} :'
-                              ' ${(receivablesAgingList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      TextSpan(
+                        text:
+                            '${receivablesAgingList.agingData[1].agingGroup} '
+                            ': ${(receivablesAgingList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesAgingList.agingData[1].agingGroup} '
-                              ': ${(receivablesAgingList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivablesAgingList.agingData[2].agingGroup} '
+                            ': ${(receivablesAgingList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesAgingList.agingData[2].agingGroup} '
-                              ': ${(receivablesAgingList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            '${receivablesAgingList.agingData[3].agingGroup} '
+                            ': ${(receivablesAgingList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              '${receivablesAgingList.agingData[3].agingGroup} '
-                              ': ${(receivablesAgingList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      TextSpan(
+                        text:
+                            "Total : ${(receivablesAgingList.agingData[3].agingTotal / 100000).toStringAsFixed(2)} L",
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text:
-                              "Total : ${(receivablesAgingList.agingData[3].agingTotal / 100000).toStringAsFixed(2)} L",
-                          style: const TextStyle(
-                            color: Colors.black, //widget.touchedBarColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      textAlign: TextAlign.start);
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
                 },
                 getTooltipColor: (group) => Colors.white,
                 fitInsideVertically: true,
@@ -2938,9 +3222,7 @@ class _CustomerCollectionAnalysisState
     AlertDialog alert = AlertDialog(
       title: const Text("Invoices Updated!"),
       content: const Text("Selected Invoices have been updated"),
-      actions: [
-        okButton,
-      ],
+      actions: [okButton],
     );
     disableSave = false;
     showDialog(
@@ -2975,7 +3257,9 @@ class _CustomerCollectionAnalysisState
                       const Text(
                         'Filter Options',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -3012,28 +3296,35 @@ class _CustomerCollectionAnalysisState
                           child: Column(
                             children: [
                               Expanded(
-                                child: selectedCategoryIndex ==
-                                        categories.length - 1 // "Date" index
+                                child:
+                                    selectedCategoryIndex ==
+                                        categories.length -
+                                            1 // "Date" index
                                     ? Column(
                                         children: [
                                           ListTile(
                                             title: const Text("From Date"),
-                                            subtitle: Text(fromDateFilter !=
-                                                    null
-                                                ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
-                                                : formatDateString(
-                                                    fiscalYearStartDate!)),
+                                            subtitle: Text(
+                                              fromDateFilter != null
+                                                  ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
+                                                  : formatDateString(
+                                                      fiscalYearStartDate!,
+                                                    ),
+                                            ),
                                             trailing: const Icon(
-                                                Icons.calendar_today),
+                                              Icons.calendar_today,
+                                            ),
                                             onTap: () async {
                                               final picked =
                                                   await showDatePicker(
-                                                context: context,
-                                                initialDate: fromDateFilter ??
-                                                    DateTime.now(),
-                                                firstDate: fiscalYearStartDate!,
-                                                lastDate: currentDate!,
-                                              );
+                                                    context: context,
+                                                    initialDate:
+                                                        fromDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
                                               if (picked != null) {
                                                 setState(() {
                                                   fromDateFilter = picked;
@@ -3044,21 +3335,27 @@ class _CustomerCollectionAnalysisState
                                           ),
                                           ListTile(
                                             title: const Text("To Date"),
-                                            subtitle: Text(toDateFilter != null
-                                                ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
-                                                : formatDateString(
-                                                    currentDate!)),
+                                            subtitle: Text(
+                                              toDateFilter != null
+                                                  ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
+                                                  : formatDateString(
+                                                      currentDate!,
+                                                    ),
+                                            ),
                                             trailing: const Icon(
-                                                Icons.calendar_today),
+                                              Icons.calendar_today,
+                                            ),
                                             onTap: () async {
                                               final picked =
                                                   await showDatePicker(
-                                                context: context,
-                                                initialDate: toDateFilter ??
-                                                    DateTime.now(),
-                                                firstDate: fiscalYearStartDate!,
-                                                lastDate: currentDate!,
-                                              );
+                                                    context: context,
+                                                    initialDate:
+                                                        toDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
                                               if (picked != null) {
                                                 setState(() {
                                                   toDateFilter = picked;
@@ -3075,12 +3372,11 @@ class _CustomerCollectionAnalysisState
                                                 .length,
                                         itemBuilder: (context, index) {
                                           return CheckboxListTile(
-                                            title: Text(filterOptions[
-                                                selectedCategoryIndex][index]),
+                                            title: Text(
+                                              filterOptions[selectedCategoryIndex][index],
+                                            ),
                                             value:
-                                                savedFinanceReceivablesOptions[
-                                                        selectedCategoryIndex]
-                                                    [index],
+                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
                                             onChanged: (bool? value) {
                                               // your checkbox logic
                                             },
@@ -3100,36 +3396,38 @@ class _CustomerCollectionAnalysisState
                                     ),
                                     onPressed: () {
                                       List<String> selectedFilterOptions = [];
-                                      for (int i = 0;
-                                          i <
-                                              filterOptions[
-                                                      selectedCategoryIndex]
-                                                  .length;
-                                          i++) {
-                                        if (selectedFinanceReceivablesOptions[
-                                            selectedCategoryIndex][i]) {
+                                      for (
+                                        int i = 0;
+                                        i <
+                                            filterOptions[selectedCategoryIndex]
+                                                .length;
+                                        i++
+                                      ) {
+                                        if (selectedFinanceReceivablesOptions[selectedCategoryIndex][i]) {
                                           selectedFilterOptions.add(
-                                              filterOptions[
-                                                  selectedCategoryIndex][i]);
+                                            filterOptions[selectedCategoryIndex][i],
+                                          );
                                         }
                                       }
 
-                                      for (int catIndex = 0;
-                                          catIndex < categories.length;
-                                          catIndex++) {
+                                      for (
+                                        int catIndex = 0;
+                                        catIndex < categories.length;
+                                        catIndex++
+                                      ) {
                                         String categoryName =
                                             categories[catIndex];
                                         Map<String, bool> optionsState = {};
 
                                         // Ensure the lengths match for your filterOptions and selectedFinanceReceivablesOptions lists
-                                        for (int optionIndex = 0;
-                                            optionIndex <
-                                                filterOptions[catIndex].length;
-                                            optionIndex++) {
-                                          optionsState[filterOptions[catIndex]
-                                                  [optionIndex]] =
-                                              selectedFinanceReceivablesOptions[
-                                                  catIndex][optionIndex];
+                                        for (
+                                          int optionIndex = 0;
+                                          optionIndex <
+                                              filterOptions[catIndex].length;
+                                          optionIndex++
+                                        ) {
+                                          optionsState[filterOptions[catIndex][optionIndex]] =
+                                              selectedFinanceReceivablesOptions[catIndex][optionIndex];
                                         }
 
                                         allCategoriesState[categoryName] =
@@ -3157,9 +3455,7 @@ class _CustomerCollectionAnalysisState
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(
-                                    width: 15,
-                                  ),
+                                  const SizedBox(width: 15),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
@@ -3184,8 +3480,9 @@ class _CustomerCollectionAnalysisState
                                       padding: EdgeInsets.all(8.0),
                                       child: Text(
                                         'Clear Filter',
-                                        style:
-                                            TextStyle(color: Color(0xff2ca9df)),
+                                        style: TextStyle(
+                                          color: Color(0xff2ca9df),
+                                        ),
                                       ),
                                     ),
                                   ),

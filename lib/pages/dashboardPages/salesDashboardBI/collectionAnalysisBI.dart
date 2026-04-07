@@ -20,8 +20,9 @@ import 'package:optima/login_screen.dart';
 import '../../../classes/dashBoard.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
-import 'package:optima/pages/dashboardPages/platform_excel_helper.dart';
-import 'package:optima/pages/dashboardPages/platform_pdf_helper.dart';
+
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 bool touchedLastMonthGoals = false;
 bool touchedThisMonthGoals = false;

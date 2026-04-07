@@ -19,8 +19,9 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:optima/pages/dashboardPages/pdf_helper_other.dart';
-import '../platform_excel_helper.dart';
+
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 class MonthlyInventoryData {
   final String monthYear; // e.g. "Mar 2025"

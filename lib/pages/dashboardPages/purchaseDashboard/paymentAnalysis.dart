@@ -18,8 +18,8 @@ import 'package:optima/classes/globals.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
 
-import '../platform_excel_helper.dart';
-import '../platform_pdf_helper.dart';
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 class PaymentAnalysis extends StatefulWidget {
   const PaymentAnalysis({super.key});
@@ -76,14 +76,9 @@ String touchedDocumentType = "";
 String touchedAgingCatg = "";
 double selectedChart = 0;
 
-final List<String> categories = [
-  'Date',
-];
+final List<String> categories = ['Date'];
 
-List<List<String>> filterOptions = [
-
-  [],
-];
+List<List<String>> filterOptions = [[]];
 
 List<List<bool>> selectedFinanceReceivablesOptions = [];
 
@@ -1268,9 +1263,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
     await _loadPayablesData(0, "", "", "", "");
     await _loadModeOfPaymentGraph(0, "", "", "", "");
     setState(() {
-      filterOptions = [
-        []
-      ];
+      filterOptions = [[]];
 
       savedFinanceReceivablesOptions = filterOptions
           .map((options) => List<bool>.filled(options.length, false))
@@ -2530,16 +2523,18 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
     return formatter.format(date);
   }
 
-  Future<void> _dateFilterTarget(String UserName, String UserLevel, bool FromFilter) async {
+  Future<void> _dateFilterTarget(
+    String UserName,
+    String UserLevel,
+    bool FromFilter,
+  ) async {
     setState(() {
       // List<String> menuNames = usersList
       //     .where((element) => element.parentMenuId == 0)
       //     .map((user) => user.menuName)
       //     .toList();
       // menuNames.insert(0, UserName);
-      context
-          .read<PaymentAnalysisProvider>()
-          .updatePOList(paymentAnalysis);
+      context.read<PaymentAnalysisProvider>().updatePOList(paymentAnalysis);
 
       paymentAnalysis = paymentAnalysis.where((target) {
         DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
@@ -2555,8 +2550,9 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
     });
     String selectedUser = '';
     final prefs = await SharedPreferences.getInstance();
-    final userName =
-    selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     setState(() async {
@@ -2574,12 +2570,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       chartDataLoaded = true;
 
       setState(() {
-        filterOptions = [
-          listOfRSM,
-          listOfASM,
-          listOfTSM,
-          []
-        ];
+        filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
 
         savedFinanceReceivablesOptions = filterOptions
             .map((options) => List<bool>.filled(options.length, false))
@@ -2604,8 +2595,9 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
 
   void resetFinanceReceivablesOptions() {
     setState(() {
-      savedFinanceReceivablesOptions =
-          List.from(selectedFinanceReceivablesOptions);
+      savedFinanceReceivablesOptions = List.from(
+        selectedFinanceReceivablesOptions,
+      );
     });
   }
 
@@ -2619,9 +2611,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       fromDateFilter = fiscalYearStartDate;
     }
 
-    filterOptions = [
-      [],
-    ];
+    filterOptions = [[]];
 
     selectedFinanceReceivablesOptions = filterOptions
         .map((options) => List<bool>.filled(options.length, false))
@@ -2681,14 +2671,14 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
                     // ),
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 15,
-                        ),
+                        const SizedBox(width: 15),
                         dateFilterFlag
                             ? Text(
-                            "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}")
+                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
+                              )
                             : Text(
-                            "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate!)}"),
+                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate!)}",
+                              ),
                       ],
                     ),
                     Row(
@@ -3975,7 +3965,9 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
                       const Text(
                         'Filter Options',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -4010,101 +4002,111 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
                           child: Column(
                             children: [
                               Expanded(
-                                child: selectedCategoryIndex ==
-                                    categories.length - 1 // "Date" index
+                                child:
+                                    selectedCategoryIndex ==
+                                        categories.length -
+                                            1 // "Date" index
                                     ? Column(
-                                  children: [
-                                    ListTile(
-                                      title: const Text("From Date"),
-                                      subtitle: Text(fromDateFilter !=
-                                          null
-                                          ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
-                                          : formatDateString(
-                                          fiscalYearStartDate!)),
-                                      trailing: const Icon(
-                                          Icons.calendar_today),
-                                      onTap: () async {
-                                        final picked =
-                                        await showDatePicker(
-                                          context: context,
-                                          initialDate: fromDateFilter ??
-                                              DateTime.now(),
-                                          firstDate: fiscalYearStartDate!,
-                                          lastDate: currentDate!,
-                                        );
-                                        if (picked != null) {
-                                          setState(() {
-                                            fromDateFilter = picked;
-                                            dateFilterFlag = true;
-                                          });
-                                        }
-                                      },
-                                    ),
-                                    ListTile(
-                                      title: const Text("To Date"),
-                                      subtitle: Text(toDateFilter != null
-                                          ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
-                                          : formatDateString(
-                                          currentDate!)),
-                                      trailing: const Icon(
-                                          Icons.calendar_today),
-                                      onTap: () async {
-                                        final picked =
-                                        await showDatePicker(
-                                          context: context,
-                                          initialDate: toDateFilter ??
-                                              DateTime.now(),
-                                          firstDate: fiscalYearStartDate!,
-                                          lastDate: currentDate!,
-                                        );
-                                        if (picked != null) {
-                                          setState(() {
-                                            toDateFilter = picked;
-                                            dateFilterFlag = true;
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                )
+                                        children: [
+                                          ListTile(
+                                            title: const Text("From Date"),
+                                            subtitle: Text(
+                                              fromDateFilter != null
+                                                  ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
+                                                  : formatDateString(
+                                                      fiscalYearStartDate!,
+                                                    ),
+                                            ),
+                                            trailing: const Icon(
+                                              Icons.calendar_today,
+                                            ),
+                                            onTap: () async {
+                                              final picked =
+                                                  await showDatePicker(
+                                                    context: context,
+                                                    initialDate:
+                                                        fromDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
+                                              if (picked != null) {
+                                                setState(() {
+                                                  fromDateFilter = picked;
+                                                  dateFilterFlag = true;
+                                                });
+                                              }
+                                            },
+                                          ),
+                                          ListTile(
+                                            title: const Text("To Date"),
+                                            subtitle: Text(
+                                              toDateFilter != null
+                                                  ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
+                                                  : formatDateString(
+                                                      currentDate!,
+                                                    ),
+                                            ),
+                                            trailing: const Icon(
+                                              Icons.calendar_today,
+                                            ),
+                                            onTap: () async {
+                                              final picked =
+                                                  await showDatePicker(
+                                                    context: context,
+                                                    initialDate:
+                                                        toDateFilter ??
+                                                        DateTime.now(),
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate: currentDate!,
+                                                  );
+                                              if (picked != null) {
+                                                setState(() {
+                                                  toDateFilter = picked;
+                                                  dateFilterFlag = true;
+                                                });
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      )
                                     : ListView.builder(
-                                  itemCount:
-                                  filterOptions[selectedCategoryIndex]
-                                      .length,
-                                  itemBuilder: (context, index) {
-                                    return CheckboxListTile(
-                                      title: Text(filterOptions[
-                                      selectedCategoryIndex][index]),
-                                      value:
-                                      savedFinanceReceivablesOptions[
-                                      selectedCategoryIndex]
-                                      [index],
-                                      onChanged: (bool? value) {
-                                        setState(() {
-                                          if (value == true) {
-                                            selectedFinanceReceivablesOptions[
-                                            selectedCategoryIndex]
-                                            [index] = true;
-                                          } else {
-                                            selectedFinanceReceivablesOptions[
-                                            selectedCategoryIndex]
-                                            [index] = false;
-                                          }
-                                          savedFinanceReceivablesOptionsTemp =
-                                              savedFinanceReceivablesOptions;
-                                          if (savedFinanceReceivablesOptions
-                                              .isEmpty) {
-                                            savedFinanceReceivablesOptionsTemp =
-                                                savedFinanceReceivablesOptions;
-                                          }
-                                          savedFinanceReceivablesOptions =
-                                              selectedFinanceReceivablesOptions;
-                                        });
-                                        // your checkbox logic
-                                      },
-                                    );
-                                  },
-                                ),
+                                        itemCount:
+                                            filterOptions[selectedCategoryIndex]
+                                                .length,
+                                        itemBuilder: (context, index) {
+                                          return CheckboxListTile(
+                                            title: Text(
+                                              filterOptions[selectedCategoryIndex][index],
+                                            ),
+                                            value:
+                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
+                                            onChanged: (bool? value) {
+                                              setState(() {
+                                                if (value == true) {
+                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
+                                                      true;
+                                                } else {
+                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
+                                                      false;
+                                                }
+                                                savedFinanceReceivablesOptionsTemp =
+                                                    savedFinanceReceivablesOptions;
+                                                if (savedFinanceReceivablesOptions
+                                                    .isEmpty) {
+                                                  savedFinanceReceivablesOptionsTemp =
+                                                      savedFinanceReceivablesOptions;
+                                                }
+                                                savedFinanceReceivablesOptions =
+                                                    selectedFinanceReceivablesOptions;
+                                              });
+                                              // your checkbox logic
+                                            },
+                                          );
+                                        },
+                                      ),
                               ),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -4118,35 +4120,37 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
                                     ),
                                     onPressed: () {
                                       List<String> selectedFilterOptions = [];
-                                      for (int i = 0;
-                                      i <
-                                          filterOptions[
-                                          selectedCategoryIndex]
-                                              .length;
-                                      i++) {
-                                        if (selectedFinanceReceivablesOptions[
-                                        selectedCategoryIndex][i]) {
+                                      for (
+                                        int i = 0;
+                                        i <
+                                            filterOptions[selectedCategoryIndex]
+                                                .length;
+                                        i++
+                                      ) {
+                                        if (selectedFinanceReceivablesOptions[selectedCategoryIndex][i]) {
                                           selectedFilterOptions.add(
-                                              filterOptions[
-                                              selectedCategoryIndex][i]);
+                                            filterOptions[selectedCategoryIndex][i],
+                                          );
                                         }
                                       }
-                                      for (int catIndex = 0;
-                                      catIndex < categories.length;
-                                      catIndex++) {
+                                      for (
+                                        int catIndex = 0;
+                                        catIndex < categories.length;
+                                        catIndex++
+                                      ) {
                                         String categoryName =
-                                        categories[catIndex];
+                                            categories[catIndex];
                                         Map<String, bool> optionsState = {};
 
                                         // Ensure the lengths match for your filterOptions and selectedFinanceReceivablesOptions lists
-                                        for (int optionIndex = 0;
-                                        optionIndex <
-                                            filterOptions[catIndex].length;
-                                        optionIndex++) {
-                                          optionsState[filterOptions[catIndex]
-                                          [optionIndex]] =
-                                          selectedFinanceReceivablesOptions[
-                                          catIndex][optionIndex];
+                                        for (
+                                          int optionIndex = 0;
+                                          optionIndex <
+                                              filterOptions[catIndex].length;
+                                          optionIndex++
+                                        ) {
+                                          optionsState[filterOptions[catIndex][optionIndex]] =
+                                              selectedFinanceReceivablesOptions[catIndex][optionIndex];
                                         }
 
                                         allCategoriesState[categoryName] =
@@ -4177,9 +4181,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(
-                                    width: 15,
-                                  ),
+                                  const SizedBox(width: 15),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
@@ -4209,8 +4211,9 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
                                       padding: EdgeInsets.all(8.0),
                                       child: Text(
                                         'Clear Filter',
-                                        style:
-                                        TextStyle(color: Color(0xff2ca9df)),
+                                        style: TextStyle(
+                                          color: Color(0xff2ca9df),
+                                        ),
                                       ),
                                     ),
                                   ),

@@ -16,8 +16,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
-import 'package:optima/pages/dashboardPages/platform_excel_helper.dart';
-import 'package:optima/pages/dashboardPages/platform_pdf_helper.dart';
+
+import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+
 import '../../../api_helper.dart';
 import '../../../classes/leads.dart';
 import '../../../login_screen.dart';
