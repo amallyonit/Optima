@@ -2106,6 +2106,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       fileName: 'receivables.xlsx',
       amountColumns: [2],
       addTotalRow: true,
+      reportTitle: 'Finance - Receivables',
     );
   }
 
@@ -2163,6 +2164,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         fileName: 'AllReceivablesExcel.xlsx',
         amountColumns: [8, 12, 22, 24, 25, 26, 27, 28, 29],
         addTotalRow: false,
+        reportTitle: 'Finance - Gross Receivables',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2223,6 +2225,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         fileName: 'NetReceivables.xlsx',
         amountColumns: [2],
         addTotalRow: true,
+        reportTitle: 'Finance - Net Receivables',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2258,6 +2261,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         fileName: 'AdvanceFromCustomers.xlsx',
         amountColumns: [2],
         addTotalRow: true,
+        reportTitle: 'Finance - Advance From Customers',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2301,6 +2305,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         fileName: 'CustomerAnalysis.xlsx',
         amountColumns: [3],
         addTotalRow: true,
+        reportTitle: 'Finance - Customer Analysis',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2344,6 +2349,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         fileName: 'RegionalManagerReceivables.xlsx',
         amountColumns: [2],
         addTotalRow: true,
+        reportTitle: 'Finance - RSM Analysis',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2379,6 +2385,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         fileName: 'SalesManagerReceivables.xlsx',
         amountColumns: [2],
         addTotalRow: true,
+        reportTitle: 'Finance - ASM Analysis',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2414,6 +2421,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         fileName: 'TSMReceivables.xlsx',
         amountColumns: [2],
         addTotalRow: true,
+        reportTitle: 'Finance - TSM Analysis',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));

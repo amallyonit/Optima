@@ -6,7 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
-import 'package:universal_html/html.dart' as html;
+// ignore: deprecated_member_use, avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class ReportService {
   Future<String> getStorageDirectory() async {
@@ -44,6 +45,7 @@ class ReportService {
   }) async {
     try {
       final pdf = pw.Document();
+      final userName = await getUserName();
       // -------- Table Page --------
 
       final columnTotals = List<double>.filled(headers.length, 0);
@@ -72,11 +74,11 @@ class ReportService {
               child: pw.Transform.rotate(
                 angle: -0.5,
                 child: pw.Opacity(
-                  opacity: 0.08,
+                  opacity: 0.03,
                   child: pw.Text(
-                    "Optima CRM\n${await getUserName()}",
+                    "Optima CRM\n$userName",
                     style: pw.TextStyle(
-                      fontSize: 60,
+                      fontSize: 40,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
@@ -237,19 +239,56 @@ class ReportService {
     required String fileName,
     List<int>? amountColumns, // optional
     bool addTotalRow = false, // optional
+    String reportTitle = "", // optional
   }) async {
     try {
+      final userName = await getUserName();
+      final now = DateTime.now();
+      final formattedDate =
+          "${now.day.toString().padLeft(2, '0')}/"
+          "${now.month.toString().padLeft(2, '0')}/"
+          "${now.year} "
+          "${now.hour.toString().padLeft(2, '0')}:"
+          "${now.minute.toString().padLeft(2, '0')}";
+
       final workbook = xlsio.Workbook();
       final sheet = workbook.worksheets[0];
-
       sheet.name = sheetName;
+      // -------- REPORT HEADER --------
+
+      // Row 1 → Title (Left)
+      sheet
+          .getRangeByIndex(1, 1)
+          .setText(
+            "Optima CRM${reportTitle.isNotEmpty ? " - $reportTitle" : ""}",
+          );
+
+      // Row 1 → Date (Right)
+      sheet
+          .getRangeByIndex(1, headers.length)
+          .setText("Created: $formattedDate");
+
+      // Row 2 → Username
+      sheet.getRangeByIndex(2, 1).setText("User: $userName");
+
+      // Merge title across columns (optional but looks better)
+      sheet.getRangeByIndex(1, 1, 1, headers.length - 1).merge();
+
+      // Styling
+      sheet.getRangeByIndex(1, 1).cellStyle.bold = true;
+      sheet.getRangeByIndex(1, 1).cellStyle.fontSize = 16;
+
+      sheet.getRangeByIndex(1, headers.length).cellStyle.hAlign =
+          xlsio.HAlignType.right;
+      sheet.getRangeByIndex(1, headers.length).cellStyle.bold = true;
+      sheet.getRangeByIndex(2, 1).cellStyle.fontSize = 12;
 
       // ---------------- HEADER ----------------
       for (int col = 0; col < headers.length; col++) {
-        sheet.getRangeByIndex(1, col + 1).setText(headers[col]);
+        sheet.getRangeByIndex(4, col + 1).setText(headers[col]);
       }
 
-      final headerRange = sheet.getRangeByIndex(1, 1, 1, headers.length);
+      final headerRange = sheet.getRangeByIndex(4, 1, 4, headers.length);
 
       headerRange.cellStyle.bold = true;
       headerRange.cellStyle.backColor = "#E7F3FF";
@@ -259,7 +298,7 @@ class ReportService {
 
       // ---------------- DATA ----------------
       for (int i = 0; i < rows.length; i++) {
-        final rowIndex = i + 2;
+        final rowIndex = i + 5;
 
         for (int j = 0; j < rows[i].length; j++) {
           final cell = sheet.getRangeByIndex(rowIndex, j + 1);
@@ -278,7 +317,7 @@ class ReportService {
         }
       }
 
-      int totalRows = rows.length + 1;
+      int totalRows = rows.length + 4;
       if (addTotalRow) {
         totalRows += 1;
       }
@@ -286,7 +325,7 @@ class ReportService {
 
       if (amountColumns != null) {
         for (final col in amountColumns) {
-          sheet.getRangeByIndex(2, col, totalRows, col).numberFormat = '0.00';
+          sheet.getRangeByIndex(5, col, totalRows, col).numberFormat = '0.00';
         }
       }
 
@@ -295,7 +334,7 @@ class ReportService {
 
       for (int col = 1; col < totalCols; col++) {
         sheet
-                .getRangeByIndex(1, col, totalRows, col)
+                .getRangeByIndex(4, col, totalRows, col)
                 .cellStyle
                 .borders
                 .right
@@ -304,7 +343,7 @@ class ReportService {
       }
 
       // Horizontal lines: draw BOTTOM border for all rows except last
-      for (int row = 1; row < totalRows; row++) {
+      for (int row = 4; row < totalRows; row++) {
         sheet
                 .getRangeByIndex(row, 1, row, totalCols)
                 .cellStyle
@@ -318,7 +357,7 @@ class ReportService {
 
       // TOP BORDER
       sheet
-              .getRangeByIndex(1, 1, 1, totalCols)
+              .getRangeByIndex(4, 1, 4, totalCols)
               .cellStyle
               .borders
               .top
@@ -327,7 +366,7 @@ class ReportService {
 
       // LEFT BORDER
       sheet
-              .getRangeByIndex(1, 1, totalRows, 1)
+              .getRangeByIndex(4, 1, totalRows, 1)
               .cellStyle
               .borders
               .left
@@ -345,7 +384,7 @@ class ReportService {
 
       // RIGHT BORDER
       sheet
-              .getRangeByIndex(1, totalCols, totalRows, totalCols)
+              .getRangeByIndex(4, totalCols, totalRows, totalCols)
               .cellStyle
               .borders
               .right
@@ -358,7 +397,7 @@ class ReportService {
       }
 
       if (addTotalRow && amountColumns != null) {
-        final totalRowIndex = rows.length + 2;
+        final totalRowIndex = rows.length + 5;
 
         final totalLabelCell = sheet.getRangeByIndex(totalRowIndex, 1);
         totalLabelCell.setText("Total");
@@ -368,7 +407,7 @@ class ReportService {
           final columnLetter = _getExcelColumnName(col);
 
           final formula =
-              'SUM(${columnLetter}2:$columnLetter${rows.length + 1})';
+              'SUM(${columnLetter}5:$columnLetter${rows.length + 4})';
 
           final cell = sheet.getRangeByIndex(totalRowIndex, col);
 
@@ -412,14 +451,18 @@ class ReportService {
     final blob = html.Blob([
       Uint8List.fromList(bytes),
     ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-
     final url = html.Url.createObjectUrlFromBlob(blob);
-
-    html.AnchorElement(href: url)
-      ..setAttribute("download", fileName)
-      ..click();
-
-    html.Url.revokeObjectUrl(url);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      html.AnchorElement(href: url)
+        ..setAttribute("download", fileName)
+        ..target = "_blank"
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    });
+    // html.AnchorElement(href: url)
+    //   ..setAttribute("download", fileName)
+    //   ..click();
+    // html.Url.revokeObjectUrl(url);
   }
 
   void _downloadPDFWeb(String fileName, List<int> bytes) {

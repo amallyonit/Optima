@@ -2,19 +2,14 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:optima/excel_helper.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import '../../ReportService.dart';
 
 class SterilizationExpensesPage extends StatefulWidget {
   @override
@@ -72,6 +67,8 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
   String? _selectedPlant = 'Rajapalayam Plant';
   String? _selectedShift = 'DAY';
 
+  final reportService = ReportService();
+
   bool isNumericColumn(int colIndex) {
     return colIndex < controllers[0].length - 1;
   }
@@ -119,7 +116,6 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     });
     _from = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _to = DateTime.now();
-    // loadData();
     _generateDateArray();
   }
 
@@ -133,7 +129,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     }
   }
 
-  Future<void> _downloadExcel() async {
+  Future<void> exportSterilizationExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No data available to export.")),
@@ -141,55 +137,37 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
       return;
     }
 
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sterilization'];
+    List<List<dynamic>> rows = [];
 
     String caption =
-        "${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
+        "Sterilization Expenses - ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
         "(${_format(_from!)} to ${_format(_to!)})";
 
-    /// Caption
-    sheet.appendRow(toCellRow([caption]));
-
-    /// Empty row
-    sheet.appendRow([]);
-
-    /// Header row
-    sheet.appendRow(toCellRow(headers));
-
-    /// Data rows
     for (int i = 0; i < dates.length; i++) {
-      List<dynamic> row = [dates[i]];
+      List<dynamic> row = [];
 
+      // First column → DATE
+      row.add(dates[i]);
+
+      // Remaining columns
       for (int j = 0; j < controllers[i].length; j++) {
         row.add(controllers[i][j].text);
       }
 
-      sheet.appendRow(toCellRow(row));
+      rows.add(row);
     }
 
-    /// Total row
-    List<dynamic> totalRow = ["Total"];
+    // print("Rows count: ${rows.length}"); // debug
 
-    for (int i = 0; i < totals.length; i++) {
-      totalRow.add(totals[i].toStringAsFixed(2));
-    }
-
-    /// remark column has no total
-    totalRow.add("");
-
-    sheet.appendRow(toCellRow(totalRow));
-
-    /// Save / Download
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('sterilization_expenses_report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/sterilization_expenses_report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
+    reportService.generateExcel(
+      sheetName: 'Sterilization Expenses',
+      headers: headers,
+      rows: rows,
+      fileName: 'Sterilization_Expenses.xlsx',
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // FIXED indexing
+      addTotalRow: true,
+      reportTitle: caption,
+    );
   }
 
   final inputFormat = DateFormat('dd-MM-yyyy');
@@ -852,7 +830,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: _downloadExcel,
+                  onPressed: exportSterilizationExcel,
                   child: const Text(
                     "Download Excel",
                     style: TextStyle(

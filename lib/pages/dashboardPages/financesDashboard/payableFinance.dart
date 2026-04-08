@@ -1,13 +1,10 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:provider/provider.dart';
@@ -18,10 +15,7 @@ import 'package:optima/login_screen.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/leads.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+import '../ReportService.dart';
 
 class PayableFinance extends StatefulWidget {
   const PayableFinance({super.key});
@@ -163,6 +157,8 @@ List<ExpensesList> expensesList = [];
 
 double totalFixedExpensesCommitment = 0.0;
 double totalFixedExpensesActualPaid = 0.0;
+
+final reportService = ReportService();
 
 class FinancePayablesCollectionBIProvider with ChangeNotifier {
   List<PayablesList> _collectionList = [];
@@ -2382,17 +2378,18 @@ class _PayableFinanceState extends State<PayableFinance> {
     await _loadExpenses(userName, userLevel);
     await _loadModeOfPayment(userName, userLevel);
     await _loadSalesTarget(userName, userLevel);
-    await _loadPayablesData("", "", "", "", "", "");
-    await _loadAdvancePaidData("", "", "", "", "", "");
-    await _loadSupplierAnalysis("", "", "", "", "", "");
-    await _loadVendorPaymentProjection();
-    await _loadSupplierCategoryAnalysis("", "", "", "", "", "");
-    await _loadDocumentTypeAnalysis("", "", "", "", "", "");
-    await _loadFixedExpenses();
-    await _loadbpGroup("", "", "", "", "", "");
-    await _loadAdvanceVendors();
-    await _loadCapitalVendors();
-
+    await Future.wait([
+      _loadPayablesData("", "", "", "", "", ""),
+      _loadAdvancePaidData("", "", "", "", "", ""),
+      _loadSupplierAnalysis("", "", "", "", "", ""),
+      _loadVendorPaymentProjection(),
+      _loadSupplierCategoryAnalysis("", "", "", "", "", ""),
+      _loadDocumentTypeAnalysis("", "", "", "", "", ""),
+      _loadFixedExpenses(),
+      _loadbpGroup("", "", "", "", "", ""),
+      _loadAdvanceVendors(),
+      _loadCapitalVendors(),
+    ]);
     filterOptions = [listOfCategory, listOfSupplier, []];
 
     savedFinanceReceivablesOptions = filterOptions
@@ -2422,7 +2419,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     double dueToReceivable = double.infinity;
     double dueFromAdvance = 0.0;
     double dueToAdvance = double.infinity;
-    if (payable != null || payable != "") {
+    if (payable != null && payable.isNotEmpty) {
       if (payable == "0-30") {
         dueFromReceivable = 0;
         dueToReceivable = 30;
@@ -2440,7 +2437,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         dueToReceivable = double.infinity;
       }
     }
-    if (advancePaid != null || advancePaid != "") {
+    if (advancePaid != null && advancePaid.isNotEmpty) {
       if (advancePaid == "0-30") {
         dueFromAdvance = 0;
         dueToAdvance = 30;
@@ -2458,10 +2455,10 @@ class _PayableFinanceState extends State<PayableFinance> {
         dueToAdvance = double.infinity;
       }
     }
-
+    final now = DateTime.now();
     for (var target in payableList) {
       DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      Duration difference = postingDate.difference(DateTime.now());
+      Duration difference = postingDate.difference(now);
       int overDueDayAdvance = difference.inDays.abs();
       double overDueDayReceivables =
           double.tryParse(target.dueDays.replaceAll(' Days', '')) ?? 0;
@@ -2611,561 +2608,269 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   Future<void> generatePayablesExcel(PayablesGraphList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
-      for (var monthlyData in list.agingData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('payables_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/payables_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'Payables',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
+          .toList(),
+      fileName: 'payables.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Payables',
+    );
   }
 
   Future<void> generatePayablesPDF(PayablesGraphList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Payables',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Ageing Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ageing Group Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in payableGraphList.agingData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.agingGroup,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.agingGroupTotal.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/payables.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Payables',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
+          .toList(),
+      fileName: 'payables.xlsx',
+      numericColumns: [2],
+    );
   }
 
   Future<void> generateAdvanceExcel(
     AdvancePaidToSupplierPayablesList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
-      for (var monthlyData in list.agingData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('advance_paid_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/advance_paid_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'AdvancePaid',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
+          .toList(),
+      fileName: 'advance_paid.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Advance Paid',
+    );
   }
 
   Future<void> generateAdvancePDF(
     AdvancePaidToSupplierPayablesList list,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Advance Paid To Supplier',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Ageing Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ageing Group Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in receivableList.agingData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.agingGroup,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.agingGroupTotal.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/advance_paid.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Advance Paid To Supplier',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
+          .toList(),
+      fileName: 'advance_paid.pdf',
+      numericColumns: [2],
+    );
   }
 
   Future<void> generateSupplierExcel(SupplierAnalysisPayablesList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Supplier Name', 'Amount']));
-      for (var monthlyData in list.supplierData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.supplierName, monthlyData.balance]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('supplier_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/supplier_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'SupplierAnalysis',
+      headers: ['Supplier Name', 'Balance Amount'],
+      rows: list.supplierData.map((e) => [e.supplierName, e.balance]).toList(),
+      fileName: 'supplier_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Supplier Analysis',
+    );
   }
 
   Future<void> generateSupplierPDF(SupplierAnalysisPayablesList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Supplier Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Supplier Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in supplierList.supplierData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.supplierName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/supplier_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Supplier Analysis',
+      headers: ['Supplier Name', 'Balance Amount'],
+      rows: list.supplierData.map((e) => [e.supplierName, e.balance]).toList(),
+      fileName: 'supplier_analysis.pdf',
+      numericColumns: [2],
+    );
   }
 
   Future<void> generateSupplierCategoryExcel(
     SupplierCategoryWiseAnalysisPayablesList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Supplier Category', 'Amount']));
-      for (var monthlyData in list.supplierCategoryData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.supplierCategoryName, monthlyData.balance]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('supplier_category_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/supplier_category_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'SupplierCategoryAnalysis',
+      headers: ['Supplier Category', 'Balance Amount'],
+      rows: list.supplierCategoryData
+          .map((e) => [e.supplierCategoryName, e.balance])
+          .toList(),
+      fileName: 'supplier_category_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Supplier Category Analysis',
+    );
   }
 
   Future<void> generateSupplierCategoryPDF(
     SupplierCategoryWiseAnalysisPayablesList list,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Supplier Category Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Supplier Category',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in supplierCategoryList.supplierCategoryData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.supplierCategoryName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/supplier_category_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Supplier Category Analysis',
+      headers: ['Supplier Category', 'Balance Amount'],
+      rows: list.supplierCategoryData
+          .map((e) => [e.supplierCategoryName, e.balance])
+          .toList(),
+      fileName: 'supplier_category_analysis.pdf',
+      numericColumns: [2],
+    );
   }
 
   Future<void> generateDocumentTypeExcel(DocumentTypeList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Document Type', 'Amount']));
-      for (var monthlyData in list.documentData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.documentType, monthlyData.balance]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('document_type.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/document_type.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'DocumentTypeAnalysis',
+      headers: ['Document Type', 'Amount'],
+      rows: list.documentData.map((e) => [e.documentType, e.balance]).toList(),
+      fileName: 'document_type.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Document Type Analysis',
+    );
   }
 
   Future<void> generateDocumentTypePDF(DocumentTypeList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Document Type',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Document Type',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in documentList.documentData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.documentType,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
+    await reportService.generatePDF(
+      title: 'DocumentTypeAnalysis',
+      headers: ['Document Type', 'Amount'],
+      rows: list.documentData.map((e) => [e.documentType, e.balance]).toList(),
+      fileName: 'document_type.pdf',
+      numericColumns: [2],
+    );
+  }
 
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/supplier_category_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+  Future<void> generateVendorPaymentProjectionReport() async {
+    await reportService.generateExcel(
+      sheetName: 'VendorPaymentProjection',
+      headers: [
+        'Vendor Code',
+        'Vendor Name',
+        'Balance Due',
+        '0-30',
+        '31-60',
+        '61-90',
+        '91-180',
+        '180+',
+        'Commitment',
+        'Actual Paid',
+      ],
+      rows: vendorProjectionList.vendorData
+          .map(
+            (e) => [
+              e.vendorCode,
+              e.vendorName,
+              e.balanceDue,
+              e.a0to30,
+              e.a31to60,
+              e.a61to90,
+              e.a90to180,
+              e.a180above,
+              e.commitment,
+              e.actualPayable,
+            ],
+          )
+          .toList(),
+      fileName: 'vendor_payment_projection.xlsx',
+      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10],
+      addTotalRow: true,
+      reportTitle: 'Finance - Vendor Payment Projection',
+    );
+  }
+
+  Future<void> generateBgGroup() async {
+    await reportService.generateExcel(
+      sheetName: 'BusinessPartnerGroupAnalysis',
+      headers: [
+        'Supplier Category Name',
+        'Commitment',
+        'Actual Paid',
+        'Deficit(-)/Surplus(+)',
+      ],
+      rows: bpGroupList.supplierCategoryData
+          .map(
+            (e) => [
+              e.supplierCategoryName,
+              e.commitment,
+              e.actualPaid,
+              e.actualPaid! - e.commitment!,
+            ],
+          )
+          .toList(),
+      fileName: 'business_partner_group_analysis.xlsx',
+      amountColumns: [1, 2, 3],
+      addTotalRow: true,
+      reportTitle: 'Finance - Business Partner Group Analysis',
+    );
+  }
+
+  Future<void> generateFixedExpenses() async {
+    await reportService.generateExcel(
+      sheetName: 'FixedExpenses',
+      headers: ['Supplier Category Name', 'Target', 'Actual Paid'],
+      rows: fixedExpensesList.supplierCategoryData
+          .map(
+            (e) => [
+              e.supplierCategoryName,
+              e.commitment!.toStringAsFixed(0),
+              e.actualPaid!.toStringAsFixed(0),
+            ],
+          )
+          .toList(),
+      fileName: 'fixed_expenses.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Finance - Fixed Expenses Analysis',
+    );
+  }
+
+  Future<void> generateAdvanceVendors() async {
+    await reportService.generateExcel(
+      sheetName: 'AdvanceVendors',
+      headers: ['Supplier Name', 'Balance Due', 'Actual Paid'],
+      rows: advanceVendorList.supplierData
+          .map((e) => [e.supplierName, e.balance, e.actualPaid])
+          .toList(),
+      fileName: 'advance_vendors.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Finance - Advance Vendors Analysis',
+    );
+  }
+
+  Future<void> generateCapitalVendors() async {
+    await reportService.generateExcel(
+      sheetName: 'CapitalVendors',
+      headers: [
+        'Vendor Code',
+        'Vendor Name',
+        'Balance Due',
+        '0-30',
+        '31-60',
+        '61-90',
+        '91-180',
+        '180+',
+        'Commitment',
+        'Actual Paid',
+      ],
+      rows: capitalVendorsList.vendorData
+          .map(
+            (e) => [
+              e.vendorCode,
+              e.vendorName,
+              e.balanceDue,
+              e.a0to30,
+              e.a31to60,
+              e.a61to90,
+              e.a90to180,
+              e.a180above,
+              e.commitment,
+              e.actualPayable,
+            ],
+          )
+          .toList(),
+      fileName: 'capital_vendors.xlsx',
+      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10],
+      addTotalRow: true,
+      reportTitle: 'Finance - Capital Vendors Analysis',
+    );
   }
 
   void toggleCheckbox() {
@@ -3174,7 +2879,6 @@ class _PayableFinanceState extends State<PayableFinance> {
       advanceDouble = 0;
       chartDataLoadedPayables = false;
       loadData("");
-      // selectedCheckbox = index;
     });
   }
 
@@ -3349,279 +3053,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     return selectedFilters.join(', ');
   }
 
-  Future<void> generateVendorPaymentProjectionReport() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
-        'Vendor Code',
-        'Vendor Name',
-        'Balance Due',
-        '0-30',
-        '31-60',
-        '61-90',
-        '91-180',
-        '180+',
-        'Commitment',
-        'Actual Paid',
-      ]),
-    );
-
-    for (var vendorData in vendorProjectionList.vendorData) {
-      sheet.appendRow(
-        toCellRow([
-          vendorData.vendorCode,
-          vendorData.vendorName,
-          vendorData.balanceDue,
-          vendorData.a0to30,
-          vendorData.a31to60,
-          vendorData.a61to90,
-          vendorData.a90to180,
-          vendorData.a180above,
-          vendorData.commitment,
-          vendorData.actualPayable,
-        ]),
-      );
-    }
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('VendorPaymentProjection.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/vendorsPaymentProjection.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  Future<void> generatebgGroup() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
-        'Payables',
-        'Commitment',
-        'Actual Paid',
-        'Deficit(-)/Surplus(+)',
-      ]),
-    );
-
-    for (var vendorData in bpGroupList.supplierCategoryData) {
-      sheet.appendRow(
-        toCellRow([
-          vendorData.supplierCategoryName,
-          vendorData.commitment,
-          vendorData.actualPaid,
-          vendorData.actualPaid! - vendorData.commitment!,
-        ]),
-      );
-    }
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('bpGroupExcel.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/bpGroupExcel.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  Future<void> generateFixedExpenses() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
-        'Particulars',
-        // 'Balance',
-        'Target',
-        'Actual Paid',
-      ]),
-    );
-
-    for (var vendorData in fixedExpensesList.supplierCategoryData) {
-      sheet.appendRow(
-        toCellRow([
-          vendorData.supplierCategoryName,
-          // vendorData.balance.toStringAsFixed(0),
-          vendorData.commitment!.toStringAsFixed(0),
-          vendorData.actualPaid!.toStringAsFixed(0),
-        ]),
-      );
-    }
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('fixedExpenses.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/fixedExpenses.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  Future<void> generateAdvanceVendors() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(toCellRow(['Vendor Name', 'Balance Due', 'Actual Paid']));
-
-    for (var vendorData in advanceVendorList.supplierData) {
-      sheet.appendRow(
-        toCellRow([
-          vendorData.supplierName,
-          vendorData.balance,
-          vendorData.actualPaid,
-        ]),
-      );
-    }
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('advanceVendors.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/advanceVendors.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  Future<void> generateCapitalVendors() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
-        'Vendor Code',
-        'Vendor Name',
-        'Balance Due',
-        '0-30',
-        '31-60',
-        '61-90',
-        '91-180',
-        '180+',
-        'Commitment',
-        'Actual Paid',
-      ]),
-    );
-
-    for (var vendorData in capitalVendorsList.vendorData) {
-      sheet.appendRow(
-        toCellRow([
-          vendorData.vendorCode,
-          vendorData.vendorName,
-          vendorData.balanceDue,
-          vendorData.a0to30,
-          vendorData.a31to60,
-          vendorData.a61to90,
-          vendorData.a90to180,
-          vendorData.a180above,
-          vendorData.commitment,
-          vendorData.actualPayable,
-        ]),
-      );
-    }
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('capitalVendors.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/capitalVendors.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
   double getMaxValue(double maxValue) {
     double divVal = 0;
     if (maxValue > 1000000000) {
@@ -3719,7 +3150,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  generatebgGroup();
+                                  generateBgGroup();
                                 },
                                 child: const Row(
                                   children: [Text("Download BP Group Summary")],
@@ -3925,31 +3356,6 @@ class _PayableFinanceState extends State<PayableFinance> {
                     ),
                   ],
                 ),
-                // Padding(
-                //   padding: const EdgeInsets.all(8.0),
-                //   child: Center(
-                //     child: ElevatedButton(
-                //       style: ElevatedButton.styleFrom(
-                //         backgroundColor: const Color(0xff2ca9df),
-                //         shape: RoundedRectangleBorder(
-                //           borderRadius: BorderRadius.circular(5.0),
-                //         ),
-                //       ),
-                //       onPressed: () {
-                //         generateVendorPaymentProjectionReport();
-                //       },
-                //       child: const SizedBox(
-                //         width: 400,
-                //         child: Center(
-                //           child: Text(
-                //             "Download Vendor Payment Projection",
-                //             style: TextStyle(fontSize: 14, color: Colors.white),
-                //           ),
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-                // ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
@@ -4036,7 +3442,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generatebgGroup();
+                                    generateBgGroup();
                                   });
                                 },
                                 child: const Text("Download Excel"),
