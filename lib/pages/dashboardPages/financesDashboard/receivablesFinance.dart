@@ -32,6 +32,7 @@ bool noUserList = false;
 String UserLevel = "0";
 List<CollectionList> collection = [];
 List<DebtorsAgingList> target = [];
+List<DebtorsAgingList> targetAPIData = [];
 
 List<Users> usersListForFilter = [];
 AllReceivablesFinanceList allReceivablesFinanceList = AllReceivablesFinanceList(
@@ -962,11 +963,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       distributorPercent = (distributorSum / overallTotal) * 100;
       otherPercent = (otherSum / overallTotal) * 100;
     }
-    // {
-    // hospitalPercent    = (balanceAmountTotal       / (balanceAmountTotal +balanceDistributor + balanceOther )) * 100;
-    // distributorPercent = (balanceDistributor    / (balanceAmountTotal +balanceDistributor + balanceOther)) * 100;
-    // otherPercent       = (balanceOther          / (balanceAmountTotal +balanceDistributor + balanceOther)) * 100;
-    // }
 
     receivablesCategoryList = ReceivablesCategoryList(
       categoryData: [
@@ -1036,7 +1032,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String salesPerson,
   ) async {
     var list = target.where((t) {
-      DateTime dueOn = DateFormat('dd/MM/yyyy').parse(t.postingDate);
+      DateTime dueOn = t.parsedPostingDate;
       return dueOn.isAtMost(currentDate!);
     }).cast<DebtorsAgingList>();
 
@@ -1125,7 +1121,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String salesPerson,
   ) async {
     var list = target.where((t) {
-      DateTime dueOn = DateFormat('dd/MM/yyyy').parse(t.dueon);
+      DateTime dueOn = t.parsedDueDate;
       return dueOn.isAtMost(currentDate!);
     }).cast<DebtorsAgingList>();
 
@@ -1223,7 +1219,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     double a181DaysTotal = 0;
 
     var list = target.where((t) {
-      DateTime dueOn = DateFormat('dd/MM/yyyy').parse(t.postingDate);
+      DateTime dueOn = t.parsedPostingDate;
       return dueOn.isAtMost(currentDate!);
     }).cast<DebtorsAgingList>();
 
@@ -1327,9 +1323,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String custCode = "";
     String customerName = "";
     double balance = 0.0;
-
+    advance = 0;
     customerTargetList = target.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
+      DateTime dueon = target.parsedDueDate;
       return dueon.isAtMost(currentDate!);
     });
 
@@ -1347,8 +1343,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
     Set<String> processedCustomer = {};
     double balancAmount = 0;
-
-    for (var customerRow in customerTargetList.toList()) {
+    double tmpAdvance = 0;
+    for (var customerRow in customerTargetList) {
       if (!processedCustomer.contains(customerRow.customerName)) {
         custCode = customerRow.customerCode;
         customerName = customerRow.customerName;
@@ -1377,6 +1373,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             balance = double.tryParse(ele.balance) ?? 0;
             balancAmount += balance;
           }
+          tmpAdvance += balance;
         }
 
         customerWiseDataList.add(
@@ -1386,13 +1383,16 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             collectionAmount: balancAmount,
           ),
         );
-
+        if (tmpAdvance < 0) {
+          advance += tmpAdvance;
+        }
         processedCustomer.add(customerName);
       }
 
       custCode = "";
       customerName = "";
       balancAmount = 0;
+      tmpAdvance = 0;
     }
 
     customerWiseDataList.sort(
@@ -1846,40 +1846,59 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   Future<void> _loadCollectionTarget(
-    String UserName,
-    String UserLevel,
-    bool FromFilter,
+    String userName,
+    String userLevel,
+    bool fromFilter,
   ) async {
     int index = 0;
-    int limit = 10000;
+    const int limit = 10000;
     int fetchedCount = 0;
-    List<DebtorsAgingList> targetList = [];
+
+    final List<DebtorsAgingList> targetList = [];
+
     try {
-      if (!FromFilter) {
+      // -------------------------------
+      // 1. API Pagination
+      // -------------------------------
+      if (!fromFilter) {
         do {
-          var body = {
+          final body = {
             "Index": index.toString(),
             "Limit": limit.toString(),
             "sapToken": DataManager.readSapToken(),
           };
+
           const apiUrl = '${ApiHelper.baseUrl}Bicxo_DebtorsAgingList';
+
           final response = await http.post(
             Uri.parse(apiUrl),
-            headers: {
-              HttpHeaders.contentTypeHeader: 'application/json',
-              // HttpHeaders.authorizationHeader:
-              //     'Bearer    ${DataManager.readSapToken()}'
-            },
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
             body: jsonEncode(body),
           );
 
           if (response.statusCode == 200) {
-            final Map<String, dynamic> responseJson = jsonDecode(response.body);
-            if (responseJson["responseData"].toString().isNotEmpty) {
-              List<DebtorsAgingList> newTargetList =
-                  (responseJson['responseData'] as List)
-                      .map((item) => DebtorsAgingList.fromJson(item))
-                      .toList();
+            final responseJson = jsonDecode(response.body);
+
+            final data = responseJson["responseData"];
+
+            if (data != null && data is List && data.isNotEmpty) {
+              final List<DebtorsAgingList> newTargetList = data
+                  .map<DebtorsAgingList>((item) {
+                    final obj = DebtorsAgingList.fromJson(item);
+
+                    // Parse date once (correct approach)
+                    obj.parsedDueDate = DateFormat(
+                      'dd/MM/yyyy',
+                    ).parse(obj.dueon);
+
+                    obj.parsedPostingDate = DateFormat(
+                      'dd/MM/yyyy',
+                    ).parse(obj.postingDate);
+
+                    return obj;
+                  })
+                  .toList();
+
               targetList.addAll(newTargetList);
               fetchedCount = newTargetList.length;
               index++;
@@ -1889,200 +1908,143 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           } else {
             fetchedCount = 0;
           }
-        } while (fetchedCount == limit);
+        } while (fetchedCount == limit && fetchedCount > 0);
       }
+
+      // -------------------------------
+      // 2. Prepare filter selections
+      // -------------------------------
+      Map<String, bool> getCategory(String key) =>
+          allCategoriesState[key] ?? {};
+
+      final trueSalesDataOptions = getCategory(
+        'Sales Data',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      final trueCategoryOptions = getCategory(
+        'Category',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      final trueDimensionOptions = getCategory(
+        'Dimension',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      final trueRSMOptions = getCategory(
+        'RSM',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      final trueASMOptions = getCategory(
+        'ASM',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      final trueTSMOptions = getCategory(
+        'TSM',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      final trueDueOptions = getCategory(
+        'Due/Overdue',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      final trueAdvanceOptions = getCategory(
+        'Advance/Receivables',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
+      // -------------------------------
+      // 3. Single-pass filtering (FAST)
+      // -------------------------------
+      final List<DebtorsAgingList> filtered = [];
+
+      for (final person in targetList) {
+        // Sales Data
+        if (trueSalesDataOptions.isNotEmpty) {
+          if (trueSalesDataOptions.contains("Sales Team")) {
+            if (person.salesManager == "NH GROUP. - Drs." ||
+                person.salesManager == "OFFICE - Drs.") {
+              continue;
+            }
+          } else if (!trueSalesDataOptions.contains(person.salesManager)) {
+            continue;
+          }
+        }
+
+        // Category
+        if (trueCategoryOptions.isNotEmpty &&
+            !trueCategoryOptions.contains(person.customerGroup)) {
+          continue;
+        }
+
+        // Dimension
+        if (trueDimensionOptions.isNotEmpty &&
+            !trueDimensionOptions.contains(person.documentType)) {
+          continue;
+        }
+
+        // RSM
+        if (trueRSMOptions.isNotEmpty &&
+            !trueRSMOptions.contains(person.regionalManager)) {
+          continue;
+        }
+
+        // ASM
+        if (trueASMOptions.isNotEmpty &&
+            !trueASMOptions.contains(person.salesManager)) {
+          continue;
+        }
+
+        // TSM
+        if (trueTSMOptions.isNotEmpty &&
+            !trueTSMOptions.contains(person.salesRep)) {
+          continue;
+        }
+
+        // Due / Overdue
+        if (trueDueOptions.isNotEmpty) {
+          if (trueDueOptions.contains("Not Dues") && person.future != "0") {
+            continue;
+          }
+
+          if (trueDueOptions.contains("Overdue") && person.future == "0") {
+            continue;
+          }
+        }
+
+        // Advance / Receivables
+        if (trueAdvanceOptions.isNotEmpty) {
+          if (trueAdvanceOptions.contains("Advance") &&
+              person.paymentTerms != "Advance") {
+            continue;
+          }
+
+          if (trueAdvanceOptions.contains("Receivables") &&
+              person.paymentTerms == "Advance") {
+            continue;
+          }
+        }
+
+        filtered.add(person);
+      }
+
+      // -------------------------------
+      // 4. Update UI (lightweight)
+      // -------------------------------
+      if (!mounted) return;
+
       setState(() {
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
         context
             .read<FinanceReceivablesTargetCollectionBIProvider>()
             .updateTargetList(targetList);
 
-        if (int.parse(UserLevel) == 5) {
-          target = targetList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          target = targetList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          target = targetList.toList();
-        } else {
-          target = targetList.toList();
-        }
-
-        List<String> trueSalesDataOptions =
-            (allCategoriesState['Sales Data'] ?? {}).entries
-                .where((entry) => entry.value)
-                .map((entry) => entry.key)
-                .toList();
-
-        List<String> trueCategoryOptions =
-            (allCategoriesState['Category'] ?? {}).entries
-                .where((entry) => entry.value)
-                .map((entry) => entry.key)
-                .toList();
-
-        List<String> trueDimensionOptions =
-            (allCategoriesState['Dimension'] ?? {}).entries
-                .where((entry) => entry.value)
-                .map((entry) => entry.key)
-                .toList();
-
-        List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList();
-
-        List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList();
-
-        List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList();
-
-        List<String> trueDueOptions = (allCategoriesState['Due/Overdue'] ?? {})
-            .entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList();
-
-        List<String> trueAdvanceOptions =
-            (allCategoriesState['Advance/Receivables'] ?? {}).entries
-                .where((entry) => entry.value)
-                .map((entry) => entry.key)
-                .toList();
-
-        List<DebtorsAgingList> filteredList = [];
-
-        if (trueSalesDataOptions.isNotEmpty) {
-          if (trueSalesDataOptions.contains("Sales Team")) {
-            filteredList = target.where((person) {
-              return person.salesManager != "NH GROUP. - Drs." &&
-                  person.salesManager != "OFFICE - Drs.";
-            }).toList();
-          } else {
-            filteredList = target
-                .where(
-                  (person) =>
-                      trueSalesDataOptions.contains(person.salesManager),
-                )
-                .toList();
-          }
-          target = filteredList;
-        }
-
-        if (trueCategoryOptions.isNotEmpty) {
-          filteredList = target
-              .where(
-                (person) => trueCategoryOptions.contains(person.customerGroup),
-              )
-              .toList();
-          target = filteredList;
-        }
-
-        if (trueDimensionOptions.isNotEmpty) {
-          filteredList = target
-              .where(
-                (person) => trueDimensionOptions.contains(person.documentType),
-              )
-              .toList();
-          target = filteredList;
-        }
-
-        if (trueRSMOptions.isNotEmpty) {
-          filteredList = target
-              .where(
-                (person) => trueRSMOptions.contains(person.regionalManager),
-              )
-              .toList();
-          target = filteredList;
-        }
-
-        if (trueASMOptions.isNotEmpty) {
-          filteredList = target
-              .where((person) => trueASMOptions.contains(person.salesManager))
-              .toList();
-          target = filteredList;
-        }
-
-        if (trueTSMOptions.isNotEmpty) {
-          filteredList = target
-              .where((person) => trueTSMOptions.contains(person.salesRep))
-              .toList();
-          target = filteredList;
-        }
-
-        if (trueDueOptions.isNotEmpty) {
-          if (trueDueOptions.contains("Not Dues")) {
-            filteredList = target
-                .where((person) => person.future == "0")
-                .toList();
-          } else if (trueDueOptions.contains("Overdue")) {
-            filteredList = target
-                .where((person) => person.future != "0")
-                .toList();
-          }
-          target = filteredList;
-        }
-
-        if (trueAdvanceOptions.isNotEmpty) {
-          if (trueAdvanceOptions.contains("Advance")) {
-            filteredList = target
-                .where((person) => person.paymentTerms == "Advance")
-                .toList();
-          } else if (trueAdvanceOptions.contains("Receivables")) {
-            filteredList = target
-                .where((person) => person.paymentTerms != "Advance")
-                .toList();
-          }
-          target = filteredList;
-        }
-
-        // if (trueSalesDataOptions.contains("All")) {
-        //   target = targetListTemp.toList();
-        // }
-        // else if (trueSalesDataOptions.contains("OFFICE - Drs.")) {
-        //   target = target.where((test) => test.salesManager == "OFFICE - Drs.").toList();
-        // }
-        // else if (trueSalesDataOptions.contains("NH GROUP. - Drs.")) {
-        //   target = target.where((test) => test.salesManager == "NH GROUP. - Drs.").toList();
-        // }
-        // else if (trueSalesDataOptions.contains('Sales Team')) {
-        //   target = target.where((test) => test.salesManager != "NH GROUP. - Drs." && test.salesManager != "OFFICE - Drs.").toList();
-        // }
-
-        // if (selectedCheckbox == 1) {
-        //   target = targetList.toList();
-        // }
-        // if(selectedCheckbox == 2) {
-        //   target = targetList.where((test) {
-        //     return test.salesManager == "OFFICE - Drs.";
-        //   }).toList();
-        // }
-        // if(selectedCheckbox == 3) {
-        //   target = targetList.where((test) {
-        //     return test.salesManager == "NH GROUP. - Drs."
-        //         "";
-        //   }).toList();
-        // }
-        // if(selectedCheckbox == 4) {
-        //   target = targetList.where((test) {
-        //     return test.salesManager != "NH GROUP. - Drs.` "
-        //         "" && test.salesManager != "OFFICE - Drs.";
-        //   }).toList();
-        // }
+        target = filtered;
+        targetAPIData = filtered;
       });
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            content: Text('Error: $e'),
+          ),
         );
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
   }
@@ -2446,27 +2408,15 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
   }
 
-  Future<void> _dateFilterTarget(
-    String UserName,
-    String UserLevel,
-    bool FromFilter,
-  ) async {
+  Future<void> _dateFilterTarget(String UserName, String UserLevel) async {
     setState(() {
-      List<String> menuNames = usersList
-          .where((element) => element.parentMenuId == 0)
-          .map((user) => user.menuName)
-          .toList();
-      menuNames.insert(0, UserName);
+      target = target.where((target) {
+        DateTime dueon = target.parsedDueDate;
+        return (dueon.isAtMost(toDateFilter!));
+      }).toList();
       context
           .read<FinanceReceivablesTargetCollectionBIProvider>()
           .updateTargetList(target);
-
-      target = target.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-        return ( /*dueon.isAtLeast(fromDateFilter!) &&*/ dueon.isAtMost(
-          toDateFilter!,
-        ));
-      }).toList();
     });
   }
 
@@ -2474,143 +2424,129 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     setState(() {
       chartDataLoadedReceivables = false;
     });
+
+    // -------------------------------
+    // 1. Load preferences (once)
+    // -------------------------------
+
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
-    final userName = selectedUser == ""
-        ? prefs.getString('userName') ?? ''
-        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
+    final parsedUserLevel = int.tryParse(userLevel) ?? 0;
+
+    final userName = selectedUser.isEmpty
+        ? (prefs.getString('userName') ?? '')
+        : selectedUser;
+
     UserLevel = userLevel;
-    await _loadUserList(
-      userId,
-      userJwtToken,
-      userMailID,
-      int.tryParse(userLevel) ?? 0,
-    );
+
+    // -------------------------------
+    // 2. Run API calls in parallel
+    // -------------------------------
+    await _loadUserList(userId, userJwtToken, userMailID, parsedUserLevel);
     await _loadUserListForFilter(
       userId,
       userJwtToken,
       userMailID,
-      int.tryParse(userLevel) ?? 0,
+      parsedUserLevel,
     );
     await _loadCollectionTarget(userName, userLevel, fromFilter);
-    await _loadReceivablesData("", "", "", "", "", "", "");
-    await _loadNetReceivablesData("", "", "", "", "", "", "");
-    await _loadAdvanceFromCustomers("", "", "", "", "", "", "");
-    await _loadCustomerAnalysis("", "", "", "", "", "", "");
+    await Future.wait([
+      _loadReceivablesData("", "", "", "", "", "", ""),
+      _loadNetReceivablesData("", "", "", "", "", "", ""),
+      _loadAdvanceFromCustomers("", "", "", "", "", "", ""),
+      _loadCustomerAnalysis("", "", "", "", "", "", ""),
+      _loadTSMCollectionBarChartData("", "", "", "", "", "", ""),
+      _loadASMCollectionBarChartData("", "", "", "", "", "", ""),
+      _loadRSMCollectionBarChartData("", "", "", "", "", "", ""),
+    ]);
+
     if (receivablesCategoryList.categoryData.isEmpty) {
       await _loadCustomerCategoryWise();
     }
-    await _loadTSMCollectionBarChartData("", "", "", "", "", "", "");
-    await _loadASMCollectionBarChartData("", "", "", "", "", "", "");
-    await _loadRSMCollectionBarChartData("", "", "", "", "", "", "");
+    await applyFinanceReceivablesVariables();
+  }
 
+  Future<void> applyFinanceReceivablesVariables() async {
+    // -------------------------------
+    // 1. Initialize variables
+    // -------------------------------
     double sum = 0;
     double overDueSum = 0;
-    double advanceSum = 0;
-    receivablesAmount = 0;
-    receivablesAmountStr = "";
-    overDue = 0;
-    overDueStr = "";
-    notDueStr = "";
-    advance = 0;
-    advanceStr = "";
-    netReceivables = 0;
-    netReceivablesStr = "";
+    double notDue = 0;
+    DateTime normalize(DateTime d) => DateTime(d.year, d.month, d.day);
 
-    grossReceivables = 0;
-    grossReceivablesStr = "";
+    final currentDateLocal = normalize(currentDate!);
+    // -------------------------------
+    // 2. Single loop calculation
+    // -------------------------------
 
-    receivablePercentage = 0;
-    netReceivablePercentage = 0;
+    for (var t in target) {
+      final postingDate = normalize(t.parsedPostingDate);
+      if (postingDate.isAfter(currentDateLocal)) continue;
 
-    var currentMonthTarget = target.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return (dueon.isAtMost(currentDate!));
-    });
-    for (var target in currentMonthTarget.toList()) {
-      double balance = double.tryParse(target.balance) ?? 0;
-      if (balance > 0) {
+      final dueOn = normalize(t.parsedDueDate);
+
+      double balance = double.tryParse(t.balance) ?? 0;
+
+      // Overdue
+      if (!dueOn.isAfter(currentDateLocal)) {
         sum += balance;
-      } else {
-        double balanceAbs = balance.abs();
-        advanceSum += balanceAbs;
+        overDueSum += balance;
       }
-    }
-    var currentOverDue = target.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return dueon.isAtMost(currentDate!);
-    }).toSet();
-    for (var target in currentOverDue.toList()) {
-      double balance = double.tryParse(target.balance) ?? 0;
-      overDueSum += balance;
-    }
 
-    notDue = 0;
-
-    var notOverDue = target;
-    for (var target in notOverDue.toList()) {
-      double balance = double.tryParse(target.balance) ?? 0;
-      String future = target.ageingBrackets;
-      if (future == 'Future') {
+      if (t.ageingBrackets == 'Future') {
         notDue += balance;
       }
     }
 
-    receivablesAmount = notDue + overDueSum;
-    receivablesAmountStr = "";
-    receivablesAmountStr = formatAmount(receivablesAmount.abs());
-    overDue = overDueSum;
-    overDueStr = formatAmount(overDue.abs());
-    notDueStr = formatAmount(notDue.abs());
+    // -------------------------------
+    // 3. Compute values
+    // -------------------------------
+    double receivablesAmount = notDue + overDueSum;
+    double overDue = overDueSum;
 
-    advance = advanceSum;
-    advance = advanceCustomerList.agingData.fold(
-      0,
-      (t, e) => t + e.agingGroupTotal,
-    );
+    double netReceivables = sum - advance;
+    double grossReceivables = sum;
 
-    advanceStr = formatAmount(advance.abs());
-    netReceivables = sum - advance;
-    netReceivablesStr = formatAmount(netReceivables.abs());
-
-    grossReceivables = sum;
-    grossReceivablesStr = formatAmount(grossReceivables.abs());
-
-    if (overDue == 0 || receivablesAmount == 0) {
-      receivablePercentage = 0;
-    } else {
-      receivablePercentage =
-          double.tryParse(
-            ((overDue / (receivablesAmount)) * 100).toStringAsFixed(2),
-          )?.ceil() ??
-          0;
+    // -------------------------------
+    // 4. Percentages
+    // -------------------------------
+    double receivablePercentage = 0;
+    if (overDue != 0 && receivablesAmount != 0) {
+      receivablePercentage = double.parse(
+        ((overDue / receivablesAmount) * 100).toStringAsFixed(2),
+      ).ceilToDouble();
     }
+    if (receivablePercentage > 100) receivablePercentage = 100;
 
-    if (receivablePercentage > 100) {
-      receivablePercentage = 100;
+    double netReceivablePercentage = 0;
+    if (advance != 0 && netReceivables != 0) {
+      netReceivablePercentage = double.parse(
+        ((advance / netReceivables) * 100).toStringAsFixed(2),
+      ).ceilToDouble();
     }
+    if (netReceivablePercentage > 100) netReceivablePercentage = 100;
+    if (netReceivablePercentage.isNegative) netReceivablePercentage = 0;
 
-    if (advance == 0 || netReceivables == 0) {
-      netReceivablePercentage = 0;
-    } else {
-      netReceivablePercentage =
-          double.tryParse(
-            ((advance / (netReceivables)) * 100).toStringAsFixed(2),
-          )?.ceil() ??
-          0;
-    }
-
-    if (netReceivablePercentage > 100) {
-      netReceivablePercentage = 100;
-    }
-    if (netReceivablePercentage.isNegative) {
-      netReceivablePercentage = 0;
-    }
-
+    // -------------------------------
+    // 5. Update UI
+    // -------------------------------
     setState(() {
+      receivablesAmountStr = formatAmount(receivablesAmount.abs());
+
+      overDueStr = formatAmount(overDue.abs());
+
+      notDueStr = formatAmount(notDue.abs());
+
+      advanceStr = formatAmount(advance.abs());
+
+      netReceivablesStr = formatAmount(netReceivables.abs());
+
+      grossReceivablesStr = formatAmount(grossReceivables.abs());
+
       filterOptions = [
         ['OFFICE - Drs.', 'NH GROUP. - Drs.', 'Sales Team'],
         ['Hospital', 'Distributor', 'Other'],
@@ -2623,17 +2559,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         [],
       ];
 
-      savedFinanceReceivablesOptions = filterOptions
-          .map((options) => List<bool>.filled(options.length, false))
-          .toList();
+      savedFinanceReceivablesOptions =
+          savedFinanceReceivablesOptionsTemp.isEmpty
+          ? filterOptions
+                .map((options) => List<bool>.filled(options.length, false))
+                .toList()
+          : savedFinanceReceivablesOptionsTemp;
 
-      if (savedFinanceReceivablesOptionsTemp.isEmpty) {
-        savedFinanceReceivablesOptions = filterOptions
-            .map((options) => List<bool>.filled(options.length, false))
-            .toList();
-      } else {
-        savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
-      }
       chartDataLoadedReceivables = true;
     });
   }
@@ -2810,71 +2742,71 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   ) async {
     clearVariablesForFilter();
     LoadDates();
-    await _loadReceivablesData(
-      receivableId!,
-      netReceivableId,
-      advanceId!,
-      customer!,
-      regionalManager!,
-      salesManager!,
-      salesPerson!,
-    );
-    await _loadNetReceivablesData(
-      receivableId,
-      netReceivableId,
-      advanceId,
-      customer,
-      regionalManager,
-      salesManager,
-      salesPerson,
-    );
-    await _loadAdvanceFromCustomers(
-      receivableId,
-      netReceivableId,
-      advanceId,
-      customer,
-      regionalManager,
-      salesManager,
-      salesPerson,
-    );
-    await _loadCustomerAnalysis(
-      receivableId,
-      netReceivableId,
-      advanceId,
-      customer,
-      regionalManager,
-      salesManager,
-      salesPerson,
-    );
-    await _loadTSMCollectionBarChartData(
-      receivableId,
-      netReceivableId,
-      advanceId,
-      customer,
-      regionalManager,
-      salesManager,
-      salesPerson,
-    );
-    await _loadASMCollectionBarChartData(
-      receivableId,
-      netReceivableId,
-      advanceId,
-      customer,
-      regionalManager,
-      salesManager,
-      salesPerson,
-    );
-
-    await _loadRSMCollectionBarChartData(
-      receivableId,
-      netReceivableId,
-      advanceId,
-      customer,
-      regionalManager,
-      salesManager,
-      salesPerson,
-    );
-
+    await Future.wait([
+      _loadReceivablesData(
+        receivableId!,
+        netReceivableId,
+        advanceId!,
+        customer!,
+        regionalManager!,
+        salesManager!,
+        salesPerson!,
+      ),
+      _loadNetReceivablesData(
+        receivableId,
+        netReceivableId,
+        advanceId,
+        customer,
+        regionalManager,
+        salesManager,
+        salesPerson,
+      ),
+      _loadAdvanceFromCustomers(
+        receivableId,
+        netReceivableId,
+        advanceId,
+        customer,
+        regionalManager,
+        salesManager,
+        salesPerson,
+      ),
+      _loadCustomerAnalysis(
+        receivableId,
+        netReceivableId,
+        advanceId,
+        customer,
+        regionalManager,
+        salesManager,
+        salesPerson,
+      ),
+      _loadTSMCollectionBarChartData(
+        receivableId,
+        netReceivableId,
+        advanceId,
+        customer,
+        regionalManager,
+        salesManager,
+        salesPerson,
+      ),
+      _loadASMCollectionBarChartData(
+        receivableId,
+        netReceivableId,
+        advanceId,
+        customer,
+        regionalManager,
+        salesManager,
+        salesPerson,
+      ),
+      _loadRSMCollectionBarChartData(
+        receivableId,
+        netReceivableId,
+        advanceId,
+        customer,
+        regionalManager,
+        salesManager,
+        salesPerson,
+      ),
+    ]);
     chartDataLoadedReceivables = true;
   }
 
@@ -2904,7 +2836,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     setState(() {
       chartDataLoadedReceivables = false;
       receivablesFinanceList = ReceivablesFinanceList(agingData: []);
-      // allReceivablesFinanceList = AllReceivablesFinanceList(agingData: []);
+      allReceivablesFinanceList = AllReceivablesFinanceList(agingData: []);
       advanceCustomerList = AdvanceFromCustomersList(agingData: []);
       customerAnalysisFinanceList = CustomerAnalysisFinanceList(
         customerData: [],
@@ -2926,7 +2858,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       chartDataLoadedReceivables = false;
       receivablesAmountStr = "";
       loadData("");
-      // selectedCheckbox = index;
     });
   }
 
@@ -2934,319 +2865,162 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     setState(() {
       chartDataLoadedReceivables = false;
     });
-    String selectedUser = '';
     final prefs = await SharedPreferences.getInstance();
-    final userName = selectedUser == ""
-        ? prefs.getString('userName') ?? ''
-        : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
-    setState(() async {
-      receivablesAmount = 0;
-      overDue = 0;
-      notDue = 0;
-      netReceivables = 0;
-      advance = 0;
-      grossReceivables = 0;
-      chartDataLoadedReceivables = false;
-      receivablesAmountStr = "";
-      await _loadCollectionTarget(userName, userLevel, fromFilter);
-      _dateFilterTarget("", "", false);
-      await _loadReceivablesData("", "", "", "", "", "", "");
-      await _loadNetReceivablesData("", "", "", "", "", "", "");
-      await _loadAdvanceFromCustomers("", "", "", "", "", "", "");
-      await _loadCustomerAnalysis("", "", "", "", "", "", "");
-      if (receivablesCategoryList.categoryData.isEmpty) {
-        await _loadCustomerCategoryWise();
-      }
-      await _loadTSMCollectionBarChartData("", "", "", "", "", "", "");
-      await _loadASMCollectionBarChartData("", "", "", "", "", "", "");
-      await _loadRSMCollectionBarChartData("", "", "", "", "", "", "");
+    receivablesAmount = 0;
+    overDue = 0;
+    notDue = 0;
+    netReceivables = 0;
+    advance = 0;
+    grossReceivables = 0;
+    receivablesAmountStr = "";
+    target = targetAPIData;
+    await _dateFilterTarget("", "");
 
-      List<String> trueSalesDataOptions =
-          (allCategoriesState['Sales Data'] ?? {}).entries
-              .where((entry) => entry.value)
-              .map((entry) => entry.key)
-              .toList();
+    // -------------------------------
+    // 2. Prepare filter selections
+    // -------------------------------
+    Map<String, bool> getCategory(String key) => allCategoriesState[key] ?? {};
 
-      List<String> trueCategoryOptions = (allCategoriesState['Category'] ?? {})
-          .entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    final trueSalesDataOptions = getCategory(
+      'Sales Data',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
-      List<String> trueDimensionOptions =
-          (allCategoriesState['Dimension'] ?? {}).entries
-              .where((entry) => entry.value)
-              .map((entry) => entry.key)
-              .toList();
+    final trueCategoryOptions = getCategory(
+      'Category',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
-      List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    final trueDimensionOptions = getCategory(
+      'Dimension',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
-      List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    final trueRSMOptions = getCategory(
+      'RSM',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
-      List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    final trueASMOptions = getCategory(
+      'ASM',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
-      List<String> trueDueOptions = (allCategoriesState['Due/Overdue'] ?? {})
-          .entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    final trueTSMOptions = getCategory(
+      'TSM',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
-      List<String> trueAdvanceOptions =
-          (allCategoriesState['Advance/Receivables'] ?? {}).entries
-              .where((entry) => entry.value)
-              .map((entry) => entry.key)
-              .toList();
+    final trueDueOptions = getCategory(
+      'Due/Overdue',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
-      List<DebtorsAgingList> filteredList = [];
+    final trueAdvanceOptions = getCategory(
+      'Advance/Receivables',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
 
+    // -------------------------------
+    // 3. Single-pass filtering (FAST)
+    // -------------------------------
+    final List<DebtorsAgingList> filtered = [];
+
+    for (final trgt in targetAPIData) {
+      // Sales Data
       if (trueSalesDataOptions.isNotEmpty) {
         if (trueSalesDataOptions.contains("Sales Team")) {
-          filteredList = target.where((person) {
-            return person.salesManager != "NH GROUP. - Drs." &&
-                person.salesManager != "OFFICE - Drs.";
-          }).toList();
-        } else {
-          filteredList = target
-              .where(
-                (person) => trueSalesDataOptions.contains(person.salesManager),
-              )
-              .toList();
+          if (trgt.salesManager == "NH GROUP. - Drs." ||
+              trgt.salesManager == "OFFICE - Drs.") {
+            continue;
+          }
+        } else if (!trueSalesDataOptions.contains(trgt.salesManager)) {
+          continue;
         }
-        target = filteredList;
       }
 
-      if (trueCategoryOptions.isNotEmpty) {
-        filteredList = target
-            .where(
-              (person) => trueCategoryOptions.contains(person.customerGroup),
-            )
-            .toList();
-        target = filteredList;
+      // Category
+      if (trueCategoryOptions.isNotEmpty &&
+          !trueCategoryOptions.contains(trgt.customerGroup)) {
+        continue;
       }
 
-      if (trueDimensionOptions.isNotEmpty) {
-        filteredList = target
-            .where(
-              (person) => trueDimensionOptions.contains(person.documentType),
-            )
-            .toList();
-        target = filteredList;
+      // Dimension
+      if (trueDimensionOptions.isNotEmpty &&
+          !trueDimensionOptions.contains(trgt.documentType)) {
+        continue;
       }
 
-      if (trueRSMOptions.isNotEmpty) {
-        filteredList = target
-            .where((person) => trueRSMOptions.contains(person.regionalManager))
-            .toList();
-        target = filteredList;
+      // RSM
+      if (trueRSMOptions.isNotEmpty &&
+          !trueRSMOptions.contains(trgt.regionalManager)) {
+        continue;
       }
 
-      if (trueASMOptions.isNotEmpty) {
-        filteredList = target
-            .where((person) => trueASMOptions.contains(person.salesManager))
-            .toList();
-        target = filteredList;
+      // ASM
+      if (trueASMOptions.isNotEmpty &&
+          !trueASMOptions.contains(trgt.salesManager)) {
+        continue;
       }
 
-      if (trueTSMOptions.isNotEmpty) {
-        filteredList = target
-            .where((person) => trueTSMOptions.contains(person.salesRep))
-            .toList();
-        target = filteredList;
+      // TSM
+      if (trueTSMOptions.isNotEmpty &&
+          !trueTSMOptions.contains(trgt.salesRep)) {
+        continue;
       }
 
+      // Due / Overdue
       if (trueDueOptions.isNotEmpty) {
-        if (trueDueOptions.contains("Not Dues")) {
-          filteredList = target
-              .where((person) => person.future == "0")
-              .toList();
-        } else if (trueDueOptions.contains("Overdue")) {
-          filteredList = target
-              .where((person) => person.future != "0")
-              .toList();
+        if (trueDueOptions.contains("Not Dues") && trgt.future != "0") {
+          continue;
         }
-        target = filteredList;
+
+        if (trueDueOptions.contains("Overdue") && trgt.future == "0") {
+          continue;
+        }
       }
 
+      // Advance / Receivables
       if (trueAdvanceOptions.isNotEmpty) {
-        if (trueAdvanceOptions.contains("Advance")) {
-          filteredList = target
-              .where((person) => person.paymentTerms == "Advance")
-              .toList();
-        } else if (trueAdvanceOptions.contains("Receivables")) {
-          filteredList = target
-              .where((person) => person.paymentTerms != "Advance")
-              .toList();
+        if (trueAdvanceOptions.contains("Advance") &&
+            trgt.paymentTerms != "Advance") {
+          continue;
         }
-        target = filteredList;
-      }
 
-      double sum = 0;
-      double overDueSum = 0;
-      double advanceSum = 0;
-      receivablesAmount = 0;
-      receivablesAmountStr = "";
-      overDue = 0;
-      overDueStr = "";
-      notDueStr = "";
-      advance = 0;
-      advanceStr = "";
-      netReceivables = 0;
-      netReceivablesStr = "";
-
-      grossReceivables = 0;
-      grossReceivablesStr = "";
-
-      receivablePercentage = 0;
-      netReceivablePercentage = 0;
-
-      var currentMonthTarget = target.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-        return (dueon.isAtMost(currentDate!));
-      });
-      for (var target in currentMonthTarget.toList()) {
-        double balance = double.tryParse(target.balance) ?? 0;
-        if (balance > 0) {
-          sum += balance;
-        } else {
-          double balanceAbs = balance.abs();
-          advanceSum += balanceAbs;
-        }
-      }
-      var currentOverDue = target.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-        return dueon.isAtMost(currentDate!);
-      }).toSet();
-      for (var target in currentOverDue.toList()) {
-        double balance = double.tryParse(target.balance) ?? 0;
-        overDueSum += balance;
-      }
-
-      notDue = 0;
-
-      var notOverDue = target;
-      for (var target in notOverDue.toList()) {
-        double balance = double.tryParse(target.balance) ?? 0;
-        String future = target.ageingBrackets;
-        if (future == 'Future') {
-          notDue += balance;
+        if (trueAdvanceOptions.contains("Receivables") &&
+            trgt.paymentTerms == "Advance") {
+          continue;
         }
       }
 
-      receivablesAmount = notDue + overDueSum;
-      receivablesAmountStr = "";
-      receivablesAmountStr = formatAmount(receivablesAmount.abs());
-      overDue = overDueSum;
-      overDueStr = formatAmount(overDue.abs());
-      notDueStr = formatAmount(notDue.abs());
+      filtered.add(trgt);
+    }
+    target = filtered;
+    await Future.wait([
+      _loadReceivablesData("", "", "", "", "", "", ""),
+      _loadNetReceivablesData("", "", "", "", "", "", ""),
+      _loadAdvanceFromCustomers("", "", "", "", "", "", ""),
+      _loadCustomerAnalysis("", "", "", "", "", "", ""),
+      _loadTSMCollectionBarChartData("", "", "", "", "", "", ""),
+      _loadASMCollectionBarChartData("", "", "", "", "", "", ""),
+      _loadRSMCollectionBarChartData("", "", "", "", "", "", ""),
+    ]);
 
-      advance = advanceSum;
-
-      advance = advanceCustomerList.agingData.fold(
-        0,
-        (t, e) => t + e.agingGroupTotal,
-      );
-
-      advanceStr = formatAmount(advance.abs());
-      netReceivables = sum - advance;
-      netReceivablesStr = formatAmount(netReceivables.abs());
-
-      grossReceivables = sum;
-      grossReceivablesStr = formatAmount(grossReceivables.abs());
-
-      if (overDue == 0 || receivablesAmount == 0) {
-        receivablePercentage = 0;
-      } else {
-        receivablePercentage =
-            double.tryParse(
-              ((overDue / (receivablesAmount)) * 100).toStringAsFixed(2),
-            )?.ceil() ??
-            0;
-      }
-
-      if (receivablePercentage > 100) {
-        receivablePercentage = 100;
-      }
-
-      if (advance == 0 || netReceivables == 0) {
-        netReceivablePercentage = 0;
-      } else {
-        netReceivablePercentage =
-            double.tryParse(
-              ((advance / (netReceivables)) * 100).toStringAsFixed(2),
-            )?.ceil() ??
-            0;
-      }
-
-      if (netReceivablePercentage > 100) {
-        netReceivablePercentage = 100;
-      }
-      if (netReceivablePercentage.isNegative) {
-        netReceivablePercentage = 0;
-      }
-      chartDataLoadedReceivables = true;
-
-      setState(() {
-        filterOptions = [
-          ['OFFICE - Drs.', 'NH GROUP. - Drs.', 'Sales Team'],
-          ['Hospital', 'Distributor', 'Other'],
-          ['Credit Note', 'Invoice', 'Journal', 'Receipt'],
-          listOfRSM,
-          listOfASM,
-          listOfTSM,
-          ['Not Dues', 'Overdue'],
-          ['Advance', 'Receivables'],
-          [],
-        ];
-
-        savedFinanceReceivablesOptions = filterOptions
-            .map((options) => List<bool>.filled(options.length, false))
-            .toList();
-
-        if (savedFinanceReceivablesOptionsTemp.isEmpty) {
-          savedFinanceReceivablesOptions = filterOptions
-              .map((options) => List<bool>.filled(options.length, false))
-              .toList();
-        } else {
-          savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
-        }
-
-        // selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
-      });
-
-      setState(() {
-        chartDataLoadedReceivables = true;
-      });
-    });
+    if (receivablesCategoryList.categoryData.isEmpty) {
+      await _loadCustomerCategoryWise();
+    }
+    await applyFinanceReceivablesVariables();
   }
 
   Future<void> removeFilter() async {
     setState(() {
-      setState(() {
-        chartDataLoadedReceivables = false;
-      });
-      clearVariables();
-      LoadDates();
-      receivablesAmountStr = "";
-      receivablesAmount = 0;
-      allCategoriesState.forEach((category, options) {
-        options.updateAll((key, value) => false);
-      });
-      allCategoriesState.clear();
-      loadDataFuture = loadData("");
-      setState(() {
-        chartDataLoadedReceivables = false;
-      });
+      chartDataLoadedReceivables = false;
+    });
+    clearVariables();
+    LoadDates();
+    receivablesAmountStr = "";
+    receivablesAmount = 0;
+    allCategoriesState.forEach((category, options) {
+      options.updateAll((key, value) => false);
+    });
+    allCategoriesState.clear();
+    loadDataFuture = loadData("");
+    setState(() {
+      chartDataLoadedReceivables = true;
     });
   }
 

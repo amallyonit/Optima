@@ -9,6 +9,8 @@ import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 // ignore: deprecated_member_use, avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
+import '../../api_helper.dart';
+
 class ReportService {
   Future<String> getStorageDirectory() async {
     String? externalDir = (await getExternalStorageDirectory())?.path;
@@ -255,13 +257,30 @@ class ReportService {
       final sheet = workbook.worksheets[0];
       sheet.name = sheetName;
       // -------- REPORT HEADER --------
-
+      // 'assets/images/${ApiHelper.projectName}/logo.png'
       // Row 1 → Title (Left)
-      sheet
-          .getRangeByIndex(1, 1)
-          .setText(
-            "Optima CRM${reportTitle.isNotEmpty ? " - $reportTitle" : ""}",
-          );
+      final int lastColumn = sheet.getLastColumn() > 1
+          ? sheet.getLastColumn()
+          : headers.length - 1;
+
+      final range = sheet.getRangeByIndex(1, 1, 1, lastColumn);
+      range.merge();
+      final text =
+          "${ApiHelper.companyName}\nOptima CRM${reportTitle.isNotEmpty ? " - $reportTitle" : ""}";
+
+      range.setText(text);
+
+      final lines = text.split('\n');
+      final longestLine = lines.reduce((a, b) => a.length > b.length ? a : b);
+      double width =
+          longestLine.length *
+          (longestLine.length < 40 ? 1.8 : 5); // add padding
+
+      range.cellStyle.wrapText = true;
+      range.cellStyle.bold = true;
+      range.cellStyle.fontSize = 14;
+      sheet.getRangeByIndex(1, 1, 1, sheet.getLastColumn()).rowHeight = 53;
+      sheet.getRangeByIndex(1, 1).columnWidth = width;
 
       // Row 1 → Date (Right)
       sheet
@@ -270,13 +289,6 @@ class ReportService {
 
       // Row 2 → Username
       sheet.getRangeByIndex(2, 1).setText("User: $userName");
-
-      // Merge title across columns (optional but looks better)
-      sheet.getRangeByIndex(1, 1, 1, headers.length - 1).merge();
-
-      // Styling
-      sheet.getRangeByIndex(1, 1).cellStyle.bold = true;
-      sheet.getRangeByIndex(1, 1).cellStyle.fontSize = 16;
 
       sheet.getRangeByIndex(1, headers.length).cellStyle.hAlign =
           xlsio.HAlignType.right;

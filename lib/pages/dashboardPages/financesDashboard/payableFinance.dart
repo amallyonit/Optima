@@ -35,10 +35,12 @@ List<PayablesList> payablesListMaster = [];
 List<ModeOfPaymentList> modeOfPayment = [];
 List<SalesTargetList> salesTarget = [];
 bool chartDataLoadedPayables = false;
+List<PayablesList> collectionList = [];
 
 double payableDouble = 0.0;
+double payables = 0.0;
 String payableStr = "";
-double advanceDouble = 0.0;
+double advance = 0.0;
 String advanceStr = "";
 String payableAdvanceStr = "";
 int payableAdvancePercentage = 0;
@@ -362,6 +364,24 @@ class _PayableFinanceState extends State<PayableFinance> {
   String formatDate(DateTime date) {
     final formatter = DateFormat('yyyyMMdd');
     return formatter.format(date);
+  }
+
+  String formatAmount(double amount) {
+    final isNegative = amount < 0;
+    final positiveAmount = amount.abs();
+    String formatted;
+
+    if (positiveAmount < 1000) {
+      formatted = positiveAmount.toStringAsFixed(2);
+    } else if (positiveAmount < 100000) {
+      formatted = '${(positiveAmount / 1000).toStringAsFixed(2)} K';
+    } else if (positiveAmount < 10000000) {
+      formatted = '${(positiveAmount / 100000).toStringAsFixed(2)} L';
+    } else {
+      formatted = '${(positiveAmount / 10000000).toStringAsFixed(2)} Cr';
+    }
+
+    return isNegative ? '-$formatted' : formatted;
   }
 
   void navigateToLoginScreen() async {
@@ -876,16 +896,21 @@ class _PayableFinanceState extends State<PayableFinance> {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
-    List<PayablesList> collectionList = [];
+
     try {
       if (!fromFilter) {
+        collectionList.clear();
+        payablesList.clear();
+        payablesListMaster.clear();
         do {
           var body = {
             "Index": index.toString(),
             "Limit": limit.toString(),
             "sapToken": DataManager.readSapToken(),
           };
+
           const apiUrl = '${ApiHelper.baseUrl}BicxoCreditorsAgingList';
+
           final response = await http.post(
             Uri.parse(apiUrl),
             headers: {HttpHeaders.contentTypeHeader: 'application/json'},
@@ -894,13 +919,37 @@ class _PayableFinanceState extends State<PayableFinance> {
 
           if (response.statusCode == 200) {
             final Map<String, dynamic> responseJson = jsonDecode(response.body);
+
             if (responseJson["responseData"].toString().isNotEmpty) {
-              List<PayablesList> newCollectionList =
-                  (responseJson['responseData'] as List)
-                      .map((item) => PayablesList.fromJson(item))
-                      .toList();
+              final now = DateTime.now();
+
+              final newCollectionList = (responseJson['responseData'] as List)
+                  .map((item) {
+                    final obj = PayablesList.fromJson(item);
+
+                    // Parse once
+                    final postingDate = DateFormat(
+                      'dd/MM/yyyy',
+                    ).parse(obj.postingDate);
+
+                    obj.postingDateParsed = postingDate;
+
+                    final diff = postingDate.difference(now);
+                    obj.overDueDayAdvance = diff.inDays.abs();
+
+                    obj.overDueDayReceivables =
+                        double.tryParse(obj.dueDays.replaceAll(' Days', '')) ??
+                        0;
+
+                    // Cache balance
+                    obj.balanceParsed = double.tryParse(obj.balance) ?? 0;
+
+                    return obj;
+                  })
+                  .toList();
 
               collectionList.addAll(newCollectionList);
+
               fetchedCount = newCollectionList.length;
               index++;
             } else {
@@ -910,144 +959,125 @@ class _PayableFinanceState extends State<PayableFinance> {
             fetchedCount = 0;
           }
         } while (fetchedCount == limit);
-      }
-      setState(() {
-        context
-            .read<FinancePayablesCollectionBIProvider>()
-            .updateCollectionList(collectionList);
-        if (int.parse(UserLevel) == 5) {
-          payablesList = collectionList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          payablesList = collectionList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          payablesList = collectionList.toList();
-        } else {
-          payablesList = collectionList.toList();
-        }
+        // PRE-COMPUTE BEFORE setState
+        List<PayablesList> workingList = List.from(collectionList);
 
-        payablesListMaster = collectionList.toList();
+        final trueCategoryOptions = (allCategoriesState['Category'] ?? {})
+            .entries
+            .where((entry) => entry.value)
+            .map((entry) => entry.key)
+            .toList();
 
-        List<String> trueCategoryOptions =
-            (allCategoriesState['Category'] ?? {}).entries
-                .where((entry) => entry.value)
-                .map((entry) => entry.key)
-                .toList();
+        final trueSupplierOptions = (allCategoriesState['Supplier'] ?? {})
+            .entries
+            .where((entry) => entry.value)
+            .map((entry) => entry.key)
+            .toList();
 
-        List<String> trueSupplierOptions =
-            (allCategoriesState['Supplier'] ?? {}).entries
-                .where((entry) => entry.value)
-                .map((entry) => entry.key)
-                .toList();
+        // Single-pass filtering
+        workingList = workingList.where((p) {
+          final matchCategory =
+              trueCategoryOptions.isEmpty ||
+              trueCategoryOptions.contains(p.vendorGroup);
 
-        List<PayablesList> filteredList = [];
+          final matchSupplier =
+              trueSupplierOptions.isEmpty ||
+              trueSupplierOptions.contains(p.vendorName);
 
-        if (trueCategoryOptions.isNotEmpty) {
-          filteredList = payablesList
-              .where(
-                (person) => trueCategoryOptions.contains(person.vendorGroup),
-              )
-              .toList();
-          payablesList = filteredList;
-        }
-
-        if (trueSupplierOptions.isNotEmpty) {
-          filteredList = payablesList
-              .where(
-                (person) => trueSupplierOptions.contains(person.vendorName),
-              )
-              .toList();
-          payablesList = filteredList;
-        }
-
-        double payableSum = 0;
-        double advanceSum = 0;
-        double payablesSum = 0;
-        List<PayablesList> currentMonthTarget = payablesList.where((target) {
-          DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-          return dueon.isAtMost(currentMonthToDate!) &&
-              target.ageingBrackets != "Future";
+          return matchCategory && matchSupplier;
         }).toList();
+        setState(() {
+          context
+              .read<FinancePayablesCollectionBIProvider>()
+              .updateCollectionList(collectionList);
 
-        for (var target in currentMonthTarget.toList()) {
-          double balance = double.tryParse(target.balance) ?? 0;
-          double balanceAbs = balance;
-          payableSum += balanceAbs;
-          if (balance > 0) {
-            advanceSum += balance;
-          }
-          if (balance < 0) {
-            payablesSum += balance;
-          }
-        }
-
-        payableStr = formatAmount(payablesSum.abs());
-
-        advanceStr = formatAmount(advanceSum);
-        payableAdvanceStr = formatAmount(payableSum.abs());
-        payableAdvancePercentage =
-            double.tryParse(
-              ((advanceSum.abs() / (payableSum.abs())) * 100).toStringAsFixed(
-                2,
-              ),
-            )?.ceil() ??
-            0;
-        if (payableAdvancePercentage > 100) {
-          payableAdvancePercentage = 100;
-        }
-
-        var notOverDue = payablesList;
-        for (var target in notOverDue.toList()) {
-          String future = target.ageingBrackets;
-          if (future == 'Future') {
-            // notDue += balance;
-          }
-        }
-
-        double netPayableSum = 0;
-
-        for (var target in payablesList.toList()) {
-          // overDueSum += balance;
-          double balance = double.tryParse(target.balance) ?? 0;
-          String future = target.ageingBrackets;
-          netPayableSum += balance;
-          if (future != "Future") {
-            overDue += balance;
-          }
-          if (future == "Future") {
-            notDue += balance;
-          }
-        }
-
-        netPayable = /* notDue +*/ netPayableSum;
-        netPayableStr = "";
-        netPayableStr = formatAmount(netPayable.abs());
-        // overDue = overDueSum;
-        overDueStr = formatAmount(overDue.abs());
-        notDueStr = formatAmount(notDue.abs());
-
-        if (overDue == 0 || netPayable == 0) {
-          netPayablePercentage = 0;
-        } else {
-          netPayablePercentage =
-              double.tryParse(
-                ((overDue / (netPayable)) * 100).toStringAsFixed(2),
-              )?.ceil() ??
-              0;
-        }
-
-        if (netPayablePercentage > 100) {
-          netPayablePercentage = 100;
-        }
-      });
+          payablesList = workingList;
+          payablesListMaster = List.from(collectionList);
+        });
+      }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            content: Text('Error: $e'),
+          ),
         );
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
+  }
+
+  Future<void> applyPayablesVariables() async {
+    // Single-pass calculation
+    double netPayableSum = 0;
+    double overDueLocal = 0;
+    double notDueLocal = 0;
+    DateTime normalize(DateTime d) => DateTime(d.year, d.month, d.day);
+
+    final currentDateLocal = normalize(currentDate!);
+
+    for (var target in payablesList) {
+      final postingDate = normalize(target.postingDateParsed);
+      if (postingDate.isAfter(currentDateLocal)) continue;
+
+      final balance = target.balanceParsed;
+      final future = target.ageingBrackets;
+
+      if (!postingDate.isAfter(currentDateLocal)) {
+        if (future != 'Future') {
+          overDueLocal += balance;
+        }
+        netPayableSum += balance;
+      }
+
+      if (future == 'Future') {
+        notDueLocal += balance;
+      }
+    }
+
+    // Safe calculations
+
+    int payableAdvancePercentageLocal = 0;
+
+    if (payables != 0) {
+      payableAdvancePercentageLocal = ((advance.abs() / payables.abs()) * 100)
+          .ceil();
+    }
+
+    if (payableAdvancePercentageLocal > 100) {
+      payableAdvancePercentageLocal = 100;
+    }
+
+    int netPayablePercentageLocal = 0;
+
+    if (overDueLocal != 0 && netPayableSum != 0) {
+      netPayablePercentageLocal = ((overDueLocal / netPayableSum) * 100).ceil();
+    }
+
+    if (netPayablePercentageLocal > 100) {
+      netPayablePercentageLocal = 100;
+    }
+
+    // FINAL UI UPDATE
+
+    setState(() {
+      payableStr = formatAmount(payables.abs());
+      advanceStr = formatAmount(advance);
+      payableAdvanceStr = formatAmount(payables.abs() - advance);
+
+      payableAdvancePercentage = payableAdvancePercentageLocal;
+
+      netPayable = netPayableSum;
+      netPayableStr = formatAmount(netPayable.abs());
+
+      overDue = overDueLocal;
+      notDue = notDueLocal;
+
+      overDueStr = formatAmount(overDue.abs());
+      notDueStr = formatAmount(notDue.abs());
+
+      netPayablePercentage = netPayablePercentageLocal;
+    });
   }
 
   Future<void> _loadExpenses(String userName, String userLevel) async {
@@ -1137,11 +1167,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         const apiUrl = '${ApiHelper.baseUrl}BicxoPaymentAnalysisList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -1149,9 +1175,15 @@ class _PayableFinanceState extends State<PayableFinance> {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
             List<ModeOfPaymentList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => ModeOfPaymentList.fromJson(item))
-                    .toList();
+                (responseJson['responseData'] as List).map((item) {
+                  final obj = ModeOfPaymentList.fromJson(item);
+                  final postingDate = DateFormat(
+                    'dd/MM/yyyy',
+                  ).parse(obj.postingDate);
+                  obj.postingDateParsed = postingDate;
+                  return obj;
+                }).toList();
+
             salesList.addAll(newSalesList);
             fetchedCount = newSalesList.length;
             index++;
@@ -1198,77 +1230,76 @@ class _PayableFinanceState extends State<PayableFinance> {
       "Limit": 0,
       "sapToken": DataManager.readSapToken(),
     };
+
     const apiUrl = '${ApiHelper.baseUrl}BicxoSalesTargetList';
-    var headers = {
-      HttpHeaders.contentTypeHeader: 'application/json',
-      // HttpHeaders.authorizationHeader: 'Bearer    ${DataManager.readSapToken()}'
-    };
+
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
+        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
         body: jsonEncode(body),
-        headers: headers,
       );
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        if (responseJson["responseData"].toString().isNotEmpty) {
-          List<dynamic> data = responseJson['responseData'];
-          if (data.isNotEmpty) {
-            List<SalesTargetList> newSalesTargetList = (data)
-                .map((item) => SalesTargetList.fromJson(item))
-                .toList();
-            setState(() {
-              List<String> menuNames = usersList
-                  .where((element) => element.parentMenuId == 0)
-                  .map((user) => user.menuName)
-                  .toList();
-              menuNames.insert(0, UserName);
-              context.read<PayableSalesTargetProvider>().updateSalesTargetList(
-                newSalesTargetList,
-              );
-              if (int.parse(UserLevel) == 5) {
-                salesTarget = newSalesTargetList;
-              } else if (int.parse(UserLevel) == 4) {
-                salesTarget = newSalesTargetList;
-              } else if (int.parse(UserLevel) <= 3 &&
-                  int.parse(UserLevel) >= 2) {
-                salesTarget = newSalesTargetList;
-              } else {
-                salesTarget = newSalesTargetList;
-              }
-            });
-          }
-        } else {
-          if (responseJson.containsKey("Error") &&
-              responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+
+      if (response.statusCode != 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sales target details not found.')),
+          );
+        }
+        return;
+      }
+
+      final Map<String, dynamic> responseJson = jsonDecode(response.body);
+
+      final data = responseJson['responseData'];
+
+      // Handle empty or invalid data safely
+      if (data == null || data is! List || data.isEmpty) {
+        final error = responseJson["Error"]?.toString() ?? "Unknown error";
+
+        if (error == "Invalid or Expired Token") {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                duration: const Duration(seconds: 1),
+                content: Text(
+                  error,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
             );
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          }
+          navigateToLoginScreen();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(error)));
           }
         }
-      } else {
-        const snackBar = SnackBar(
-          content: Text('Sales target details not found.'),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return;
       }
+
+      // Parse once
+      final List<SalesTargetList> newSalesTargetList = (data)
+          .map((item) => SalesTargetList.fromJson(item))
+          .toList();
+
+      // UI update (lightweight only)
+      setState(() {
+        context.read<PayableSalesTargetProvider>().updateSalesTargetList(
+          newSalesTargetList,
+        );
+
+        salesTarget = newSalesTargetList;
+      });
     } catch (e) {
-      const snackBar = SnackBar(
-        content: Text('SAP Server down, Please try again after some time.'),
-      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('SAP Server down, Please try again after some time.'),
+          ),
+        );
       }
     }
   }
@@ -1286,22 +1317,16 @@ class _PayableFinanceState extends State<PayableFinance> {
       );
 
       payablesList = payablesList.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-        return ( /*dueon.isAtLeast(fromDateFilter!) &&*/ dueon.isAtMost(
-          toDateFilter!,
-        ));
+        DateTime dueon = target.postingDateParsed;
+        return (dueon.isAtMost(toDateFilter!));
       }).toList();
       modeOfPayment = modeOfPayment.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-        return ( /*dueon.isAtLeast(fromDateFilter!) &&*/ dueon.isAtMost(
-          toDateFilter!,
-        ));
+        DateTime dueon = target.postingDateParsed;
+        return (dueon.isAtMost(toDateFilter!));
       }).toList();
       expensesList = expensesList.where((target) {
         DateTime toDt = formatter.parse('30/${target.monthYear}');
-        return ( /*toDt.isAtLeast(fromDateFilter!) &&*/ toDt.isAtMost(
-          toDateFilter!,
-        ));
+        return (toDt.isAtMost(toDateFilter!));
       }).toList();
     });
   }
@@ -1593,6 +1618,14 @@ class _PayableFinanceState extends State<PayableFinance> {
     String documentType,
     String bpGroup,
   ) async {
+    setState(() {
+      advance = 0;
+      payables = 0;
+    });
+
+    double tmpAdvance = 0;
+    double tmpPayables = 0;
+
     final fPayable = payable.toLowerCase();
     final fAdvance = advancePaid.toLowerCase();
     final fSupplier = supplier.toLowerCase();
@@ -1604,7 +1637,7 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     final Map<String, double> balanceByVendor = {};
     final Map<String, String> nameByVendor = {};
-
+    final Map<String, double> netPayablesByVendor = {};
     final DateTime? effectiveCurrentMonthToDate = currentMonthToDate;
 
     for (final t in payablesList) {
@@ -1641,7 +1674,14 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       final amt = double.tryParse(t.balance) ?? 0.0;
       final code = t.vendorCode;
-
+      final future = t.ageingBrackets;
+      if (future != "Future") {
+        netPayablesByVendor.update(
+          code,
+          (value) => value + amt,
+          ifAbsent: () => amt,
+        );
+      }
       balanceByVendor.update(code, (value) => value + amt, ifAbsent: () => amt);
       nameByVendor[code] = t.vendorName;
     }
@@ -1654,7 +1694,12 @@ class _PayableFinanceState extends State<PayableFinance> {
           balance: sum * -1,
         ),
       );
+      if (sum > 0) {
+        tmpAdvance += sum;
+      }
+      tmpPayables += netPayablesByVendor[code] ?? 0.0;
     });
+
     customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
 
     supplierList = SupplierAnalysisPayablesList(
@@ -1664,6 +1709,10 @@ class _PayableFinanceState extends State<PayableFinance> {
     if (listOfSupplier.isEmpty) {
       listOfSupplier = customerWiseDataList.map((e) => e.supplierName).toList();
     }
+    setState(() {
+      advance = tmpAdvance;
+      payables = tmpPayables;
+    });
   }
 
   Future<void> _loadVendorPaymentProjection() async {
@@ -1875,7 +1924,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
   }
 
-  Future<void> _loadbpGroup(
+  Future<void> _loadBpGroup(
     String payable,
     String advancePaid,
     String supplier,
@@ -2045,7 +2094,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     var currentMonthActualPayable = modeOfPayment.where((target) {
       if (target.postingDate.isEmpty) return false;
       try {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+        DateTime dueon = target.postingDateParsed;
         return dueon.isAtMost(currentMonthToDate!);
       } catch (e) {
         return false;
@@ -2122,16 +2171,14 @@ class _PayableFinanceState extends State<PayableFinance> {
     String vendorName = "";
 
     customerTargetList = payablesList.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+      DateTime dueon = target.postingDateParsed;
       return dueon.isAtMost(currentMonthToDate!) &&
           target.bpSubGroup == "Advance Vendors";
     });
 
     currentMonthActualPayable = modeOfPayment.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return /*dueon.isAtLeast(currentMonthFromDate!) &&*/ dueon.isAtMost(
-        currentMonthToDate!,
-      );
+      DateTime dueon = target.postingDateParsed;
+      return dueon.isAtMost(currentMonthToDate!);
     });
 
     Set<String> processedVendorCodes = {};
@@ -2185,16 +2232,14 @@ class _PayableFinanceState extends State<PayableFinance> {
     double commitment = 0;
 
     customerTargetList = payablesList.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+      DateTime dueon = target.postingDateParsed;
       return dueon.isAtMost(currentMonthToDate!) &&
           target.bpSubGroup == "Capital Vendors";
     });
 
     currentMonthActualPayable = modeOfPayment.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return /*dueon.isAtLeast(currentMonthFromDate!) &&*/ dueon.isAtMost(
-        currentMonthToDate!,
-      );
+      DateTime dueon = target.postingDateParsed;
+      return dueon.isAtMost(currentMonthToDate!);
     });
 
     Set<String> processedVendorCodes = {};
@@ -2258,49 +2303,6 @@ class _PayableFinanceState extends State<PayableFinance> {
       vendorData: vendorWiseData,
     );
   }
-
-  // Future<void> _loadDocumentTypeAnalysis(String payable, String advancePaid,
-  //     String supplier, String supplierCategory, String documentType, String bpGroup,) async {
-  //   List<DocumentTypeData> customerWiseDataList = [];
-  //   var customerTargetList = const Iterable.empty();
-  //   double balance = 0.0;
-  //   String docType = "";
-  //
-  //   customerTargetList = payablesList.where((target) {
-  //     DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-  //     return dueon.isAtMost(currentMonthToDate!);
-  //   });
-  //
-  //   customerTargetList = filterPayablesList(
-  //     customerTargetList.cast<PayablesList>().toList(),
-  //     payable: payable,
-  //     advancePaid: advancePaid,
-  //     supplier: supplier,
-  //     supplierCategory: supplierCategory,
-  //     documentType: documentType,
-  //   );
-  //
-  //   Set<String> processedCustomerCodes = {};
-  //   for (var customer in customerTargetList.toList()) {
-  //     if (!processedCustomerCodes.contains(customer.documentType)) {
-  //       docType = customer.documentType;
-  //       for (var sales in customerTargetList
-  //           .where((saleelement) => saleelement.documentType == docType)) {
-  //         balance += double.tryParse(sales.balance) ?? 0;
-  //       }
-  //
-  //       customerWiseDataList.add(DocumentTypeData(
-  //         documentType: docType == "" ? "Others" : docType,
-  //         balance: balance.abs(),
-  //       ));
-  //       processedCustomerCodes.add(docType);
-  //     }
-  //     docType = "";
-  //     balance = 0;
-  //   }
-  //
-  //   documentList = DocumentTypeList(documentData: customerWiseDataList);
-  // }
 
   Future<void> _loadDocumentTypeAnalysis(
     String payable,
@@ -2386,7 +2388,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       _loadSupplierCategoryAnalysis("", "", "", "", "", ""),
       _loadDocumentTypeAnalysis("", "", "", "", "", ""),
       _loadFixedExpenses(),
-      _loadbpGroup("", "", "", "", "", ""),
+      _loadBpGroup("", "", "", "", "", ""),
       _loadAdvanceVendors(),
       _loadCapitalVendors(),
     ]);
@@ -2403,6 +2405,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     } else {
       savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
     }
+    await applyPayablesVariables();
     chartDataLoadedPayables = true;
   }
 
@@ -2414,76 +2417,83 @@ class _PayableFinanceState extends State<PayableFinance> {
     String? supplierCategory,
     String? documentType,
   }) {
-    List<PayablesList> filteredCollectionTargetList = [];
+    List<PayablesList> result = [];
+
     double dueFromReceivable = 0.0;
     double dueToReceivable = double.infinity;
     double dueFromAdvance = 0.0;
     double dueToAdvance = double.infinity;
-    if (payable != null && payable.isNotEmpty) {
-      if (payable == "0-30") {
-        dueFromReceivable = 0;
-        dueToReceivable = 30;
-      } else if (payable == "31-60") {
-        dueFromReceivable = 31;
-        dueToReceivable = 60;
-      } else if (payable == "61-90") {
-        dueFromReceivable = 61;
-        dueToReceivable = 90;
-      } else if (payable == "91-180") {
-        dueFromReceivable = 91;
-        dueToReceivable = 180;
-      } else if (payable == "180+") {
-        dueFromReceivable = 181;
-        dueToReceivable = double.infinity;
-      }
-    }
-    if (advancePaid != null && advancePaid.isNotEmpty) {
-      if (advancePaid == "0-30") {
-        dueFromAdvance = 0;
-        dueToAdvance = 30;
-      } else if (advancePaid == "31-60") {
-        dueFromAdvance = 31;
-        dueToAdvance = 60;
-      } else if (advancePaid == "61-90") {
-        dueFromAdvance = 61;
-        dueToAdvance = 90;
-      } else if (advancePaid == "91-180") {
-        dueFromAdvance = 91;
-        dueToAdvance = 180;
-      } else if (advancePaid == "180+") {
-        dueFromAdvance = 181;
-        dueToAdvance = double.infinity;
-      }
-    }
-    final now = DateTime.now();
-    for (var target in payableList) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      Duration difference = postingDate.difference(now);
-      int overDueDayAdvance = difference.inDays.abs();
-      double overDueDayReceivables =
-          double.tryParse(target.dueDays.replaceAll(' Days', '')) ?? 0;
 
-      if ((supplier == null ||
-              supplier.isEmpty ||
-              target.vendorName == supplier) &&
-          (supplierCategory == null ||
-              supplierCategory.isEmpty ||
-              target.vendorGroup == supplierCategory) &&
-          (documentType == null ||
-              documentType.isEmpty ||
-              target.documentType == documentType) &&
-          (payable == null ||
-              payable.isEmpty ||
+    if (payable != null && payable.isNotEmpty) {
+      switch (payable) {
+        case "0-30":
+          dueToReceivable = 30;
+          break;
+        case "31-60":
+          dueFromReceivable = 31;
+          dueToReceivable = 60;
+          break;
+        case "61-90":
+          dueFromReceivable = 61;
+          dueToReceivable = 90;
+          break;
+        case "91-180":
+          dueFromReceivable = 91;
+          dueToReceivable = 180;
+          break;
+        case "180+":
+          dueFromReceivable = 181;
+          break;
+      }
+    }
+
+    if (advancePaid != null && advancePaid.isNotEmpty) {
+      switch (advancePaid) {
+        case "0-30":
+          dueToAdvance = 30;
+          break;
+        case "31-60":
+          dueFromAdvance = 31;
+          dueToAdvance = 60;
+          break;
+        case "61-90":
+          dueFromAdvance = 61;
+          dueToAdvance = 90;
+          break;
+        case "91-180":
+          dueFromAdvance = 91;
+          dueToAdvance = 180;
+          break;
+        case "180+":
+          dueFromAdvance = 181;
+          break;
+      }
+    }
+
+    final hasSupplier = supplier != null && supplier.isNotEmpty;
+    final hasCategory = supplierCategory != null && supplierCategory.isNotEmpty;
+    final hasDocType = documentType != null && documentType.isNotEmpty;
+    final hasPayable = payable != null && payable.isNotEmpty;
+    final hasAdvance = advancePaid != null && advancePaid.isNotEmpty;
+
+    for (var target in payableList) {
+      final overDueDayAdvance = target.overDueDayAdvance;
+      final overDueDayReceivables = target.overDueDayReceivables;
+
+      if ((!hasSupplier || target.vendorName == supplier) &&
+          (!hasCategory || target.vendorGroup == supplierCategory) &&
+          (!hasDocType || target.documentType == documentType) &&
+          (!hasPayable ||
               (overDueDayReceivables >= dueFromReceivable &&
                   overDueDayReceivables <= dueToReceivable)) &&
-          (advancePaid == null ||
-              advancePaid.isEmpty ||
+          (!hasAdvance ||
               (overDueDayAdvance >= dueFromAdvance &&
                   overDueDayAdvance <= dueToAdvance))) {
-        filteredCollectionTargetList.add(target);
+        result.add(target);
       }
     }
-    return filteredCollectionTargetList;
+
+    return result;
   }
 
   Future<void> loadDataWithFilter(
@@ -2496,59 +2506,62 @@ class _PayableFinanceState extends State<PayableFinance> {
   ) async {
     clearVariablesForFilter();
     LoadDates();
-    await _loadPayablesData(
-      payable!,
-      advancePaid!,
-      supplier!,
-      supplierCategory!,
-      documentType!,
-      bpGroup!,
-    );
-    await _loadAdvancePaidData(
-      payable,
-      advancePaid,
-      supplier,
-      supplierCategory,
-      documentType,
-      bpGroup,
-    );
-    await _loadSupplierAnalysis(
-      payable,
-      advancePaid,
-      supplier,
-      supplierCategory,
-      documentType,
-      bpGroup,
-    );
-    await _loadSupplierCategoryAnalysis(
-      payable,
-      advancePaid,
-      supplier,
-      supplierCategory,
-      documentType,
-      bpGroup,
-    );
-    await _loadDocumentTypeAnalysis(
-      payable,
-      advancePaid,
-      supplier,
-      supplierCategory,
-      documentType,
-      bpGroup,
-    );
-    await _loadVendorPaymentProjection();
-    await _loadFixedExpenses();
-    await _loadbpGroup(
-      payable,
-      advancePaid,
-      supplier,
-      supplierCategory,
-      documentType,
-      bpGroup,
-    );
-    await _loadAdvanceVendors();
-    await _loadCapitalVendors();
-
+    payablesList = payablesListMaster;
+    await Future.wait([
+      _loadPayablesData(
+        payable!,
+        advancePaid!,
+        supplier!,
+        supplierCategory!,
+        documentType!,
+        bpGroup!,
+      ),
+      _loadAdvancePaidData(
+        payable,
+        advancePaid,
+        supplier,
+        supplierCategory,
+        documentType,
+        bpGroup,
+      ),
+      _loadSupplierAnalysis(
+        payable,
+        advancePaid,
+        supplier,
+        supplierCategory,
+        documentType,
+        bpGroup,
+      ),
+      _loadSupplierCategoryAnalysis(
+        payable,
+        advancePaid,
+        supplier,
+        supplierCategory,
+        documentType,
+        bpGroup,
+      ),
+      _loadDocumentTypeAnalysis(
+        payable,
+        advancePaid,
+        supplier,
+        supplierCategory,
+        documentType,
+        bpGroup,
+      ),
+      _loadVendorPaymentProjection(),
+      _loadFixedExpenses(),
+      _loadBpGroup(
+        payable,
+        advancePaid,
+        supplier,
+        supplierCategory,
+        documentType,
+        bpGroup,
+      ),
+      _loadAdvanceVendors(),
+      _loadCapitalVendors(),
+    ]);
+    await applyPayablesVariables();
     chartDataLoadedPayables = true;
   }
 
@@ -2569,6 +2582,8 @@ class _PayableFinanceState extends State<PayableFinance> {
 
   void clearVariables() {
     setState(() {
+      advance = 0.00;
+      payables = 0.00;
       chartDataLoadedPayables = false;
       payableGraphList = PayablesGraphList(agingData: []);
       receivableList = AdvancePaidToSupplierPayablesList(agingData: []);
@@ -2587,6 +2602,8 @@ class _PayableFinanceState extends State<PayableFinance> {
 
   void clearVariablesForFilter() {
     setState(() {
+      advance = 0.00;
+      payables = 0.00;
       chartDataLoadedPayables = false;
       payableGraphList = PayablesGraphList(agingData: []);
       receivableList = AdvancePaidToSupplierPayablesList(agingData: []);
@@ -2876,165 +2893,176 @@ class _PayableFinanceState extends State<PayableFinance> {
   void toggleCheckbox() {
     setState(() {
       payableDouble = 0;
-      advanceDouble = 0;
+      advance = 0;
       chartDataLoadedPayables = false;
       loadData("");
     });
   }
 
   Future<void> filterDateFunction() async {
+    // Step 1: show loading
     setState(() {
       chartDataLoadedPayables = false;
     });
+
+    // Step 2: reset base list
     payablesList = payablesListMaster;
+
     _dateFilterTarget();
-    await _loadPayablesData("", "", "", "", "", "");
-    await _loadAdvancePaidData("", "", "", "", "", "");
-    await _loadSupplierAnalysis("", "", "", "", "", "");
-    await _loadVendorPaymentProjection();
-    await _loadSupplierCategoryAnalysis("", "", "", "", "", "");
-    await _loadDocumentTypeAnalysis("", "", "", "", "", "");
-    await _loadbpGroup("", "", "", "", "", "");
-    await _loadAdvanceVendors();
-    await _loadCapitalVendors();
-    await _loadFixedExpenses();
-    setState(() {
-      notDue = 0;
-      overDue = 0;
-      netPayable = 0;
+    // Step 3: allow UI to render before heavy work
+    await Future.delayed(const Duration(milliseconds: 1));
 
-      payableDouble = 0;
-      advanceDouble = 0;
-      chartDataLoadedPayables = false;
-      List<String> trueCategoryOptions = (allCategoriesState['Category'] ?? {})
-          .entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    // Step 4: run your async loaders
+    await Future.wait([
+      _loadPayablesData("", "", "", "", "", ""),
+      _loadAdvancePaidData("", "", "", "", "", ""),
+      _loadSupplierAnalysis("", "", "", "", "", ""),
+      _loadVendorPaymentProjection(),
+      _loadSupplierCategoryAnalysis("", "", "", "", "", ""),
+      _loadDocumentTypeAnalysis("", "", "", "", "", ""),
+      _loadBpGroup("", "", "", "", "", ""),
+      _loadAdvanceVendors(),
+      _loadCapitalVendors(),
+      _loadFixedExpenses(),
+    ]);
 
-      List<String> trueSupplierOptions = (allCategoriesState['Supplier'] ?? {})
-          .entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    await applyPayablesVariables();
 
-      List<PayablesList> filteredList = [];
+    // // Step 5: PRE-COMPUTE EVERYTHING OUTSIDE setState
 
-      if (trueCategoryOptions.isNotEmpty) {
-        filteredList = payablesList
-            .where((person) => trueCategoryOptions.contains(person.vendorGroup))
-            .toList();
-        payablesList = filteredList;
-      }
+    // double notDueLocal = 0;
+    // double overDueLocal = 0;
+    // double netPayableLocal = 0;
 
-      if (trueSupplierOptions.isNotEmpty) {
-        filteredList = payablesList
-            .where((person) => trueSupplierOptions.contains(person.vendorName))
-            .toList();
-        payablesList = filteredList;
-      }
+    // double payableSum = 0;
+    // // double advanceSum = 0;
+    // double payablesSum = 0;
 
-      chartDataLoadedPayables = true;
+    // final trueCategoryOptions = (allCategoriesState['Category'] ?? {}).entries
+    //     .where((entry) => entry.value)
+    //     .map((entry) => entry.key)
+    //     .toList();
 
-      filterOptions = [listOfCategory, listOfSupplier, []];
+    // final trueSupplierOptions = (allCategoriesState['Supplier'] ?? {}).entries
+    //     .where((entry) => entry.value)
+    //     .map((entry) => entry.key)
+    //     .toList();
 
-      savedFinanceReceivablesOptions = filterOptions
-          .map((options) => List<bool>.filled(options.length, false))
-          .toList();
+    // // Step 6: FILTER + CALCULATE (single loop, optimized)
 
-      if (savedFinanceReceivablesOptionsTemp.isEmpty) {
-        savedFinanceReceivablesOptions = filterOptions
-            .map((options) => List<bool>.filled(options.length, false))
-            .toList();
-      } else {
-        savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
-      }
-      // selectedCheckbox = index;
+    // final filteredList = <PayablesList>[];
 
-      double payableSum = 0;
-      double advanceSum = 0;
-      double payablesSum = 0;
-      List<PayablesList> currentMonthTarget = payablesList.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-        return dueon.isAtMost(currentMonthToDate!) &&
-            target.ageingBrackets != "Future";
-      }).toList();
+    // for (int i = 0; i < payablesList.length; i++) {
+    //   final target = payablesList[i];
 
-      for (var target in currentMonthTarget.toList()) {
-        double balance = double.tryParse(target.balance) ?? 0;
-        double balanceAbs = balance;
-        payableSum += balanceAbs;
-        if (balance > 0) {
-          advanceSum += balance;
-        }
-        if (balance < 0) {
-          payablesSum += balance;
-        }
-      }
+    //   final matchCategory =
+    //       trueCategoryOptions.isEmpty ||
+    //       trueCategoryOptions.contains(target.vendorGroup);
 
-      payableStr = formatAmount(payablesSum.abs());
+    //   final matchSupplier =
+    //       trueSupplierOptions.isEmpty ||
+    //       trueSupplierOptions.contains(target.vendorName);
 
-      advanceStr = formatAmount(advanceSum);
-      // payableStr = formatAmount(payableSum);
-      payableAdvanceStr = formatAmount(payableSum.abs());
-      payableAdvancePercentage =
-          double.tryParse(
-            ((advanceSum.abs() / (payableSum.abs())) * 100).toStringAsFixed(0),
-          )?.ceil() ??
-          0;
-      if (payableAdvancePercentage > 100) {
-        payableAdvancePercentage = 100;
-      }
+    //   if (!(matchCategory && matchSupplier)) continue;
 
-      var notOverDue = payablesList;
-      for (var target in notOverDue.toList()) {
-        String future = target.ageingBrackets;
-        if (future == 'Future') {
-          // notDue += balance;
-        }
-      }
+    //   filteredList.add(target);
 
-      double netPayableSum = 0;
+    //   final dueon = target.postingDateParsed;
 
-      for (var target in payablesList.toList()) {
-        // overDueSum += balance;
-        double balance = double.tryParse(target.balance) ?? 0;
-        String future = target.ageingBrackets;
-        if (balance < 0) {
-          netPayableSum += balance;
-        }
-        if (future != "Future" && balance < 0) {
-          overDue += balance;
-        }
-        if (future == "Future" && balance < 0) {
-          notDue += balance;
-        }
-      }
+    //   // use cached value (IMPORTANT)
+    //   final balance = target.balanceParsed;
+    //   final future = target.ageingBrackets;
 
-      netPayable = /* notDue +*/ netPayableSum;
-      netPayableStr = "";
-      netPayableStr = formatAmount(netPayable.abs());
-      // overDue = overDueSum;
-      overDueStr = formatAmount(overDue.abs());
-      notDueStr = formatAmount(notDue.abs());
+    //   // current month calculation
+    //   if (dueon.isAtMost(currentMonthToDate!) && future != "Future") {
+    //     payableSum += balance;
 
-      if (overDue == 0 || netPayable == 0) {
-        netPayablePercentage = 0;
-      } else {
-        netPayablePercentage =
-            double.tryParse(
-              ((overDue / (netPayable)) * 100).toStringAsFixed(2),
-            )?.ceil() ??
-            0;
-      }
+    //     if (balance > 0) {
+    //       // advanceSum += balance;
+    //     } else {
+    //       payablesSum += balance;
+    //     }
+    //   }
 
-      if (netPayablePercentage > 100) {
-        netPayablePercentage = 100;
-      }
-      setState(() {
-        chartDataLoadedPayables = true;
-      });
-    });
+    //   // net payable calculation
+    //   if (balance < 0) {
+    //     netPayableLocal += balance;
+
+    //     if (future != "Future") {
+    //       overDueLocal += balance;
+    //     } else {
+    //       notDueLocal += balance;
+    //     }
+    //   }
+
+    //   // optional: prevent UI freeze for large data
+    //   if (i % 200 == 0) {
+    //     await Future.delayed(Duration.zero);
+    //   }
+    // }
+
+    // // Step 7: calculations
+
+    // final payableStrLocal = formatAmount(payablesSum.abs());
+    // final advanceStrLocal = formatAmount(advance);
+    // final payableAdvanceStrLocal = formatAmount(payableSum.abs());
+
+    // int payableAdvancePercentageLocal = 0;
+
+    // if (payableSum != 0) {
+    //   payableAdvancePercentageLocal = ((advance.abs() / payableSum.abs()) * 100)
+    //       .ceil();
+    // }
+
+    // if (payableAdvancePercentageLocal > 100) {
+    //   payableAdvancePercentageLocal = 100;
+    // }
+
+    // final netPayableStrLocal = formatAmount(netPayableLocal.abs());
+    // final overDueStrLocal = formatAmount(overDueLocal.abs());
+    // final notDueStrLocal = formatAmount(notDueLocal.abs());
+
+    // int netPayablePercentageLocal = 0;
+
+    // if (overDueLocal != 0 && netPayableLocal != 0) {
+    //   netPayablePercentageLocal = ((overDueLocal / netPayableLocal) * 100)
+    //       .ceil();
+    // }
+
+    // if (netPayablePercentageLocal > 100) {
+    //   netPayablePercentageLocal = 100;
+    // }
+
+    // // Step 8: update UI ONCE
+
+    // setState(() {
+    //   payablesList = filteredList;
+
+    //   notDue = notDueLocal;
+    //   overDue = overDueLocal;
+    //   netPayable = netPayableLocal;
+
+    //   payableStr = payableStrLocal;
+    //   advanceStr = advanceStrLocal;
+    //   payableAdvanceStr = payableAdvanceStrLocal;
+    //   payableAdvancePercentage = payableAdvancePercentageLocal;
+
+    //   netPayableStr = netPayableStrLocal;
+    //   overDueStr = overDueStrLocal;
+    //   notDueStr = notDueStrLocal;
+    //   netPayablePercentage = netPayablePercentageLocal;
+
+    //   filterOptions = [listOfCategory, listOfSupplier, []];
+
+    //   savedFinanceReceivablesOptions =
+    //       savedFinanceReceivablesOptionsTemp.isEmpty
+    //       ? filterOptions
+    //             .map((options) => List<bool>.filled(options.length, false))
+    //             .toList()
+    //       : savedFinanceReceivablesOptionsTemp;
+
+    //   chartDataLoadedPayables = true;
+    // });
   }
 
   String getSelectedFiltersText(
@@ -3096,7 +3124,7 @@ class _PayableFinanceState extends State<PayableFinance> {
   @override
   void initState() {
     super.initState();
-
+    clearVariables();
     filterOptions = [listOfCategory, listOfSupplier, []];
 
     selectedFinanceReceivablesOptions = filterOptions
@@ -3248,7 +3276,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  "OverDue $overDueStr",
+                                  "Over Due $overDueStr",
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 10.0,
@@ -3925,7 +3953,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${payableGraphList.agingData[0].agingGroup} :'
-                            ' ${(payableGraphList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ' ${formatAmount(payableGraphList.agingData[0].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -3935,7 +3963,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${payableGraphList.agingData[1].agingGroup} '
-                            ': ${(payableGraphList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(payableGraphList.agingData[1].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -3945,7 +3973,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${payableGraphList.agingData[2].agingGroup} '
-                            ': ${(payableGraphList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(payableGraphList.agingData[2].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -3955,7 +3983,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${payableGraphList.agingData[3].agingGroup} '
-                            ': ${(payableGraphList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(payableGraphList.agingData[3].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -3965,7 +3993,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${payableGraphList.agingData[4].agingGroup} '
-                            ': ${(payableGraphList.agingData[4].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(payableGraphList.agingData[4].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -3975,9 +4003,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${payableGraphList.agingData[5].agingGroup} '
-                            ': ${(payableGraphList.agingData[5].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(payableGraphList.agingData[5].agingGroupTotal)} \n',
                         style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
+                          color: Colors.black,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -3985,7 +4013,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             'Total'
-                            ': ${((payableGraphList.agingData[5].agingGroupTotal + payableGraphList.agingData[4].agingGroupTotal + payableGraphList.agingData[3].agingGroupTotal + payableGraphList.agingData[2].agingGroupTotal + payableGraphList.agingData[1].agingGroupTotal + payableGraphList.agingData[0].agingGroupTotal) / 100000).toStringAsFixed(2)} L',
+                            ': ${formatAmount(payableGraphList.agingData[5].agingGroupTotal + payableGraphList.agingData[4].agingGroupTotal + payableGraphList.agingData[3].agingGroupTotal + payableGraphList.agingData[2].agingGroupTotal + payableGraphList.agingData[1].agingGroupTotal + payableGraphList.agingData[0].agingGroupTotal)}',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4124,7 +4152,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${receivableList.agingData[0].agingGroup} :'
-                            ' ${(receivableList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ' ${(receivableList.agingData[0].agingGroupTotal / 1000000).toStringAsFixed(2)} L\n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4134,7 +4162,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${receivableList.agingData[1].agingGroup} '
-                            ': ${(receivableList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(receivableList.agingData[1].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4144,7 +4172,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${receivableList.agingData[2].agingGroup} '
-                            ': ${(receivableList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(receivableList.agingData[2].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4154,7 +4182,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${receivableList.agingData[3].agingGroup} '
-                            ': ${(receivableList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(receivableList.agingData[3].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4164,7 +4192,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${receivableList.agingData[4].agingGroup} '
-                            ': ${(receivableList.agingData[4].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(receivableList.agingData[4].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4174,7 +4202,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             '${receivableList.agingData[5].agingGroup} '
-                            ': ${(receivableList.agingData[5].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                            ': ${formatAmount(receivableList.agingData[5].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4184,7 +4212,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             'Total'
-                            ': ${((receivableList.agingData[5].agingGroupTotal + receivableList.agingData[4].agingGroupTotal + receivableList.agingData[3].agingGroupTotal + receivableList.agingData[2].agingGroupTotal + receivableList.agingData[1].agingGroupTotal + receivableList.agingData[0].agingGroupTotal) / 100000).toStringAsFixed(2)} L',
+                            ': ${formatAmount(receivableList.agingData[5].agingGroupTotal + receivableList.agingData[4].agingGroupTotal + receivableList.agingData[3].agingGroupTotal + receivableList.agingData[2].agingGroupTotal + receivableList.agingData[1].agingGroupTotal + receivableList.agingData[0].agingGroupTotal)}',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,

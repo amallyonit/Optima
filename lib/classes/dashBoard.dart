@@ -580,7 +580,8 @@ class DebtorsAgingList {
   final String a181Days;
   final String eKartNo;
   final String commitment;
-
+  late DateTime parsedDueDate;
+  late DateTime parsedPostingDate;
   DebtorsAgingList({
     required this.salesManager,
     required this.regionalManager,
@@ -1664,6 +1665,11 @@ class PayablesList {
   final String a181Days;
   final String bpSubGroup;
   final String commitment;
+
+  late DateTime postingDateParsed;
+  late int overDueDayAdvance;
+  late double overDueDayReceivables;
+  late double balanceParsed;
 
   PayablesList({
     required this.vendorGroup,
@@ -2762,6 +2768,7 @@ class ModeOfPaymentList {
   final String documentTotal;
   final String remarks;
   final String bpSubGroup;
+  late DateTime postingDateParsed;
 
   ModeOfPaymentList({
     required this.documentNo,
