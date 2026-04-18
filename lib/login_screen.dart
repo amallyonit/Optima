@@ -103,8 +103,16 @@ class LoginScreenState extends State<LoginScreen> {
     if (validToken) {
       DataManager.saveSapToken(sapToken);
       isUserLoggedIn = await DataManager.readLoginStatus();
-      setSelectedDate();
-      navigateToHomePage();
+      if (isUserLoggedIn) {
+        setSelectedDate();
+        navigateToHomePage();
+      } else {
+        // Token is valid but user is not logged in; stop showing the loading indicator
+        setState(() {
+          setLoginStatus();
+          _isLoading = false;
+        });
+      }
     } else {
       // User not logged in; stop showing the loading indicator
       setState(() {

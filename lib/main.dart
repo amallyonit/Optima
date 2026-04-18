@@ -16,6 +16,12 @@ import 'http_override.dart';
 import 'login_screen.dart';
 import 'versionservice.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+
+@pragma('vm:entry-point')
+void downloadCallback(String id, int status, int progress) {
+  debugPrint("Download status: $status, progress: $progress");
+}
 
 Future<void> _deleteCacheDir() async {
   final cacheDir = await getTemporaryDirectory();
@@ -35,7 +41,7 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
   };
 }
 
-void main() {
+void main() async {
   HttpOverrides.global = MyHttpOverrides();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -43,6 +49,12 @@ void main() {
           Colors.transparent, // Set the status bar to be transparent
     ),
   );
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb) {
+    await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
+    FlutterDownloader.registerCallback(downloadCallback);
+  }
 
   runApp(
     MultiProvider(providers: AppProviders.providers, child: const MyApp()),

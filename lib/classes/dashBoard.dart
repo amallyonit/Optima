@@ -1433,6 +1433,7 @@ class CashFlowList {
   final String reference3;
   final String remarks;
   final String category;
+  late DateTime postingDateParsed;
 
   CashFlowList({
     required this.documentNo,

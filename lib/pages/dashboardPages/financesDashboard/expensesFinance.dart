@@ -1,12 +1,10 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,12 +13,10 @@ import 'package:http/http.dart' as http;
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
 import '../../../api_helper.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+final reportService = ReportService();
 
 class ExpensesFinance extends StatefulWidget {
   const ExpensesFinance({super.key});
@@ -645,107 +641,6 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
     groupList = GroupWiseAnalysisExpensesList(groupData: groupWiseDataList);
   }
 
-  // Future<void> _loadSubGroupWiseAnalysis(
-  //     String? touchedMonth,
-  //   int monthIndex,
-  //   String? group,
-  //   String? subGroup,
-  // ) async {
-  //   List<SubGroupWiseAnalysisExpensesData> subGroupWiseDataList = [];
-  //   var customerTargetList = const Iterable.empty();
-  //   double balance = 0.0;
-  //   String subGroupName = "";
-  //
-  //   // Use fallback if fromDateFilter or toDateFilter is null
-  //   final from = fromDateFilter ?? fiscalYearStartDate;
-  //   final to = toDateFilter ?? DateTime.now(); // Optional fallback
-  //
-  //   var fromYM = from!.year * 100 + from.month;
-  //   var toYM = to.year * 100 + to.month;
-  //
-  //   if (monthIndex == 0) {
-  //     customerTargetList = expensesList.where((target) {
-  //       final parts = target.monthYear.split('/');
-  //       final month = int.parse(parts[0]);
-  //       final year = int.parse(parts[1]);
-  //       final targetYM = year * 100 + month;
-  //
-  //       return targetYM >= fromYM && targetYM <= toYM;
-  //     }).toList();
-  //
-  //     customerTargetList = filterExpensesList(
-  //       customerTargetList.cast<ExpensesList>().toList(),
-  //       group: group,
-  //       subGroup: subGroup,
-  //     );
-  //
-  //     Set<String> processedSubGroupCodes = {};
-  //
-  //     for (var customer in customerTargetList
-  //         .where((customer) => customer.group == "Expenditure")
-  //         .toList()) {
-  //       if (!processedSubGroupCodes.contains(customer.subGroup)) {
-  //         subGroupName = customer.subGroup;
-  //         for (var sales in customerTargetList
-  //             .where((saleelement) => saleelement.subGroup == subGroupName)) {
-  //           balance += double.tryParse(sales.balance) ?? 0;
-  //         }
-  //
-  //         subGroupWiseDataList.add(SubGroupWiseAnalysisExpensesData(
-  //           subGroupName: subGroupName,
-  //           balance: balance,
-  //         ));
-  //         balance = 0;
-  //         processedSubGroupCodes.add(subGroupName);
-  //       }
-  //     }
-  //   } else {
-  //     Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-  //     fromYM = currentDate!.year * 100 + monthDates['end']!.month;
-  //     toYM = currentDate!.year * 100 + monthDates['end']!.month;
-  //     customerTargetList = expensesList.where((target) {
-  //       final parts = target.monthYear.split('/');
-  //       final month = int.parse(parts[0]);
-  //       final year = int.parse(parts[1]);
-  //       final targetYM = year * 100 + month;
-  //
-  //       return targetYM >= fromYM && targetYM <= toYM;
-  //     }).toList();
-  //
-  //     customerTargetList = filterExpensesList(
-  //       customerTargetList.cast<ExpensesList>().toList(),
-  //       group: group,
-  //       subGroup: subGroup,
-  //     );
-  //
-  //     Set<String> processedSubGroupCodes = {};
-  //
-  //     for (var customer in customerTargetList
-  //         .where((customer) => customer.group == "Expenditure")
-  //         .toList()) {
-  //       if (!processedSubGroupCodes.contains(customer.subGroup)) {
-  //         subGroupName = customer.subGroup;
-  //         for (var sales in customerTargetList
-  //             .where((saleelement) => saleelement.subGroup == subGroupName)) {
-  //           balance += double.tryParse(sales.balance) ?? 0;
-  //         }
-  //
-  //         subGroupWiseDataList.add(SubGroupWiseAnalysisExpensesData(
-  //           subGroupName: subGroupName,
-  //           balance: balance,
-  //         ));
-  //         balance = 0;
-  //         processedSubGroupCodes.add(subGroupName);
-  //       }
-  //     }
-  //   }
-  //
-  //   subGroupWiseDataList
-  //       .sort((a, b) => b.balance.abs().compareTo(a.balance.abs()));
-  //   subGroupList =
-  //       SubGroupWiseAnalysisExpensesList(subGroupData: subGroupWiseDataList);
-  // }
-
   Future<void> _loadSubGroupWiseAnalysis(
     String? touchedMonth,
     int monthIndex,
@@ -975,331 +870,75 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
   Future<void> generateGroupWiseExcel(
     GroupWiseAnalysisExpensesList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Group', 'Total']));
-      for (var data in list.groupData) {
-        sheet.appendRow(toCellRow([data.groupName, data.balance]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('groupWiseAnalysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/groupWiseAnalysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'GroupWiseAnalysis',
+      headers: ['Group Name', 'Total Amount'],
+      rows: list.groupData.map((e) => [e.groupName, e.balance]).toList(),
+      fileName: 'groupwise_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Expenses - Groupwise Analysis',
+    );
   }
 
   Future<void> generateGroupWisePDF() async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Group Wise Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in groupList.groupData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.groupName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/groupWiseAnalysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Group Wise Analysis',
+      headers: ['Group Name', 'Total Amount'],
+      rows: groupList.groupData.map((e) => [e.groupName, e.balance]).toList(),
+      fileName: 'groupwise_analysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateSubGroupWiseExcel(
     SubGroupWiseAnalysisExpensesList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['SubGroup', 'Total']));
-      for (var data in list.subGroupData) {
-        sheet.appendRow(toCellRow([data.subGroupName, data.balance]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('SubGroupWiseAnalysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/SubGroupWiseAnalysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'SubgroupWiseAnalysis',
+      headers: ['Subgroup Name', 'Total Amount'],
+      rows: list.subGroupData.map((e) => [e.subGroupName, e.balance]).toList(),
+      fileName: 'SubgroupWiseAnalysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Expenses - Sub Group Wise Analysis',
+    );
   }
 
   Future<void> generateSubGroupWisePDF() async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sub Group Wise Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Sub Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in subGroupList.subGroupData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.subGroupName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/SubGroupWiseAnalysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Sub Group Wise Analysis',
+      headers: ['Group Name', 'Total Amount'],
+      rows: subGroupList.subGroupData
+          .map((e) => [e.subGroupName, e.balance])
+          .toList(),
+      fileName: 'Subgroupwise_analysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateMonthlyAnalysisExcel(
     DailyAnalysisExpensesList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Total']));
-      for (var data in list.dailyData) {
-        sheet.appendRow(toCellRow([data.date, data.balance]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthlyAnalysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyAnalysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'MonthlyAnalysis',
+      headers: ['Month ', 'Total Amount'],
+      rows: list.dailyData.map((e) => [e.date, e.balance]).toList(),
+      fileName: 'monthlyAnalysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Expenses - Monthly Analysis',
+    );
   }
 
   Future<void> generateMonthlyAnalysisPDF() async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sub Group Wise Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Sub Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in subGroupList.subGroupData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.subGroupName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/SubGroupWiseAnalysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Monthly Analysis',
+      headers: ['Month ', 'Total Amount'],
+      rows: dailyData.dailyData.map((e) => [e.date, e.balance]).toList(),
+      fileName: 'monthlyAnalysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   void toggleCheckbox() {
@@ -1309,23 +948,6 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
       // selectedCheckbox = index;
     });
   }
-
-  // Future<void> _dateFilterTargetOld() async {
-  //   expensesList = expensesListTemp;
-  //   DateFormat formatter = DateFormat('dd/MM/yyyy');
-
-  //   setState(() {
-  //     context
-  //         .read<FinanceExpensesBIProvider>()
-  //         .updateCollectionList(expensesList);
-
-  //     expensesList = expensesList.where((target) {
-  //       DateTime toDt = formatter.parse('31/${target.monthYear}');
-  //       return (toDt.isAtLeast(fromDateFilter!) &&
-  //           toDt.isAtMost(toDateFilter!));
-  //     }).toList();
-  //   });
-  // }
 
   Future<void> _dateFilterTarget() async {
     expensesList = expensesListTemp;

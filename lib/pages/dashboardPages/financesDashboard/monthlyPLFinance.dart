@@ -1,14 +1,12 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
-import 'package:excel/excel.dart' as xl;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,10 +16,10 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
-import 'package:pdf/widgets.dart' as pw;
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+import '../ReportService.dart';
+
+final reportService = ReportService();
 
 class MonthlyInventoryData {
   final String monthYear; // e.g. "Mar 2025"
@@ -252,38 +250,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     fromDateFilter = fiscalYearStartDate;
   }
 
-  Future<void> loadData(String selectedUser) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userName = selectedUser == ""
-        ? prefs.getString('userName') ?? ''
-        : selectedUser;
-    userLevel = prefs.getString('userLevel') ?? '';
-    await _loadTrialBalance(userName, userLevel);
-    await _loadPurchasePrice(userName, userLevel);
-    await _loadInventory(userName, userLevel);
-    await _loadInventoryClosing(userName, userLevel);
-    await _loadSales(userName, userLevel);
-    await _loadGRN(userName, userLevel);
-    await _loadSalesTarget(userName, userLevel);
-    await loadMonthlyInventory(userName, userLevel);
-    monthlyMap = buildMonthlyTargets(salesTarget);
-
-    _loadSubGroupWiseAnalysis(0, "", "");
-    _loadMonthlyAnalysisExpenditure();
-    _loadMonthlyAnalysisPurchase();
-    _loadMonthlySalesBarChartData();
-    _loadMonthlyAnalysisRevenue();
-    _loadMonthlyAnalysisInventory();
-    _loadMonthlyAnalysisInventoryClosing();
-    _loadSubGroupMonthWiseAnalysisExpenditure();
-    _loadSubGroupMonthWiseAnalysisRevenue();
-    _loadOtherIncomeMonthWiseAnalysisRevenue();
-    _loadForeignNameMonthWiseAnalysisRevenue();
-    setState(() {
-      chartDataLoadedMonthlyPl = true;
-    });
-  }
-
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
@@ -326,6 +292,261 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
   String getMonthName(int month) {
     final formatter = DateFormat('MMMM');
     return formatter.format(DateTime(2000, month));
+  }
+
+  int _lastDayOfMonth(int year, int month) {
+    final nextMonth = (month < 12)
+        ? DateTime(year, month + 1, 1)
+        : DateTime(year + 1, 1, 1);
+    return nextMonth.subtract(const Duration(days: 1)).day;
+  }
+
+  List<MonthlyCogsData> calculateMonthlyCogs({
+    required List<MonthlyInventoryData> inventoryList,
+    required List<DailyAnalysisExpensesData> purchaseMonthlyData,
+    required Map<String, List<double>> targetMap,
+  }) {
+    List<MonthlyCogsData> cogsList = [];
+
+    for (int i = 1; i < inventoryList.length; i++) {
+      final curr = inventoryList[i];
+      final prev = inventoryList[i - 1];
+      final monthYear = curr.monthYear; // e.g. "Apr 2025"
+      final monthIdx = monthIndexFromString(monthYear);
+
+      final openingStock = prev.inventory.fold(
+        0.0,
+        (sum, item) => sum + double.parse(item.totalValue),
+      );
+      final closingStock = curr.inventory.fold(
+        0.0,
+        (sum, item) => sum + double.parse(item.totalValue),
+      );
+      final purchases = (i - 1 < purchaseMonthlyData.length)
+          ? purchaseMonthlyData[i - 1].balance
+          : 0.0;
+      final cogs = openingStock + purchases - closingStock;
+
+      final cogsTarget =
+          (targetMap['COGS TARGET'] != null &&
+              monthIdx < targetMap['COGS TARGET']!.length)
+          ? targetMap['COGS TARGET']![monthIdx]
+          : 0.0;
+      final inventoryTarget =
+          (targetMap['INVENTORY TARGET'] != null &&
+              monthIdx < targetMap['INVENTORY TARGET']!.length)
+          ? targetMap['INVENTORY TARGET']![monthIdx]
+          : 0.0;
+
+      cogsList.add(
+        MonthlyCogsData(
+          monthYear: monthYear,
+          openingStock: openingStock,
+          purchases: purchases,
+          closingStock: closingStock,
+          cogs: cogs,
+          cogsTarget: cogsTarget,
+          inventoryTarget: inventoryTarget,
+        ),
+      );
+    }
+
+    return cogsList;
+  }
+
+  int monthIndexFromString(String monthYear) {
+    final monthPart = monthYear.split(RegExp(r'[-\s]')).first;
+
+    const monthMap = {
+      'Jan': 0,
+      'January': 0,
+      'Feb': 1,
+      'February': 1,
+      'Mar': 2,
+      'March': 2,
+      'Apr': 3,
+      'April': 3,
+      'May': 4,
+      'Jun': 5,
+      'June': 5,
+      'Jul': 6,
+      'July': 6,
+      'Aug': 7,
+      'August': 7,
+      'Sep': 8,
+      'September': 8,
+      'Oct': 9,
+      'October': 9,
+      'Nov': 10,
+      'November': 10,
+      'Dec': 11,
+      'December': 11,
+    };
+
+    return monthMap[monthPart] ?? 0;
+  }
+
+  String getCurrentFinancialYearSuffix() {
+    final now = DateTime.now();
+    final year = now.year;
+    final month = now.month;
+
+    int startYear = (month >= 4) ? year : year - 1;
+    int endYear = startYear + 1;
+
+    return "FY${startYear % 100}-${endYear % 100}-T";
+  }
+
+  Map<String, List<double>> buildMonthlyTargets(List<SalesTargetList> data) {
+    const reps = [
+      'MD SALES TARGET',
+      'IPD SALES TARGET',
+      'PURCHASE TARGET',
+      'COGS TARGET',
+      'INVENTORY TARGET',
+      'PRODUCTION TARGET',
+    ];
+
+    final result = {for (var rep in reps) rep: List<double>.filled(12, 0.0)};
+    final suffix = getCurrentFinancialYearSuffix();
+
+    // Filter API data to current financial year
+    final currentYearList = data.where((e) => e.financialYear == suffix);
+
+    // Populate month values
+    for (var i = 1; i <= 12; i++) {
+      final monthName = getMonthName(i);
+      for (var entry in currentYearList) {
+        if (!result.containsKey(entry.salesRep)) continue;
+        final value = double.tryParse(entry.getTargetForMonth(monthName)) ?? 0;
+        result[entry.salesRep]![i - 1] = value;
+      }
+    }
+
+    return result;
+  }
+
+  Future<void> loadData(String selectedUser) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userName = selectedUser == ""
+        ? prefs.getString('userName') ?? ''
+        : selectedUser;
+    userLevel = prefs.getString('userLevel') ?? '';
+    await Future.wait([
+      _loadTrialBalance(userName, userLevel),
+      _loadPurchasePrice(userName, userLevel),
+      _loadInventory(userName, userLevel),
+      _loadSales(userName, userLevel),
+      _loadGRN(userName, userLevel),
+      _loadSalesTarget(userName, userLevel),
+      loadMonthlyInventory(userName, userLevel),
+    ]);
+    monthlyMap = buildMonthlyTargets(salesTarget);
+    await Future.wait([
+      _loadSubGroupWiseAnalysis(0, "", ""),
+      _loadMonthlyAnalysisExpenditure(),
+      _loadMonthlyAnalysisPurchase(),
+      _loadMonthlySalesBarChartData(),
+      _loadMonthlyAnalysisRevenue(),
+      _loadMonthlyAnalysisInventory(),
+      _loadMonthlyAnalysisInventoryClosing(),
+      _loadSubGroupMonthWiseAnalysisExpenditure(),
+      _loadSubGroupMonthWiseAnalysisRevenue(),
+      _loadOtherIncomeMonthWiseAnalysisRevenue(),
+      _loadForeignNameMonthWiseAnalysisRevenue(),
+    ]);
+    setState(() {
+      chartDataLoadedMonthlyPl = true;
+    });
+  }
+
+  Future<List<MonthlyInventoryData>> loadMonthlyInventory(
+    String userName,
+    String userLevel,
+  ) async {
+    final now = DateTime.now();
+    final fyStartYear = (now.month >= 4) ? now.year : now.year - 1;
+
+    List<Future<MonthlyInventoryData>> futures = [];
+
+    DateTime cursor = DateTime(fyStartYear, 3, 31);
+    final endDate = DateTime(
+      now.year,
+      now.month,
+      _lastDayOfMonth(now.year, now.month),
+    );
+
+    while (!cursor.isAfter(endDate)) {
+      final date = cursor;
+
+      futures.add(() async {
+        final data = await _fetchInventoryPaged(
+          toDate: DateFormat('yyyyMMdd').format(date),
+        );
+
+        return MonthlyInventoryData(
+          monthYear: DateFormat('MMM yyyy').format(date),
+          inventory: data,
+        );
+      }());
+
+      final nextMonth = date.month < 12
+          ? DateTime(date.year, date.month + 1, 1)
+          : DateTime(date.year + 1, 1, 1);
+
+      cursor = DateTime(
+        nextMonth.year,
+        nextMonth.month,
+        _lastDayOfMonth(nextMonth.year, nextMonth.month),
+      );
+    }
+
+    final result = await Future.wait(futures);
+    monthWiseInventory = result;
+
+    return result;
+  }
+
+  Future<List<InventoryList>> _fetchInventoryPaged({
+    required String toDate,
+  }) async {
+    int index = 0;
+    int limit = 10000;
+    int fetchedCount = 0;
+
+    List<InventoryList> allItems = [];
+
+    do {
+      final body = {
+        "ToDate": toDate,
+        "Index": index.toString(),
+        "Limit": limit.toString(),
+        "sapToken": DataManager.readSapToken(),
+      };
+
+      const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['responseData'] as List?;
+        final items = data != null
+            ? data.map((e) => InventoryList.fromJson(e)).toList()
+            : <InventoryList>[];
+
+        allItems.addAll(items);
+        fetchedCount = items.length;
+        index++;
+      } else {
+        fetchedCount = 0;
+      }
+    } while (fetchedCount == limit);
+
+    return allItems;
   }
 
   Future<void> _loadTrialBalance(String userName, String userLevel) async {
@@ -478,152 +699,29 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     }
   }
 
-  Future<void> _loadInventory(String UserName, String UserLevel) async {
-    int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
-    List<InventoryList> salesList = [];
+  Future<void> _loadInventory(String userName, String userLevel) async {
     try {
-      do {
-        var body = {
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(lastMonthToDate!),
-          "Index": index.toString(),
-          "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken(),
-        };
-        const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
-        final response = await http.post(
-          Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
-          },
-          body: jsonEncode(body),
-        );
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(lastMonthToDate!);
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => InventoryList.fromJson(item))
-                    .toList();
+      final invList = await _fetchInventoryPaged(toDate: toDate);
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+      if (!mounted) return;
 
       setState(() {
-        context.read<InventoryMonthlyPLProvider>().updateInventoryList(
-          salesList,
-        );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          inventory = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          inventory = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          inventory = salesList.toList();
-        } else {
-          inventory = salesList.toList();
-        }
-      });
-    } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
-    }
-  }
-
-  Future<void> _loadInventoryClosing(String UserName, String UserLevel) async {
-    int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
-    List<InventoryList> salesList = [];
-    try {
-      do {
-        var body = {
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
-          "Index": index.toString(),
-          "Limit": limit.toString(),
-          "sapToken": DataManager.readSapToken(),
-        };
-        const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
-        final response = await http.post(
-          Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
-          },
-          body: jsonEncode(body),
-        );
-
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => InventoryList.fromJson(item))
-                    .toList();
-
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
-
-      setState(() {
+        context.read<InventoryMonthlyPLProvider>().updateInventoryList(invList);
         context.read<InventoryClosingMonthlyPLProvider>().updateInventoryList(
-          salesList,
+          invList,
         );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          inventoryClosing = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          inventoryClosing = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          inventoryClosing = salesList.toList();
-        } else {
-          inventoryClosing = salesList.toList();
-        }
+        inventory = invList;
+        inventoryClosing = invList;
       });
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -735,11 +833,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         const apiUrl = '${ApiHelper.baseUrl}BicxoGoodsReceiptNoteList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -894,308 +988,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     }
   }
 
-  int _lastDayOfMonth(int year, int month) {
-    final nextMonth = (month < 12)
-        ? DateTime(year, month + 1, 1)
-        : DateTime(year + 1, 1, 1);
-    return nextMonth.subtract(const Duration(days: 1)).day;
-  }
-
-  Future<List<InventoryList>> _fetchInventoryForDate(
-    DateTime toDate,
-    String userName,
-    String userLevel,
-  ) async {
-    int index = 0, limit = 10000, fetchedCount = 0;
-    List<InventoryList> allItems = [];
-
-    final formattedToDate = DateFormat('yyyyMMdd').format(toDate);
-
-    do {
-      final body = {
-        "ToDate": formattedToDate,
-        "Index": index.toString(),
-        "Limit": limit.toString(),
-        "sapToken": DataManager.readSapToken(),
-      };
-      const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-        body: jsonEncode(body),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)['responseData'] as List?;
-        final items = data != null
-            ? data.map((e) => InventoryList.fromJson(e)).toList()
-            : <InventoryList>[];
-        allItems.addAll(items);
-        fetchedCount = items.length;
-        index++;
-      } else {
-        fetchedCount = 0;
-      }
-    } while (fetchedCount == limit);
-
-    return allItems;
-  }
-
-  Future<List<MonthlyInventoryData>> loadMonthlyInventory(
-    String userName,
-    String userLevel,
-  ) async {
-    final now = DateTime.now();
-    final fyStartYear = (now.month >= 4) ? now.year : now.year - 1;
-    final marchDate = DateTime(fyStartYear, 3, _lastDayOfMonth(fyStartYear, 3));
-    final endDate = DateTime(
-      now.year,
-      now.month,
-      _lastDayOfMonth(now.year, now.month),
-    );
-
-    List<MonthlyInventoryData> result = [];
-    DateTime cursor = marchDate;
-
-    while (!cursor.isAfter(endDate)) {
-      final monthData = await _fetchInventoryForDate(
-        cursor,
-        userName,
-        userLevel,
-      );
-      final label = DateFormat('MMM yyyy').format(cursor);
-      result.add(MonthlyInventoryData(monthYear: label, inventory: monthData));
-
-      final nextMonth = cursor.month < 12
-          ? DateTime(cursor.year, cursor.month + 1, 1)
-          : DateTime(cursor.year + 1, 1, 1);
-      cursor = DateTime(
-        nextMonth.year,
-        nextMonth.month,
-        _lastDayOfMonth(nextMonth.year, nextMonth.month),
-      );
-    }
-    monthWiseInventory = result;
-    return result;
-  }
-
-  // List<MonthlyCogsData> calculateMonthlyCogs({
-  //   required List<MonthlyInventoryData> inventoryList,
-  //   required List<DailyAnalysisExpensesData> purchaseMonthlyData,
-  // }) {
-  //   List<MonthlyCogsData> cogsList = [];
-  //
-  //   for (int i = 1; i < inventoryList.length; i++) {
-  //     final String monthYear = inventoryList[i].monthYear;
-  //
-  //     final double openingStock = inventoryList[i - 1]
-  //         .inventory
-  //         .fold(0.0, (sum, item) => sum + (double.parse(item.totalValue)));
-  //
-  //     final double closingStock = inventoryList[i]
-  //         .inventory
-  //         .fold(0.0, (sum, item) => sum + (double.parse(item.totalValue)));
-  //
-  //     double purchases = 0.0;
-  //     if (i - 1 < purchaseMonthlyData.length) {
-  //       purchases = purchaseMonthlyData[i - 1].balance;
-  //     }
-  //
-  //     final double cogs = openingStock + purchases - closingStock;
-  //
-  //     cogsList.add(MonthlyCogsData(
-  //       monthYear: monthYear,
-  //       openingStock: openingStock,
-  //       purchases: purchases,
-  //       closingStock: closingStock,
-  //       cogs: cogs,
-  //       cogsTarget: 0,
-  //       inventoryTarget: 0
-  //     ));
-  //   }
-  //
-  //   return cogsList;
-  // }
-
-  List<MonthlyCogsData> calculateMonthlyCogs({
-    required List<MonthlyInventoryData> inventoryList,
-    required List<DailyAnalysisExpensesData> purchaseMonthlyData,
-    required Map<String, List<double>> targetMap,
-  }) {
-    List<MonthlyCogsData> cogsList = [];
-
-    for (int i = 1; i < inventoryList.length; i++) {
-      final curr = inventoryList[i];
-      final prev = inventoryList[i - 1];
-      final monthYear = curr.monthYear; // e.g. "Apr 2025"
-      final monthIdx = monthIndexFromString(monthYear);
-
-      final openingStock = prev.inventory.fold(
-        0.0,
-        (sum, item) => sum + double.parse(item.totalValue),
-      );
-      final closingStock = curr.inventory.fold(
-        0.0,
-        (sum, item) => sum + double.parse(item.totalValue),
-      );
-      final purchases = (i - 1 < purchaseMonthlyData.length)
-          ? purchaseMonthlyData[i - 1].balance
-          : 0.0;
-      final cogs = openingStock + purchases - closingStock;
-
-      final cogsTarget =
-          (targetMap['COGS TARGET'] != null &&
-              monthIdx < targetMap['COGS TARGET']!.length)
-          ? targetMap['COGS TARGET']![monthIdx]
-          : 0.0;
-      final inventoryTarget =
-          (targetMap['INVENTORY TARGET'] != null &&
-              monthIdx < targetMap['INVENTORY TARGET']!.length)
-          ? targetMap['INVENTORY TARGET']![monthIdx]
-          : 0.0;
-
-      cogsList.add(
-        MonthlyCogsData(
-          monthYear: monthYear,
-          openingStock: openingStock,
-          purchases: purchases,
-          closingStock: closingStock,
-          cogs: cogs,
-          cogsTarget: cogsTarget,
-          inventoryTarget: inventoryTarget,
-        ),
-      );
-    }
-
-    return cogsList;
-  }
-
-  int monthIndexFromString(String monthYear) {
-    final monthPart = monthYear.split(RegExp(r'[-\s]')).first;
-
-    const monthMap = {
-      'Jan': 0,
-      'January': 0,
-      'Feb': 1,
-      'February': 1,
-      'Mar': 2,
-      'March': 2,
-      'Apr': 3,
-      'April': 3,
-      'May': 4,
-      'Jun': 5,
-      'June': 5,
-      'Jul': 6,
-      'July': 6,
-      'Aug': 7,
-      'August': 7,
-      'Sep': 8,
-      'September': 8,
-      'Oct': 9,
-      'October': 9,
-      'Nov': 10,
-      'November': 10,
-      'Dec': 11,
-      'December': 11,
-    };
-
-    return monthMap[monthPart] ?? 0;
-  }
-
-  String getCurrentFinancialYearSuffix() {
-    final now = DateTime.now();
-    final year = now.year;
-    final month = now.month;
-
-    int startYear = (month >= 4) ? year : year - 1;
-    int endYear = startYear + 1;
-
-    return "FY${startYear % 100}-${endYear % 100}-T";
-  }
-
-  Map<String, List<double>> buildMonthlyTargets(List<SalesTargetList> data) {
-    const reps = [
-      'MD SALES TARGET',
-      'IPD SALES TARGET',
-      'PURCHASE TARGET',
-      'COGS TARGET',
-      'INVENTORY TARGET',
-      'PRODUCTION TARGET',
-    ];
-
-    final result = {for (var rep in reps) rep: List<double>.filled(12, 0.0)};
-    final suffix = getCurrentFinancialYearSuffix();
-
-    // Filter API data to current financial year
-    final currentYearList = data.where((e) => e.financialYear == suffix);
-
-    // Populate month values
-    for (var i = 1; i <= 12; i++) {
-      final monthName = getMonthName(i);
-      for (var entry in currentYearList) {
-        if (!result.containsKey(entry.salesRep)) continue;
-        final value = double.tryParse(entry.getTargetForMonth(monthName)) ?? 0;
-        result[entry.salesRep]![i - 1] = value;
-      }
-    }
-
-    return result;
-  }
-
-  /// Given your raw [monthlyCogsList] (with cogs but no targets),
-  /// this returns a new list where each entry’s cogsTarget & inventoryTarget
-  /// are filled in from your SalesTargetList data.
-
-  // Future<void> _loadMonthlySalesBarChartData() async {
-  //   List<MonthlySalesData> monthlyDataList = [];
-  //   prevYearMonthList = PrevYearMonthList(prevYearMonthData: []);
-  //   int currentYear = DateTime.now().year;
-  //   DateTime startDate;
-  //   DateTime endDate;
-  //   for (int i = 4; i <= 15; i++) {
-  //     String monthName = getMonthName(i);
-  //     double monthlyTarget = 0.00;
-  //     double monthlySales = 0.00;
-  //
-  //     List<SalesList> monthlySalesList = [];
-  //     if (i >= 4 && i <= 12) {
-  //       Map<String, DateTime> monthDates = getMonthStartEndDates(i);
-  //       monthlySalesList = sales.where((target) {
-  //         DateTime invoiceDate =
-  //             DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-  //         return invoiceDate.isAtLeast(monthDates['start']!) &&
-  //             invoiceDate.isAtMost(monthDates['end']!);
-  //       }).toList();
-  //     } else {
-  //       startDate = DateTime(currentYear + 1, i - 12, 1);
-  //       endDate = DateTime(currentYear + 1, (i - 12) + 1, 0);
-  //       monthlySalesList = sales.where((target) {
-  //         DateTime invoiceDate =
-  //             DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-  //         return invoiceDate.isAtLeast(startDate) &&
-  //             invoiceDate.isAtMost(endDate);
-  //       }).toList();
-  //     }
-  //     double salesAmt = 0;
-  //     for (var target in monthlySalesList) {
-  //       if (target.invoiceType != "Sales Return") {
-  //         salesAmt = double.tryParse(target.rowTotal) ?? 0;
-  //       } else {
-  //         salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-  //       }
-  //       monthlySales += salesAmt;
-  //     }
-  //     monthlyDataList.add(MonthlySalesData(
-  //       monthName: monthName,
-  //       salesAmount: monthlySales,
-  //       salesTarget: monthlyTarget,
-  //     ));
-  //     monthlySales = 0;
-  //     monthlyTarget = 0;
-  //   }
-  //   monthlySalesList = MonthlySalesList(monthlyData: monthlyDataList);
-  // }
-
   Future<void> _loadMonthlySalesBarChartData() async {
     // 1. First filter your SalesTargetList once per FY
     List<SalesTargetList> tempTarget = salesTarget
@@ -1268,28 +1060,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         .toList();
 
     List<TrialBalance> customerTargetList = [];
-
-    // customerTargetList = expenseRecords.where((record) {
-    //   // Split the monthYear string into its components:
-    //   final parts = record.monthYear.split('/');
-    //   // Expecting two parts: [month, year]. Use int.parse to convert to integers.
-    //   int month = int.parse(parts[0]);
-    //   int year = int.parse(parts[1]);
-    //
-    //   // The first day of the month:
-    //   DateTime fromDt = DateTime(year, month, 1);
-    //   // To safely get the last day of the month, create a date for the first day of the next month,
-    //   // then subtract one day. Note: DateTime(year, month + 1, 0) returns the last day of the month.
-    //   DateTime toDt = DateTime(year, month + 1, 0);
-    //
-    //   // Now check if the month/date range falls within the fiscal period.
-    //   // If you have a defined fiscalYearEndDate, use that.
-    //   // Here, fiscalYearStartDate and currentDate (or fiscalYearEndDate) are assumed to be non-null.
-    //   bool startsAfterOrOnFiscalStart = fromDt.isAfter(fiscalYearStartDate!);
-    //   bool endsBeforeOrOnCurrentDate = toDt.isBefore(currentDate!);
-    //
-    //   return startsAfterOrOnFiscalStart && endsBeforeOrOnCurrentDate;
-    // }).toList();
 
     // Process each expense record.
 
@@ -1589,112 +1359,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     );
   }
 
-  // Future<void> _loadForeignNameMonthWiseAnalysisRevenue() async {
-  //   // List to hold month-wise expense data for each subgroup.
-  //   List<SubGroupMonthWiseRevenueExpensesData> subGroupMonthWiseDataList = [];
-  //
-  //   DateFormat formatter = DateFormat('dd/MM/yyyy');
-  //
-  //   // Filter records that are part of "Expenditure".
-  //   List<TrialBalance> expenseRecords = trialBalanceList;
-  //
-  //   List<TrialBalance> customerTargetList = [];
-  //
-  //   customerTargetList = expenseRecords.where((record) {
-  //     // Split the monthYear string into its components:
-  //     final parts = record.monthYear.split('/');
-  //     // Expecting two parts: [month, year]. Use int.parse to convert to integers.
-  //     int month = int.parse(parts[0]);
-  //     int year = int.parse(parts[1]);
-  //
-  //     // The first day of the month:
-  //     DateTime fromDt = DateTime(year, month, 1);
-  //     // To safely get the last day of the month, create a date for the first day of the next month,
-  //     // then subtract one day. Note: DateTime(year, month + 1, 0) returns the last day of the month.
-  //
-  //     // Now check if the month/date range falls within the fiscal period.
-  //     // If you have a defined fiscalYearEndDate, use that.
-  //     // Here, fiscalYearStartDate and currentDate (or fiscalYearEndDate) are assumed to be non-null.
-  //     bool startsAfterOrOnFiscalStart = !fromDt.isBefore(fiscalYearStartDate!);
-  //     bool endsBeforeOrOnCurrentDate = !fromDt.isAfter(currentDate!);
-  //
-  //     return startsAfterOrOnFiscalStart && endsBeforeOrOnCurrentDate;
-  //   }).toList();
-  //
-  //   // Process each expense record.
-  //   for (var record in customerTargetList) {
-  //     // Parse the record's month-year by
-  //     // prepending a day (here "01").
-  //     DateTime recordDate = formatter.parse('01/${record.monthYear}');
-  //     int month = recordDate.month;
-  //     // Convert the balance string to a double.
-  //     double recordBalance = double.tryParse(record.balance) ?? 0.0;
-  //
-  //     // Find an existing entry for this subgroup using try/catch.
-  //     SubGroupMonthWiseRevenueExpensesData? subgroupData;
-  //     try {
-  //       subgroupData = subGroupMonthWiseDataList.firstWhere(
-  //         (element) => element.subGroupName == record.foreignName,
-  //       );
-  //     } catch (e) {
-  //       subgroupData = null;
-  //     }
-  //
-  //     // If no entry exists, create a new one with all balances initialized to 0.0.
-  //     if (subgroupData == null) {
-  //       subgroupData = SubGroupMonthWiseRevenueExpensesData(
-  //         subGroupName: record.foreignName,
-  //         aprBalance: 0.0,
-  //         mayBalance: 0.0,
-  //         junBalance: 0.0,
-  //         julBalance: 0.0,
-  //         augBalance: 0.0,
-  //         septBalance: 0.0,
-  //         octBalance: 0.0,
-  //         novBalance: 0.0,
-  //         decBalance: 0.0,
-  //         janBalance: 0.0,
-  //         febBalance: 0.0,
-  //         marBalance: 0.0,
-  //       );
-  //       subGroupMonthWiseDataList.add(subgroupData);
-  //     }
-  //
-  //     // Update the corresponding month balance based on the record's month.
-  //     // Assuming a financial year from April to March.
-  //     if (month == 4) {
-  //       subgroupData.aprBalance += recordBalance;
-  //     } else if (month == 5) {
-  //       subgroupData.mayBalance += recordBalance;
-  //     } else if (month == 6) {
-  //       subgroupData.junBalance += recordBalance;
-  //     } else if (month == 7) {
-  //       subgroupData.julBalance += recordBalance;
-  //     } else if (month == 8) {
-  //       subgroupData.augBalance += recordBalance;
-  //     } else if (month == 9) {
-  //       subgroupData.septBalance += recordBalance;
-  //     } else if (month == 10) {
-  //       subgroupData.octBalance += recordBalance;
-  //     } else if (month == 11) {
-  //       subgroupData.novBalance += recordBalance;
-  //     } else if (month == 12) {
-  //       subgroupData.decBalance += recordBalance;
-  //     } else if (month == 1) {
-  //       subgroupData.janBalance += recordBalance;
-  //     } else if (month == 2) {
-  //       subgroupData.febBalance += recordBalance;
-  //     } else if (month == 3) {
-  //       subgroupData.marBalance += recordBalance;
-  //     }
-  //   }
-  //
-  //   // Inject the data into your SubGroupMonthWiseExpensesList.
-  //   foreignNameMonthExpenseWiseList = SubGroupMonthWiseRevenueExpensesList(
-  //     subGroupData: subGroupMonthWiseDataList,
-  //   );
-  // }
-
   Future<void> _loadForeignNameMonthWiseAnalysisRevenue() async {
     DateFormat formatter = DateFormat('dd/MM/yyyy');
 
@@ -1911,12 +1575,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
             toDt.isAtMost(currentDate!);
       }).toList();
 
-      // customerTargetList = filterExpensesList(
-      //   customerTargetList.cast<ExpensesList>().toList(),
-      //   group: group,
-      //   subGroup: subGroup,
-      // );
-
       Set<String> processedSubGroupCodes = {};
 
       for (var customer
@@ -2040,14 +1698,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         )) {
           balance = double.tryParse(sales.balance) ?? 0;
           balanceAmount += balance;
-
-          // if (balanceAmount.toString().contains('e')) {
-          //   print("Exponential detected: $balanceAmount");
-          //   balanceAmount = double.parse(balanceAmount.toStringAsFixed(2));
-          //   print("Converted to fixed-point: $balanceAmount");
-          // }
-
-          // balanceAmount = double.parse(balanceAmount.toStringAsFixed(1));
         }
         groupWiseDataList.add(
           DailyAnalysisExpensesData(balance: balanceAmount, date: monthYear),
@@ -2128,54 +1778,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       dailyData: groupWiseDataList,
     );
   }
-
-  // Future<void> _loadMonthlyAnalysisPurchase() async {
-  //   List<DailyAnalysisExpensesData> groupWiseDataList = [];
-  //
-  //   List<GRNList> purchaseRecords =
-  //       grnList /*.where((test) => test. == "Item Purchase").toList()*/;
-  //
-  //   // Filter records based on the invoice date falling within the specified fiscal year.
-  //   List<GRNList> filteredRecords = purchaseRecords.where((record) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(record.grnDate);
-  //     return invoiceDate.isAtLeast(
-  //             dateFilterFlag ? fromDateFilter! : fiscalYearStartDate!) &&
-  //         invoiceDate.isAtMost(dateFilterFlag ? toDateFilter! : currentDate!);
-  //   }).toList();
-  //
-  //   // Create a Map to group balances by month-year.
-  //   // Key: month-year string (e.g. "08/2024")
-  //   // Value: accumulated balance for that month.
-  //   Map<String, double> monthlyBalanceMap = {};
-  //
-  //   // Iterate over the filtered records to group and sum balances.
-  //   for (var record in filteredRecords) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(record.grnDate);
-  //     String monthYearKey = DateFormat('MM/yyyy').format(invoiceDate);
-  //
-  //     double balance = double.tryParse(record.rowTotal) ?? 0.0;
-  //     // Sum the absolute value of balances.
-  //     monthlyBalanceMap[monthYearKey] =
-  //         (monthlyBalanceMap[monthYearKey] ?? 0.0) + balance.abs();
-  //   }
-  //
-  //   // Convert each group into DailyAnalysisExpensesData.
-  //   monthlyBalanceMap.forEach((monthYear, totalBalance) {
-  //     groupWiseDataList.add(DailyAnalysisExpensesData(
-  //       balance: totalBalance,
-  //       date: monthYear,
-  //       target: 0
-  //     ));
-  //   });
-  //
-  //   // Assign the calculated data to the revenueMonthlyData.
-  //   purchaseMonthlyData =
-  //       DailyAnalysisExpensesList(dailyData: groupWiseDataList);
-  //   monthlyCogsList = calculateMonthlyCogs(
-  //     inventoryList: monthWiseInventory,
-  //     purchaseMonthlyData: purchaseMonthlyData.dailyData,
-  //   );
-  // }
 
   Future<void> _loadMonthlyAnalysisPurchase() async {
     final List<SalesTargetList> tempTarget = salesTarget
@@ -2312,39 +1914,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     // Filter records based on the invoice date falling within the specified fiscal year.
     List<InventoryList> filteredRecords = inventory;
 
-    // for (var target in filteredRecords) {
-    //   // if (target.ageingBrackets == "<30 Days") {
-    //   //   lessThan30DaysValue += (double.tryParse(target.totalValue) ?? 0);
-    //   // }
-    //   // if (target.ageingBrackets == "31-45 Days" ||
-    //   //     target.ageingBrackets == "31-45 Days") {
-    //   //   a30to60DaysValue += (double.tryParse(target.totalValue) ?? 0);
-    //   // }
-    //   // if (target.ageingBrackets == "61-90 Days") {
-    //   //   a60to90DaysValue += (double.tryParse(target.totalValue) ?? 0);
-    //   // }
-    //   // if (target.ageingBrackets == "91-120 Days" ||
-    //   //     target.ageingBrackets == "121-150 Days" ||
-    //   //     target.ageingBrackets == "151-180 Days" ||
-    //   //     target.ageingBrackets == "181-365 Days" ||
-    //   //     target.ageingBrackets == "366-730 Days" ||
-    //   //     target.ageingBrackets == ">730 Days") {
-    //   //   a91DaysValue += (double.tryParse(target.totalValue) ?? 0);
-    //   // }
-    //   // if (target.ageingBrackets == "91-120 Days" ||
-    //   //     target.ageingBrackets == "121-150 Days" ||
-    //   //     target.ageingBrackets == "151-180 Days") {
-    //   //   nearExpiryValue += (double.tryParse(target.totalValue) ?? 0);
-    //   // }
-    //   // if (target.ageingBrackets == "181-365 Days" ||
-    //   //     target.ageingBrackets == "366-730 Days" ||
-    //   //     target.ageingBrackets == ">730 Days") {
-    //   //   expiredValue += (double.tryParse(target.totalValue) ?? 0);
-    //   // }
-    //   //
-    //   // inventoryOpeningValue += (double.parse(target.totalValue));
-    // }
-
     // Create a Map to group balances by month-year.
     // Key: month-year string (e.g. "08/2024")
     // Value: accumulated balance for that month.
@@ -2369,100 +1938,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       dailyData: groupWiseDataList,
     );
   }
-
-  // Future<void> generateSalesAnalysisYTDExcel() async {
-  //   final excel = xl.Excel.createExcel();
-  //   final sheet = excel['Sheet1'];
-  //   sheet.getColAutoFits;
-  //   sheet.appendRow(toCellRow([
-  //     'Particulars',
-  //     'Target',
-  //     'Apr 25',
-  //     'May 25',
-  //     'Jun 25',
-  //     'Jul 25',
-  //     'Aug 25',
-  //     'Sep 25',
-  //     'Oct 25',
-  //     'Nov 25',
-  //     'Dec 25',
-  //     'Jan 26',
-  //     'Feb 26',
-  //     'Mar 26',
-  //   ]);
-  //
-  //   for (int column = 0; column < 11; column++) {
-  //     var cell = sheet.cell(
-  //         xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0));
-  //     cell.cellStyle = xl.CellStyle(
-  //       bold: true,
-  //       fontSize: 14,
-  //     );
-  //
-  //     sheet.setColAutoFit(column);
-  //   }
-  //
-  //   for (var ytdData in productMarginList.productMarginData) {
-  //     sheet.appendRow(toCellRow([
-  //       ytdData.itemNo,
-  //       ytdData.itemDescription,
-  //       ytdData.itemSubGroup,
-  //       ytdData.quantity,
-  //       ytdData.saleAmt,
-  //       ytdData.avgSellingPrice,
-  //       ytdData.bomCost,
-  //       ytdData.perUnitMarginAmount,
-  //       ytdData.totalMarginAmount,
-  //       ytdData.marginPercent,
-  //     ]);
-  //   }
-  //
-  //   xl.CellStyle centerCellStyle = xl.CellStyle(
-  //     verticalAlign: xl.VerticalAlign.Center,
-  //     horizontalAlign: xl.HorizontalAlign.Center,
-  //   );
-  //
-  //   int numberOfRows = productMarginList.productMarginData.length;
-  //
-  //   for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-  //     for (int colIndex = 0; colIndex < 10; colIndex++) {
-  //       var cell = sheet.cell(xl.CellIndex.indexByColumnRow(
-  //           columnIndex: colIndex, rowIndex: rowIndex));
-  //       if (rowIndex != 0) {
-  //         cell.cellStyle = centerCellStyle;
-  //       }
-  //     }
-  //   }
-  //
-  //   setState(() {
-  //     YtdSalesBarChartData = true;
-  //   });
-  //
-  //   if (kIsWeb) {
-  //     // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-  //
-  //     final excelBytes = excel.encode()!;
-  //     saveAndOpenExcel('sales_analysis_ytd_report.xlsx', excelBytes);
-  //
-  //     // var fileBytes = excel.encode();
-  //     //
-  //     // final blob = html.Blob([fileBytes]);
-  //     // final url = html.Url.createObjectUrlFromBlob(blob);
-  //     // final anchor = html.AnchorElement()
-  //     //   ..href = url
-  //     //   ..download = 'monthly_sales_report.xlsx'
-  //     //   ..style.display = 'none';
-  //     // html.document.body!.append(anchor);
-  //     // anchor.click();
-  //     // anchor.remove();
-  //     // html.Url.revokeObjectUrl(url);
-  //   } else {
-  //     String storageDir = await getStorageDirectory();
-  //     final file = File('$storageDir/sales_analysis_ytd_report.xlsx');
-  //     await file.writeAsBytes(excel.encode()!);
-  //     OpenFile.open(file.path);
-  //   }
-  // }
 
   DateTime addMonth(DateTime date, int addMonth) {
     int currentMonth = date.month;
@@ -2833,3250 +2308,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     return (now.month - 4 + 12) % 12;
   }
 
-  // Future<void> generateSalesAnalysisYTDExcel() async {
-  //   final excel = xl.Excel.createExcel();
-  //   final sheet = excel['Sheet1'];
-  //   sheet.getColAutoFits;
-  //
-  //
-  //   cogsValue = (inventoryOpeningValue + purchaseMonthlyData.dailyData[getCurrentFinancialMonthIndex()].balance) -
-  //       (lessThan30DaysValue +
-  //           a30to60DaysValue +
-  //           a60to90DaysValue +
-  //           nearExpiryValue +
-  //           expiredValue);
-  //
-  //   sheet.appendRow(toCellRow([
-  //     'Particulars',
-  //     'Target',
-  //     'Apr',
-  //     'May',
-  //     'Jun',
-  //     'Jul',
-  //     'Aug',
-  //     'Sep',
-  //     'Oct',
-  //     'Nov',
-  //     'Dec',
-  //     'Jan',
-  //     'Feb',
-  //     'Mar',
-  //   ]);
-  //
-  //   sheet.appendRow(toCellRow([
-  //     "Revenue",
-  //     revenueTarget,
-  //     monthlySalesList.monthlyData.isNotEmpty
-  //         ? monthlySalesList.monthlyData[0].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[1].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[2].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[3].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[4].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[5].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[6].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[7].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[8].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[9].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[10].salesAmount
-  //         : 0,
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[11].salesAmount
-  //         : 0,
-  //   ]);
-  //   sheet.appendRow(toCellRow([
-  //     "Other Income",
-  //     "",
-  //     otherIncomeList.subGroupData.isNotEmpty
-  //         ? otherIncomeList.subGroupData[0].aprBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 2
-  //         ? otherIncomeList.subGroupData[1].mayBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 3
-  //         ? otherIncomeList.subGroupData[2].junBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 4
-  //         ? otherIncomeList.subGroupData[3].julBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 5
-  //         ? otherIncomeList.subGroupData[4].augBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 6
-  //         ? otherIncomeList.subGroupData[5].septBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 7
-  //         ? otherIncomeList.subGroupData[6].octBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 8
-  //         ? otherIncomeList.subGroupData[7].novBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 9
-  //         ? otherIncomeList.subGroupData[8].decBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 10
-  //         ? otherIncomeList.subGroupData[9].janBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 11
-  //         ? otherIncomeList.subGroupData[10].febBalance
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 12
-  //         ? otherIncomeList.subGroupData[11].marBalance
-  //         : 0,
-  //   ]);
-  //   sheet.appendRow(toCellRow([
-  //     "Total Revenue",
-  //     "",
-  //     otherIncomeList.subGroupData.isNotEmpty
-  //         ? otherIncomeList.subGroupData[0].aprBalance + monthlySalesList.monthlyData[0].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 2
-  //         ? otherIncomeList.subGroupData[1].mayBalance + monthlySalesList.monthlyData[1].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 3
-  //         ? otherIncomeList.subGroupData[2].junBalance + monthlySalesList.monthlyData[2].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 4
-  //         ? otherIncomeList.subGroupData[3].julBalance + monthlySalesList.monthlyData[3].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 5
-  //         ? otherIncomeList.subGroupData[4].augBalance+ monthlySalesList.monthlyData[4].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 6
-  //         ? otherIncomeList.subGroupData[5].septBalance+ monthlySalesList.monthlyData[5].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 7
-  //         ? otherIncomeList.subGroupData[6].octBalance+ monthlySalesList.monthlyData[6].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 8
-  //         ? otherIncomeList.subGroupData[7].novBalance+ monthlySalesList.monthlyData[7].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 9
-  //         ? otherIncomeList.subGroupData[8].decBalance+ monthlySalesList.monthlyData[8].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 10
-  //         ? otherIncomeList.subGroupData[9].janBalance+ monthlySalesList.monthlyData[9].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 11
-  //         ? otherIncomeList.subGroupData[10].febBalance+ monthlySalesList.monthlyData[10].salesAmount
-  //         : 0,
-  //     otherIncomeList.subGroupData.length == 12
-  //         ? otherIncomeList.subGroupData[11].marBalance+ monthlySalesList.monthlyData[11].salesAmount
-  //         : 0,
-  //   ]);
-  //
-  //
-  //   sheet.appendRow(toCellRow([""]);
-  //
-  //   sheet.appendRow(toCellRow([
-  //     "Purchases",
-  //     purchaseTarget,
-  //     purchaseMonthlyData.dailyData.isNotEmpty
-  //         ? purchaseMonthlyData.dailyData[0].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 2
-  //         ? purchaseMonthlyData.dailyData[1].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 3
-  //         ? purchaseMonthlyData.dailyData[2].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 4
-  //         ? purchaseMonthlyData.dailyData[3].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 5
-  //         ? purchaseMonthlyData.dailyData[4].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 6
-  //         ? purchaseMonthlyData.dailyData[5].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 7
-  //         ? purchaseMonthlyData.dailyData[6].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 8
-  //         ? purchaseMonthlyData.dailyData[7].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 9
-  //         ? purchaseMonthlyData.dailyData[8].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 10
-  //         ? purchaseMonthlyData.dailyData[9].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 11
-  //         ? purchaseMonthlyData.dailyData[10].balance
-  //         : 0,
-  //     purchaseMonthlyData.dailyData.length == 12
-  //         ? purchaseMonthlyData.dailyData[11].balance
-  //         : 0,
-  //   ]);
-  //   sheet.appendRow(toCellRow([
-  //     "Opening Stock",
-  //     "",
-  //     "",
-  //     "",
-  //     inventoryOpeningValue
-  //   ]);
-  //   sheet.appendRow(toCellRow([
-  //     "Closing Stock",
-  //     "",
-  //     "",
-  //     "",
-  //     inventoryClosingValue,
-  //   ]);
-  //   sheet.appendRow(toCellRow([
-  //     "Cost of Materials Consumed",
-  //     "",
-  //     "",
-  //     "",
-  //     ((cogsValue))
-  //   ]);
-  //   sheet.appendRow(toCellRow([""]);
-  //
-  //   for (var ytdData in subGroupMonthExpenseWiseList.subGroupData) {
-  //     sheet.appendRow(toCellRow([
-  //       ytdData.subGroupName,
-  //       "",
-  //       ytdData.aprBalance,
-  //       ytdData.mayBalance,
-  //       ytdData.junBalance,
-  //       ytdData.julBalance,
-  //       ytdData.augBalance,
-  //       ytdData.septBalance,
-  //       ytdData.octBalance,
-  //       ytdData.novBalance,
-  //       ytdData.decBalance,
-  //       ytdData.janBalance,
-  //       ytdData.febBalance,
-  //       ytdData.marBalance,
-  //     ]);
-  //   }
-  //   sheet.appendRow(toCellRow([""]);
-  //
-  //   // for (int column = 0; column < 13; column++) {
-  //   //   var cell = sheet.cell(
-  //   //       xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0));
-  //   //   cell.cellStyle = xl.CellStyle(
-  //   //     bold: true,
-  //   //     fontSize: 14,
-  //   //   );
-  //   //
-  //   //   sheet.setColAutoFit(column);
-  //   // }
-  //   sheet.appendRow(toCellRow([
-  //     "Expenditure",
-  //     "",
-  //     expenditureMonthlyData.dailyData.isNotEmpty
-  //         ? expenditureMonthlyData.dailyData[0].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 2
-  //         ? expenditureMonthlyData.dailyData[1].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 3
-  //         ? expenditureMonthlyData.dailyData[2].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 4
-  //         ? expenditureMonthlyData.dailyData[3].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 5
-  //         ? expenditureMonthlyData.dailyData[4].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 6
-  //         ? expenditureMonthlyData.dailyData[5].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 7
-  //         ? expenditureMonthlyData.dailyData[6].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 8
-  //         ? expenditureMonthlyData.dailyData[7].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 9
-  //         ? expenditureMonthlyData.dailyData[8].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 10
-  //         ? expenditureMonthlyData.dailyData[9].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 11
-  //         ? expenditureMonthlyData.dailyData[10].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 12
-  //         ? expenditureMonthlyData.dailyData[11].balance
-  //         : 0,
-  //   ]);
-  //   sheet.appendRow(toCellRow([""]);
-  //
-  //   // int numberOfRows = expenditureMonthlyData.dailyData.length;
-  //
-  //   // for (int rowIndex = 0; rowIndex <= numberOfRows+1; rowIndex++) {
-  //   //   for (int colIndex = 0; colIndex < 10; colIndex++) {
-  //   //     var cell = sheet.cell(xl.CellIndex.indexByColumnRow(
-  //   //         columnIndex: colIndex, rowIndex: rowIndex));
-  //   //     if (rowIndex != 0) {
-  //   //       cell.cellStyle = centerCellStyle;
-  //   //     }
-  //   //   }
-  //   // }
-  //   sheet.appendRow(toCellRow(["Direct Expenses"]);
-  //   for (var ytdData in directExpensesList.subGroupData) {
-  //     sheet.appendRow(toCellRow([
-  //       ytdData.subGroupName,
-  //       "",
-  //       ytdData.aprBalance,
-  //       ytdData.mayBalance,
-  //       ytdData.junBalance,
-  //       ytdData.julBalance,
-  //       ytdData.augBalance,
-  //       ytdData.septBalance,
-  //       ytdData.octBalance,
-  //       ytdData.novBalance,
-  //       ytdData.decBalance,
-  //       ytdData.janBalance,
-  //       ytdData.febBalance,
-  //       ytdData.marBalance,
-  //     ]);
-  //   }
-  //   for (var ytdData in sumOfDirectExpensesList.subGroupData) {
-  //     sheet.appendRow(toCellRow([
-  //       "Total Direct Expenses",
-  //       "",
-  //       ytdData.aprBalance,
-  //       ytdData.mayBalance,
-  //       ytdData.junBalance,
-  //       ytdData.julBalance,
-  //       ytdData.augBalance,
-  //       ytdData.septBalance,
-  //       ytdData.octBalance,
-  //       ytdData.novBalance,
-  //       ytdData.decBalance,
-  //       ytdData.janBalance,
-  //       ytdData.febBalance,
-  //       ytdData.marBalance,
-  //     ]);
-  //   }
-  //   sheet.appendRow(toCellRow([""]);
-  //   sheet.appendRow(toCellRow(["Indirect Expenses"]);
-  //   for (var ytdData in otherIndirectExpensesList.subGroupData) {
-  //     sheet.appendRow(toCellRow([
-  //       ytdData.subGroupName,
-  //       "",
-  //       ytdData.aprBalance,
-  //       ytdData.mayBalance,
-  //       ytdData.junBalance,
-  //       ytdData.julBalance,
-  //       ytdData.augBalance,
-  //       ytdData.septBalance,
-  //       ytdData.octBalance,
-  //       ytdData.novBalance,
-  //       ytdData.decBalance,
-  //       ytdData.janBalance,
-  //       ytdData.febBalance,
-  //       ytdData.marBalance,
-  //     ]);
-  //   }
-  //   for (var ytdData in foreignNameMonthExpenseWiseList.subGroupData) {
-  //     sheet.appendRow(toCellRow([
-  //       ytdData.subGroupName,
-  //       "",
-  //       ytdData.aprBalance,
-  //       ytdData.mayBalance,
-  //       ytdData.junBalance,
-  //       ytdData.julBalance,
-  //       ytdData.augBalance,
-  //       ytdData.septBalance,
-  //       ytdData.octBalance,
-  //       ytdData.novBalance,
-  //       ytdData.decBalance,
-  //       ytdData.janBalance,
-  //       ytdData.febBalance,
-  //       ytdData.marBalance,
-  //     ]);
-  //   }
-  //   for (var ytdData in totalIndirectExpensesList.subGroupData) {
-  //     sheet.appendRow(toCellRow([
-  //       "Total Indirect Expenses",
-  //       "",
-  //       ytdData.aprBalance,
-  //       ytdData.mayBalance,
-  //       ytdData.junBalance,
-  //       ytdData.julBalance,
-  //       ytdData.augBalance,
-  //       ytdData.septBalance,
-  //       ytdData.octBalance,
-  //       ytdData.novBalance,
-  //       ytdData.decBalance,
-  //       ytdData.janBalance,
-  //       ytdData.febBalance,
-  //       ytdData.marBalance,
-  //     ]);
-  //   }
-  //   sheet.appendRow(toCellRow([""]);
-  //
-  //   // for (var ytdData in subGroupMonthWiseList.subGroupData) {
-  //   //   sheet.appendRow(toCellRow([
-  //   //     ytdData.subGroupName,
-  //   //     ytdData.aprBalance,
-  //   //     ytdData.mayBalance,
-  //   //     ytdData.junBalance,
-  //   //     ytdData.julBalance,
-  //   //     ytdData.augBalance,
-  //   //     ytdData.septBalance,
-  //   //     ytdData.octBalance,
-  //   //     ytdData.novBalance,
-  //   //     ytdData.decBalance,
-  //   //     ytdData.janBalance,
-  //   //     ytdData.febBalance,
-  //   //     ytdData.marBalance,
-  //   //   ]);
-  //   // }
-  //   // sheet.appendRow(toCellRow([""]);
-  //   sheet.appendRow(toCellRow(["EBITDA"]);
-  //   sheet.appendRow(toCellRow(["PBT"]);
-  //   sheet.appendRow(toCellRow([
-  //     'PAT',
-  //     "",
-  //     expenditureMonthlyData.dailyData.isNotEmpty
-  //         ? expenditureMonthlyData.dailyData[0].balance -
-  //             revenueMonthlyData.dailyData[0].balance
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 2
-  //         ? expenditureMonthlyData.dailyData[1].balance -
-  //             monthlySalesList.monthlyData[1].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 3
-  //         ? expenditureMonthlyData.dailyData[2].balance -
-  //             monthlySalesList.monthlyData[2].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 4
-  //         ? expenditureMonthlyData.dailyData[3].balance -
-  //             monthlySalesList.monthlyData[3].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 5
-  //         ? expenditureMonthlyData.dailyData[4].balance -
-  //             monthlySalesList.monthlyData[4].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 6
-  //         ? expenditureMonthlyData.dailyData[5].balance -
-  //             monthlySalesList.monthlyData[5].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 7
-  //         ? expenditureMonthlyData.dailyData[6].balance -
-  //             monthlySalesList.monthlyData[6].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 8
-  //         ? expenditureMonthlyData.dailyData[7].balance -
-  //             monthlySalesList.monthlyData[7].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 9
-  //         ? expenditureMonthlyData.dailyData[8].balance -
-  //             monthlySalesList.monthlyData[8].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 10
-  //         ? expenditureMonthlyData.dailyData[9].balance -
-  //             monthlySalesList.monthlyData[9].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 11
-  //         ? expenditureMonthlyData.dailyData[10].balance -
-  //             monthlySalesList.monthlyData[10].salesAmount
-  //         : 0,
-  //     expenditureMonthlyData.dailyData.length == 12
-  //         ? expenditureMonthlyData.dailyData[11].balance -
-  //             monthlySalesList.monthlyData[11].salesAmount
-  //         : 0,
-  //   ]);
-  //
-  //   setState(() {
-  //     // YtdSalesBarChartData = true;
-  //   });
-  //
-  //   if (kIsWeb) {
-  //     // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-  //
-  //     final excelBytes = excel.encode()!;
-  //     saveAndOpenExcel('monthlyPL.xlsx', excelBytes);
-  //
-  //     // var fileBytes = excel.encode();
-  //     //
-  //     // final blob = html.Blob([fileBytes]);
-  //     // final url = html.Url.createObjectUrlFromBlob(blob);
-  //     // final anchor = html.AnchorElement()
-  //     //   ..href = url
-  //     //   ..download = 'monthly_sales_report.xlsx'
-  //     //   ..style.display = 'none';
-  //     // html.document.body!.append(anchor);
-  //     // anchor.click();
-  //     // anchor.remove();
-  //     // html.Url.revokeObjectUrl(url);
-  //   } else {
-  //     String storageDir = await getStorageDirectory();
-  //     final file = File('$storageDir/monthlyPL.xlsx');
-  //     await file.writeAsBytes(excel.encode()!);
-  //     OpenFile.open(file.path);
-  //   }
-  //   Future<void> generateSalesAnalysisYTDExcel2() async {
-  //     final excel = xl.Excel.createExcel();
-  //     final sheet = excel['Sheet1'];
-  //     sheet.getColAutoFits;
-  //
-  //     cogsValue = (inventoryOpeningValue +
-  //             purchaseMonthlyData
-  //                 .dailyData[getCurrentFinancialMonthIndex()].balance) -
-  //         (lessThan30DaysValue +
-  //             a30to60DaysValue +
-  //             a60to90DaysValue +
-  //             nearExpiryValue +
-  //             expiredValue);
-  //
-  //     sheet.appendRow(toCellRow([
-  //       'Particulars',
-  //       'Target',
-  //       'Apr',
-  //       '%',
-  //       'May',
-  //       '%',
-  //       'Jun',
-  //       '%',
-  //       'Jul',
-  //       '%',
-  //       'Aug',
-  //       '%',
-  //       'Sep',
-  //       '%',
-  //       'Oct',
-  //       '%',
-  //       'Nov',
-  //       '%',
-  //       'Dec',
-  //       '%',
-  //       'Jan',
-  //       '%',
-  //       'Feb',
-  //       '%',
-  //       'Mar',
-  //       '%'
-  //     ]);
-  //
-  //     sheet.appendRow(toCellRow([
-  //       "Revenue",
-  //       revenueTarget,
-  //       monthlySalesList.monthlyData.isNotEmpty
-  //           ? monthlySalesList.monthlyData[0].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 2
-  //           ? monthlySalesList.monthlyData[1].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 3
-  //           ? monthlySalesList.monthlyData[2].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 4
-  //           ? monthlySalesList.monthlyData[3].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 5
-  //           ? monthlySalesList.monthlyData[4].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 6
-  //           ? monthlySalesList.monthlyData[5].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 7
-  //           ? monthlySalesList.monthlyData[6].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 8
-  //           ? monthlySalesList.monthlyData[7].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 9
-  //           ? monthlySalesList.monthlyData[8].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 10
-  //           ? monthlySalesList.monthlyData[9].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length >= 11
-  //           ? monthlySalesList.monthlyData[10].salesAmount
-  //           : 0,
-  //       "",
-  //       monthlySalesList.monthlyData.length == 12
-  //           ? monthlySalesList.monthlyData[11].salesAmount
-  //           : 0,
-  //       "",
-  //     ]);
-  //
-  //     sheet.appendRow(toCellRow([
-  //       "Other Income",
-  //       "",
-  //       otherIncomeList.subGroupData.isNotEmpty
-  //           ? otherIncomeList.subGroupData[0].aprBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 2
-  //           ? otherIncomeList.subGroupData[1].mayBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 3
-  //           ? otherIncomeList.subGroupData[2].junBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 4
-  //           ? otherIncomeList.subGroupData[3].julBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 5
-  //           ? otherIncomeList.subGroupData[4].augBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 6
-  //           ? otherIncomeList.subGroupData[5].septBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 7
-  //           ? otherIncomeList.subGroupData[6].octBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 8
-  //           ? otherIncomeList.subGroupData[7].novBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 9
-  //           ? otherIncomeList.subGroupData[8].decBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 10
-  //           ? otherIncomeList.subGroupData[9].janBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 11
-  //           ? otherIncomeList.subGroupData[10].febBalance
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length == 12
-  //           ? otherIncomeList.subGroupData[11].marBalance
-  //           : 0,
-  //       "",
-  //     ]);
-  //
-  //     sheet.appendRow(toCellRow([
-  //       "Total Revenue",
-  //       "",
-  //       otherIncomeList.subGroupData.isNotEmpty
-  //           ? otherIncomeList.subGroupData[0].aprBalance +
-  //               monthlySalesList.monthlyData[0].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 2
-  //           ? otherIncomeList.subGroupData[1].mayBalance +
-  //               monthlySalesList.monthlyData[1].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 3
-  //           ? otherIncomeList.subGroupData[2].junBalance +
-  //               monthlySalesList.monthlyData[2].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 4
-  //           ? otherIncomeList.subGroupData[3].julBalance +
-  //               monthlySalesList.monthlyData[3].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 5
-  //           ? otherIncomeList.subGroupData[4].augBalance +
-  //               monthlySalesList.monthlyData[4].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 6
-  //           ? otherIncomeList.subGroupData[5].septBalance +
-  //               monthlySalesList.monthlyData[5].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 7
-  //           ? otherIncomeList.subGroupData[6].octBalance +
-  //               monthlySalesList.monthlyData[6].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 8
-  //           ? otherIncomeList.subGroupData[7].novBalance +
-  //               monthlySalesList.monthlyData[7].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 9
-  //           ? otherIncomeList.subGroupData[8].decBalance +
-  //               monthlySalesList.monthlyData[8].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 10
-  //           ? otherIncomeList.subGroupData[9].janBalance +
-  //               monthlySalesList.monthlyData[9].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length >= 11
-  //           ? otherIncomeList.subGroupData[10].febBalance +
-  //               monthlySalesList.monthlyData[10].salesAmount
-  //           : 0,
-  //       "",
-  //       otherIncomeList.subGroupData.length == 12
-  //           ? otherIncomeList.subGroupData[11].marBalance +
-  //               monthlySalesList.monthlyData[11].salesAmount
-  //           : 0,
-  //       "",
-  //     ]);
-  //
-  //     sheet.appendRow(toCellRow([""]);
-  //
-  //     sheet.appendRow(toCellRow([
-  //       "Opening Stock",
-  //       "",
-  //       monthlyCogsList.isNotEmpty ? monthlyCogsList[0].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 2 ? monthlyCogsList[1].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 3 ? monthlyCogsList[2].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 4 ? monthlyCogsList[3].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 5 ? monthlyCogsList[4].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 6 ? monthlyCogsList[5].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 7 ? monthlyCogsList[6].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 8 ? monthlyCogsList[7].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 9 ? monthlyCogsList[8].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 10 ? monthlyCogsList[9].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 11 ? monthlyCogsList[10].openingStock : 0,
-  //       "",
-  //       monthlyCogsList.length == 12 ? monthlyCogsList[11].openingStock : 0,
-  //       ""
-  //     ]);
-  //     sheet.appendRow(toCellRow([
-  //       "Add: Purchases",
-  //       "",
-  //       monthlyCogsList.isNotEmpty ? monthlyCogsList[0].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 2 ? monthlyCogsList[1].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 3 ? monthlyCogsList[2].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 4 ? monthlyCogsList[3].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 5 ? monthlyCogsList[4].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 6 ? monthlyCogsList[5].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 7 ? monthlyCogsList[6].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 8 ? monthlyCogsList[7].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 9 ? monthlyCogsList[8].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 10 ? monthlyCogsList[9].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length >= 11 ? monthlyCogsList[10].purchases : 0,
-  //       "",
-  //       monthlyCogsList.length == 12 ? monthlyCogsList[11].purchases : 0,
-  //       ""
-  //     ]);
-  //     sheet.appendRow(toCellRow([
-  //       "Less: Closing Stock",
-  //       "",
-  //       monthlyCogsList.isNotEmpty ? monthlyCogsList[0].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 2 ? monthlyCogsList[1].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 3 ? monthlyCogsList[2].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 4 ? monthlyCogsList[3].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 5 ? monthlyCogsList[4].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 6 ? monthlyCogsList[5].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 7 ? monthlyCogsList[6].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 8 ? monthlyCogsList[7].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 9 ? monthlyCogsList[8].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 10 ? monthlyCogsList[9].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length >= 11 ? monthlyCogsList[10].closingStock : 0,
-  //       "",
-  //       monthlyCogsList.length == 12 ? monthlyCogsList[11].closingStock : 0,
-  //       ""
-  //     ]);
-  //     sheet.appendRow(toCellRow([
-  //       "Cost of Materials Consumed",
-  //       "",
-  //       monthlyCogsList.isNotEmpty ? monthlyCogsList[0].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 2 ? monthlyCogsList[1].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 3 ? monthlyCogsList[2].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 4 ? monthlyCogsList[3].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 5 ? monthlyCogsList[4].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 6 ? monthlyCogsList[5].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 7 ? monthlyCogsList[6].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 8 ? monthlyCogsList[7].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 9 ? monthlyCogsList[8].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 10 ? monthlyCogsList[9].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length >= 11 ? monthlyCogsList[10].cogs : 0,
-  //       "",
-  //       monthlyCogsList.length == 12 ? monthlyCogsList[11].cogs : 0,
-  //       ""
-  //     ]);
-  //     sheet.appendRow(toCellRow([""]);
-  //
-  //     for (var ytdData in subGroupMonthExpenseWiseList.subGroupData) {
-  //       sheet.appendRow(toCellRow([
-  //         ytdData.subGroupName,
-  //         "",
-  //         ytdData.aprBalance,
-  //         "",
-  //         ytdData.mayBalance,
-  //         "",
-  //         ytdData.junBalance,
-  //         "",
-  //         ytdData.julBalance,
-  //         "",
-  //         ytdData.augBalance,
-  //         "",
-  //         ytdData.septBalance,
-  //         "",
-  //         ytdData.octBalance,
-  //         "",
-  //         ytdData.novBalance,
-  //         "",
-  //         ytdData.decBalance,
-  //         "",
-  //         ytdData.janBalance,
-  //         "",
-  //         ytdData.febBalance,
-  //         "",
-  //         ytdData.marBalance,
-  //         "",
-  //       ]);
-  //     }
-  //     sheet.appendRow(toCellRow([""]);
-  //
-  //     sheet.appendRow(toCellRow([
-  //       "Expenditure",
-  //       "",
-  //       expenditureMonthlyData.dailyData.isNotEmpty
-  //           ? expenditureMonthlyData.dailyData[0].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 2
-  //           ? expenditureMonthlyData.dailyData[1].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 3
-  //           ? expenditureMonthlyData.dailyData[2].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 4
-  //           ? expenditureMonthlyData.dailyData[3].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 5
-  //           ? expenditureMonthlyData.dailyData[4].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 6
-  //           ? expenditureMonthlyData.dailyData[5].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 7
-  //           ? expenditureMonthlyData.dailyData[6].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 8
-  //           ? expenditureMonthlyData.dailyData[7].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 9
-  //           ? expenditureMonthlyData.dailyData[8].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 10
-  //           ? expenditureMonthlyData.dailyData[9].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 11
-  //           ? expenditureMonthlyData.dailyData[10].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length == 12
-  //           ? expenditureMonthlyData.dailyData[11].balance
-  //           : 0,
-  //       "",
-  //     ]);
-  //     sheet.appendRow(toCellRow([""]);
-  //
-  //     sheet.appendRow(toCellRow(["Direct Expenses"]);
-  //     for (var ytdData in directExpensesList.subGroupData) {
-  //       sheet.appendRow(toCellRow([
-  //         ytdData.subGroupName,
-  //         "",
-  //         ytdData.aprBalance,
-  //         getPercentage(
-  //             ytdData.aprBalance, monthlySalesList.monthlyData[0].salesAmount),
-  //         ytdData.mayBalance,
-  //         getPercentage(
-  //             ytdData.mayBalance, monthlySalesList.monthlyData[1].salesAmount),
-  //         ytdData.junBalance,
-  //         getPercentage(
-  //             ytdData.junBalance, monthlySalesList.monthlyData[2].salesAmount),
-  //         ytdData.julBalance,
-  //         getPercentage(
-  //             ytdData.julBalance, monthlySalesList.monthlyData[3].salesAmount),
-  //         ytdData.augBalance,
-  //         getPercentage(
-  //             ytdData.augBalance, monthlySalesList.monthlyData[4].salesAmount),
-  //         ytdData.septBalance,
-  //         getPercentage(
-  //             ytdData.septBalance, monthlySalesList.monthlyData[5].salesAmount),
-  //         ytdData.octBalance,
-  //         getPercentage(
-  //             ytdData.octBalance, monthlySalesList.monthlyData[6].salesAmount),
-  //         ytdData.novBalance,
-  //         getPercentage(
-  //             ytdData.novBalance, monthlySalesList.monthlyData[7].salesAmount),
-  //         ytdData.decBalance,
-  //         getPercentage(
-  //             ytdData.decBalance, monthlySalesList.monthlyData[8].salesAmount),
-  //         ytdData.janBalance,
-  //         getPercentage(
-  //             ytdData.janBalance, monthlySalesList.monthlyData[9].salesAmount),
-  //         ytdData.febBalance,
-  //         getPercentage(
-  //             ytdData.febBalance, monthlySalesList.monthlyData[10].salesAmount),
-  //         ytdData.marBalance,
-  //         getPercentage(
-  //             ytdData.marBalance, monthlySalesList.monthlyData[11].salesAmount),
-  //       ]);
-  //     }
-  //     for (var ytdData in sumOfDirectExpensesList.subGroupData) {
-  //       sheet.appendRow(toCellRow([
-  //         "Total Direct Expenses",
-  //         "",
-  //         ytdData.aprBalance,
-  //         getPercentage(
-  //             ytdData.aprBalance, monthlySalesList.monthlyData[0].salesAmount),
-  //         ytdData.mayBalance,
-  //         getPercentage(
-  //             ytdData.mayBalance, monthlySalesList.monthlyData[1].salesAmount),
-  //         ytdData.junBalance,
-  //         getPercentage(
-  //             ytdData.junBalance, monthlySalesList.monthlyData[2].salesAmount),
-  //         ytdData.julBalance,
-  //         getPercentage(
-  //             ytdData.julBalance, monthlySalesList.monthlyData[3].salesAmount),
-  //         ytdData.augBalance,
-  //         getPercentage(
-  //             ytdData.augBalance, monthlySalesList.monthlyData[4].salesAmount),
-  //         ytdData.septBalance,
-  //         getPercentage(
-  //             ytdData.septBalance, monthlySalesList.monthlyData[5].salesAmount),
-  //         ytdData.octBalance,
-  //         getPercentage(
-  //             ytdData.octBalance, monthlySalesList.monthlyData[6].salesAmount),
-  //         ytdData.novBalance,
-  //         getPercentage(
-  //             ytdData.novBalance, monthlySalesList.monthlyData[7].salesAmount),
-  //         ytdData.decBalance,
-  //         getPercentage(
-  //             ytdData.decBalance, monthlySalesList.monthlyData[8].salesAmount),
-  //         ytdData.janBalance,
-  //         getPercentage(
-  //             ytdData.janBalance, monthlySalesList.monthlyData[9].salesAmount),
-  //         ytdData.febBalance,
-  //         getPercentage(
-  //             ytdData.febBalance, monthlySalesList.monthlyData[10].salesAmount),
-  //         ytdData.marBalance,
-  //         getPercentage(
-  //             ytdData.marBalance, monthlySalesList.monthlyData[11].salesAmount),
-  //       ]);
-  //     }
-  //     sheet.appendRow(toCellRow([""]);
-  //     sheet.appendRow(toCellRow(["Indirect Expenses"]);
-  //     for (var ytdData in otherIndirectExpensesList.subGroupData) {
-  //       sheet.appendRow(toCellRow([
-  //         ytdData.subGroupName,
-  //         "",
-  //         ytdData.aprBalance,
-  //         getPercentage(
-  //             ytdData.aprBalance, monthlySalesList.monthlyData[0].salesAmount),
-  //         ytdData.mayBalance,
-  //         getPercentage(
-  //             ytdData.mayBalance, monthlySalesList.monthlyData[1].salesAmount),
-  //         ytdData.junBalance,
-  //         getPercentage(
-  //             ytdData.junBalance, monthlySalesList.monthlyData[2].salesAmount),
-  //         ytdData.julBalance,
-  //         getPercentage(
-  //             ytdData.julBalance, monthlySalesList.monthlyData[3].salesAmount),
-  //         ytdData.augBalance,
-  //         getPercentage(
-  //             ytdData.augBalance, monthlySalesList.monthlyData[4].salesAmount),
-  //         ytdData.septBalance,
-  //         getPercentage(
-  //             ytdData.septBalance, monthlySalesList.monthlyData[5].salesAmount),
-  //         ytdData.octBalance,
-  //         getPercentage(
-  //             ytdData.octBalance, monthlySalesList.monthlyData[6].salesAmount),
-  //         ytdData.novBalance,
-  //         getPercentage(
-  //             ytdData.novBalance, monthlySalesList.monthlyData[7].salesAmount),
-  //         ytdData.decBalance,
-  //         getPercentage(
-  //             ytdData.decBalance, monthlySalesList.monthlyData[8].salesAmount),
-  //         ytdData.janBalance,
-  //         getPercentage(
-  //             ytdData.janBalance, monthlySalesList.monthlyData[9].salesAmount),
-  //         ytdData.febBalance,
-  //         getPercentage(
-  //             ytdData.febBalance, monthlySalesList.monthlyData[10].salesAmount),
-  //         ytdData.marBalance,
-  //         getPercentage(
-  //             ytdData.marBalance, monthlySalesList.monthlyData[11].salesAmount),
-  //       ]);
-  //     }
-  //     for (var ytdData in foreignNameMonthExpenseWiseList.subGroupData) {
-  //       sheet.appendRow(toCellRow([
-  //         ytdData.subGroupName,
-  //         "",
-  //         ytdData.aprBalance,
-  //         getPercentage(
-  //             ytdData.aprBalance, monthlySalesList.monthlyData[0].salesAmount),
-  //         ytdData.mayBalance,
-  //         getPercentage(
-  //             ytdData.mayBalance, monthlySalesList.monthlyData[1].salesAmount),
-  //         ytdData.junBalance,
-  //         getPercentage(
-  //             ytdData.junBalance, monthlySalesList.monthlyData[2].salesAmount),
-  //         ytdData.julBalance,
-  //         getPercentage(
-  //             ytdData.julBalance, monthlySalesList.monthlyData[3].salesAmount),
-  //         ytdData.augBalance,
-  //         getPercentage(
-  //             ytdData.augBalance, monthlySalesList.monthlyData[4].salesAmount),
-  //         ytdData.septBalance,
-  //         getPercentage(
-  //             ytdData.septBalance, monthlySalesList.monthlyData[5].salesAmount),
-  //         ytdData.octBalance,
-  //         getPercentage(
-  //             ytdData.octBalance, monthlySalesList.monthlyData[6].salesAmount),
-  //         ytdData.novBalance,
-  //         getPercentage(
-  //             ytdData.novBalance, monthlySalesList.monthlyData[7].salesAmount),
-  //         ytdData.decBalance,
-  //         getPercentage(
-  //             ytdData.decBalance, monthlySalesList.monthlyData[8].salesAmount),
-  //         ytdData.janBalance,
-  //         getPercentage(
-  //             ytdData.janBalance, monthlySalesList.monthlyData[9].salesAmount),
-  //         ytdData.febBalance,
-  //         getPercentage(
-  //             ytdData.febBalance, monthlySalesList.monthlyData[10].salesAmount),
-  //         ytdData.marBalance,
-  //         getPercentage(
-  //             ytdData.marBalance, monthlySalesList.monthlyData[11].salesAmount),
-  //       ]);
-  //     }
-  //     for (var ytdData in totalIndirectExpensesList.subGroupData) {
-  //       sheet.appendRow(toCellRow([
-  //         "Total Indirect Expenses",
-  //         "",
-  //         ytdData.aprBalance,
-  //         getPercentage(
-  //             ytdData.aprBalance, monthlySalesList.monthlyData[0].salesAmount),
-  //         ytdData.mayBalance,
-  //         getPercentage(
-  //             ytdData.mayBalance, monthlySalesList.monthlyData[1].salesAmount),
-  //         ytdData.junBalance,
-  //         getPercentage(
-  //             ytdData.junBalance, monthlySalesList.monthlyData[2].salesAmount),
-  //         ytdData.julBalance,
-  //         getPercentage(
-  //             ytdData.julBalance, monthlySalesList.monthlyData[3].salesAmount),
-  //         ytdData.augBalance,
-  //         getPercentage(
-  //             ytdData.augBalance, monthlySalesList.monthlyData[4].salesAmount),
-  //         ytdData.septBalance,
-  //         getPercentage(
-  //             ytdData.septBalance, monthlySalesList.monthlyData[5].salesAmount),
-  //         ytdData.octBalance,
-  //         getPercentage(
-  //             ytdData.octBalance, monthlySalesList.monthlyData[6].salesAmount),
-  //         ytdData.novBalance,
-  //         getPercentage(
-  //             ytdData.novBalance, monthlySalesList.monthlyData[7].salesAmount),
-  //         ytdData.decBalance,
-  //         getPercentage(
-  //             ytdData.decBalance, monthlySalesList.monthlyData[8].salesAmount),
-  //         ytdData.janBalance,
-  //         getPercentage(
-  //             ytdData.janBalance, monthlySalesList.monthlyData[9].salesAmount),
-  //         ytdData.febBalance,
-  //         getPercentage(
-  //             ytdData.febBalance, monthlySalesList.monthlyData[10].salesAmount),
-  //         ytdData.marBalance,
-  //         getPercentage(
-  //             ytdData.marBalance, monthlySalesList.monthlyData[11].salesAmount),
-  //       ]);
-  //     }
-  //     sheet.appendRow(toCellRow([""]);
-  //
-  //     final now = DateTime.now();
-  //     final fiscalIndex = now.month >= 4 ? now.month - 4 : now.month + 8;
-  //     final completedMonths = fiscalIndex + 1;
-  //
-  //     final financeCosts = foreignNameMonthExpenseWiseList.subGroupData
-  //         .firstWhere((e) => e.subGroupName == 'Finance Costs',
-  //             orElse: () => throw Exception('No Finance Costs subgroup'));
-  //     final otherIncome = otherIncomeList.subGroupData.isNotEmpty
-  //         ? otherIncomeList.subGroupData.first
-  //         : throw Exception('No Other Income subgroup');
-  //     final directExpenses = sumOfDirectExpensesList.subGroupData.isNotEmpty
-  //         ? sumOfDirectExpensesList.subGroupData.first
-  //         : throw Exception('No Direct Expenses subgroup');
-  //     final indirectExpenses = totalIndirectExpensesList.subGroupData.isNotEmpty
-  //         ? totalIndirectExpensesList.subGroupData.first
-  //         : throw Exception('No Indirect Expenses subgroup');
-  //
-  // // 2. Build month‐balance arrays:
-  //     final financeVals = [
-  //       financeCosts.aprBalance,
-  //       financeCosts.mayBalance,
-  //       financeCosts.junBalance,
-  //       financeCosts.julBalance,
-  //       financeCosts.augBalance,
-  //       financeCosts.septBalance,
-  //       financeCosts.octBalance,
-  //       financeCosts.novBalance,
-  //       financeCosts.decBalance,
-  //       financeCosts.janBalance,
-  //       financeCosts.febBalance,
-  //       financeCosts.marBalance,
-  //     ];
-  //     final otherVals = [
-  //       otherIncome.aprBalance,
-  //       otherIncome.mayBalance,
-  //       otherIncome.junBalance,
-  //       otherIncome.julBalance,
-  //       otherIncome.augBalance,
-  //       otherIncome.septBalance,
-  //       otherIncome.octBalance,
-  //       otherIncome.novBalance,
-  //       otherIncome.decBalance,
-  //       otherIncome.janBalance,
-  //       otherIncome.febBalance,
-  //       otherIncome.marBalance,
-  //     ];
-  //     final directVals = [
-  //       directExpenses.aprBalance,
-  //       directExpenses.mayBalance,
-  //       directExpenses.junBalance,
-  //       directExpenses.julBalance,
-  //       directExpenses.augBalance,
-  //       directExpenses.septBalance,
-  //       directExpenses.octBalance,
-  //       directExpenses.novBalance,
-  //       directExpenses.decBalance,
-  //       directExpenses.janBalance,
-  //       directExpenses.febBalance,
-  //       directExpenses.marBalance,
-  //     ];
-  //     final indirectVals = [
-  //       indirectExpenses.aprBalance,
-  //       indirectExpenses.mayBalance,
-  //       indirectExpenses.junBalance,
-  //       indirectExpenses.julBalance,
-  //       indirectExpenses.augBalance,
-  //       indirectExpenses.septBalance,
-  //       indirectExpenses.octBalance,
-  //       indirectExpenses.novBalance,
-  //       indirectExpenses.decBalance,
-  //       indirectExpenses.janBalance,
-  //       indirectExpenses.febBalance,
-  //       indirectExpenses.marBalance,
-  //     ];
-  //
-  //     final rowEbitda = <dynamic>['EBITDA', ''];
-  //     final rowPbt = <dynamic>['PBT', ''];
-  //
-  //     for (var i = 0; i < completedMonths; i++) {
-  //       final sales = (i < monthlySalesList.monthlyData.length)
-  //           ? monthlySalesList.monthlyData[i].salesAmount
-  //           : 0.0;
-  //       final cogs = (i < monthlyCogsList.length) ? monthlyCogsList[i].cogs : 0.0;
-  //
-  //       final fin = financeVals[i];
-  //       final oth = otherVals[i];
-  //       final dir = directVals[i];
-  //       final ind = indirectVals[i];
-  //
-  //       final ebitda = fin + ((oth + sales) - cogs - dir - ind) + 25000;
-  //       final ePct = sales != 0 ? getPercentage(ebitda, sales) : 0.0;
-  //       rowEbitda
-  //         ..add(ebitda)
-  //         ..add(ePct);
-  //
-  //       final pbt = (oth + sales) - cogs - dir - ind;
-  //       final pPct = sales != 0 ? getPercentage(pbt, sales) : 0.0;
-  //       rowPbt
-  //         ..add(pbt)
-  //         ..add(pPct);
-  //     }
-  //
-  //     sheet
-  //       ..appendRow(rowEbitda)
-  //       ..appendRow(rowPbt);
-  //
-  //     sheet.appendRow(toCellRow([
-  //       'PAT',
-  //       "",
-  //       expenditureMonthlyData.dailyData.isNotEmpty
-  //           ? expenditureMonthlyData.dailyData[0].balance -
-  //               revenueMonthlyData.dailyData[0].balance
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 2
-  //           ? expenditureMonthlyData.dailyData[1].balance -
-  //               monthlySalesList.monthlyData[1].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 3
-  //           ? expenditureMonthlyData.dailyData[2].balance -
-  //               monthlySalesList.monthlyData[2].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 4
-  //           ? expenditureMonthlyData.dailyData[3].balance -
-  //               monthlySalesList.monthlyData[3].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 5
-  //           ? expenditureMonthlyData.dailyData[4].balance -
-  //               monthlySalesList.monthlyData[4].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 6
-  //           ? expenditureMonthlyData.dailyData[5].balance -
-  //               monthlySalesList.monthlyData[5].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 7
-  //           ? expenditureMonthlyData.dailyData[6].balance -
-  //               monthlySalesList.monthlyData[6].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 8
-  //           ? expenditureMonthlyData.dailyData[7].balance -
-  //               monthlySalesList.monthlyData[7].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 9
-  //           ? expenditureMonthlyData.dailyData[8].balance -
-  //               monthlySalesList.monthlyData[8].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 10
-  //           ? expenditureMonthlyData.dailyData[9].balance -
-  //               monthlySalesList.monthlyData[9].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length >= 11
-  //           ? expenditureMonthlyData.dailyData[10].balance -
-  //               monthlySalesList.monthlyData[10].salesAmount
-  //           : 0,
-  //       "",
-  //       expenditureMonthlyData.dailyData.length == 12
-  //           ? expenditureMonthlyData.dailyData[11].balance -
-  //               monthlySalesList.monthlyData[11].salesAmount
-  //           : 0,
-  //       "",
-  //     ]);
-  //
-  //     setState(() {
-  //       // YtdSalesBarChartData = true;
-  //     });
-  //
-  //     if (kIsWeb) {
-  //       final excelBytes = excel.encode()!;
-  //       saveAndOpenExcel('monthlyPL.xlsx', excelBytes);
-  //     } else {
-  //       String storageDir = await getStorageDirectory();
-  //       final file = File('$storageDir/monthlyPL.xlsx');
-  //       await file.writeAsBytes(excel.encode()!);
-  //       OpenFile.open(file.path);
-  //     }
-  //   }
-
-  Future<void> generateSalesAnalysisYTDExcel() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-
-    sheet.appendRow(
-      toCellRow([
-        'Particulars',
-        'Target - Apr',
-        'Apr',
-        '%',
-        'Target - May',
-        'May',
-        '%',
-        'Target - Jun',
-        'Jun',
-        '%',
-        'Target - Jul',
-        'Jul',
-        '%',
-        'Target - Aug',
-        'Aug',
-        '%',
-        'Target - Sep',
-        'Sep',
-        '%',
-        'Target - Oct',
-        'Oct',
-        '%',
-        'Target - Nov',
-        'Nov',
-        '%',
-        'Target - Dec',
-        'Dec',
-        '%',
-        'Target - Jan',
-        'Jan',
-        '%',
-        'Target - Feb',
-        'Feb',
-        '%',
-        'Target - Mar',
-        'Mar',
-        '%',
-        'YTD',
-      ]),
-    );
-
-    double calculateYTD(List<dynamic> values) {
-      return values.fold(0.0, (sum, item) {
-        if (item is num) {
-          return sum + item;
-        }
-        return sum;
-      });
-    }
-
-    // --- Revenue Row ---
-    final List<dynamic> revenueRowData = [
-      "Revenue",
-      (monthlyMap["IPD SALES TARGET"]?[3] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[3] ?? 0),
-      monthlySalesList.monthlyData.isNotEmpty
-          ? monthlySalesList.monthlyData[0].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[4] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[4] ?? 0),
-      monthlySalesList.monthlyData.length >= 2
-          ? monthlySalesList.monthlyData[1].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[5] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[5] ?? 0),
-      monthlySalesList.monthlyData.length >= 3
-          ? monthlySalesList.monthlyData[2].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[6] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[6] ?? 0),
-      monthlySalesList.monthlyData.length >= 4
-          ? monthlySalesList.monthlyData[3].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[7] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[7] ?? 0),
-      monthlySalesList.monthlyData.length >= 5
-          ? monthlySalesList.monthlyData[4].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[8] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[8] ?? 0),
-      monthlySalesList.monthlyData.length >= 6
-          ? monthlySalesList.monthlyData[5].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[9] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[9] ?? 0),
-      monthlySalesList.monthlyData.length >= 7
-          ? monthlySalesList.monthlyData[6].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[10] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[10] ?? 0),
-      monthlySalesList.monthlyData.length >= 8
-          ? monthlySalesList.monthlyData[7].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[11] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[11] ?? 0),
-      monthlySalesList.monthlyData.length >= 9
-          ? monthlySalesList.monthlyData[8].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[0] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[0] ?? 0),
-      monthlySalesList.monthlyData.length >= 10
-          ? monthlySalesList.monthlyData[9].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[1] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[1] ?? 0),
-      monthlySalesList.monthlyData.length >= 11
-          ? monthlySalesList.monthlyData[10].salesAmount
-          : 0,
-      "",
-      (monthlyMap["IPD SALES TARGET"]?[2] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[2] ?? 0),
-      monthlySalesList.monthlyData.length == 12
-          ? monthlySalesList.monthlyData[11].salesAmount
-          : 0,
-      "",
-    ];
-    revenueRowData.add(
-      calculateYTD(revenueRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(revenueRowData));
-
-    final List<dynamic> otherIncomeRowData = [
-      "Other Income",
-      "",
-      otherIncomeList.subGroupData.isNotEmpty
-          ? otherIncomeList.subGroupData[0].aprBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 2
-          ? otherIncomeList.subGroupData[1].mayBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 3
-          ? otherIncomeList.subGroupData[2].junBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 4
-          ? otherIncomeList.subGroupData[3].julBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 5
-          ? otherIncomeList.subGroupData[4].augBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 6
-          ? otherIncomeList.subGroupData[5].septBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 7
-          ? otherIncomeList.subGroupData[6].octBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 8
-          ? otherIncomeList.subGroupData[7].novBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 9
-          ? otherIncomeList.subGroupData[8].decBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 10
-          ? otherIncomeList.subGroupData[9].janBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 11
-          ? otherIncomeList.subGroupData[10].febBalance
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length == 12
-          ? otherIncomeList.subGroupData[11].marBalance
-          : 0,
-      "",
-    ];
-    otherIncomeRowData.add(
-      calculateYTD(otherIncomeRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(otherIncomeRowData));
-
-    final List<dynamic> totalRevenueRowData = [
-      "Total Revenue",
-      "",
-      otherIncomeList.subGroupData.isNotEmpty
-          ? otherIncomeList.subGroupData[0].aprBalance +
-                monthlySalesList.monthlyData[0].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 2
-          ? otherIncomeList.subGroupData[1].mayBalance +
-                monthlySalesList.monthlyData[1].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 3
-          ? otherIncomeList.subGroupData[2].junBalance +
-                monthlySalesList.monthlyData[2].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 4
-          ? otherIncomeList.subGroupData[3].julBalance +
-                monthlySalesList.monthlyData[3].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 5
-          ? otherIncomeList.subGroupData[4].augBalance +
-                monthlySalesList.monthlyData[4].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 6
-          ? otherIncomeList.subGroupData[5].septBalance +
-                monthlySalesList.monthlyData[5].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 7
-          ? otherIncomeList.subGroupData[6].octBalance +
-                monthlySalesList.monthlyData[6].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 8
-          ? otherIncomeList.subGroupData[7].novBalance +
-                monthlySalesList.monthlyData[7].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 9
-          ? otherIncomeList.subGroupData[8].decBalance +
-                monthlySalesList.monthlyData[8].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 10
-          ? otherIncomeList.subGroupData[9].janBalance +
-                monthlySalesList.monthlyData[9].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length >= 11
-          ? otherIncomeList.subGroupData[10].febBalance +
-                monthlySalesList.monthlyData[10].salesAmount
-          : 0,
-      "",
-      "",
-      otherIncomeList.subGroupData.length == 12
-          ? otherIncomeList.subGroupData[11].marBalance +
-                monthlySalesList.monthlyData[11].salesAmount
-          : 0,
-      "",
-    ];
-    totalRevenueRowData.add(
-      calculateYTD(totalRevenueRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(totalRevenueRowData));
-
-    sheet.appendRow(toCellRow([""]));
-
-    // --- Opening Stock Row ---
-    final List<dynamic> openingStockRowData = [
-      "Opening Stock",
-      (monthlyMap["INVENTORY TARGET"]?[3] ?? 0),
-      monthlyCogsList.isNotEmpty ? monthlyCogsList[0].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[4] ?? 0),
-      monthlyCogsList.length >= 2 ? monthlyCogsList[1].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[5] ?? 0),
-      monthlyCogsList.length >= 3 ? monthlyCogsList[2].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[6] ?? 0),
-      monthlyCogsList.length >= 4 ? monthlyCogsList[3].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[7] ?? 0),
-      monthlyCogsList.length >= 5 ? monthlyCogsList[4].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[8] ?? 0),
-      monthlyCogsList.length >= 6 ? monthlyCogsList[5].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[9] ?? 0),
-      monthlyCogsList.length >= 7 ? monthlyCogsList[6].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[10] ?? 0),
-      monthlyCogsList.length >= 8 ? monthlyCogsList[7].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[11] ?? 0),
-      monthlyCogsList.length >= 9 ? monthlyCogsList[8].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[0] ?? 0),
-      monthlyCogsList.length >= 10 ? monthlyCogsList[9].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[1] ?? 0),
-      monthlyCogsList.length >= 11 ? monthlyCogsList[10].openingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[2] ?? 0),
-      monthlyCogsList.length == 12 ? monthlyCogsList[11].openingStock : 0,
-      "",
-    ];
-    openingStockRowData.add(
-      calculateYTD(openingStockRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(openingStockRowData));
-
-    final List<dynamic> purchasesRowData = [
-      "Add: Purchases",
-      (monthlyMap["PURCHASE TARGET"]?[3] ?? 0),
-      monthlyCogsList.isNotEmpty ? monthlyCogsList[0].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[4] ?? 0),
-      monthlyCogsList.length >= 2 ? monthlyCogsList[1].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[5] ?? 0),
-      monthlyCogsList.length >= 3 ? monthlyCogsList[2].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[6] ?? 0),
-      monthlyCogsList.length >= 4 ? monthlyCogsList[3].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[7] ?? 0),
-      monthlyCogsList.length >= 5 ? monthlyCogsList[4].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[8] ?? 0),
-      monthlyCogsList.length >= 6 ? monthlyCogsList[5].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[9] ?? 0),
-      monthlyCogsList.length >= 7 ? monthlyCogsList[6].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[10] ?? 0),
-      monthlyCogsList.length >= 8 ? monthlyCogsList[7].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[11] ?? 0),
-      monthlyCogsList.length >= 9 ? monthlyCogsList[8].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[0] ?? 0),
-      monthlyCogsList.length >= 10 ? monthlyCogsList[9].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[1] ?? 0),
-      monthlyCogsList.length >= 11 ? monthlyCogsList[10].purchases : 0,
-      "",
-      (monthlyMap["PURCHASE TARGET"]?[2] ?? 0),
-      monthlyCogsList.length == 12 ? monthlyCogsList[11].purchases : 0,
-      "",
-    ];
-    purchasesRowData.add(
-      calculateYTD(purchasesRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(purchasesRowData));
-
-    final List<dynamic> closingStockRowData = [
-      "Less: Closing Stock",
-      (monthlyMap["INVENTORY TARGET"]?[3] ?? 0),
-      monthlyCogsList.isNotEmpty ? monthlyCogsList[0].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[4] ?? 0),
-      monthlyCogsList.length >= 2 ? monthlyCogsList[1].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[5] ?? 0),
-      monthlyCogsList.length >= 3 ? monthlyCogsList[2].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[6] ?? 0),
-      monthlyCogsList.length >= 4 ? monthlyCogsList[3].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[7] ?? 0),
-      monthlyCogsList.length >= 5 ? monthlyCogsList[4].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[8] ?? 0),
-      monthlyCogsList.length >= 6 ? monthlyCogsList[5].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[9] ?? 0),
-      monthlyCogsList.length >= 7 ? monthlyCogsList[6].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[10] ?? 0),
-      monthlyCogsList.length >= 8 ? monthlyCogsList[7].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[11] ?? 0),
-      monthlyCogsList.length >= 9 ? monthlyCogsList[8].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[0] ?? 0),
-      monthlyCogsList.length >= 10 ? monthlyCogsList[9].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[1] ?? 0),
-      monthlyCogsList.length >= 11 ? monthlyCogsList[10].closingStock : 0,
-      "",
-      (monthlyMap["INVENTORY TARGET"]?[2] ?? 0),
-      monthlyCogsList.length == 12 ? monthlyCogsList[11].closingStock : 0,
-      "",
-    ];
-    closingStockRowData.add(
-      calculateYTD(closingStockRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(closingStockRowData));
-
-    final List<dynamic> cogsRowData = [
-      "Cost of Materials Consumed",
-      (monthlyMap["COGS TARGET"]?[3] ?? 0),
-      monthlyCogsList.isNotEmpty ? monthlyCogsList[0].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[4] ?? 0),
-      monthlyCogsList.length >= 2 ? monthlyCogsList[1].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[5] ?? 0),
-      monthlyCogsList.length >= 3 ? monthlyCogsList[2].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[6] ?? 0),
-      monthlyCogsList.length >= 4 ? monthlyCogsList[3].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[7] ?? 0),
-      monthlyCogsList.length >= 5 ? monthlyCogsList[4].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[8] ?? 0),
-      monthlyCogsList.length >= 6 ? monthlyCogsList[5].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[9] ?? 0),
-      monthlyCogsList.length >= 7 ? monthlyCogsList[6].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[10] ?? 0),
-      monthlyCogsList.length >= 8 ? monthlyCogsList[7].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[11] ?? 0),
-      monthlyCogsList.length >= 9 ? monthlyCogsList[8].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[0] ?? 0),
-      monthlyCogsList.length >= 10 ? monthlyCogsList[9].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[1] ?? 0),
-      monthlyCogsList.length >= 11 ? monthlyCogsList[10].cogs : 0,
-      "",
-      (monthlyMap["COGS TARGET"]?[2] ?? 0),
-      monthlyCogsList.length == 12 ? monthlyCogsList[11].cogs : 0,
-      "",
-    ];
-    cogsRowData.add(
-      calculateYTD(cogsRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(cogsRowData));
-    sheet.appendRow(
-      toCellRow([
-        "COGS %",
-        "",
-        "",
-        getPercentage(
-          monthlyCogsList.isNotEmpty ? monthlyCogsList[0].cogs : 0,
-          otherIncomeList.subGroupData.isNotEmpty
-              ? otherIncomeList.subGroupData[0].aprBalance +
-                    monthlySalesList.monthlyData[0].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 2 ? monthlyCogsList[1].cogs : 0,
-          otherIncomeList.subGroupData.length >= 2
-              ? otherIncomeList.subGroupData[0].mayBalance +
-                    monthlySalesList.monthlyData[1].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 3 ? monthlyCogsList[2].cogs : 0,
-          otherIncomeList.subGroupData.length >= 3
-              ? otherIncomeList.subGroupData[0].junBalance +
-                    monthlySalesList.monthlyData[2].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 4 ? monthlyCogsList[3].cogs : 0,
-          otherIncomeList.subGroupData.length >= 4
-              ? otherIncomeList.subGroupData[0].julBalance +
-                    monthlySalesList.monthlyData[3].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 5 ? monthlyCogsList[4].cogs : 0,
-          otherIncomeList.subGroupData.length >= 5
-              ? otherIncomeList.subGroupData[0].augBalance +
-                    monthlySalesList.monthlyData[4].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 6 ? monthlyCogsList[5].cogs : 0,
-          otherIncomeList.subGroupData.length >= 6
-              ? otherIncomeList.subGroupData[0].septBalance +
-                    monthlySalesList.monthlyData[5].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 7 ? monthlyCogsList[6].cogs : 0,
-          otherIncomeList.subGroupData.length >= 7
-              ? otherIncomeList.subGroupData[0].octBalance +
-                    monthlySalesList.monthlyData[6].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 8 ? monthlyCogsList[7].cogs : 0,
-          otherIncomeList.subGroupData.length >= 8
-              ? otherIncomeList.subGroupData[0].novBalance +
-                    monthlySalesList.monthlyData[7].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 9 ? monthlyCogsList[8].cogs : 0,
-          otherIncomeList.subGroupData.length >= 9
-              ? otherIncomeList.subGroupData[0].decBalance +
-                    monthlySalesList.monthlyData[8].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 10 ? monthlyCogsList[9].cogs : 0,
-          otherIncomeList.subGroupData.length >= 10
-              ? otherIncomeList.subGroupData[0].janBalance +
-                    monthlySalesList.monthlyData[9].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 11 ? monthlyCogsList[10].cogs : 0,
-          otherIncomeList.subGroupData.length >= 11
-              ? otherIncomeList.subGroupData[0].febBalance +
-                    monthlySalesList.monthlyData[10].salesAmount
-              : 0,
-        ),
-        "",
-        getPercentage(
-          monthlyCogsList.length >= 12 ? monthlyCogsList[11].cogs : 0,
-          otherIncomeList.subGroupData.length >= 12
-              ? otherIncomeList.subGroupData[0].marBalance +
-                    monthlySalesList.monthlyData[11].salesAmount
-              : 0,
-        ),
-      ]),
-    );
-
-    sheet.appendRow(toCellRow([""]));
-
-    // --- SubGroup Month Expense Wise List ---
-    for (var ytdData in subGroupMonthExpenseWiseList.subGroupData) {
-      final List<dynamic> row = [
-        ytdData.subGroupName,
-        "",
-        ytdData.aprBalance,
-        "",
-        "",
-        ytdData.mayBalance,
-        "",
-        "",
-        ytdData.junBalance,
-        "",
-        "",
-        ytdData.julBalance,
-        "",
-        "",
-        ytdData.augBalance,
-        "",
-        "",
-        ytdData.septBalance,
-        "",
-        "",
-        ytdData.octBalance,
-        "",
-        "",
-        ytdData.novBalance,
-        "",
-        "",
-        ytdData.decBalance,
-        "",
-        "",
-        ytdData.janBalance,
-        "",
-        "",
-        ytdData.febBalance,
-        "",
-        "",
-        ytdData.marBalance,
-        "",
-      ];
-      row.add(calculateYTD(row.sublist(2).whereType<num>().toList()));
-      sheet.appendRow(toCellRow(row));
-    }
-    sheet.appendRow(toCellRow([""]));
-
-    // --- Expenditure Row ---
-    final List<dynamic> expenditureRowData = [
-      "Expenditure",
-      "",
-      expenditureMonthlyData.dailyData.isNotEmpty
-          ? expenditureMonthlyData.dailyData[0].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 2
-          ? expenditureMonthlyData.dailyData[1].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 3
-          ? expenditureMonthlyData.dailyData[2].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 4
-          ? expenditureMonthlyData.dailyData[3].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 5
-          ? expenditureMonthlyData.dailyData[4].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 6
-          ? expenditureMonthlyData.dailyData[5].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 7
-          ? expenditureMonthlyData.dailyData[6].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 8
-          ? expenditureMonthlyData.dailyData[7].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 9
-          ? expenditureMonthlyData.dailyData[8].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 10
-          ? expenditureMonthlyData.dailyData[9].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 11
-          ? expenditureMonthlyData.dailyData[10].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length == 12
-          ? expenditureMonthlyData.dailyData[11].balance
-          : 0,
-      "",
-    ];
-
-    expenditureRowData.add(
-      calculateYTD(expenditureRowData.sublist(2).whereType<num>().toList()),
-    );
-    sheet.appendRow(toCellRow(expenditureRowData));
-    sheet.appendRow(toCellRow([""]));
-
-    sheet.appendRow(toCellRow(["Direct Expenses"]));
-    for (var ytdData in directExpensesList.subGroupData) {
-      final List<dynamic> row = [
-        ytdData.subGroupName,
-        "",
-        ytdData.aprBalance,
-        getPercentage(
-          ytdData.aprBalance,
-          monthlySalesList.monthlyData[0].salesAmount,
-        ),
-        "",
-        ytdData.mayBalance,
-        getPercentage(
-          ytdData.mayBalance,
-          monthlySalesList.monthlyData[1].salesAmount,
-        ),
-        "",
-        ytdData.junBalance,
-        getPercentage(
-          ytdData.junBalance,
-          monthlySalesList.monthlyData[2].salesAmount,
-        ),
-        "",
-        ytdData.julBalance,
-        getPercentage(
-          ytdData.julBalance,
-          monthlySalesList.monthlyData[3].salesAmount,
-        ),
-        "",
-        ytdData.augBalance,
-        getPercentage(
-          ytdData.augBalance,
-          monthlySalesList.monthlyData[4].salesAmount,
-        ),
-        "",
-        ytdData.septBalance,
-        getPercentage(
-          ytdData.septBalance,
-          monthlySalesList.monthlyData[5].salesAmount,
-        ),
-        "",
-        ytdData.octBalance,
-        getPercentage(
-          ytdData.octBalance,
-          monthlySalesList.monthlyData[6].salesAmount,
-        ),
-        "",
-        ytdData.novBalance,
-        getPercentage(
-          ytdData.novBalance,
-          monthlySalesList.monthlyData[7].salesAmount,
-        ),
-        "",
-        ytdData.decBalance,
-        getPercentage(
-          ytdData.decBalance,
-          monthlySalesList.monthlyData[8].salesAmount,
-        ),
-        "",
-        ytdData.janBalance,
-        getPercentage(
-          ytdData.janBalance,
-          monthlySalesList.monthlyData[9].salesAmount,
-        ),
-        "",
-        ytdData.febBalance,
-        getPercentage(
-          ytdData.febBalance,
-          monthlySalesList.monthlyData[10].salesAmount,
-        ),
-        "",
-        ytdData.marBalance,
-        getPercentage(
-          ytdData.marBalance,
-          monthlySalesList.monthlyData[11].salesAmount,
-        ),
-      ];
-      row.add(
-        calculateYTD(row.sublist(2).whereType<num>().toList()),
-      ); // YTD for direct expenses
-      sheet.appendRow(toCellRow(row));
-    }
-
-    for (var ytdData in sumOfDirectExpensesList.subGroupData) {
-      final List<dynamic> row = [
-        "Total Direct Expenses",
-        "",
-        ytdData.aprBalance,
-        getPercentage(
-          ytdData.aprBalance,
-          monthlySalesList.monthlyData[0].salesAmount,
-        ),
-        "",
-        ytdData.mayBalance,
-        getPercentage(
-          ytdData.mayBalance,
-          monthlySalesList.monthlyData[1].salesAmount,
-        ),
-        "",
-        ytdData.junBalance,
-        getPercentage(
-          ytdData.junBalance,
-          monthlySalesList.monthlyData[2].salesAmount,
-        ),
-        "",
-        ytdData.julBalance,
-        getPercentage(
-          ytdData.julBalance,
-          monthlySalesList.monthlyData[3].salesAmount,
-        ),
-        "",
-        ytdData.augBalance,
-        getPercentage(
-          ytdData.augBalance,
-          monthlySalesList.monthlyData[4].salesAmount,
-        ),
-        "",
-        ytdData.septBalance,
-        getPercentage(
-          ytdData.septBalance,
-          monthlySalesList.monthlyData[5].salesAmount,
-        ),
-        "",
-        ytdData.octBalance,
-        getPercentage(
-          ytdData.octBalance,
-          monthlySalesList.monthlyData[6].salesAmount,
-        ),
-        "",
-        ytdData.novBalance,
-        getPercentage(
-          ytdData.novBalance,
-          monthlySalesList.monthlyData[7].salesAmount,
-        ),
-        "",
-        ytdData.decBalance,
-        getPercentage(
-          ytdData.decBalance,
-          monthlySalesList.monthlyData[8].salesAmount,
-        ),
-        "",
-        ytdData.janBalance,
-        getPercentage(
-          ytdData.janBalance,
-          monthlySalesList.monthlyData[9].salesAmount,
-        ),
-        "",
-        ytdData.febBalance,
-        getPercentage(
-          ytdData.febBalance,
-          monthlySalesList.monthlyData[10].salesAmount,
-        ),
-        "",
-        ytdData.marBalance,
-        getPercentage(
-          ytdData.marBalance,
-          monthlySalesList.monthlyData[11].salesAmount,
-        ),
-      ];
-      row.add(
-        calculateYTD(row.sublist(2).whereType<num>().toList()),
-      ); // YTD for total direct expenses
-      sheet.appendRow(toCellRow(row));
-    }
-    sheet.appendRow(toCellRow([""]));
-
-    sheet.appendRow(toCellRow(["Indirect Expenses"]));
-    for (var ytdData in otherIndirectExpensesList.subGroupData) {
-      final List<dynamic> row = [
-        ytdData.subGroupName,
-        "",
-        ytdData.aprBalance,
-        getPercentage(
-          ytdData.aprBalance,
-          monthlySalesList.monthlyData[0].salesAmount,
-        ),
-        "",
-        ytdData.mayBalance,
-        getPercentage(
-          ytdData.mayBalance,
-          monthlySalesList.monthlyData[1].salesAmount,
-        ),
-        "",
-        ytdData.junBalance,
-        getPercentage(
-          ytdData.junBalance,
-          monthlySalesList.monthlyData[2].salesAmount,
-        ),
-        "",
-        ytdData.julBalance,
-        getPercentage(
-          ytdData.julBalance,
-          monthlySalesList.monthlyData[3].salesAmount,
-        ),
-        "",
-        ytdData.augBalance,
-        getPercentage(
-          ytdData.augBalance,
-          monthlySalesList.monthlyData[4].salesAmount,
-        ),
-        "",
-        ytdData.septBalance,
-        getPercentage(
-          ytdData.septBalance,
-          monthlySalesList.monthlyData[5].salesAmount,
-        ),
-        "",
-        ytdData.octBalance,
-        getPercentage(
-          ytdData.octBalance,
-          monthlySalesList.monthlyData[6].salesAmount,
-        ),
-        "",
-        ytdData.novBalance,
-        getPercentage(
-          ytdData.novBalance,
-          monthlySalesList.monthlyData[7].salesAmount,
-        ),
-        "",
-        ytdData.decBalance,
-        getPercentage(
-          ytdData.decBalance,
-          monthlySalesList.monthlyData[8].salesAmount,
-        ),
-        "",
-        ytdData.janBalance,
-        getPercentage(
-          ytdData.janBalance,
-          monthlySalesList.monthlyData[9].salesAmount,
-        ),
-        "",
-        ytdData.febBalance,
-        getPercentage(
-          ytdData.febBalance,
-          monthlySalesList.monthlyData[10].salesAmount,
-        ),
-        "",
-        ytdData.marBalance,
-        getPercentage(
-          ytdData.marBalance,
-          monthlySalesList.monthlyData[11].salesAmount,
-        ),
-      ];
-      row.add(
-        calculateYTD(row.sublist(2).whereType<num>().toList()),
-      ); // YTD for other indirect expenses
-      sheet.appendRow(toCellRow(row));
-    }
-
-    for (var ytdData in foreignNameMonthExpenseWiseList.subGroupData) {
-      final List<dynamic> row = [
-        ytdData.subGroupName,
-        "",
-        ytdData.aprBalance,
-        getPercentage(
-          ytdData.aprBalance,
-          monthlySalesList.monthlyData[0].salesAmount,
-        ),
-        "",
-        ytdData.mayBalance,
-        getPercentage(
-          ytdData.mayBalance,
-          monthlySalesList.monthlyData[1].salesAmount,
-        ),
-        "",
-        ytdData.junBalance,
-        getPercentage(
-          ytdData.junBalance,
-          monthlySalesList.monthlyData[2].salesAmount,
-        ),
-        "",
-        ytdData.julBalance,
-        getPercentage(
-          ytdData.julBalance,
-          monthlySalesList.monthlyData[3].salesAmount,
-        ),
-        "",
-        ytdData.augBalance,
-        getPercentage(
-          ytdData.augBalance,
-          monthlySalesList.monthlyData[4].salesAmount,
-        ),
-        "",
-        ytdData.septBalance,
-        getPercentage(
-          ytdData.septBalance,
-          monthlySalesList.monthlyData[5].salesAmount,
-        ),
-        "",
-        ytdData.octBalance,
-        getPercentage(
-          ytdData.octBalance,
-          monthlySalesList.monthlyData[6].salesAmount,
-        ),
-        "",
-        ytdData.novBalance,
-        getPercentage(
-          ytdData.novBalance,
-          monthlySalesList.monthlyData[7].salesAmount,
-        ),
-        "",
-        ytdData.decBalance,
-        getPercentage(
-          ytdData.decBalance,
-          monthlySalesList.monthlyData[8].salesAmount,
-        ),
-        "",
-        ytdData.janBalance,
-        getPercentage(
-          ytdData.janBalance,
-          monthlySalesList.monthlyData[9].salesAmount,
-        ),
-        "",
-        ytdData.febBalance,
-        getPercentage(
-          ytdData.febBalance,
-          monthlySalesList.monthlyData[10].salesAmount,
-        ),
-        "",
-        ytdData.marBalance,
-        getPercentage(
-          ytdData.marBalance,
-          monthlySalesList.monthlyData[11].salesAmount,
-        ),
-      ];
-      row.add(
-        calculateYTD(row.sublist(2).whereType<num>().toList()),
-      ); // YTD for foreign name expenses
-      sheet.appendRow(toCellRow(row));
-    }
-
-    for (var ytdData in totalIndirectExpensesList.subGroupData) {
-      final List<dynamic> row = [
-        "Total Indirect Expenses",
-        "",
-        ytdData.aprBalance,
-        getPercentage(
-          ytdData.aprBalance,
-          monthlySalesList.monthlyData[0].salesAmount,
-        ),
-        "",
-        ytdData.mayBalance,
-        getPercentage(
-          ytdData.mayBalance,
-          monthlySalesList.monthlyData[1].salesAmount,
-        ),
-        "",
-        ytdData.junBalance,
-        getPercentage(
-          ytdData.junBalance,
-          monthlySalesList.monthlyData[2].salesAmount,
-        ),
-        "",
-        ytdData.julBalance,
-        getPercentage(
-          ytdData.julBalance,
-          monthlySalesList.monthlyData[3].salesAmount,
-        ),
-        "",
-        ytdData.augBalance,
-        getPercentage(
-          ytdData.augBalance,
-          monthlySalesList.monthlyData[4].salesAmount,
-        ),
-        "",
-        ytdData.septBalance,
-        getPercentage(
-          ytdData.septBalance,
-          monthlySalesList.monthlyData[5].salesAmount,
-        ),
-        "",
-        ytdData.octBalance,
-        getPercentage(
-          ytdData.octBalance,
-          monthlySalesList.monthlyData[6].salesAmount,
-        ),
-        "",
-        ytdData.novBalance,
-        getPercentage(
-          ytdData.novBalance,
-          monthlySalesList.monthlyData[7].salesAmount,
-        ),
-        "",
-        ytdData.decBalance,
-        getPercentage(
-          ytdData.decBalance,
-          monthlySalesList.monthlyData[8].salesAmount,
-        ),
-        "",
-        ytdData.janBalance,
-        getPercentage(
-          ytdData.janBalance,
-          monthlySalesList.monthlyData[9].salesAmount,
-        ),
-        "",
-        ytdData.febBalance,
-        getPercentage(
-          ytdData.febBalance,
-          monthlySalesList.monthlyData[10].salesAmount,
-        ),
-        "",
-        ytdData.marBalance,
-        getPercentage(
-          ytdData.marBalance,
-          monthlySalesList.monthlyData[11].salesAmount,
-        ),
-      ];
-      row.add(
-        calculateYTD(row.sublist(2).whereType<num>().toList()),
-      ); // YTD for total indirect expenses
-      sheet.appendRow(toCellRow(row));
-    }
-    sheet.appendRow(toCellRow([""]));
-
-    final now = DateTime.now();
-    final fiscalIndex = now.month >= 4 ? now.month - 4 : now.month + 8;
-    final completedMonths = fiscalIndex + 1;
-
-    final financeCosts = foreignNameMonthExpenseWiseList.subGroupData
-        .firstWhere(
-          (e) => e.subGroupName == 'Finance Costs',
-          orElse: () => throw Exception('No Finance Costs subgroup'),
-        );
-    final otherIncome = otherIncomeList.subGroupData.isNotEmpty
-        ? otherIncomeList.subGroupData.first
-        : throw Exception('No Other Income subgroup');
-    final directExpenses = sumOfDirectExpensesList.subGroupData.isNotEmpty
-        ? sumOfDirectExpensesList.subGroupData.first
-        : throw Exception('No Direct Expenses subgroup');
-    final indirectExpenses = totalIndirectExpensesList.subGroupData.isNotEmpty
-        ? totalIndirectExpensesList.subGroupData.first
-        : throw Exception('No Indirect Expenses subgroup');
-
-    // 2. Build month‐balance arrays:
-    final financeVals = [
-      financeCosts.aprBalance,
-      financeCosts.mayBalance,
-      financeCosts.junBalance,
-      financeCosts.julBalance,
-      financeCosts.augBalance,
-      financeCosts.septBalance,
-      financeCosts.octBalance,
-      financeCosts.novBalance,
-      financeCosts.decBalance,
-      financeCosts.janBalance,
-      financeCosts.febBalance,
-      financeCosts.marBalance,
-    ];
-    final otherVals = [
-      otherIncome.aprBalance,
-      otherIncome.mayBalance,
-      otherIncome.junBalance,
-      otherIncome.julBalance,
-      otherIncome.augBalance,
-      otherIncome.septBalance,
-      otherIncome.octBalance,
-      otherIncome.novBalance,
-      otherIncome.decBalance,
-      otherIncome.janBalance,
-      otherIncome.febBalance,
-      otherIncome.marBalance,
-    ];
-    final directVals = [
-      directExpenses.aprBalance,
-      directExpenses.mayBalance,
-      directExpenses.junBalance,
-      directExpenses.julBalance,
-      directExpenses.augBalance,
-      directExpenses.septBalance,
-      directExpenses.octBalance,
-      directExpenses.novBalance,
-      directExpenses.decBalance,
-      directExpenses.janBalance,
-      directExpenses.febBalance,
-      directExpenses.marBalance,
-    ];
-    final indirectVals = [
-      indirectExpenses.aprBalance,
-      indirectExpenses.mayBalance,
-      indirectExpenses.junBalance,
-      indirectExpenses.julBalance,
-      indirectExpenses.augBalance,
-      indirectExpenses.septBalance,
-      indirectExpenses.octBalance,
-      indirectExpenses.novBalance,
-      indirectExpenses.decBalance,
-      indirectExpenses.janBalance,
-      indirectExpenses.febBalance,
-      indirectExpenses.marBalance,
-    ];
-
-    final rowEbitda = <dynamic>['EBITDA', ''];
-    final rowPbt = <dynamic>['PBT', ''];
-
-    double totalEbitda = 0.0;
-    double totalPbt = 0.0;
-    double totalSalesForPercentage = 0.0;
-
-    for (var i = 0; i < completedMonths; i++) {
-      final sales = (i < monthlySalesList.monthlyData.length)
-          ? monthlySalesList.monthlyData[i].salesAmount
-          : 0.0;
-      final cogs = (i < monthlyCogsList.length) ? monthlyCogsList[i].cogs : 0.0;
-
-      final fin = financeVals[i];
-      final oth = otherVals[i];
-      final dir = directVals[i];
-      final ind = indirectVals[i];
-
-      final ebitda = fin + ((oth + sales) - cogs - dir - ind) + 25000;
-      final ePct = sales != 0 ? getPercentage(ebitda, sales) : 0.0;
-      rowEbitda
-        ..add(ebitda)
-        ..add(ePct)
-        ..add('');
-
-      totalEbitda += ebitda;
-      totalSalesForPercentage += sales;
-
-      final pbt = (oth + sales) - cogs - dir - ind;
-      final pPct = sales != 0 ? getPercentage(pbt, sales) : 0.0;
-      rowPbt
-        ..add(pbt)
-        ..add(pPct)
-        ..add('');
-      totalPbt += pbt;
-    }
-
-    // Add YTD for EBITDA
-    rowEbitda.add(totalEbitda);
-    rowEbitda.add(
-      totalSalesForPercentage != 0
-          ? getPercentage(totalEbitda, totalSalesForPercentage)
-          : 0.0,
-    );
-
-    // Add YTD for PBT
-    rowPbt.add(totalPbt);
-    rowPbt.add(
-      totalSalesForPercentage != 0
-          ? getPercentage(totalPbt, totalSalesForPercentage)
-          : 0.0,
-    );
-
-    sheet
-      ..appendRow(toCellRowList(rowEbitda))
-      ..appendRow(toCellRowList(rowPbt));
-
-    // --- PAT Row ---
-    final List<dynamic> patRowData = [
-      'PAT',
-      "",
-      expenditureMonthlyData.dailyData.isNotEmpty
-          ? expenditureMonthlyData.dailyData[0].balance -
-                revenueMonthlyData.dailyData[0].balance
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 2
-          ? expenditureMonthlyData.dailyData[1].balance -
-                monthlySalesList.monthlyData[1].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 3
-          ? expenditureMonthlyData.dailyData[2].balance -
-                monthlySalesList.monthlyData[2].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 4
-          ? expenditureMonthlyData.dailyData[3].balance -
-                monthlySalesList.monthlyData[3].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 5
-          ? expenditureMonthlyData.dailyData[4].balance -
-                monthlySalesList.monthlyData[4].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 6
-          ? expenditureMonthlyData.dailyData[5].balance -
-                monthlySalesList.monthlyData[5].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 7
-          ? expenditureMonthlyData.dailyData[6].balance -
-                monthlySalesList.monthlyData[6].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 8
-          ? expenditureMonthlyData.dailyData[7].balance -
-                monthlySalesList.monthlyData[7].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 9
-          ? expenditureMonthlyData.dailyData[8].balance -
-                monthlySalesList.monthlyData[8].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 10
-          ? expenditureMonthlyData.dailyData[9].balance -
-                monthlySalesList.monthlyData[9].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length >= 11
-          ? expenditureMonthlyData.dailyData[10].balance -
-                monthlySalesList.monthlyData[10].salesAmount
-          : 0,
-      "",
-      "",
-      expenditureMonthlyData.dailyData.length == 12
-          ? expenditureMonthlyData.dailyData[11].balance -
-                monthlySalesList.monthlyData[11].salesAmount
-          : 0,
-      "",
-    ];
-    patRowData.add(
-      calculateYTD(patRowData.sublist(2).whereType<num>().toList()),
-    ); // YTD for PAT
-    sheet.appendRow(toCellRow(patRowData));
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('monthlyPL.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/monthlyPL.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  // Future<void> generateSummarySalesAnalysisYTDExcel() async {
-  //   final excel = xl.Excel.createExcel();
-  //   final sheet = excel['Sheet1'];
-  //   // sheet.getColAutoFits;
-  //
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       'Particulars',
-  //       'Target',
-  //       'Actual',
-  //       'Target % vs Target',
-  //     ]),
-  //   );
-  //
-  //   double calculateYTD(List<dynamic> values) {
-  //     return values.fold(0.0, (sum, item) {
-  //       if (item is num) {
-  //         return sum + item;
-  //       }
-  //       return sum;
-  //     });
-  //   }
-  //
-  //   // --- Revenue Row ---
-  //   final List<dynamic> revenueRowData = [
-  //     "Net Sales",
-  //     (monthlyMap["IPD SALES TARGET"]?[3] ?? 0) +
-  //         (monthlyMap["MD SALES TARGET"]?[3] ?? 0),
-  //     monthlySalesList.monthlyData.length == 12
-  //         ? monthlySalesList.monthlyData[11].salesAmount
-  //         : 0,
-  //     "",
-  //   ];
-  //   sheet.appendRow(toCellRow(revenueRowData));
-  //
-  //   final List<dynamic> cogsRowData = [
-  //     "COGS",
-  //     (monthlyMap["COGS TARGET"]![3] ),
-  //     monthlyCogsList.isNotEmpty ? monthlyCogsList[0].cogs : 0,
-  //     "",
-  //   ];
-  //   sheet.appendRow(toCellRow(cogsRowData));
-  //
-  //   sheet.appendRow(toCellRow([""]));
-  //
-  //   final List<dynamic> grossProfitData = [
-  //     "Gross Profit",
-  //     (((monthlyMap["IPD SALES TARGET"]?[3] ?? 0) +
-  //         (monthlyMap["MD SALES TARGET"]?[3] ?? 0)) - monthlyMap["COGS TARGET"]![3]),
-  //     monthlyCogsList.isNotEmpty ? monthlySalesList.monthlyData[0].salesAmount - monthlyCogsList[0].cogs : 0,
-  //     "",
-  //   ];
-  //   sheet.appendRow(toCellRow(grossProfitData));
-  //
-  //   final List<dynamic> totalExpensesData = [
-  //     "Total in Operating Expenses",
-  //     "",
-  //     sumOfDirectExpensesList.subGroupData.first.aprBalance + totalIndirectExpensesList.subGroupData.first.aprBalance,
-  //     "",
-  //   ];
-  //   sheet.appendRow(toCellRow(totalExpensesData));
-  //
-  //   sheet.appendRow(toCellRow([""]));
-  //
-  //
-  //
-  //   sheet.appendRow(toCellRow([""]));
-  //
-  //   final now = DateTime.now();
-  //   final fiscalIndex = now.month >= 4 ? now.month - 4 : now.month + 8;
-  //   final completedMonths = fiscalIndex + 1;
-  //
-  //   final financeCosts = foreignNameMonthExpenseWiseList.subGroupData
-  //       .firstWhere(
-  //         (e) => e.subGroupName == 'Finance Costs',
-  //         orElse: () => throw Exception('No Finance Costs subgroup'),
-  //       );
-  //   final otherIncome = otherIncomeList.subGroupData.isNotEmpty
-  //       ? otherIncomeList.subGroupData.first
-  //       : throw Exception('No Other Income subgroup');
-  //   final directExpenses = sumOfDirectExpensesList.subGroupData.isNotEmpty
-  //       ? sumOfDirectExpensesList.subGroupData.first
-  //       : throw Exception('No Direct Expenses subgroup');
-  //   final indirectExpenses = totalIndirectExpensesList.subGroupData.isNotEmpty
-  //       ? totalIndirectExpensesList.subGroupData.first
-  //       : throw Exception('No Indirect Expenses subgroup');
-  //
-  //   final financeVals = [
-  //     financeCosts.aprBalance,
-  //     financeCosts.mayBalance,
-  //     financeCosts.junBalance,
-  //     financeCosts.julBalance,
-  //     financeCosts.augBalance,
-  //     financeCosts.septBalance,
-  //     financeCosts.octBalance,
-  //     financeCosts.novBalance,
-  //     financeCosts.decBalance,
-  //     financeCosts.janBalance,
-  //     financeCosts.febBalance,
-  //     financeCosts.marBalance,
-  //   ];
-  //   final otherVals = [
-  //     otherIncome.aprBalance,
-  //     otherIncome.mayBalance,
-  //     otherIncome.junBalance,
-  //     otherIncome.julBalance,
-  //     otherIncome.augBalance,
-  //     otherIncome.septBalance,
-  //     otherIncome.octBalance,
-  //     otherIncome.novBalance,
-  //     otherIncome.decBalance,
-  //     otherIncome.janBalance,
-  //     otherIncome.febBalance,
-  //     otherIncome.marBalance,
-  //   ];
-  //   final directVals = [
-  //     directExpenses.aprBalance,
-  //     directExpenses.mayBalance,
-  //     directExpenses.junBalance,
-  //     directExpenses.julBalance,
-  //     directExpenses.augBalance,
-  //     directExpenses.septBalance,
-  //     directExpenses.octBalance,
-  //     directExpenses.novBalance,
-  //     directExpenses.decBalance,
-  //     directExpenses.janBalance,
-  //     directExpenses.febBalance,
-  //     directExpenses.marBalance,
-  //   ];
-  //   final indirectVals = [
-  //     indirectExpenses.aprBalance,
-  //     indirectExpenses.mayBalance,
-  //     indirectExpenses.junBalance,
-  //     indirectExpenses.julBalance,
-  //     indirectExpenses.augBalance,
-  //     indirectExpenses.septBalance,
-  //     indirectExpenses.octBalance,
-  //     indirectExpenses.novBalance,
-  //     indirectExpenses.decBalance,
-  //     indirectExpenses.janBalance,
-  //     indirectExpenses.febBalance,
-  //     indirectExpenses.marBalance,
-  //   ];
-  //
-  //   final rowEbitda = <dynamic>['EBITDA', ''];
-  //
-  //   double totalEbitda = 0.0;
-  //   double totalSalesForPercentage = 0.0;
-  //
-  //   for (var i = 0; i < completedMonths; i++) {
-  //     final sales = (i < monthlySalesList.monthlyData.length)
-  //         ? monthlySalesList.monthlyData[i].salesAmount
-  //         : 0.0;
-  //     final cogs = (i < monthlyCogsList.length) ? monthlyCogsList[i].cogs : 0.0;
-  //
-  //     final fin = financeVals[i];
-  //     final oth = otherVals[i];
-  //     final dir = directVals[i];
-  //     final ind = indirectVals[i];
-  //
-  //     final ebitda = fin + ((oth + sales) - cogs - dir - ind) + 25000;
-  //     final ePct = sales != 0 ? getPercentage(ebitda, sales) : 0.0;
-  //     rowEbitda
-  //       ..add(ebitda)
-  //       ..add(ePct)
-  //       ..add('');
-  //
-  //     totalEbitda += ebitda;
-  //     totalSalesForPercentage += sales;
-  //
-  //   }
-  //
-  //   rowEbitda.add(totalEbitda);
-  //   rowEbitda.add(
-  //     totalSalesForPercentage != 0
-  //         ? getPercentage(totalEbitda, totalSalesForPercentage)
-  //         : 0.0,
-  //   );
-  //
-  //   sheet.appendRow(toCellRowList(rowEbitda));
-  //
-  //   final List<dynamic> ebitdaData = [
-  //     "EBITDA",
-  //     "",
-  //     sumOfDirectExpensesList.subGroupData.first.aprBalance + totalIndirectExpensesList.subGroupData.first.aprBalance,
-  //     "",
-  //   ];
-  //   sheet.appendRow(toCellRow(ebitdaData));
-  //
-  //
-  //   setState(() {
-  //     // YtdSalesBarChartData = true;
-  //   });
-  //
-  //   if (kIsWeb) {
-  //     final excelBytes = excel.encode()!;
-  //     saveAndOpenExcel('monthlyPL.xlsx', excelBytes);
-  //   } else {
-  //     String storageDir = await getStorageDirectory();
-  //     final file = File('$storageDir/monthlyPL.xlsx');
-  //     await file.writeAsBytes(excel.encode()!);
-  //     OpenFile.open(file.path);
-  //   }
-  // }
-
-  // Future<void> generateSummarySalesAnalysisYTDExcel() async {
-  //   final excel = xl.Excel.createExcel();
-  //   final sheet = excel['Sheet1'];
-  //
-  //   // 1. Define Headers
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       'Particulars',
-  //       'Target',
-  //       'Actual',
-  //       'Target % vs Target',
-  //     ]),
-  //   );
-  //
-  //   // 2. Determine Current Fiscal Month Index
-  //   // If April (4) -> Index 0. If March (3) -> Index 11.
-  //   final now = DateTime.now();
-  //   final int fiscalMonthIndex = now.month >= 4 ? now.month - 4 : now.month + 8;
-  //
-  //   // The map index starts at 3 for April (based on your snippet: monthlyMap["..."]?[3])
-  //   final int mapTargetIndex = 3 + fiscalMonthIndex;
-  //
-  //   // 3. Helper to get balance from your specific class based on index
-  //   double getBalanceForMonth(SubGroupMonthWiseRevenueExpensesData data, int index) {
-  //     switch (index) {
-  //       case 0: return data.aprBalance;
-  //       case 1: return data.mayBalance;
-  //       case 2: return data.junBalance;
-  //       case 3: return data.julBalance;
-  //       case 4: return data.augBalance;
-  //       case 5: return data.septBalance;
-  //       case 6: return data.octBalance;
-  //       case 7: return data.novBalance;
-  //       case 8: return data.decBalance;
-  //       case 9: return data.janBalance;
-  //       case 10: return data.febBalance;
-  //       case 11: return data.marBalance;
-  //       default: return 0.0;
-  //     }
-  //   }
-  //
-  //   // 4. Helper for Percentage Calculation
-  //   double calculatePercentage(double actual, double target) {
-  //     if (target == 0) return 0.0;
-  //     return (actual / target) * 100;
-  //   }
-  //
-  //   // --- PREPARE DATA ---
-  //
-  //   // A. Net Sales
-  //   // Target: Sum of IPD and MD at the specific column index
-  //   double salesTarget = (monthlyMap["IPD SALES TARGET"]?[mapTargetIndex] ?? 0) +
-  //       (monthlyMap["MD SALES TARGET"]?[mapTargetIndex] ?? 0);
-  //
-  //   // Actual: Check if data exists for this month index
-  //   double salesActual = (fiscalMonthIndex < monthlySalesList.monthlyData.length)
-  //       ? monthlySalesList.monthlyData[fiscalMonthIndex].salesAmount
-  //       : 0.0;
-  //
-  //   // B. COGS
-  //   double cogsTarget = (monthlyMap["COGS TARGET"]?[mapTargetIndex] ?? 0);
-  //   double cogsActual = (fiscalMonthIndex < monthlyCogsList.length)
-  //       ? monthlyCogsList[fiscalMonthIndex].cogs
-  //       : 0.0;
-  //
-  //   // C. Gross Profit
-  //   double gpTarget = salesTarget - cogsTarget;
-  //   double gpActual = salesActual - cogsActual;
-  //
-  //   // D. Expenses (Actuals Only)
-  //   // We use the helper function to get the correct month's balance
-  //   double directExpActual = 0.0;
-  //   if (sumOfDirectExpensesList.subGroupData.isNotEmpty) {
-  //     directExpActual = getBalanceForMonth(sumOfDirectExpensesList.subGroupData.first, fiscalMonthIndex);
-  //   }
-  //
-  //   double indirectExpActual = 0.0;
-  //   if (totalIndirectExpensesList.subGroupData.isNotEmpty) {
-  //     indirectExpActual = getBalanceForMonth(totalIndirectExpensesList.subGroupData.first, fiscalMonthIndex);
-  //   }
-  //
-  //   double totalOpExpActual = directExpActual + indirectExpActual;
-  //
-  //   // E. EBITDA (Optional: Based on your previous logic)
-  //   // You didn't specify target/actual logic for EBITDA in the prompt,
-  //   // but usually it is GP - OpExp.
-  //   // If you need Finance/Other Income included as per previous code:
-  //   double financeActual = 0.0;
-  //   if (foreignNameMonthExpenseWiseList.subGroupData.isNotEmpty) {
-  //     // Assuming 'Finance Costs' is found
-  //     try {
-  //       final financeData = foreignNameMonthExpenseWiseList.subGroupData.firstWhere((e) => e.subGroupName == 'Finance Costs');
-  //       financeActual = getBalanceForMonth(financeData, fiscalMonthIndex);
-  //     } catch (e) {
-  //       financeActual = 0;
-  //     }
-  //   }
-  //
-  //   double otherIncomeActual = 0.0;
-  //   if (otherIncomeList.subGroupData.isNotEmpty) {
-  //     otherIncomeActual = getBalanceForMonth(otherIncomeList.subGroupData.first, fiscalMonthIndex);
-  //   }
-  //
-  //   // Formula from previous code: (Other + Sales) - Cogs - Direct - Indirect + Finance(??) + 25000
-  //   // Adjust this formula if Finance should be subtracted or added.
-  //   // Usually EBITDA = Gross Profit - OpEx + Other Income.
-  //   // Below is strictly following your previous logic flow:
-  //   double ebitdaActual = financeActual + ((otherIncomeActual + salesActual) - cogsActual - directExpActual - indirectExpActual) + 25000;
-  //
-  //
-  //   // --- APPEND ROWS TO EXCEL ---
-  //
-  //   // 1. Net Sales Row
-  //   sheet.appendRow(toCellRow([
-  //     "Net Sales",
-  //     salesTarget,
-  //     salesActual,
-  //     calculatePercentage(salesActual, salesTarget).toStringAsFixed(2) + "%",
-  //   ]));
-  //
-  //   // 2. COGS Row
-  //   sheet.appendRow(toCellRow([
-  //     "COGS",
-  //     cogsTarget,
-  //     cogsActual,
-  //     calculatePercentage(cogsActual, cogsTarget).toStringAsFixed(2) + "%",
-  //   ]));
-  //
-  //   sheet.appendRow(toCellRow([""])); // Spacer
-  //
-  //   // 3. Gross Profit Row
-  //   sheet.appendRow(toCellRow([
-  //     "Gross Profit",
-  //     gpTarget,
-  //     gpActual,
-  //     calculatePercentage(gpActual, gpTarget).toStringAsFixed(2) + "%",
-  //   ]));
-  //
-  //   // 4. Total Operating Expenses Row
-  //   // Usually Targets are not defined for OpEx in your map, leaving blank
-  //   sheet.appendRow(toCellRow([
-  //     "Total in Operating Expenses",
-  //     "",
-  //     totalOpExpActual,
-  //     "",
-  //   ]));
-  //
-  //   sheet.appendRow(toCellRow([""])); // Spacer
-  //
-  //   // 5. EBITDA Row
-  //   sheet.appendRow(toCellRow([
-  //     "EBITDA",
-  //     "", // No target calculated
-  //     ebitdaActual,
-  //     "",
-  //   ]));
-  //
-  //   // --- SAVE FILE ---
-  //   if (kIsWeb) {
-  //     final excelBytes = excel.encode()!;
-  //     saveAndOpenExcel('CurrentMonth_PL.xlsx', excelBytes);
-  //   } else {
-  //     String storageDir = await getStorageDirectory();
-  //     final file = File('$storageDir/CurrentMonth_PL.xlsx');
-  //     await file.writeAsBytes(excel.encode()!);
-  //     OpenFile.open(file.path);
-  //   }
-  // }
-
-  Future<void> generateSummarySalesAnalysisYTDExcel() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-
-    // 1. Define Headers
-    sheet.appendRow(
-      toCellRow([
-        'Particulars',
-        'Target (in Lakhs)',
-        'Actual (in Lakhs)',
-        'Target % vs Target',
-      ]),
-    );
-
-    // 2. Determine Current Fiscal Month Index
-    final now = DateTime.now();
-    final int fiscalMonthIndex = now.month >= 4 ? now.month - 4 : now.month + 8;
-
-    // Map index offset (starts at 3 for April in your map structure)
-    final int mapTargetIndex = 3 + fiscalMonthIndex;
-
-    // --- HELPERS ---
-
-    // Helper: Get balance from SubGroupMonthWiseRevenueExpensesData
-    double getBalanceForMonth(
-      SubGroupMonthWiseRevenueExpensesData data,
-      int index,
-    ) {
-      switch (index) {
-        case 0:
-          return data.aprBalance;
-        case 1:
-          return data.mayBalance;
-        case 2:
-          return data.junBalance;
-        case 3:
-          return data.julBalance;
-        case 4:
-          return data.augBalance;
-        case 5:
-          return data.septBalance;
-        case 6:
-          return data.octBalance;
-        case 7:
-          return data.novBalance;
-        case 8:
-          return data.decBalance;
-        case 9:
-          return data.janBalance;
-        case 10:
-          return data.febBalance;
-        case 11:
-          return data.marBalance;
-        default:
-          return 0.0;
-      }
-    }
-
-    // Helper: Calculate Percentage safely
-    double calculatePercentage(double numerator, double denominator) {
-      if (denominator == 0) return 0.0;
-      return (numerator / denominator) * 100;
-    }
-
-    // Helper: Convert to Lakhs
-    double toLakhs(double value) {
-      return value / 100000;
-    }
-
-    // --- PREPARE DATA (Raw Values) ---
-
-    // A. Net Sales
-    double salesTarget =
-        (monthlyMap["IPD SALES TARGET"]?[mapTargetIndex] ?? 0) +
-        (monthlyMap["MD SALES TARGET"]?[mapTargetIndex] ?? 0);
-
-    double salesActual =
-        (fiscalMonthIndex < monthlySalesList.monthlyData.length)
-        ? monthlySalesList.monthlyData[fiscalMonthIndex].salesAmount
-        : 0.0;
-
-    // B. COGS
-    double cogsTarget = (monthlyMap["COGS TARGET"]?[mapTargetIndex] ?? 0);
-    double cogsActual = (fiscalMonthIndex < monthlyCogsList.length)
-        ? monthlyCogsList[fiscalMonthIndex].cogs
-        : 0.0;
-
-    // C. Gross Profit
-    double gpTarget = salesTarget - cogsTarget;
-    double gpActual = salesActual - cogsActual;
-
-    // D. Expenses (Actuals Only)
-    double directExpActual = 0.0;
-    if (sumOfDirectExpensesList.subGroupData.isNotEmpty) {
-      directExpActual = getBalanceForMonth(
-        sumOfDirectExpensesList.subGroupData.first,
-        fiscalMonthIndex,
-      );
-    }
-
-    double indirectExpActual = 0.0;
-    if (totalIndirectExpensesList.subGroupData.isNotEmpty) {
-      indirectExpActual = getBalanceForMonth(
-        totalIndirectExpensesList.subGroupData.first,
-        fiscalMonthIndex,
-      );
-    }
-
-    double totalOpExpActual = directExpActual + indirectExpActual;
-
-    // E. EBITDA (Actual Only)
-    // Assuming 'Finance Costs' and 'Other Income' logic exists as per previous context
-    double financeActual = 0.0;
-    if (foreignNameMonthExpenseWiseList.subGroupData.isNotEmpty) {
-      try {
-        final financeData = foreignNameMonthExpenseWiseList.subGroupData
-            .firstWhere((e) => e.subGroupName == 'Finance Costs');
-        financeActual = getBalanceForMonth(financeData, fiscalMonthIndex);
-      } catch (e) {
-        financeActual = 0;
-      }
-    }
-
-    double otherIncomeActual = 0.0;
-    if (otherIncomeList.subGroupData.isNotEmpty) {
-      otherIncomeActual = getBalanceForMonth(
-        otherIncomeList.subGroupData.first,
-        fiscalMonthIndex,
-      );
-    }
-
-    // Formula: (Other Income + Sales) - COGS - Direct Exp - Indirect Exp + Finance + 25000
-    double ebitdaActual =
-        financeActual +
-        ((otherIncomeActual + salesActual) -
-            cogsActual -
-            directExpActual -
-            indirectExpActual) +
-        25000;
-
-    // --- APPEND ROWS (Values converted to Lakhs) ---
-
-    // 1. Net Sales
-    sheet.appendRow(
-      toCellRow([
-        "Net Sales",
-        toLakhs(salesTarget).toStringAsFixed(2),
-        toLakhs(salesActual).toStringAsFixed(2),
-        "${calculatePercentage(salesActual, salesTarget).toStringAsFixed(2)}%",
-      ]),
-    );
-
-    // 2. COGS
-    sheet.appendRow(
-      toCellRow([
-        "COGS",
-        toLakhs(cogsTarget).toStringAsFixed(2),
-        toLakhs(cogsActual).toStringAsFixed(2),
-        "${calculatePercentage(cogsActual, cogsTarget).toStringAsFixed(2)}%",
-      ]),
-    );
-
-    sheet.appendRow(toCellRow([""]));
-
-    // 3. Gross Profit
-    sheet.appendRow(
-      toCellRow([
-        "Gross Profit",
-        toLakhs(gpTarget).toStringAsFixed(2),
-        toLakhs(gpActual).toStringAsFixed(2),
-        "${calculatePercentage(gpActual, gpTarget).toStringAsFixed(2)}%",
-      ]),
-    );
-
-    // 4. GP% Row (New)
-    // Target: GP Target % of Sales Target
-    // Actual: GP Actual % of Sales Actual
-
-    // 5. Total Operating Expenses
-    sheet.appendRow(
-      toCellRow([
-        "Total in Operating Expenses",
-        "",
-        toLakhs(totalOpExpActual).toStringAsFixed(2),
-        "",
-      ]),
-    );
-
-    sheet.appendRow(toCellRow([""]));
-
-    // 6. EBITDA
-    sheet.appendRow(
-      toCellRow(["EBITDA", "", toLakhs(ebitdaActual).toStringAsFixed(2), ""]),
-    );
-
-    sheet.appendRow(
-      toCellRow([
-        "GP%",
-        "${calculatePercentage(gpTarget, salesTarget).toStringAsFixed(2)}%",
-        "${calculatePercentage(gpActual, salesActual).toStringAsFixed(2)}%",
-        "", // No "Target vs Target" for percentage rows usually
-      ]),
-    );
-
-    // 7. EBITDA% Row (New)
-    // Actual: EBITDA Actual % of Sales Actual
-    sheet.appendRow(
-      toCellRow([
-        "EBITDA%",
-        "",
-        "${calculatePercentage(ebitdaActual, salesActual).toStringAsFixed(2)}%",
-        "",
-      ]),
-    );
-
-    // --- SAVE FILE ---
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('CurrentMonth_PL.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/CurrentMonth_PL.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
   Future<String> getStorageDirectory() async {
     String? externalDir = (await getExternalStorageDirectory())?.path;
     if (externalDir != null) {
@@ -6221,18 +2452,20 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
   }
 
   Future<void> filterDateFunction() async {
-    _dateFilterTarget();
-    _loadSubGroupWiseAnalysis(0, "", "");
-    _loadMonthlyAnalysisExpenditure();
-    _loadMonthlySalesBarChartData();
-    _loadMonthlyAnalysisRevenue();
-    _loadMonthlyAnalysisPurchase();
-    _loadMonthlyAnalysisInventory();
-    _loadMonthlyAnalysisInventoryClosing();
-    _loadSubGroupMonthWiseAnalysisExpenditure();
-    _loadSubGroupMonthWiseAnalysisRevenue();
-    _loadOtherIncomeMonthWiseAnalysisRevenue();
-    _loadForeignNameMonthWiseAnalysisRevenue();
+    await _dateFilterTarget();
+    await Future.wait([
+      _loadSubGroupWiseAnalysis(0, "", ""),
+      _loadMonthlyAnalysisExpenditure(),
+      _loadMonthlySalesBarChartData(),
+      _loadMonthlyAnalysisRevenue(),
+      _loadMonthlyAnalysisPurchase(),
+      _loadMonthlyAnalysisInventory(),
+      _loadMonthlyAnalysisInventoryClosing(),
+      _loadSubGroupMonthWiseAnalysisExpenditure(),
+      _loadSubGroupMonthWiseAnalysisRevenue(),
+      _loadOtherIncomeMonthWiseAnalysisRevenue(),
+      _loadForeignNameMonthWiseAnalysisRevenue(),
+    ]);
     setState(() {});
     chartDataLoadedMonthlyPl = true;
   }
@@ -6277,684 +2510,716 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     return maxY;
   }
 
-  Future<void> generateMonthlyRevenueExcel(MonthlySalesList list) async {
+  Future<void> generateSalesAnalysisYTDExcel() async {
     try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Revenue', 'Target']));
-      for (var data in list.monthlyData) {
-        sheet.appendRow(
-          toCellRow([data.monthName, data.salesAmount, data.salesTarget]),
+      // ---------------- HEADER ----------------
+      final months = [
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+      ];
+
+      List<String> headers = ['Particulars'];
+      for (var m in months) {
+        headers.addAll(['Target - $m', m, '%']);
+      }
+      headers.add('YTD');
+
+      List<List<dynamic>> rows = [];
+
+      // ---------------- HELPERS ----------------
+      double calcYTD(List<num> values) => values.fold(0.0, (sum, v) => sum + v);
+
+      List<num> getSales() => List.generate(
+        12,
+        (i) => i < monthlySalesList.monthlyData.length
+            ? monthlySalesList.monthlyData[i].salesAmount
+            : 0,
+      );
+
+      List<num> getTargets(String key) => List.generate(12, (i) {
+        final mapIndex = (i + 3) % 12;
+        return monthlyMap[key]?[mapIndex] ?? 0;
+      });
+
+      List<num> getMonthBalances(dynamic d) => [
+        d.aprBalance,
+        d.mayBalance,
+        d.junBalance,
+        d.julBalance,
+        d.augBalance,
+        d.septBalance,
+        d.octBalance,
+        d.novBalance,
+        d.decBalance,
+        d.janBalance,
+        d.febBalance,
+        d.marBalance,
+      ];
+
+      List<dynamic> buildRow({
+        required String title,
+        required List<num> targets,
+        required List<num> values,
+        List<num>? percentageBase,
+      }) {
+        List<dynamic> row = [title];
+
+        for (int i = 0; i < 12; i++) {
+          double t = targets[i].toDouble();
+          double v = values[i].toDouble();
+
+          final pct = (percentageBase != null && percentageBase[i] != 0)
+              ? getPercentage(v, percentageBase[i].toDouble())
+              : "";
+
+          row.addAll([t, v, pct]);
+        }
+
+        row.add(calcYTD(values));
+        return row;
+      }
+
+      void addSection(String title) {
+        rows.add([title, ...List.filled(headers.length - 1, "")]);
+      }
+
+      void addSpacer() {
+        rows.add(List.filled(headers.length, ""));
+      }
+
+      final sales = getSales();
+
+      // ---------------- REVENUE ----------------
+      addSection("Revenue");
+
+      final revenueTargets = List.generate(12, (i) {
+        final mapIndex = (i + 3) % 12;
+
+        return (monthlyMap["IPD SALES TARGET"]?[mapIndex] ?? 0) +
+            (monthlyMap["MD SALES TARGET"]?[mapIndex] ?? 0);
+      });
+
+      rows.add(
+        buildRow(
+          title: "Revenue",
+          targets: revenueTargets,
+          values: sales,
+          percentageBase: revenueTargets,
+        ),
+      );
+
+      final otherIncome = otherIncomeList.subGroupData.isNotEmpty
+          ? getMonthBalances(otherIncomeList.subGroupData.first)
+          : List.filled(12, 0);
+
+      rows.add(
+        buildRow(
+          title: "Other Income",
+          targets: List.filled(12, 0),
+          values: otherIncome,
+          percentageBase: sales,
+        ),
+      );
+
+      final totalRevenue = List.generate(12, (i) => sales[i] + otherIncome[i]);
+
+      rows.add(
+        buildRow(
+          title: "Total Revenue",
+          targets: List.filled(12, 0),
+          values: totalRevenue,
+          percentageBase: sales,
+        ),
+      );
+      addSpacer();
+      // ---------------- INVENTORY / COGS ----------------
+      addSection("Inventory & COGS");
+
+      final openingStock = List.generate(
+        12,
+        (i) => i < monthlyCogsList.length ? monthlyCogsList[i].openingStock : 0,
+      );
+
+      final purchases = List.generate(
+        12,
+        (i) => i < monthlyCogsList.length ? monthlyCogsList[i].purchases : 0,
+      );
+
+      final closingStock = List.generate(
+        12,
+        (i) => i < monthlyCogsList.length ? monthlyCogsList[i].closingStock : 0,
+      );
+
+      final cogs = List.generate(
+        12,
+        (i) => i < monthlyCogsList.length ? monthlyCogsList[i].cogs : 0,
+      );
+
+      rows.add(
+        buildRow(
+          title: "Opening Stock",
+          targets: getTargets("INVENTORY TARGET"),
+          values: openingStock,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "Add: Purchases",
+          targets: getTargets("PURCHASE TARGET"),
+          values: purchases,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "Less: Closing Stock",
+          targets: getTargets("INVENTORY TARGET"),
+          values: closingStock,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "COGS",
+          targets: getTargets("COGS TARGET"),
+          values: cogs,
+          percentageBase: totalRevenue,
+        ),
+      );
+
+      // ---------------- EXPENSES ----------------
+      addSection("Expenses");
+      addSpacer();
+
+      // ---------------- DIRECT EXPENSES ----------------
+      addSection("Direct Expenses");
+
+      for (var item in directExpensesList.subGroupData) {
+        final values = getMonthBalances(item);
+
+        rows.add(
+          buildRow(
+            title: item.subGroupName,
+            targets: List.filled(12, 0),
+            values: values,
+            percentageBase: sales,
+          ),
         );
       }
 
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthlyRevenue.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyRevenue.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
+      List<num> direct = sumOfDirectExpensesList.subGroupData.isNotEmpty
+          ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
+          : List.filled(12, 0);
+
+      if (direct.isNotEmpty) {
+        rows.add(
+          buildRow(
+            title: "Total Direct Expenses",
+            targets: List.filled(12, 0),
+            values: direct,
+            percentageBase: sales,
+          ),
+        );
+        addSpacer();
       }
+
+      // ---------------- INDIRECT EXPENSES ----------------
+      addSection("Indirect Expenses");
+
+      for (var item in otherIndirectExpensesList.subGroupData) {
+        rows.add(
+          buildRow(
+            title: item.subGroupName,
+            targets: List.filled(12, 0),
+            values: getMonthBalances(item),
+            percentageBase: sales,
+          ),
+        );
+      }
+
+      for (var item in foreignNameMonthExpenseWiseList.subGroupData) {
+        rows.add(
+          buildRow(
+            title: item.subGroupName,
+            targets: List.filled(12, 0),
+            values: getMonthBalances(item),
+            percentageBase: sales,
+          ),
+        );
+      }
+
+      List<num> indirect1 = totalIndirectExpensesList.subGroupData.isNotEmpty
+          ? getMonthBalances(totalIndirectExpensesList.subGroupData.first)
+          : List.filled(12, 0);
+
+      List<num> indirect2 =
+          foreignNameMonthExpenseWiseList.subGroupData.isNotEmpty
+          ? getMonthBalances(foreignNameMonthExpenseWiseList.subGroupData.first)
+          : List.filled(12, 0);
+
+      // element-wise sum
+      List<num> totalIndirect = List.generate(
+        12,
+        (i) => indirect1[i] + indirect2[i],
+      );
+
+      if (totalIndirect.isNotEmpty) {
+        rows.add(
+          buildRow(
+            title: "Total Indirect Expenses",
+            targets: List.filled(12, 0),
+            values: totalIndirect,
+            percentageBase: sales,
+          ),
+        );
+      }
+
+      List<num> totalExpenditure = List.generate(
+        12,
+        (i) => direct[i] + indirect1[i] + indirect2[i],
+      );
+      rows.add(
+        buildRow(
+          title: "Total Operating Expenses",
+          targets: List.filled(12, 0),
+          values: totalExpenditure,
+          percentageBase: sales,
+        ),
+      );
+
+      addSpacer();
+      // ---------------- EBITDA / PBT / PAT ----------------
+      addSection("Profitability");
+
+      final finance = foreignNameMonthExpenseWiseList.subGroupData.firstWhere(
+        (e) => e.subGroupName == 'Finance Costs',
+      );
+
+      final financeVals = getMonthBalances(finance);
+      final directVals = sumOfDirectExpensesList.subGroupData.isNotEmpty
+          ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
+          : List.filled(12, 0);
+
+      final indirectVals = totalIndirectExpensesList.subGroupData.isNotEmpty
+          ? getMonthBalances(totalIndirectExpensesList.subGroupData.first)
+          : List.filled(12, 0);
+
+      List<num> ebitda = [];
+      List<num> pbt = [];
+      List<num> pat = [];
+
+      for (int i = 0; i < 12; i++) {
+        final e =
+            financeVals[i] +
+            ((totalRevenue[i]) - cogs[i] - directVals[i] - indirectVals[i]) +
+            25000;
+
+        final p = totalRevenue[i] - cogs[i] - directVals[i] - indirectVals[i];
+        final pa = totalExpenditure[i] - totalRevenue[i];
+
+        ebitda.add(e);
+        pbt.add(p);
+        pat.add(pa);
+      }
+
+      rows.add(
+        buildRow(
+          title: "EBITDA",
+          targets: List.filled(12, 0),
+          values: ebitda,
+          percentageBase: sales,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "PBT",
+          targets: List.filled(12, 0),
+          values: pbt,
+          percentageBase: sales,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "PAT",
+          targets: List.filled(12, 0),
+          values: pat,
+          percentageBase: sales,
+        ),
+      );
+
+      // ---------------- EXPORT ----------------
+      await reportService.generateExcel(
+        sheetName: 'DetailedP&L',
+        headers: headers,
+        rows: rows,
+        fileName: 'detailed_p&l.xlsx',
+        amountColumns: List.generate(headers.length, (i) => i + 1),
+        reportTitle: 'Finance - Detailed P&L',
+        enableStyling: true,
+        highlightSections: true,
+        highlightProfitability: true,
+        highlightNegative: true,
+      );
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      debugPrint("Excel Error: $e");
     }
   }
 
-  Future<void> generateMonthlyRevenuePDF(MonthlySalesList list) async {
+  Future<void> generateSummarySalesAnalysisYTDExcel() async {
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Revenue',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Revenue',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in monthlySalesList.monthlyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.monthName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.salesAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.salesTarget.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
+      // ---------------- HEADER ----------------
+      final headers = [
+        'Particulars',
+        'Target (Lakhs)',
+        'Actual (Lakhs)',
+        '% Achieved',
+      ];
 
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
+      List<List<dynamic>> rows = [];
 
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyRevenue.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
+      // ---------------- HELPERS ----------------
+
+      double toLakhs(double value) => value / 100000;
+
+      double calcPct(double actual, double target) {
+        if (target == 0) return 0;
+        return (actual / target) * 100;
       }
+
+      double getBalanceForMonth(
+        SubGroupMonthWiseRevenueExpensesData data,
+        int index,
+      ) {
+        return [
+          data.aprBalance,
+          data.mayBalance,
+          data.junBalance,
+          data.julBalance,
+          data.augBalance,
+          data.septBalance,
+          data.octBalance,
+          data.novBalance,
+          data.decBalance,
+          data.janBalance,
+          data.febBalance,
+          data.marBalance,
+        ][index];
+      }
+
+      List<dynamic> buildRow({
+        required String title,
+        double? target,
+        double? actual,
+        bool isPercentageRow = false,
+      }) {
+        if (isPercentageRow) {
+          return [
+            title,
+            target != null ? "${target.toStringAsFixed(2)}%" : "",
+            actual != null ? "${actual.toStringAsFixed(2)}%" : "",
+            "",
+          ];
+        }
+
+        return [
+          title,
+          target != null ? toLakhs(target).toStringAsFixed(2) : "",
+          actual != null ? toLakhs(actual).toStringAsFixed(2) : "",
+          (target != null && actual != null)
+              ? "${calcPct(actual, target).toStringAsFixed(2)}%"
+              : "",
+        ];
+      }
+
+      void addSection(String title) {
+        rows.add([title, "", "", ""]);
+      }
+
+      // ---------------- DATE INDEX ----------------
+      final now = DateTime.now();
+      final fiscalMonthIndex = now.month >= 4 ? now.month - 4 : now.month + 8;
+
+      final mapTargetIndex = 3 + fiscalMonthIndex;
+
+      // ---------------- SALES ----------------
+      addSection("Revenue");
+
+      double salesTarget =
+          (monthlyMap["IPD SALES TARGET"]?[mapTargetIndex] ?? 0) +
+          (monthlyMap["MD SALES TARGET"]?[mapTargetIndex] ?? 0);
+
+      double salesActual =
+          (fiscalMonthIndex < monthlySalesList.monthlyData.length)
+          ? monthlySalesList.monthlyData[fiscalMonthIndex].salesAmount
+          : 0.0;
+
+      rows.add(
+        buildRow(title: "Net Sales", target: salesTarget, actual: salesActual),
+      );
+
+      // ---------------- COGS ----------------
+      double cogsTarget = (monthlyMap["COGS TARGET"]?[mapTargetIndex] ?? 0);
+
+      double cogsActual = (fiscalMonthIndex < monthlyCogsList.length)
+          ? monthlyCogsList[fiscalMonthIndex].cogs
+          : 0.0;
+
+      rows.add(buildRow(title: "COGS", target: cogsTarget, actual: cogsActual));
+
+      // ---------------- GROSS PROFIT ----------------
+      double gpTarget = salesTarget - cogsTarget;
+      double gpActual = salesActual - cogsActual;
+
+      rows.add(
+        buildRow(title: "Gross Profit", target: gpTarget, actual: gpActual),
+      );
+
+      // ---------------- GP % ----------------
+      rows.add(
+        buildRow(
+          title: "GP%",
+          target: calcPct(gpTarget, salesTarget),
+          actual: calcPct(gpActual, salesActual),
+          isPercentageRow: true,
+        ),
+      );
+
+      // ---------------- EXPENSES ----------------
+      addSection("Expenses");
+
+      double directExpActual = 0.0;
+      if (sumOfDirectExpensesList.subGroupData.isNotEmpty) {
+        directExpActual = getBalanceForMonth(
+          sumOfDirectExpensesList.subGroupData.first,
+          fiscalMonthIndex,
+        );
+      }
+
+      double indirectExpActual = 0.0;
+      if (totalIndirectExpensesList.subGroupData.isNotEmpty) {
+        indirectExpActual = getBalanceForMonth(
+          totalIndirectExpensesList.subGroupData.first,
+          fiscalMonthIndex,
+        );
+      }
+
+      double totalOpExpActual = directExpActual + indirectExpActual;
+
+      rows.add(
+        buildRow(title: "Total Operating Expenses", actual: totalOpExpActual),
+      );
+
+      // ---------------- OTHER + FINANCE ----------------
+      double financeActual = 0.0;
+      try {
+        final finance = foreignNameMonthExpenseWiseList.subGroupData.firstWhere(
+          (e) => e.subGroupName == 'Finance Costs',
+        );
+        financeActual = getBalanceForMonth(finance, fiscalMonthIndex);
+      } catch (_) {}
+
+      double otherIncomeActual = 0.0;
+      if (otherIncomeList.subGroupData.isNotEmpty) {
+        otherIncomeActual = getBalanceForMonth(
+          otherIncomeList.subGroupData.first,
+          fiscalMonthIndex,
+        );
+      }
+
+      // ---------------- EBITDA ----------------
+      addSection("Profitability");
+
+      double ebitdaActual =
+          financeActual +
+          ((otherIncomeActual + salesActual) -
+              cogsActual -
+              directExpActual -
+              indirectExpActual) +
+          25000;
+
+      rows.add(buildRow(title: "EBITDA", actual: ebitdaActual));
+
+      rows.add(
+        buildRow(
+          title: "EBITDA%",
+          actual: calcPct(ebitdaActual, salesActual),
+          isPercentageRow: true,
+        ),
+      );
+
+      // ---------------- EXPORT ----------------
+      await reportService.generateExcel(
+        sheetName: 'SummaryP&L',
+        headers: headers,
+        rows: rows,
+        fileName: 'CurrentMonth_PL.xlsx',
+        amountColumns: [2, 3], // only numeric columns
+        reportTitle: 'Finance - Current Month P&L Summary',
+        enableStyling: true,
+        highlightSections: true,
+        highlightProfitability: true,
+        highlightNegative: true,
+      );
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      debugPrint("Summary Excel Error: $e");
     }
+  }
+
+  Future<void> generateMonthlyRevenueExcel(MonthlySalesList list) async {
+    await reportService.generateExcel(
+      sheetName: 'MonthlyRevenue',
+      headers: ['Month', 'Revenue', 'Target'],
+      rows: list.monthlyData
+          .map((e) => [e.monthName, e.salesAmount, e.salesTarget])
+          .toList(),
+      fileName: 'monthlyRevenue.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'P & L - Monthly Revenue',
+    );
+  }
+
+  Future<void> generateMonthlyRevenuePDF(MonthlySalesList list) async {
+    await reportService.generatePDF(
+      title: 'Monthly Revenue',
+      headers: ['Month', 'Revenue', 'Target'],
+      rows: list.monthlyData
+          .map((e) => [e.monthName, e.salesAmount, e.salesTarget])
+          .toList(),
+      fileName: 'monthly_revenue.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateMonthlyPurchaseExcel(
     DailyAnalysisExpensesList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Purchase', 'Target']));
-      for (var data in list.dailyData) {
-        sheet.appendRow(toCellRow([data.date, data.balance, data.target]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthlyPurchase.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyPurchase.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'MonthlyPurchase',
+      headers: ['Month', 'Purchase', 'Target'],
+      rows: list.dailyData.map((e) => [e.date, e.balance, e.target]).toList(),
+      fileName: 'monthly_purchase.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'P & L - Monthly Purchase',
+    );
   }
 
   Future<void> generateMonthlyPurchasePDF(
     DailyAnalysisExpensesList list,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Purchase',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Purchase',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in purchaseMonthlyData.dailyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.date,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.target.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyPurchase.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Monthly Purchase',
+      headers: ['Month', 'Purchase', 'Target'],
+      rows: list.dailyData.map((e) => [e.date, e.balance, e.target]).toList(),
+      fileName: 'monthly_purchase.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateMonthlyExpenditureExcel(
     DailyAnalysisExpensesList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Expenditure']));
-      for (var data in list.dailyData) {
-        sheet.appendRow(toCellRow([data.date, data.balance]));
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthlyExpenditure.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyExpenditure.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'Monthly Expenditure',
+      headers: ['Month', 'Expenditure'],
+      rows: list.dailyData.map((e) => [e.date, e.balance]).toList(),
+      fileName: 'monthly_expenditure.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'P & L - Monthly Expenditure',
+    );
   }
 
   Future<void> generateMonthlyExpenditurePDF(
     DailyAnalysisExpensesList list,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Expenditure',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Expenditure',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in expenditureMonthlyData.dailyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.date,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.balance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyExpenditure.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Monthly Expenditure',
+      headers: ['Month', 'Expenditure'],
+      rows: list.dailyData.map((e) => [e.date, e.balance]).toList(),
+      fileName: 'monthly_expenditure.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateMonthlyInventoryExcel(MonthlyCogsList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Month', 'Opening Stock', 'Closing Stock', 'Target']),
-      );
-      for (var data in list.monthlyData) {
-        sheet.appendRow(
-          toCellRow([
-            data.monthYear,
-            data.openingStock,
-            data.closingStock,
-            data.inventoryTarget,
-          ]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthlyInventory.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyInventory.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'Monthly Inventory',
+      headers: ['Month', 'Opening Stock', 'Closing Stock', 'Target'],
+      rows: list.monthlyData
+          .map(
+            (e) => [
+              e.monthYear,
+              e.openingStock,
+              e.closingStock,
+              e.inventoryTarget,
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_inventory.xlsx',
+      amountColumns: [2, 3, 4],
+      addTotalRow: true,
+      reportTitle: 'P & L - Monthly Inventory',
+    );
   }
 
   Future<void> generateMonthlyInventoryPDF(MonthlyCogsList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Inventory',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Opening Stock',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Closing Stock',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in monthlyCOGS.monthlyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.monthYear,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.openingStock.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.closingStock.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.inventoryTarget.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyInventory.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Monthly Inventory',
+      headers: ['Month', 'Opening Stock', 'Closing Stock', 'Target'],
+      rows: list.monthlyData
+          .map(
+            (e) => [
+              e.monthYear,
+              e.openingStock,
+              e.closingStock,
+              e.inventoryTarget,
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_inventory.pdf',
+      amountColumns: [2, 3, 4],
+    );
   }
 
   Future<void> generateMonthlyCOGSExcel(MonthlyCogsList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'COGS', 'Target']));
-      for (var data in list.monthlyData) {
-        sheet.appendRow(
-          toCellRow([data.monthYear, data.cogs, data.cogsTarget]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthlyCOGS.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyCOGS.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'Monthly COGS',
+      headers: ['Month', 'COGS', 'Target'],
+      rows: list.monthlyData
+          .map((e) => [e.monthYear, e.cogs, e.cogsTarget])
+          .toList(),
+      fileName: 'monthly_COGS.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'P & L - Monthly COGS',
+    );
   }
 
   Future<void> generateMonthlyCOGSPDF(MonthlyCogsList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly COGS',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Opening Stock',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Closing Stock',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in monthlyCOGS.monthlyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.monthYear,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.openingStock.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.closingStock.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.inventoryTarget.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyCOGS.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Monthly COGS',
+      headers: ['Month', 'COGS', 'Target'],
+      rows: list.monthlyData
+          .map((e) => [e.monthYear, e.cogs, e.cogsTarget])
+          .toList(),
+      fileName: 'monthly_COGS.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   @override

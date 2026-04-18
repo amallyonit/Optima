@@ -54,6 +54,7 @@ dependencies:
   # File & Storage
   pdf: ^3.10.8
   excel: ^4.0.6
+  flutter_downloader: ^1.11.6
   open_file: ^3.3.2
   path_provider: ^2.1.4
   syncfusion_flutter_xlsio: ^24.1.41

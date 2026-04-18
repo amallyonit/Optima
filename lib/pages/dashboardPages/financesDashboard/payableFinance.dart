@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+// import 'package:optima/pages/dashboardPages/financesDashboard/receivablesFinance.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:provider/provider.dart';
@@ -99,7 +100,7 @@ String prevFinancialYear = "";
 int currentQuarter = 0;
 
 PayablesGraphList payableGraphList = PayablesGraphList(agingData: []);
-AdvancePaidToSupplierPayablesList receivableList =
+AdvancePaidToSupplierPayablesList advancePaidList =
     AdvancePaidToSupplierPayablesList(agingData: []);
 SupplierAnalysisPayablesList supplierList = SupplierAnalysisPayablesList(
   supplierData: [],
@@ -126,6 +127,7 @@ String touchedSupplier = "";
 String touchedSupplierType = "";
 String touchedDocumentType = "";
 String touchedBPgroup = "";
+
 double selectedChart = 0;
 
 List<String> selectedSalesData = [];
@@ -150,7 +152,6 @@ List<String> listOfSupplier = [];
 Map<String, Map<String, bool>> allCategoriesState = {};
 
 bool fromFilter = false;
-
 DateTime? fromDateFilter;
 DateTime? toDateFilter;
 bool dateFilterFlag = false;
@@ -436,7 +437,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     showTitles: true,
     getTitlesWidget: (value, meta) {
       String text = '';
-      List<AdvancePaidToSupplierPayablesData> mData = receivableList.agingData;
+      List<AdvancePaidToSupplierPayablesData> mData = advancePaidList.agingData;
       text = mData.elementAt(value.toInt()).agingGroup;
       return Padding(
         padding: const EdgeInsets.only(top: 4.0),
@@ -786,6 +787,11 @@ class _PayableFinanceState extends State<PayableFinance> {
         .toList();
   }
 
+  String getMonthName(int month) {
+    final formatter = DateFormat('MMMM');
+    return formatter.format(DateTime(2000, month));
+  }
+
   Future<void> _loadUserList(
     String userId,
     String userJwtToken,
@@ -959,39 +965,13 @@ class _PayableFinanceState extends State<PayableFinance> {
             fetchedCount = 0;
           }
         } while (fetchedCount == limit);
-        // PRE-COMPUTE BEFORE setState
-        List<PayablesList> workingList = List.from(collectionList);
 
-        final trueCategoryOptions = (allCategoriesState['Category'] ?? {})
-            .entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList();
-
-        final trueSupplierOptions = (allCategoriesState['Supplier'] ?? {})
-            .entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList();
-
-        // Single-pass filtering
-        workingList = workingList.where((p) {
-          final matchCategory =
-              trueCategoryOptions.isEmpty ||
-              trueCategoryOptions.contains(p.vendorGroup);
-
-          final matchSupplier =
-              trueSupplierOptions.isEmpty ||
-              trueSupplierOptions.contains(p.vendorName);
-
-          return matchCategory && matchSupplier;
-        }).toList();
         setState(() {
           context
               .read<FinancePayablesCollectionBIProvider>()
               .updateCollectionList(collectionList);
 
-          payablesList = workingList;
+          payablesList = List.from(collectionList);
           payablesListMaster = List.from(collectionList);
         });
       }
@@ -1150,7 +1130,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     int index = 0;
     int limit = 10000; // Maximum limit to fetch all data
     int fetchedCount = 0;
-    List<ModeOfPaymentList> salesList = [];
+    List<ModeOfPaymentList> modeOfPaymentList = [];
     try {
       do {
         var body = {
@@ -1174,7 +1154,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
-            List<ModeOfPaymentList> newSalesList =
+            List<ModeOfPaymentList> newList =
                 (responseJson['responseData'] as List).map((item) {
                   final obj = ModeOfPaymentList.fromJson(item);
                   final postingDate = DateFormat(
@@ -1184,8 +1164,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                   return obj;
                 }).toList();
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
+            modeOfPaymentList.addAll(newList);
+            fetchedCount = newList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -1196,16 +1176,10 @@ class _PayableFinanceState extends State<PayableFinance> {
       } while (fetchedCount == limit);
 
       setState(() {
-        context.read<ActualPayableProvider>().updateTargetList(salesList);
-        if (int.parse(UserLevel) == 5) {
-          modeOfPayment = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          modeOfPayment = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          modeOfPayment = salesList.toList();
-        } else {
-          modeOfPayment = salesList.toList();
-        }
+        context.read<ActualPayableProvider>().updateTargetList(
+          modeOfPaymentList,
+        );
+        modeOfPayment = modeOfPaymentList.toList();
       });
     } catch (e) {
       final snackBar = SnackBar(
@@ -1302,33 +1276,6 @@ class _PayableFinanceState extends State<PayableFinance> {
         );
       }
     }
-  }
-
-  Future<void> _dateFilterTarget() async {
-    DateFormat formatter = DateFormat('dd/MM/yyyy');
-
-    setState(() {
-      context.read<PayableTrialBalanceProvider>().updateCollectionList(
-        expensesList,
-      );
-      context.read<ActualPayableProvider>().updateTargetList(modeOfPayment);
-      context.read<FinancePayablesCollectionBIProvider>().updateCollectionList(
-        payablesList,
-      );
-
-      payablesList = payablesList.where((target) {
-        DateTime dueon = target.postingDateParsed;
-        return (dueon.isAtMost(toDateFilter!));
-      }).toList();
-      modeOfPayment = modeOfPayment.where((target) {
-        DateTime dueon = target.postingDateParsed;
-        return (dueon.isAtMost(toDateFilter!));
-      }).toList();
-      expensesList = expensesList.where((target) {
-        DateTime toDt = formatter.parse('30/${target.monthYear}');
-        return (toDt.isAtMost(toDateFilter!));
-      }).toList();
-    });
   }
 
   AgingSummary summarizeCollectionTargets(
@@ -1504,217 +1451,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     payableGraphList = PayablesGraphList(agingData: data);
   }
 
-  Future<void> _loadAdvancePaidData(
-    String payable,
-    String advancePaid,
-    String supplier,
-    String supplierCategory,
-    String documentType,
-    String bpGroup,
-  ) async {
-    final fPayable = payable.toLowerCase();
-    final fAdvance = advancePaid.toLowerCase();
-    final fSupplier = supplier.toLowerCase();
-    final fSupCat = supplierCategory.toLowerCase();
-    final fDocType = documentType.toLowerCase();
-    final fBpGroup = bpGroup.toLowerCase();
-
-    final df = DateFormat('dd/MM/yyyy');
-
-    final List<double> bucketSums = List<double>.filled(6, 0.0);
-
-    final DateTime? effectiveCurrentMonthToDate = currentMonthToDate;
-
-    for (final t in payablesList) {
-      final dueOn = df.parse(t.postingDate);
-      if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) {
-        continue;
-      }
-
-      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
-      final tVendorNameLower = t.vendorName.toLowerCase();
-      final tVendorGroupLower = t.vendorGroup.toLowerCase();
-      final tDocumentTypeLower = t.documentType.toLowerCase();
-      final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
-
-      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
-        continue;
-      }
-      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
-        continue;
-      }
-
-      if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
-        continue;
-      }
-      if (fSupCat.isNotEmpty && tVendorGroupLower != fSupCat) {
-        continue;
-      }
-      if (fDocType.isNotEmpty && tDocumentTypeLower != fDocType) {
-        continue;
-      }
-      if (fBpGroup.isNotEmpty && tBpSubGroupLower != fBpGroup) {
-        continue;
-      }
-
-      int idx;
-      switch (t.ageingBrackets) {
-        case "Future":
-          idx = 0;
-          break;
-        case "0-30 Days":
-          idx = 1;
-          break;
-        case "31-60 Days":
-          idx = 2;
-          break;
-        case "61-90 Days":
-          idx = 3;
-          break;
-        case "91-180 Days":
-          idx = 4;
-          break;
-        default:
-          idx = 5;
-      }
-
-      bucketSums[idx] += (double.tryParse(t.balance) ?? 0.0).abs();
-    }
-
-    final total = bucketSums.fold(0.0, (sum, v) => sum + v);
-
-    final labels = [
-      "Future",
-      "0-30 Days",
-      "31-60 Days",
-      "61-90 Days",
-      "91-180 Days",
-      "180+",
-    ];
-    final List<AdvancePaidToSupplierPayablesData> data = [];
-
-    for (var i = 0; i < 6; i++) {
-      final grpTotal = bucketSums[i];
-      data.add(
-        AdvancePaidToSupplierPayablesData(
-          agingGroup: labels[i],
-          agingGroupTotal: double.parse(grpTotal.toStringAsFixed(2)),
-          agingPercentage: total != 0
-              ? double.parse(((grpTotal / total) * 100).toStringAsFixed(2))
-              : 0.0,
-          agingTotal: total,
-        ),
-      );
-    }
-
-    receivableList = AdvancePaidToSupplierPayablesList(agingData: data);
-  }
-
-  Future<void> _loadSupplierAnalysis(
-    String payable,
-    String advancePaid,
-    String supplier,
-    String supplierCategory,
-    String documentType,
-    String bpGroup,
-  ) async {
-    setState(() {
-      advance = 0;
-      payables = 0;
-    });
-
-    double tmpAdvance = 0;
-    double tmpPayables = 0;
-
-    final fPayable = payable.toLowerCase();
-    final fAdvance = advancePaid.toLowerCase();
-    final fSupplier = supplier.toLowerCase();
-    final fSupCat = supplierCategory.toLowerCase();
-    final fDocType = documentType.toLowerCase();
-    final fBpGroup = bpGroup.toLowerCase();
-
-    final df = DateFormat('dd/MM/yyyy');
-
-    final Map<String, double> balanceByVendor = {};
-    final Map<String, String> nameByVendor = {};
-    final Map<String, double> netPayablesByVendor = {};
-    final DateTime? effectiveCurrentMonthToDate = currentMonthToDate;
-
-    for (final t in payablesList) {
-      final dueOn = df.parse(t.postingDate);
-      if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) {
-        continue;
-      }
-
-      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
-      final tVendorNameLower = t.vendorName.toLowerCase();
-      final tVendorGroupLower = t.vendorGroup.toLowerCase();
-      final tDocumentTypeLower = t.documentType.toLowerCase();
-      final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
-
-      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
-        continue;
-      }
-      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
-        continue;
-      }
-
-      if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
-        continue;
-      }
-      if (fSupCat.isNotEmpty && tVendorGroupLower != fSupCat) {
-        continue;
-      }
-      if (fDocType.isNotEmpty && tDocumentTypeLower != fDocType) {
-        continue;
-      }
-      if (fBpGroup.isNotEmpty && tBpSubGroupLower != fBpGroup) {
-        continue;
-      }
-
-      final amt = double.tryParse(t.balance) ?? 0.0;
-      final code = t.vendorCode;
-      final future = t.ageingBrackets;
-      if (future != "Future") {
-        netPayablesByVendor.update(
-          code,
-          (value) => value + amt,
-          ifAbsent: () => amt,
-        );
-      }
-      balanceByVendor.update(code, (value) => value + amt, ifAbsent: () => amt);
-      nameByVendor[code] = t.vendorName;
-    }
-
-    final List<SupplierAnalysisPayablesData> customerWiseDataList = [];
-    balanceByVendor.forEach((code, sum) {
-      customerWiseDataList.add(
-        SupplierAnalysisPayablesData(
-          supplierName: nameByVendor[code]!,
-          balance: sum * -1,
-        ),
-      );
-      if (sum > 0) {
-        tmpAdvance += sum;
-      }
-      tmpPayables += netPayablesByVendor[code] ?? 0.0;
-    });
-
-    customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
-
-    supplierList = SupplierAnalysisPayablesList(
-      supplierData: customerWiseDataList,
-    );
-
-    if (listOfSupplier.isEmpty) {
-      listOfSupplier = customerWiseDataList.map((e) => e.supplierName).toList();
-    }
-    setState(() {
-      advance = tmpAdvance;
-      payables = tmpPayables;
-    });
-  }
-
   Future<void> _loadVendorPaymentProjection() async {
     final df = DateFormat('dd/MM/yyyy');
 
@@ -1833,6 +1569,238 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
   }
 
+  Future<void> _loadAdvancePaidData(
+    String payable,
+    String advancePaid,
+    String supplier,
+    String supplierCategory,
+    String documentType,
+    String bpGroup,
+  ) async {
+    final fPayable = payable.toLowerCase();
+    final fAdvance = advancePaid.toLowerCase();
+    final fSupplier = supplier.toLowerCase();
+    final fSupCat = supplierCategory.toLowerCase();
+    final fDocType = documentType.toLowerCase();
+    final fBpGroup = bpGroup.toLowerCase();
+
+    final df = DateFormat('dd/MM/yyyy');
+
+    final DateTime? effectiveCurrentMonthToDate = currentMonthToDate;
+
+    // ---------- Step 1: Filter rows ----------
+    final filteredList = payablesList.where((t) {
+      final dueOn = df.parse(t.postingDate);
+      if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) return false;
+
+      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
+      final tVendorNameLower = t.vendorName.toLowerCase();
+      final tVendorGroupLower = t.vendorGroup.toLowerCase();
+      final tDocumentTypeLower = t.documentType.toLowerCase();
+      final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
+
+      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+        return false;
+      }
+      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+        return false;
+      }
+
+      if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) return false;
+      if (fSupCat.isNotEmpty && tVendorGroupLower != fSupCat) return false;
+      if (fDocType.isNotEmpty && tDocumentTypeLower != fDocType) return false;
+      if (fBpGroup.isNotEmpty && tBpSubGroupLower != fBpGroup) return false;
+
+      return true;
+    }).toList();
+
+    // ---------- Step 2: Group by vendor ----------
+    final Map<String, List<dynamic>> vendorMap = {};
+
+    for (var t in filteredList) {
+      vendorMap.putIfAbsent(t.vendorCode, () => []).add(t);
+    }
+
+    // ---------- Step 3: Initialize buckets ----------
+    final List<double> bucketSums = List<double>.filled(6, 0.0);
+
+    int getBucketIndex(String bracket) {
+      switch (bracket) {
+        case "Future":
+          return 0;
+        case "0-30 Days":
+          return 1;
+        case "31-60 Days":
+          return 2;
+        case "61-90 Days":
+          return 3;
+        case "91-180 Days":
+          return 4;
+        default:
+          return 5;
+      }
+    }
+
+    // ---------- Step 4: Apply supplier-level logic ----------
+    for (var entry in vendorMap.entries) {
+      final rows = entry.value;
+
+      double totalBalance = 0;
+
+      // 🔥 Net per vendor (same as _loadSupplierAnalysis)
+      for (var r in rows) {
+        totalBalance += double.tryParse(r.balance) ?? 0;
+      }
+
+      // Only ADVANCE (positive)
+      if (totalBalance <= 0) continue;
+
+      // ---------- Step 5: Distribute ----------
+      for (var r in rows) {
+        final idx = getBucketIndex(r.ageingBrackets);
+        final amt = double.tryParse(r.balance) ?? 0;
+
+        bucketSums[idx] += amt;
+      }
+    }
+
+    // ---------- Step 6: Total ----------
+    final total = bucketSums.fold(0.0, (sum, v) => sum + v);
+
+    final labels = [
+      "Future",
+      "0-30 Days",
+      "31-60 Days",
+      "61-90 Days",
+      "91-180 Days",
+      "180+",
+    ];
+
+    final List<AdvancePaidToSupplierPayablesData> data = [];
+
+    for (var i = 0; i < 6; i++) {
+      final grpTotal = bucketSums[i];
+
+      data.add(
+        AdvancePaidToSupplierPayablesData(
+          agingGroup: labels[i],
+          agingGroupTotal: double.parse(grpTotal.toStringAsFixed(2)),
+          agingPercentage: total != 0
+              ? double.parse(((grpTotal / total) * 100).toStringAsFixed(2))
+              : 0.0,
+          agingTotal: total,
+        ),
+      );
+    }
+
+    advancePaidList = AdvancePaidToSupplierPayablesList(agingData: data);
+  }
+
+  Future<void> _loadSupplierAnalysis(
+    String payable,
+    String advancePaid,
+    String supplier,
+    String supplierCategory,
+    String documentType,
+    String bpGroup,
+  ) async {
+    setState(() {
+      advance = 0;
+      payables = 0;
+    });
+
+    double tmpAdvance = 0;
+    double tmpPayables = 0;
+
+    final fPayable = payable.toLowerCase();
+    final fAdvance = advancePaid.toLowerCase();
+    final fSupplier = supplier.toLowerCase();
+    final fSupCat = supplierCategory.toLowerCase();
+    final fDocType = documentType.toLowerCase();
+    final fBpGroup = bpGroup.toLowerCase();
+
+    final df = DateFormat('dd/MM/yyyy');
+
+    final Map<String, double> balanceByVendor = {};
+    final Map<String, String> nameByVendor = {};
+    final Map<String, double> netPayablesByVendor = {};
+    final DateTime? effectiveCurrentMonthToDate = currentMonthToDate;
+
+    for (final t in payablesList) {
+      final dueOn = df.parse(t.postingDate);
+      if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) {
+        continue;
+      }
+
+      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
+      final tVendorNameLower = t.vendorName.toLowerCase();
+      final tVendorGroupLower = t.vendorGroup.toLowerCase();
+      final tDocumentTypeLower = t.documentType.toLowerCase();
+      final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
+
+      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+        continue;
+      }
+      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+        continue;
+      }
+
+      if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
+        continue;
+      }
+      if (fSupCat.isNotEmpty && tVendorGroupLower != fSupCat) {
+        continue;
+      }
+      if (fDocType.isNotEmpty && tDocumentTypeLower != fDocType) {
+        continue;
+      }
+      if (fBpGroup.isNotEmpty && tBpSubGroupLower != fBpGroup) {
+        continue;
+      }
+
+      final amt = double.tryParse(t.balance) ?? 0.0;
+      final code = t.vendorCode;
+      final future = t.ageingBrackets;
+      if (future != "Future") {
+        netPayablesByVendor.update(
+          code,
+          (value) => value + amt,
+          ifAbsent: () => amt,
+        );
+      }
+      balanceByVendor.update(code, (value) => value + amt, ifAbsent: () => amt);
+      nameByVendor[code] = t.vendorName;
+    }
+
+    final List<SupplierAnalysisPayablesData> customerWiseDataList = [];
+    balanceByVendor.forEach((code, sum) {
+      customerWiseDataList.add(
+        SupplierAnalysisPayablesData(
+          supplierName: nameByVendor[code]!,
+          balance: sum * -1,
+        ),
+      );
+      if (sum > 0) {
+        tmpAdvance += sum;
+      }
+      tmpPayables += netPayablesByVendor[code] ?? 0.0;
+    });
+
+    customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
+
+    supplierList = SupplierAnalysisPayablesList(
+      supplierData: customerWiseDataList,
+    );
+
+    if (listOfSupplier.isEmpty) {
+      listOfSupplier = customerWiseDataList.map((e) => e.supplierName).toList();
+    }
+    setState(() {
+      advance = tmpAdvance;
+      payables = tmpPayables;
+    });
+  }
+
   Future<void> _loadSupplierCategoryAnalysis(
     String payable,
     String advancePaid,
@@ -1922,6 +1890,62 @@ class _PayableFinanceState extends State<PayableFinance> {
           )
           .toList();
     }
+  }
+
+  Future<void> _loadDocumentTypeAnalysis(
+    String payable,
+    String advancePaid,
+    String supplier,
+    String supplierCategory,
+    String documentType,
+    String bpGroup,
+  ) async {
+    final fPayable = payable.toLowerCase();
+    final fAdvance = advancePaid.toLowerCase();
+    final fSupplier = supplier.toLowerCase();
+    final fSupCat = supplierCategory.toLowerCase();
+    final fDocType = documentType.toLowerCase();
+    final fBpGroup = bpGroup.toLowerCase();
+
+    final df = DateFormat('dd/MM/yyyy');
+
+    final Map<String, double> balanceByDoc = {};
+
+    for (final t in payablesList) {
+      final dueOn = df.parse(t.postingDate);
+      if (!dueOn.isAtMost(currentMonthToDate!)) continue;
+
+      final dd = t.ageingBrackets.toLowerCase();
+      if (fPayable.isNotEmpty && !dd.contains(fPayable)) continue;
+      if (fAdvance.isNotEmpty && !dd.contains(fAdvance)) continue;
+      if (fSupplier.isNotEmpty && t.vendorName.toLowerCase() != fSupplier) {
+        continue;
+      }
+      if (fSupCat.isNotEmpty && t.vendorGroup.toLowerCase() != fSupCat) {
+        continue;
+      }
+      if (fDocType.isNotEmpty && t.documentType.toLowerCase() != fDocType) {
+        continue;
+      }
+      if (fBpGroup.isNotEmpty && t.bpSubGroup.toLowerCase() != fBpGroup) {
+        continue;
+      }
+
+      final doc = t.documentType.isEmpty ? "Others" : t.documentType;
+      final amt = double.tryParse(t.balance) ?? 0.0;
+      balanceByDoc[doc] = (balanceByDoc[doc] ?? 0.0) + amt;
+    }
+
+    final List<DocumentTypeData> customerWiseDataList =
+        balanceByDoc.entries
+            .map(
+              (e) =>
+                  DocumentTypeData(documentType: e.key, balance: e.value * -1),
+            )
+            .toList()
+          ..sort((a, b) => b.balance.compareTo(a.balance));
+
+    documentList = DocumentTypeList(documentData: customerWiseDataList);
   }
 
   Future<void> _loadBpGroup(
@@ -2052,113 +2076,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     list.sort((a, b) => b.balance.compareTo(a.balance));
     bpGroupList = SupplierCategoryWiseAnalysisPayablesList(
       supplierCategoryData: list,
-    );
-  }
-
-  String getMonthName(int month) {
-    final formatter = DateFormat('MMMM');
-    return formatter.format(DateTime(2000, month));
-  }
-
-  Future<void> _loadFixedExpenses() async {
-    List<SupplierCategoryWiseAnalysisPayablesData> customerWiseDataList = [];
-    DateFormat formatter = DateFormat('dd/MM/yyyy');
-
-    String getCurrentFinancialYearSuffix() {
-      final now = DateTime.now();
-      final year = now.year;
-      final month = now.month;
-      int startYear = (month >= 4) ? year : year - 1;
-      int endYear = startYear + 1;
-      return "FY${startYear % 100}-${endYear % 100}-ET";
-    }
-
-    List<SalesTargetList> tempTarget = salesTarget
-        .where((test) => test.financialYear == getCurrentFinancialYearSuffix())
-        .toList();
-
-    List<ExpensesList> customerTargetList = expensesList.where((target) {
-      if (target.monthYear.isEmpty) return false;
-      try {
-        DateTime toDt = formatter.parse('01/${target.monthYear}');
-        DateTime lastDayOfMonth = DateTime(toDt.year, toDt.month + 1, 0);
-        return lastDayOfMonth.isBefore(
-              currentMonthToDate!.add(const Duration(days: 1)),
-            ) &&
-            target.subSubGroup.isNotEmpty;
-      } catch (e) {
-        return false;
-      }
-    }).toList();
-
-    var currentMonthActualPayable = modeOfPayment.where((target) {
-      if (target.postingDate.isEmpty) return false;
-      try {
-        DateTime dueon = target.postingDateParsed;
-        return dueon.isAtMost(currentMonthToDate!);
-      } catch (e) {
-        return false;
-      }
-    });
-
-    String month = getMonthName(DateTime.now().month);
-    Set<String> allVendorGroups = {};
-
-    for (var expense in customerTargetList) {
-      allVendorGroups.add(expense.subSubGroup.trim().toUpperCase());
-    }
-    for (var target in tempTarget) {
-      if (target.salesRep.toUpperCase().endsWith(" TARGET")) {
-        String vendorName = target.salesRep
-            .substring(0, target.salesRep.length - " TARGET".length)
-            .trim()
-            .toUpperCase();
-        allVendorGroups.add(vendorName);
-      }
-    }
-
-    Set<String> processedGroups = {};
-
-    for (String vendorGroup in allVendorGroups) {
-      if (!processedGroups.add(vendorGroup)) continue;
-
-      double balance = customerTargetList
-          .where((e) => e.subSubGroup.trim().toUpperCase() == vendorGroup)
-          .fold(0.0, (sum, e) => sum + (double.tryParse(e.balance) ?? 0.0));
-
-      double commitment = tempTarget
-          .where(
-            (e) => e.salesRep.trim().toUpperCase() == "$vendorGroup TARGET",
-          )
-          .fold(
-            0.0,
-            (sum, e) =>
-                sum + (double.tryParse(e.getTargetForMonth(month)) ?? 0.0),
-          );
-
-      // if (commitment == 0) continue;
-
-      double actualPayable = currentMonthActualPayable
-          .where((e) => e.bpSubGroup.trim().toUpperCase() == vendorGroup)
-          .fold(0.0, (sum, e) => sum + (double.tryParse(e.total) ?? 0.0));
-
-      totalFixedExpensesCommitment += commitment;
-      totalFixedExpensesActualPaid += actualPayable;
-
-      customerWiseDataList.add(
-        SupplierCategoryWiseAnalysisPayablesData(
-          supplierCategoryName: vendorGroup,
-          balance: balance.abs(),
-          commitment: commitment,
-          actualPaid: actualPayable,
-        ),
-      );
-    }
-
-    customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
-
-    fixedExpensesList = SupplierCategoryWiseAnalysisPayablesList(
-      supplierCategoryData: customerWiseDataList,
     );
   }
 
@@ -2304,60 +2221,104 @@ class _PayableFinanceState extends State<PayableFinance> {
     );
   }
 
-  Future<void> _loadDocumentTypeAnalysis(
-    String payable,
-    String advancePaid,
-    String supplier,
-    String supplierCategory,
-    String documentType,
-    String bpGroup,
-  ) async {
-    final fPayable = payable.toLowerCase();
-    final fAdvance = advancePaid.toLowerCase();
-    final fSupplier = supplier.toLowerCase();
-    final fSupCat = supplierCategory.toLowerCase();
-    final fDocType = documentType.toLowerCase();
-    final fBpGroup = bpGroup.toLowerCase();
+  Future<void> _loadFixedExpenses() async {
+    List<SupplierCategoryWiseAnalysisPayablesData> customerWiseDataList = [];
+    DateFormat formatter = DateFormat('dd/MM/yyyy');
 
-    final df = DateFormat('dd/MM/yyyy');
-
-    final Map<String, double> balanceByDoc = {};
-
-    for (final t in payablesList) {
-      final dueOn = df.parse(t.postingDate);
-      if (!dueOn.isAtMost(currentMonthToDate!)) continue;
-
-      final dd = t.ageingBrackets.toLowerCase();
-      if (fPayable.isNotEmpty && !dd.contains(fPayable)) continue;
-      if (fAdvance.isNotEmpty && !dd.contains(fAdvance)) continue;
-      if (fSupplier.isNotEmpty && t.vendorName.toLowerCase() != fSupplier) {
-        continue;
-      }
-      if (fSupCat.isNotEmpty && t.vendorGroup.toLowerCase() != fSupCat) {
-        continue;
-      }
-      if (fDocType.isNotEmpty && t.documentType.toLowerCase() != fDocType) {
-        continue;
-      }
-      if (fBpGroup.isNotEmpty && t.bpSubGroup.toLowerCase() != fBpGroup) {
-        continue;
-      }
-
-      final doc = t.documentType.isEmpty ? "Others" : t.documentType;
-      final amt = double.tryParse(t.balance) ?? 0.0;
-      balanceByDoc[doc] = (balanceByDoc[doc] ?? 0.0) + amt;
+    String getCurrentFinancialYearSuffix() {
+      final now = DateTime.now();
+      final year = now.year;
+      final month = now.month;
+      int startYear = (month >= 4) ? year : year - 1;
+      int endYear = startYear + 1;
+      return "FY${startYear % 100}-${endYear % 100}-ET";
     }
 
-    final List<DocumentTypeData> customerWiseDataList =
-        balanceByDoc.entries
-            .map(
-              (e) =>
-                  DocumentTypeData(documentType: e.key, balance: e.value * -1),
-            )
-            .toList()
-          ..sort((a, b) => b.balance.compareTo(a.balance));
+    List<SalesTargetList> tempTarget = salesTarget
+        .where((test) => test.financialYear == getCurrentFinancialYearSuffix())
+        .toList();
 
-    documentList = DocumentTypeList(documentData: customerWiseDataList);
+    List<ExpensesList> customerTargetList = expensesList.where((target) {
+      if (target.monthYear.isEmpty) return false;
+      try {
+        DateTime toDt = formatter.parse('01/${target.monthYear}');
+        DateTime lastDayOfMonth = DateTime(toDt.year, toDt.month + 1, 0);
+        return lastDayOfMonth.isBefore(
+              currentMonthToDate!.add(const Duration(days: 1)),
+            ) &&
+            target.subSubGroup.isNotEmpty;
+      } catch (e) {
+        return false;
+      }
+    }).toList();
+
+    var currentMonthActualPayable = modeOfPayment.where((target) {
+      if (target.postingDate.isEmpty) return false;
+      try {
+        DateTime dueon = target.postingDateParsed;
+        return dueon.isAtMost(currentMonthToDate!);
+      } catch (e) {
+        return false;
+      }
+    });
+
+    String month = getMonthName(DateTime.now().month);
+    Set<String> allVendorGroups = {};
+
+    for (var expense in customerTargetList) {
+      allVendorGroups.add(expense.subSubGroup.trim().toUpperCase());
+    }
+    for (var target in tempTarget) {
+      if (target.salesRep.toUpperCase().endsWith(" TARGET")) {
+        String vendorName = target.salesRep
+            .substring(0, target.salesRep.length - " TARGET".length)
+            .trim()
+            .toUpperCase();
+        allVendorGroups.add(vendorName);
+      }
+    }
+
+    Set<String> processedGroups = {};
+
+    for (String vendorGroup in allVendorGroups) {
+      if (!processedGroups.add(vendorGroup)) continue;
+
+      double balance = customerTargetList
+          .where((e) => e.subSubGroup.trim().toUpperCase() == vendorGroup)
+          .fold(0.0, (sum, e) => sum + (double.tryParse(e.balance) ?? 0.0));
+
+      double commitment = tempTarget
+          .where(
+            (e) => e.salesRep.trim().toUpperCase() == "$vendorGroup TARGET",
+          )
+          .fold(
+            0.0,
+            (sum, e) =>
+                sum + (double.tryParse(e.getTargetForMonth(month)) ?? 0.0),
+          );
+
+      double actualPayable = currentMonthActualPayable
+          .where((e) => e.bpSubGroup.trim().toUpperCase() == vendorGroup)
+          .fold(0.0, (sum, e) => sum + (double.tryParse(e.total) ?? 0.0));
+
+      totalFixedExpensesCommitment += commitment;
+      totalFixedExpensesActualPaid += actualPayable;
+
+      customerWiseDataList.add(
+        SupplierCategoryWiseAnalysisPayablesData(
+          supplierCategoryName: vendorGroup,
+          balance: balance.abs(),
+          commitment: commitment,
+          actualPaid: actualPayable,
+        ),
+      );
+    }
+
+    customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
+
+    fixedExpensesList = SupplierCategoryWiseAnalysisPayablesList(
+      supplierCategoryData: customerWiseDataList,
+    );
   }
 
   Future<void> loadData(String selectedUser) async {
@@ -2407,93 +2368,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
     await applyPayablesVariables();
     chartDataLoadedPayables = true;
-  }
-
-  List<PayablesList> filterPayablesList(
-    List<PayablesList> payableList, {
-    String? payable,
-    String? advancePaid,
-    String? supplier,
-    String? supplierCategory,
-    String? documentType,
-  }) {
-    List<PayablesList> result = [];
-
-    double dueFromReceivable = 0.0;
-    double dueToReceivable = double.infinity;
-    double dueFromAdvance = 0.0;
-    double dueToAdvance = double.infinity;
-
-    if (payable != null && payable.isNotEmpty) {
-      switch (payable) {
-        case "0-30":
-          dueToReceivable = 30;
-          break;
-        case "31-60":
-          dueFromReceivable = 31;
-          dueToReceivable = 60;
-          break;
-        case "61-90":
-          dueFromReceivable = 61;
-          dueToReceivable = 90;
-          break;
-        case "91-180":
-          dueFromReceivable = 91;
-          dueToReceivable = 180;
-          break;
-        case "180+":
-          dueFromReceivable = 181;
-          break;
-      }
-    }
-
-    if (advancePaid != null && advancePaid.isNotEmpty) {
-      switch (advancePaid) {
-        case "0-30":
-          dueToAdvance = 30;
-          break;
-        case "31-60":
-          dueFromAdvance = 31;
-          dueToAdvance = 60;
-          break;
-        case "61-90":
-          dueFromAdvance = 61;
-          dueToAdvance = 90;
-          break;
-        case "91-180":
-          dueFromAdvance = 91;
-          dueToAdvance = 180;
-          break;
-        case "180+":
-          dueFromAdvance = 181;
-          break;
-      }
-    }
-
-    final hasSupplier = supplier != null && supplier.isNotEmpty;
-    final hasCategory = supplierCategory != null && supplierCategory.isNotEmpty;
-    final hasDocType = documentType != null && documentType.isNotEmpty;
-    final hasPayable = payable != null && payable.isNotEmpty;
-    final hasAdvance = advancePaid != null && advancePaid.isNotEmpty;
-
-    for (var target in payableList) {
-      final overDueDayAdvance = target.overDueDayAdvance;
-      final overDueDayReceivables = target.overDueDayReceivables;
-
-      if ((!hasSupplier || target.vendorName == supplier) &&
-          (!hasCategory || target.vendorGroup == supplierCategory) &&
-          (!hasDocType || target.documentType == documentType) &&
-          (!hasPayable ||
-              (overDueDayReceivables >= dueFromReceivable &&
-                  overDueDayReceivables <= dueToReceivable)) &&
-          (!hasAdvance ||
-              (overDueDayAdvance >= dueFromAdvance &&
-                  overDueDayAdvance <= dueToAdvance))) {
-        result.add(target);
-      }
-    }
-
-    return result;
   }
 
   Future<void> loadDataWithFilter(
@@ -2561,8 +2435,11 @@ class _PayableFinanceState extends State<PayableFinance> {
       _loadAdvanceVendors(),
       _loadCapitalVendors(),
     ]);
+
     await applyPayablesVariables();
-    chartDataLoadedPayables = true;
+    setState(() {
+      chartDataLoadedPayables = true;
+    });
   }
 
   Future<void> removeFilter() async {
@@ -2580,13 +2457,67 @@ class _PayableFinanceState extends State<PayableFinance> {
     });
   }
 
+  List<PayablesList> applyFilters() {
+    List<PayablesList> list = List.from(payablesListMaster);
+
+    // ---------- Category & Supplier ----------
+    final selectedCategories = (allCategoriesState['Category'] ?? {}).entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    final selectedSuppliers = (allCategoriesState['Supplier'] ?? {}).entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    list = list.where((p) {
+      final matchCategory =
+          selectedCategories.isEmpty ||
+          selectedCategories.contains(p.vendorGroup);
+
+      final matchSupplier =
+          selectedSuppliers.isEmpty || selectedSuppliers.contains(p.vendorName);
+
+      // ---------- Touch Filters ----------
+
+      final matchPayable =
+          touchedPayables.isEmpty || p.ageingBrackets == touchedPayables;
+
+      final matchSupplierTouch =
+          touchedSupplier.isEmpty || p.vendorName == touchedSupplier;
+
+      final matchCategoryTouch =
+          touchedSupplierType.isEmpty || p.vendorGroup == touchedSupplierType;
+
+      final matchDocType =
+          touchedDocumentType.isEmpty || p.documentType == touchedDocumentType;
+
+      return matchCategory &&
+          matchSupplier &&
+          matchPayable &&
+          matchSupplierTouch &&
+          matchCategoryTouch &&
+          matchDocType;
+    }).toList();
+
+    // ---------- Date Filter ----------
+    if (dateFilterFlag && toDateFilter != null) {
+      list = list.where((p) {
+        return p.postingDateParsed.isAtMost(toDateFilter!);
+      }).toList();
+    }
+
+    return list;
+  }
+
   void clearVariables() {
     setState(() {
       advance = 0.00;
       payables = 0.00;
       chartDataLoadedPayables = false;
       payableGraphList = PayablesGraphList(agingData: []);
-      receivableList = AdvancePaidToSupplierPayablesList(agingData: []);
+      advancePaidList = AdvancePaidToSupplierPayablesList(agingData: []);
       supplierList = SupplierAnalysisPayablesList(supplierData: []);
       supplierCategoryList = SupplierCategoryWiseAnalysisPayablesList(
         supplierCategoryData: [],
@@ -2597,6 +2528,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       touchedSupplier = "";
       touchedSupplierType = "";
       touchedDocumentType = "";
+      touchedBPgroup = "";
     });
   }
 
@@ -2606,7 +2538,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       payables = 0.00;
       chartDataLoadedPayables = false;
       payableGraphList = PayablesGraphList(agingData: []);
-      receivableList = AdvancePaidToSupplierPayablesList(agingData: []);
+      advancePaidList = AdvancePaidToSupplierPayablesList(agingData: []);
       supplierList = SupplierAnalysisPayablesList(supplierData: []);
       supplierCategoryList = SupplierCategoryWiseAnalysisPayablesList(
         supplierCategoryData: [],
@@ -2646,7 +2578,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           .map((e) => [e.agingGroup, e.agingGroupTotal])
           .toList(),
       fileName: 'payables.xlsx',
-      numericColumns: [2],
+      amountColumns: [2],
     );
   }
 
@@ -2676,7 +2608,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           .map((e) => [e.agingGroup, e.agingGroupTotal])
           .toList(),
       fileName: 'advance_paid.pdf',
-      numericColumns: [2],
+      amountColumns: [2],
     );
   }
 
@@ -2698,7 +2630,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       headers: ['Supplier Name', 'Balance Amount'],
       rows: list.supplierData.map((e) => [e.supplierName, e.balance]).toList(),
       fileName: 'supplier_analysis.pdf',
-      numericColumns: [2],
+      amountColumns: [2],
     );
   }
 
@@ -2728,7 +2660,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           .map((e) => [e.supplierCategoryName, e.balance])
           .toList(),
       fileName: 'supplier_category_analysis.pdf',
-      numericColumns: [2],
+      amountColumns: [2],
     );
   }
 
@@ -2750,7 +2682,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       headers: ['Document Type', 'Amount'],
       rows: list.documentData.map((e) => [e.documentType, e.balance]).toList(),
       fileName: 'document_type.pdf',
-      numericColumns: [2],
+      amountColumns: [2],
     );
   }
 
@@ -2890,29 +2822,16 @@ class _PayableFinanceState extends State<PayableFinance> {
     );
   }
 
-  void toggleCheckbox() {
-    setState(() {
-      payableDouble = 0;
-      advance = 0;
-      chartDataLoadedPayables = false;
-      loadData("");
-    });
-  }
-
-  Future<void> filterDateFunction() async {
+  Future<void> filterChartFunction() async {
     // Step 1: show loading
     setState(() {
       chartDataLoadedPayables = false;
     });
 
     // Step 2: reset base list
-    payablesList = payablesListMaster;
+    payablesList = applyFilters();
 
-    _dateFilterTarget();
-    // Step 3: allow UI to render before heavy work
-    await Future.delayed(const Duration(milliseconds: 1));
-
-    // Step 4: run your async loaders
+    // Step 3: run the async loaders
     await Future.wait([
       _loadPayablesData("", "", "", "", "", ""),
       _loadAdvancePaidData("", "", "", "", "", ""),
@@ -2928,141 +2847,9 @@ class _PayableFinanceState extends State<PayableFinance> {
 
     await applyPayablesVariables();
 
-    // // Step 5: PRE-COMPUTE EVERYTHING OUTSIDE setState
-
-    // double notDueLocal = 0;
-    // double overDueLocal = 0;
-    // double netPayableLocal = 0;
-
-    // double payableSum = 0;
-    // // double advanceSum = 0;
-    // double payablesSum = 0;
-
-    // final trueCategoryOptions = (allCategoriesState['Category'] ?? {}).entries
-    //     .where((entry) => entry.value)
-    //     .map((entry) => entry.key)
-    //     .toList();
-
-    // final trueSupplierOptions = (allCategoriesState['Supplier'] ?? {}).entries
-    //     .where((entry) => entry.value)
-    //     .map((entry) => entry.key)
-    //     .toList();
-
-    // // Step 6: FILTER + CALCULATE (single loop, optimized)
-
-    // final filteredList = <PayablesList>[];
-
-    // for (int i = 0; i < payablesList.length; i++) {
-    //   final target = payablesList[i];
-
-    //   final matchCategory =
-    //       trueCategoryOptions.isEmpty ||
-    //       trueCategoryOptions.contains(target.vendorGroup);
-
-    //   final matchSupplier =
-    //       trueSupplierOptions.isEmpty ||
-    //       trueSupplierOptions.contains(target.vendorName);
-
-    //   if (!(matchCategory && matchSupplier)) continue;
-
-    //   filteredList.add(target);
-
-    //   final dueon = target.postingDateParsed;
-
-    //   // use cached value (IMPORTANT)
-    //   final balance = target.balanceParsed;
-    //   final future = target.ageingBrackets;
-
-    //   // current month calculation
-    //   if (dueon.isAtMost(currentMonthToDate!) && future != "Future") {
-    //     payableSum += balance;
-
-    //     if (balance > 0) {
-    //       // advanceSum += balance;
-    //     } else {
-    //       payablesSum += balance;
-    //     }
-    //   }
-
-    //   // net payable calculation
-    //   if (balance < 0) {
-    //     netPayableLocal += balance;
-
-    //     if (future != "Future") {
-    //       overDueLocal += balance;
-    //     } else {
-    //       notDueLocal += balance;
-    //     }
-    //   }
-
-    //   // optional: prevent UI freeze for large data
-    //   if (i % 200 == 0) {
-    //     await Future.delayed(Duration.zero);
-    //   }
-    // }
-
-    // // Step 7: calculations
-
-    // final payableStrLocal = formatAmount(payablesSum.abs());
-    // final advanceStrLocal = formatAmount(advance);
-    // final payableAdvanceStrLocal = formatAmount(payableSum.abs());
-
-    // int payableAdvancePercentageLocal = 0;
-
-    // if (payableSum != 0) {
-    //   payableAdvancePercentageLocal = ((advance.abs() / payableSum.abs()) * 100)
-    //       .ceil();
-    // }
-
-    // if (payableAdvancePercentageLocal > 100) {
-    //   payableAdvancePercentageLocal = 100;
-    // }
-
-    // final netPayableStrLocal = formatAmount(netPayableLocal.abs());
-    // final overDueStrLocal = formatAmount(overDueLocal.abs());
-    // final notDueStrLocal = formatAmount(notDueLocal.abs());
-
-    // int netPayablePercentageLocal = 0;
-
-    // if (overDueLocal != 0 && netPayableLocal != 0) {
-    //   netPayablePercentageLocal = ((overDueLocal / netPayableLocal) * 100)
-    //       .ceil();
-    // }
-
-    // if (netPayablePercentageLocal > 100) {
-    //   netPayablePercentageLocal = 100;
-    // }
-
-    // // Step 8: update UI ONCE
-
-    // setState(() {
-    //   payablesList = filteredList;
-
-    //   notDue = notDueLocal;
-    //   overDue = overDueLocal;
-    //   netPayable = netPayableLocal;
-
-    //   payableStr = payableStrLocal;
-    //   advanceStr = advanceStrLocal;
-    //   payableAdvanceStr = payableAdvanceStrLocal;
-    //   payableAdvancePercentage = payableAdvancePercentageLocal;
-
-    //   netPayableStr = netPayableStrLocal;
-    //   overDueStr = overDueStrLocal;
-    //   notDueStr = notDueStrLocal;
-    //   netPayablePercentage = netPayablePercentageLocal;
-
-    //   filterOptions = [listOfCategory, listOfSupplier, []];
-
-    //   savedFinanceReceivablesOptions =
-    //       savedFinanceReceivablesOptionsTemp.isEmpty
-    //       ? filterOptions
-    //             .map((options) => List<bool>.filled(options.length, false))
-    //             .toList()
-    //       : savedFinanceReceivablesOptionsTemp;
-
-    //   chartDataLoadedPayables = true;
-    // });
+    setState(() {
+      chartDataLoadedPayables = true;
+    });
   }
 
   String getSelectedFiltersText(
@@ -3448,174 +3235,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "BP Group Summary",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateBgGroup();
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _bpGroup(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Advance Vendors",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateAdvanceVendors();
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _advanceVendors(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Capital Vendors",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateCapitalVendors();
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _capitalVendors(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Fixed Expenses",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateFixedExpenses();
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _fixedExpenses(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -3638,7 +3258,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generateAdvanceExcel(receivableList);
+                                    generateAdvanceExcel(advancePaidList);
                                   });
                                 },
                                 child: const Text("Download Excel"),
@@ -3646,7 +3266,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generateAdvancePDF(receivableList);
+                                    generateAdvancePDF(advancePaidList);
                                   });
                                 },
                                 child: const Text("Download PDF"),
@@ -3816,6 +3436,174 @@ class _PayableFinanceState extends State<PayableFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _documentTypeAnalysis(),
                 ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Divider(thickness: 2),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 15),
+                        Text(
+                          "BP Group Summary",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        PopupMenuButton(
+                          onSelected: (value) {},
+                          itemBuilder: (BuildContext bc) {
+                            return [
+                              PopupMenuItem(
+                                onTap: () {
+                                  setState(() {
+                                    generateBgGroup();
+                                  });
+                                },
+                                child: const Text("Download Excel"),
+                              ),
+                            ];
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: _bpGroup(),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Divider(thickness: 2),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 15),
+                        Text(
+                          "Advance Vendors",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        PopupMenuButton(
+                          onSelected: (value) {},
+                          itemBuilder: (BuildContext bc) {
+                            return [
+                              PopupMenuItem(
+                                onTap: () {
+                                  setState(() {
+                                    generateAdvanceVendors();
+                                  });
+                                },
+                                child: const Text("Download Excel"),
+                              ),
+                            ];
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: _advanceVendors(),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Divider(thickness: 2),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 15),
+                        Text(
+                          "Capital Vendors",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        PopupMenuButton(
+                          onSelected: (value) {},
+                          itemBuilder: (BuildContext bc) {
+                            return [
+                              PopupMenuItem(
+                                onTap: () {
+                                  setState(() {
+                                    generateCapitalVendors();
+                                  });
+                                },
+                                child: const Text("Download Excel"),
+                              ),
+                            ];
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: _capitalVendors(),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Divider(thickness: 2),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 15),
+                        Text(
+                          "Fixed Expenses",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        PopupMenuButton(
+                          onSelected: (value) {},
+                          itemBuilder: (BuildContext bc) {
+                            return [
+                              PopupMenuItem(
+                                onTap: () {
+                                  setState(() {
+                                    generateFixedExpenses();
+                                  });
+                                },
+                                child: const Text("Download Excel"),
+                              ),
+                            ];
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: _fixedExpenses(),
+                ),
               ],
             ),
           )
@@ -3922,14 +3710,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedPayables,
-                        touchedAdvancePaid,
-                        touchedSupplier,
-                        touchedSupplierType,
-                        touchedDocumentType,
-                        touchedBPgroup,
-                      );
+                      loadDataFuture = filterChartFunction();
                     }
                   });
                 }
@@ -4040,7 +3821,7 @@ class _PayableFinanceState extends State<PayableFinance> {
   Widget _advancePaidToSupplier() {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    final amounts = receivableList.agingData
+    final amounts = advancePaidList.agingData
         .map((e) => e.agingGroupTotal)
         .whereType<double>()
         .toList();
@@ -4106,7 +3887,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups: _advancePaidChartData(receivableList.agingData),
+            barGroups: _advancePaidChartData(advancePaidList.agingData),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
@@ -4114,21 +3895,14 @@ class _PayableFinanceState extends State<PayableFinance> {
                   setState(() {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedAdvancePaid = touchedAdvancePaid == ""
-                          ? receivableList
+                          ? advancePaidList
                                 .agingData[barTouchResponse.spot!.spot.x
                                     .toInt()]
                                 .agingGroup
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedPayables,
-                        touchedAdvancePaid,
-                        touchedSupplier,
-                        touchedSupplierType,
-                        touchedDocumentType,
-                        touchedBPgroup,
-                      );
+                      loadDataFuture = filterChartFunction();
                     }
                   });
                 }
@@ -4151,8 +3925,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                     children: <TextSpan>[
                       TextSpan(
                         text:
-                            '${receivableList.agingData[0].agingGroup} :'
-                            ' ${(receivableList.agingData[0].agingGroupTotal / 1000000).toStringAsFixed(2)} L\n',
+                            '${advancePaidList.agingData[0].agingGroup} :'
+                            ' ${(advancePaidList.agingData[0].agingGroupTotal / 1000000).toStringAsFixed(2)} L\n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4161,8 +3935,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                       ),
                       TextSpan(
                         text:
-                            '${receivableList.agingData[1].agingGroup} '
-                            ': ${formatAmount(receivableList.agingData[1].agingGroupTotal)} \n',
+                            '${advancePaidList.agingData[1].agingGroup} '
+                            ': ${formatAmount(advancePaidList.agingData[1].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4171,8 +3945,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                       ),
                       TextSpan(
                         text:
-                            '${receivableList.agingData[2].agingGroup} '
-                            ': ${formatAmount(receivableList.agingData[2].agingGroupTotal)} \n',
+                            '${advancePaidList.agingData[2].agingGroup} '
+                            ': ${formatAmount(advancePaidList.agingData[2].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4181,8 +3955,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                       ),
                       TextSpan(
                         text:
-                            '${receivableList.agingData[3].agingGroup} '
-                            ': ${formatAmount(receivableList.agingData[3].agingGroupTotal)} \n',
+                            '${advancePaidList.agingData[3].agingGroup} '
+                            ': ${formatAmount(advancePaidList.agingData[3].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4191,8 +3965,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                       ),
                       TextSpan(
                         text:
-                            '${receivableList.agingData[4].agingGroup} '
-                            ': ${formatAmount(receivableList.agingData[4].agingGroupTotal)} \n',
+                            '${advancePaidList.agingData[4].agingGroup} '
+                            ': ${formatAmount(advancePaidList.agingData[4].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4201,8 +3975,8 @@ class _PayableFinanceState extends State<PayableFinance> {
                       ),
                       TextSpan(
                         text:
-                            '${receivableList.agingData[5].agingGroup} '
-                            ': ${formatAmount(receivableList.agingData[5].agingGroupTotal)} \n',
+                            '${advancePaidList.agingData[5].agingGroup} '
+                            ': ${formatAmount(advancePaidList.agingData[5].agingGroupTotal)} \n',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4212,7 +3986,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                       TextSpan(
                         text:
                             'Total'
-                            ': ${formatAmount(receivableList.agingData[5].agingGroupTotal + receivableList.agingData[4].agingGroupTotal + receivableList.agingData[3].agingGroupTotal + receivableList.agingData[2].agingGroupTotal + receivableList.agingData[1].agingGroupTotal + receivableList.agingData[0].agingGroupTotal)}',
+                            ': ${formatAmount(advancePaidList.agingData[5].agingGroupTotal + advancePaidList.agingData[4].agingGroupTotal + advancePaidList.agingData[3].agingGroupTotal + advancePaidList.agingData[2].agingGroupTotal + advancePaidList.agingData[1].agingGroupTotal + advancePaidList.agingData[0].agingGroupTotal)}',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -4326,14 +4100,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedPayables,
-                        touchedAdvancePaid,
-                        touchedSupplier,
-                        touchedSupplierType,
-                        touchedDocumentType,
-                        touchedBPgroup,
-                      );
+                      loadDataFuture = filterChartFunction();
                     }
                   });
                 }
@@ -4476,14 +4243,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedPayables,
-                        touchedAdvancePaid,
-                        touchedSupplier,
-                        touchedSupplierType,
-                        touchedDocumentType,
-                        touchedBPgroup,
-                      );
+                      loadDataFuture = filterChartFunction();
                     }
                   });
                 }
@@ -4623,14 +4383,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedPayables,
-                        touchedAdvancePaid,
-                        touchedSupplier,
-                        touchedSupplierType,
-                        touchedDocumentType,
-                        touchedBPgroup,
-                      );
+                      loadDataFuture = filterChartFunction();
                     }
                   });
                 }
@@ -4771,14 +4524,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedPayables,
-                        touchedAdvancePaid,
-                        touchedSupplier,
-                        touchedSupplierType,
-                        touchedDocumentType,
-                        touchedBPgroup,
-                      );
+                      loadDataFuture = filterChartFunction();
                     }
                   });
                 }
@@ -4877,29 +4623,6 @@ class _PayableFinanceState extends State<PayableFinance> {
             barGroups: _advanceVendorChartData(advanceVendorList.supplierData),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    // if (flTouchEvent is FlTapUpEvent) {
-                    //   touchedDocumentType = touchedDocumentType == ""
-                    //       ? documentList
-                    //           .documentData[
-                    //               barTouchResponse.spot!.spot.x.toInt()]
-                    //           .documentType
-                    //       : "";
-                    //   selectedChart = barTouchResponse.spot!.spot.x;
-                    //   showDrillDownChart = true;
-                    //   loadDataWithFilter(
-                    //     touchedPayables,
-                    //     touchedAdvancePaid,
-                    //     touchedSupplier,
-                    //     touchedSupplierType,
-                    //     touchedDocumentType,
-                    //   );
-                    // }
-                  });
-                }
-              },
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
@@ -5020,29 +4743,6 @@ class _PayableFinanceState extends State<PayableFinance> {
             barGroups: _capitalVendorsChartData(capitalVendorsList.vendorData),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    // if (flTouchEvent is FlTapUpEvent) {
-                    //   touchedDocumentType = touchedDocumentType == ""
-                    //       ? documentList
-                    //           .documentData[
-                    //               barTouchResponse.spot!.spot.x.toInt()]
-                    //           .documentType
-                    //       : "";
-                    //   selectedChart = barTouchResponse.spot!.spot.x;
-                    //   showDrillDownChart = true;
-                    //   loadDataWithFilter(
-                    //     touchedPayables,
-                    //     touchedAdvancePaid,
-                    //     touchedSupplier,
-                    //     touchedSupplierType,
-                    //     touchedDocumentType,
-                    //   );
-                    // }
-                  });
-                }
-              },
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
@@ -5183,29 +4883,6 @@ class _PayableFinanceState extends State<PayableFinance> {
             ),
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    // if (flTouchEvent is FlTapUpEvent) {
-                    //   touchedDocumentType = touchedDocumentType == ""
-                    //       ? documentList
-                    //           .documentData[
-                    //               barTouchResponse.spot!.spot.x.toInt()]
-                    //           .documentType
-                    //       : "";
-                    //   selectedChart = barTouchResponse.spot!.spot.x;
-                    //   showDrillDownChart = true;
-                    //   loadDataWithFilter(
-                    //     touchedPayables,
-                    //     touchedAdvancePaid,
-                    //     touchedSupplier,
-                    //     touchedSupplierType,
-                    //     touchedDocumentType,
-                    //   );
-                    // }
-                  });
-                }
-              },
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,
                 tooltipBorder: const BorderSide(
@@ -5397,12 +5074,28 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                   selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
                                                       false;
                                                 }
+                                                // savedFinanceReceivablesOptionsTemp =
+                                                //     savedFinanceReceivablesOptions;
                                                 savedFinanceReceivablesOptionsTemp =
-                                                    savedFinanceReceivablesOptions;
+                                                    savedFinanceReceivablesOptions
+                                                        .map(
+                                                          (e) =>
+                                                              List<bool>.from(
+                                                                e,
+                                                              ),
+                                                        )
+                                                        .toList();
                                                 if (savedFinanceReceivablesOptions
                                                     .isEmpty) {
                                                   savedFinanceReceivablesOptionsTemp =
-                                                      savedFinanceReceivablesOptions;
+                                                      savedFinanceReceivablesOptions
+                                                          .map(
+                                                            (e) =>
+                                                                List<bool>.from(
+                                                                  e,
+                                                                ),
+                                                          )
+                                                          .toList();
                                                 }
                                                 savedFinanceReceivablesOptions =
                                                     selectedFinanceReceivablesOptions;
@@ -5469,12 +5162,13 @@ class _PayableFinanceState extends State<PayableFinance> {
                                       selectedSalesData = selectedFilterOptions;
 
                                       savedFinanceReceivablesOptionsTemp =
-                                          savedFinanceReceivablesOptions;
+                                          savedFinanceReceivablesOptions
+                                              .map((e) => List<bool>.from(e))
+                                              .toList();
 
-                                      fromFilter = false;
+                                      fromFilter = true;
 
-                                      // toggleCheckbox();
-                                      loadDataFuture = filterDateFunction();
+                                      loadDataFuture = filterChartFunction();
                                       setState(() {});
                                     },
                                     child: const Padding(

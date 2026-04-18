@@ -1,13 +1,9 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,11 +13,10 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:http/http.dart' as http;
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+import '../ReportService.dart';
+
+final reportService = ReportService();
 
 late Future<void> loadDataFuture;
 List<Users> usersList = [];
@@ -491,10 +486,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       };
 
       const apiUrl = '${ApiHelper.baseUrl}BicxoCashflowList';
-      final headers = {
-        HttpHeaders.contentTypeHeader: 'application/json',
-        // HttpHeaders.authorizationHeader: 'Bearer ${DataManager.readSapToken()}'
-      };
+      final headers = {HttpHeaders.contentTypeHeader: 'application/json'};
 
       do {
         body["Index"] = index.toString(); // update the current index
@@ -507,13 +499,19 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
         if (response.statusCode == 200) {
           final responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
-            List<CashFlowList> newTargetList =
-                (responseJson['responseData'] as List)
-                    .map((item) => CashFlowList.fromJson(item))
-                    .toList();
+            List<CashFlowList> newList = (responseJson['responseData'] as List)
+                .map((item) {
+                  final obj = CashFlowList.fromJson(item);
+                  final postingDate = DateFormat(
+                    'dd/MM/yyyy',
+                  ).parse(obj.postingDate);
+                  obj.postingDateParsed = postingDate;
+                  return obj;
+                })
+                .toList();
 
-            cashFlow.addAll(newTargetList);
-            fetchedCount = newTargetList.length;
+            cashFlow.addAll(newList);
+            fetchedCount = newList.length;
             index++;
           } else {
             fetchedCount = 0; // stop fetching if no more data
@@ -525,10 +523,8 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
 
       double sumOfCredit = 0, sumOfDebit = 0;
 
-      DateFormat formatter = DateFormat('dd/MM/yyyy');
-
       var todayTarget = cashFlow.where((target) {
-        DateTime dueOn = formatter.parse(target.postingDate);
+        DateTime dueOn = target.postingDateParsed;
         return dueOn.isAtLeast(fiscalYearStartDate!) &&
             dueOn.isAtMost(currentDate!);
       });
@@ -538,7 +534,6 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
         sumOfDebit += double.tryParse(target.debitAmount) ?? 0;
       }
 
-      // double bankBalanceActualDouble = getBankBalanceActualDouble(todayTarget, daily, ledgerData);
       setState(() {
         inflow = formatAmount(sumOfDebit);
         outflow = formatAmount(sumOfCredit);
@@ -590,14 +585,12 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
   Future<void> _loadLedgerWiseAnalysis(
     String touchedDailyDate,
     String monthIndex,
-    String ledgerData,
+    String selectedAccountName,
   ) async {
     bankBalanceClosing = 0;
     bankBalanceOpening = 0;
     var groupedByAccount = <String, List<CashFlowList>>{};
     List<LedgerAnalysisCashFlowData> ledgerAnalysisCashFlowDataList = [];
-
-    final dateParser = DateFormat('dd/MM/yyyy');
 
     DateTimeRange range;
     if (touchedDailyDate.isNotEmpty) {
@@ -622,12 +615,12 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     }
 
     var targets = cashFlowList.where((cf) {
-      final dt = dateParser.parse(cf.postingDate);
+      final dt = cf.postingDateParsed;
       return !dt.isBefore(range.start) && !dt.isAfter(range.end);
     });
 
-    if (ledgerData.isNotEmpty) {
-      targets = targets.where((cf) => cf.accountName == ledgerData);
+    if (selectedAccountName.isNotEmpty) {
+      targets = targets.where((cf) => cf.accountName == selectedAccountName);
     }
 
     for (var cf in targets) {
@@ -638,11 +631,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     double runningClosing = 0;
 
     groupedByAccount.forEach((account, flows) {
-      flows.sort(
-        (a, b) => dateParser
-            .parse(a.postingDate)
-            .compareTo(dateParser.parse(b.postingDate)),
-      );
+      flows.sort((a, b) => a.postingDateParsed.compareTo(b.postingDateParsed));
 
       double sumCr = 0;
       double sumDr = 0;
@@ -708,7 +697,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     int currentYear = DateTime.now().year;
 
     var todayTarget = cashFlowList.where((target) {
-      DateTime dueOn = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+      DateTime dueOn = target.postingDateParsed;
       return dueOn.isAtLeast(
             dateFilterFlag ? fromDateFilter! : currentMonthFromDate!,
           ) &&
@@ -727,7 +716,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
 
     if (monthIndex == 0) {
       todayTarget = cashFlowList.where((target) {
-        DateTime dueOn = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+        DateTime dueOn = target.postingDateParsed;
         return dueOn.isAtLeast(
               dateFilterFlag ? fromDateFilter! : currentMonthFromDate!,
             ) &&
@@ -741,7 +730,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     } else if (monthIndex >= 4 && monthIndex <= 12) {
       Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
       todayTarget = cashFlowList.where((target) {
-        DateTime dueOn = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+        DateTime dueOn = target.postingDateParsed;
         return dueOn.isAtLeast(monthDates['start']!) &&
             dueOn.isAtMost(monthDates['end']!);
       });
@@ -752,7 +741,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       DateTime startDate = DateTime(currentYear + 1, monthIndex, 1);
       DateTime endDate = DateTime(currentYear + 1, monthIndex + 1, 0);
       todayTarget = cashFlowList.where((target) {
-        DateTime dueOn = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+        DateTime dueOn = target.postingDateParsed;
         return dueOn.isAtLeast(startDate) && dueOn.isAtMost(endDate);
       });
       if (ledgerData.isNotEmpty) {
@@ -800,66 +789,6 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     dailyData = DailyMovementCashFlowList(dailyData: groupWiseDataList);
   }
 
-  // Future<void> _loadMonthlySalesBarChartData(String ledgerData) async {
-  //   List<MonthlyAnalysisCashFlowData> soDataList = [];
-  //
-  //   DateTime startDate;
-  //   DateTime endDate;
-  //   double sumOfCredit = 0;
-  //   double sumOfDebit = 0;
-  //   double closingBalance = 0;
-  //   double openingBalance = 0;
-  //
-  //   for (int i = 4; i <= 15; i++) {
-  //     String monthName = getMonthName(i);
-  //     List<CashFlowList> monthlyCollectionList = [];
-  //
-  //     // Determine date range for month index i
-  //     if (i >= 4 && i <= 12) {
-  //       Map<String, DateTime> monthDates = getMonthStartEndDates(i);
-  //       monthlyCollectionList = cashFlowList.where((target) {
-  //         DateTime d = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-  //         return d.isAtLeast(monthDates['start']!) && d.isAtMost(monthDates['end']!);
-  //       }).toList();
-  //     } else {
-  //       int year = DateTime.now().month < 4 ? DateTime.now().year : DateTime.now().year - 1;
-  //       startDate = DateTime(year, i - 12, 1);
-  //       endDate = DateTime(year, (i - 12) + 1, 0);
-  //       monthlyCollectionList = cashFlowList.where((target) {
-  //         DateTime d = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-  //         return d.isAtLeast(startDate) && d.isAtMost(endDate);
-  //       }).toList();
-  //     }
-  //
-  //     // Filter by ledgerData if provided
-  //     if (ledgerData.isNotEmpty) {
-  //       monthlyCollectionList = monthlyCollectionList
-  //           .where((t) => t.accountName == ledgerData)
-  //           .toList();
-  //     }
-  //
-  //     // Aggregate totals for the month
-  //     sumOfCredit = 0;
-  //     sumOfDebit = 0;
-  //     for (var target in monthlyCollectionList) {
-  //       sumOfCredit += double.tryParse(target.creditAmount) ?? 0;
-  //       sumOfDebit += double.tryParse(target.debitAmount) ?? 0;
-  //       closingBalance = double.tryParse(target.clBalance) ?? closingBalance;
-  //       openingBalance = double.tryParse(target.obBalance) ?? openingBalance;
-  //     }
-  //
-  //     soDataList.add(MonthlyAnalysisCashFlowData(
-  //       openingBalance: openingBalance,
-  //       closingBalance: closingBalance,
-  //       monthName: monthName,
-  //       sumOfCr: sumOfCredit,
-  //       sumOfDr: sumOfDebit,
-  //     ));
-  //   }
-  //
-  //   monthlyAnalysisData = MonthlyAnalysisCashFlowList(monthData: soDataList);
-  // }
-
   Future<void> _loadMonthlySalesBarChartData(String ledgerData) async {
     List<MonthlyAnalysisCashFlowData> soDataList = [];
 
@@ -873,7 +802,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       if (i >= 4 && i <= 12) {
         Map<String, DateTime> monthDates = getMonthStartEndDates(i);
         monthlyCollectionList = cashFlowList.where((target) {
-          DateTime d = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+          DateTime d = target.postingDateParsed;
           return d.isAtLeast(monthDates['start']!) &&
               d.isAtMost(monthDates['end']!);
         }).toList();
@@ -884,7 +813,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
         startDate = DateTime(year, i - 12, 1);
         endDate = DateTime(year, (i - 12) + 1, 0);
         monthlyCollectionList = cashFlowList.where((target) {
-          DateTime d = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+          DateTime d = target.postingDateParsed;
           return d.isAtLeast(startDate) && d.isAtMost(endDate);
         }).toList();
       }
@@ -915,9 +844,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
         final entries =
             monthlyCollectionList.where((e) => e.accountName == ledger).toList()
               ..sort(
-                (a, b) => DateFormat('dd/MM/yyyy')
-                    .parse(a.postingDate)
-                    .compareTo(DateFormat('dd/MM/yyyy').parse(b.postingDate)),
+                (a, b) => a.postingDateParsed.compareTo(b.postingDateParsed),
               );
 
         if (entries.isNotEmpty) {
@@ -959,10 +886,11 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
     await _loadCashFlowList(userName, userLevel, "", "", fromFilter);
-    await _loadMonthlySalesBarChartData("");
-    await _loadDailyMovementBarChartData(0, "", "");
-    await _loadLedgerWiseAnalysis("", "", "");
-
+    await Future.wait([
+      _loadMonthlySalesBarChartData(""),
+      _loadDailyMovementBarChartData(0, "", ""),
+      _loadLedgerWiseAnalysis("", "", ""),
+    ]);
     filterOptions = [listOfLedgers, listOfLoanAccounts];
 
     savedFinanceReceivablesOptions = filterOptions
@@ -1012,17 +940,12 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     UserLevel = userLevel;
     clearVariablesForFilter();
     LoadDates();
-    await _loadMonthlySalesBarChartData(ledgerData!);
-    await _loadDailyMovementBarChartData(monthIndex, dailyData!, ledgerData);
-    if (monthIndex == 0) {
-      await _loadLedgerWiseAnalysis(dailyData, "", ledgerData);
-    } else {
-      await _loadLedgerWiseAnalysis(
-        dailyData,
-        monthIndex.toString(),
-        ledgerData,
-      );
-    }
+    final monthParam = monthIndex == 0 ? "" : monthIndex.toString();
+    await Future.wait([
+      _loadMonthlySalesBarChartData(ledgerData!),
+      _loadDailyMovementBarChartData(monthIndex, dailyData!, ledgerData),
+      _loadLedgerWiseAnalysis(dailyData, monthParam, ledgerData),
+    ]);
     chartDataLoadedCashFlow = true;
   }
 
@@ -1066,7 +989,6 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       outflow = '';
       chartDataLoadedCashFlow = false;
       loadDataFuture = loadData("");
-      // selectedCheckbox = index;
     });
   }
 
@@ -1077,7 +999,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       context.read<FinanceCashFlowBIProvider>().updateTargetList(cashFlowList);
 
       cashFlowList = cashFlowList.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
+        DateTime dueon = target.postingDateParsed;
         return (dueon.isAtLeast(fromDateFilter!) &&
             dueon.isAtMost(toDateFilter!));
       }).toList();
@@ -1112,10 +1034,8 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
 
       double sumOfCredit = 0, sumOfDebit = 0;
 
-      DateFormat formatter = DateFormat('dd/MM/yyyy');
-
       var todayTarget = cashFlowList.where((target) {
-        DateTime dueOn = formatter.parse(target.postingDate);
+        DateTime dueOn = target.postingDateParsed;
         return dueOn.isAtLeast(fiscalYearStartDate!) &&
             dueOn.isAtMost(currentDate!);
       });
@@ -1136,9 +1056,11 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     });
     cashFlowList = cashFlowListTemp;
     _dateFilterTarget();
-    await _loadMonthlySalesBarChartData("");
-    await _loadDailyMovementBarChartData(0, "", "");
-    await _loadLedgerWiseAnalysis("", "", "");
+    await Future.wait([
+      _loadMonthlySalesBarChartData(""),
+      _loadDailyMovementBarChartData(0, "", ""),
+      _loadLedgerWiseAnalysis("", "", ""),
+    ]);
     setState(() {
       bankBalanceClosing = 0;
       inflow = '';
@@ -1160,10 +1082,8 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
 
       double sumOfCredit = 0, sumOfDebit = 0;
 
-      DateFormat formatter = DateFormat('dd/MM/yyyy');
-
       var todayTarget = cashFlowList.where((target) {
-        DateTime dueOn = formatter.parse(target.postingDate);
+        DateTime dueOn = target.postingDateParsed;
         return dueOn.isAtLeast(fiscalYearStartDate!) &&
             dueOn.isAtMost(currentDate!);
       });
@@ -1193,377 +1113,85 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
   Future<void> generateDailyMovementExcel(
     DailyMovementCashFlowList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Date', 'Sum of Cr', 'Sum of Dr']));
-      for (var monthlyData in list.dailyData) {
-        sheet.appendRow(
-          toCellRow([
-            monthlyData.date,
-            monthlyData.sumOfCr,
-            monthlyData.sumOfDr,
-          ]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('daily_movement.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_movement.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'CFSDailyMovement',
+      headers: ['Date', 'Debit Total', 'Credit Total'],
+      rows: list.dailyData.map((e) => [e.date, e.sumOfDr, e.sumOfCr]).toList(),
+      fileName: 'CFS_Daily_Movement.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'CFS - Daily Movement',
+    );
   }
 
   Future<void> generateDailyMovementPDF(DailyMovementCashFlowList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Daily Movement',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Date',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sum of Cr',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sum of Dr',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in dailyData.dailyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.date,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.sumOfCr.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.sumOfDr.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/Daily_Movement.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'CFS Daily Movement',
+      headers: ['Date', 'Debit Total', 'Credit Total'],
+      rows: list.dailyData.map((e) => [e.date, e.sumOfDr, e.sumOfCr]).toList(),
+      fileName: 'CFS_Daily_Movement.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateMonthlyAnalysisExcel(
     MonthlyAnalysisCashFlowList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Sum of Cr', 'Sum of Dr']));
-      for (var monthlyData in list.monthData) {
-        sheet.appendRow(
-          toCellRow([
-            monthlyData.monthName,
-            monthlyData.sumOfCr,
-            monthlyData.sumOfDr,
-          ]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthly_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'CFSMonthlyAnalysis',
+      headers: ['Month', 'Debit Total', 'Credit Total'],
+      rows: list.monthData
+          .map((e) => [e.monthName, e.sumOfDr, e.sumOfCr])
+          .toList(),
+      fileName: 'CFS_Monthly_Analysis.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'CFS - Monthly Analysis',
+    );
   }
 
   Future<void> generateMonthlyAnalysisPDF(
     MonthlyAnalysisCashFlowList list,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sum of Cr',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sum of Dr',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in monthlyAnalysisData.monthData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.monthName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.sumOfCr.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.sumOfDr.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyAnalysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'CFS Monthly Analysis',
+      headers: ['Month', 'Debit Total', 'Credit Total'],
+      rows: list.monthData
+          .map((e) => [e.monthName, e.sumOfDr, e.sumOfCr])
+          .toList(),
+      fileName: 'CFS_Monthly_Analysis.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateLedgerWiseAnalysisExcel(
     LedgerAnalysisCashFlowList list,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Ledger', 'Net']));
-      for (var monthlyData in list.ledgerData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.ledgerName, monthlyData.ledgerBalance]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('ledger_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/ledger_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'CFSLedgerAnalysis',
+      headers: ['Operating Activities', 'Balance Amount'],
+      rows: list.ledgerData
+          .map((e) => [e.ledgerName, e.ledgerBalance])
+          .toList(),
+      fileName: 'CFS_Ledger_Analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'CFS - Ledger Analysis',
+    );
   }
 
   Future<void> generateLedgerWiseAnalysisPDF(
     LedgerAnalysisCashFlowList list,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Ledger Wise Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Ledger',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Net',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in ledgerAnalysisData.ledgerData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.ledgerName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.ledgerBalance.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/ledgerAnalysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'CFS Ledger Analysis',
+      headers: ['Operating Activities', 'Balance Amount'],
+      rows: list.ledgerData
+          .map((e) => [e.ledgerName, e.ledgerBalance])
+          .toList(),
+      fileName: 'CFS_Ledger_Analysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   String getSelectedFiltersText(

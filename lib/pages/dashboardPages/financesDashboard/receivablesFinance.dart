@@ -118,8 +118,9 @@ double netReceivables = 0;
 String netReceivablesStr = "";
 double grossReceivables = 0;
 String grossReceivablesStr = "";
-int receivablePercentage = 0;
-int netReceivablePercentage = 0;
+double receivablePercentage = 0;
+double netReceivablePercentage = 0;
+double netReceivablePercentageLocal = 0;
 String notDueStr = "";
 double notDue = 0.0;
 
@@ -1211,89 +1212,74 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String salesPerson,
   ) async {
     List<AdvanceFromCustomersData> advanceList = [];
-    double afutureTotal = 0;
-    double a0to30DaysTotal = 0;
-    double a31to60DaysTotal = 0;
-    double a61to90DaysTotal = 0;
-    double a91to180DaysTotal = 0;
-    double a181DaysTotal = 0;
 
-    var list = target.where((t) {
+    // ---------- Step 1: Get filtered customers ONLY ----------
+    var filteredCustomers = target.where((t) {
       DateTime dueOn = t.parsedPostingDate;
       return dueOn.isAtMost(currentDate!);
     }).cast<DebtorsAgingList>();
 
-    if (customer.isNotEmpty) {
-      list = list.where((e) => e.customerName == customer);
-    }
-    if (regionalManager.isNotEmpty) {
-      list = list.where((e) => e.regionalManager == regionalManager);
-    }
-    if (salesManager.isNotEmpty) {
-      list = list.where((e) => e.salesManager == salesManager);
-    }
-    if (salesPerson.isNotEmpty) {
-      list = list.where((e) => e.salesRep == salesPerson);
-    }
+    filteredCustomers = filterCollectionTargetList(
+      filteredCustomers.toList(),
+      usersListForFilter,
+      regionalManager: regionalManager,
+      salesManager: salesManager,
+      salesRep: salesPerson,
+      customer: customer,
+      receivableCatg: receivableId,
+      netReceivableCatg: netReceivableId,
+      advanceCatg: advanceId,
+    );
 
-    String? bracketFilter;
-    if (receivableId.isNotEmpty) {
-      bracketFilter = receivableId == "Future"
-          ? "Future"
-          : "$receivableId Days";
-    } else if (netReceivableId.isNotEmpty) {
-      bracketFilter = netReceivableId == "Future"
-          ? "Future"
-          : "$netReceivableId Days";
-    } else if (advanceId.isNotEmpty) {
-      bracketFilter = advanceId == "Future" ? "Future" : "$advanceId Days";
-    }
+    // Unique customers
+    final customerNames = filteredCustomers.map((e) => e.customerName).toSet();
 
+    // ---------- Step 2: Initialize buckets ----------
     final buckets = <String, double>{
       'Future': 0,
-      '0-30': 0,
-      '31-60': 0,
-      '61-90': 0,
-      '91-180': 0,
-      '180+': 0,
+      '0-30 Days': 0,
+      '31-60 Days': 0,
+      '61-90 Days': 0,
+      '91-180 Days': 0,
+      '180+ Days': 0,
     };
 
-    for (var element in list.where((e) {
-      // final balanceVal = double.tryParse(e.balance) ?? 0;
-      // if (balanceVal > 0) return false;
-      if (bracketFilter != null && e.ageingBrackets != bracketFilter) {
-        return false;
+    // ---------- Step 3: Advance logic ----------
+    for (var custName in customerNames) {
+      // FULL data (NOT filtered)
+      final fullRows = target.where((e) => e.customerName == custName);
+
+      double totalBalance = 0;
+
+      for (var r in fullRows) {
+        totalBalance += double.tryParse(r.balance) ?? 0;
       }
-      return true;
-    })) {
-      final dueDays =
-          int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
-      if (dueDays <= 30) {
-        a0to30DaysTotal += double.tryParse(element.a0to30Days) ?? 0;
-      } else if (dueDays <= 60) {
-        a31to60DaysTotal += double.tryParse(element.a31to60Days) ?? 0;
-      } else if (dueDays <= 90) {
-        a61to90DaysTotal += double.tryParse(element.a61to90Days) ?? 0;
-      } else if (dueDays <= 180) {
-        a91to180DaysTotal += double.tryParse(element.a91to180Days) ?? 0;
-      } else {
-        a181DaysTotal += double.tryParse(element.a181Days) ?? 0;
+
+      // Only ADVANCE customers
+      if (totalBalance >= 0) continue;
+
+      // ---------- Step 4: Bucket distribution ----------
+      for (var r in fullRows) {
+        final bucket = r.ageingBrackets;
+        final amount = double.tryParse(r.balance) ?? 0;
+
+        if (buckets.containsKey(bucket)) {
+          buckets[bucket] = buckets[bucket]! + amount;
+        } else {
+          buckets['180+ Days'] = buckets['180+ Days']! + amount;
+        }
       }
-      afutureTotal += double.tryParse(element.future) ?? 0;
     }
 
-    buckets['Future'] = afutureTotal;
-    buckets['0-30'] = a0to30DaysTotal;
-    buckets['31-60'] = a31to60DaysTotal;
-    buckets['61-90'] = a61to90DaysTotal;
-    buckets['91-180'] = a91to180DaysTotal;
-    buckets['180+'] = a181DaysTotal;
-
+    // ---------- Step 5: Total ----------
     final totalDue = buckets.values.fold(0.0, (sum, v) => sum + v);
 
+    // ---------- Step 6: Output ----------
     advanceList.clear();
+
     buckets.forEach((label, amt) {
       final absAmt = amt.abs();
+
       advanceList.add(
         AdvanceFromCustomersData(
           agingGroup: label,
@@ -1372,8 +1358,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           if (shouldInclude) {
             balance = double.tryParse(ele.balance) ?? 0;
             balancAmount += balance;
+            tmpAdvance += balance;
           }
-          tmpAdvance += balance;
         }
 
         customerWiseDataList.add(
@@ -2080,7 +2066,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           .map((e) => [e.agingGroup, e.agingGroupTotal])
           .toList(),
       fileName: 'receivables.pdf',
-      numericColumns: [2],
+      amountColumns: [2],
     );
   }
 
@@ -2204,7 +2190,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.agingGroup, e.agingGroupTotal])
             .toList(),
         fileName: 'NetReceivables.pdf',
-        numericColumns: [2],
+        amountColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2240,7 +2226,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.agingGroup, e.agingGroupTotal])
             .toList(),
         fileName: 'AdvanceFromCustomers.pdf',
-        numericColumns: [2],
+        amountColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2292,7 +2278,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             )
             .toList(),
         fileName: 'CustomerAnalysis.pdf',
-        numericColumns: [2],
+        amountColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2328,7 +2314,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.rsmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'RegionalManagerReceivables.pdf',
-        numericColumns: [2],
+        amountColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2364,7 +2350,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.asmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'SalesManagerReceivables.pdf',
-        numericColumns: [2],
+        amountColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2400,7 +2386,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .map((e) => [e.tsmName, e.collectionAmount.toStringAsFixed(2)])
             .toList(),
         fileName: 'TSMReceivables.pdf',
-        numericColumns: [2],
+        amountColumns: [2],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2514,7 +2500,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     // -------------------------------
     // 4. Percentages
     // -------------------------------
-    double receivablePercentage = 0;
+    receivablePercentage = 0;
     if (overDue != 0 && receivablesAmount != 0) {
       receivablePercentage = double.parse(
         ((overDue / receivablesAmount) * 100).toStringAsFixed(2),
@@ -2522,19 +2508,22 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
     if (receivablePercentage > 100) receivablePercentage = 100;
 
-    double netReceivablePercentage = 0;
+    netReceivablePercentage = 0;
     if (advance != 0 && netReceivables != 0) {
-      netReceivablePercentage = double.parse(
+      netReceivablePercentageLocal = double.parse(
         ((advance / netReceivables) * 100).toStringAsFixed(2),
       ).ceilToDouble();
     }
-    if (netReceivablePercentage > 100) netReceivablePercentage = 100;
-    if (netReceivablePercentage.isNegative) netReceivablePercentage = 0;
-
+    if (netReceivablePercentageLocal > 100) netReceivablePercentageLocal = 100;
+    if (netReceivablePercentageLocal.isNegative) {
+      netReceivablePercentageLocal = netReceivablePercentageLocal.abs();
+    }
     // -------------------------------
     // 5. Update UI
     // -------------------------------
     setState(() {
+      netReceivablePercentage = netReceivablePercentageLocal;
+
       receivablesAmountStr = formatAmount(receivablesAmount.abs());
 
       overDueStr = formatAmount(overDue.abs());
@@ -2741,7 +2730,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String? salesPerson,
   ) async {
     clearVariablesForFilter();
+    setState(() {
+      chartDataLoadedReceivables = false;
+    });
     LoadDates();
+    await applyDetailedFilterFunction();
     await Future.wait([
       _loadReceivablesData(
         receivableId!,
@@ -2807,7 +2800,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         salesPerson,
       ),
     ]);
-    chartDataLoadedReceivables = true;
+    if (receivablesCategoryList.categoryData.isEmpty) {
+      await _loadCustomerCategoryWise();
+    }
+
+    await applyFinanceReceivablesVariables();
+    setState(() {
+      chartDataLoadedReceivables = true;
+    });
   }
 
   void clearVariables() {
@@ -2829,6 +2829,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       touchedRegionalManager = "";
       touchedSalesManager = "";
       touchedSalesPerson = "";
+      toDateFilter = currentDate;
+      fromDateFilter = fiscalYearStartDate;
     });
   }
 
@@ -2861,10 +2863,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     });
   }
 
-  Future<void> filterFunction() async {
-    setState(() {
-      chartDataLoadedReceivables = false;
-    });
+  Future<void> applyDetailedFilterFunction() async {
     final prefs = await SharedPreferences.getInstance();
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
@@ -2876,10 +2875,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     grossReceivables = 0;
     receivablesAmountStr = "";
     target = targetAPIData;
+
     await _dateFilterTarget("", "");
 
     // -------------------------------
-    // 2. Prepare filter selections
+    // 1. Prepare filter selections
     // -------------------------------
     Map<String, bool> getCategory(String key) => allCategoriesState[key] ?? {};
 
@@ -2916,7 +2916,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     ).entries.where((e) => e.value).map((e) => e.key).toList();
 
     // -------------------------------
-    // 3. Single-pass filtering (FAST)
+    // 2. Single-pass filtering (FAST)
     // -------------------------------
     final List<DebtorsAgingList> filtered = [];
 
@@ -2990,20 +2990,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       filtered.add(trgt);
     }
     target = filtered;
-    await Future.wait([
-      _loadReceivablesData("", "", "", "", "", "", ""),
-      _loadNetReceivablesData("", "", "", "", "", "", ""),
-      _loadAdvanceFromCustomers("", "", "", "", "", "", ""),
-      _loadCustomerAnalysis("", "", "", "", "", "", ""),
-      _loadTSMCollectionBarChartData("", "", "", "", "", "", ""),
-      _loadASMCollectionBarChartData("", "", "", "", "", "", ""),
-      _loadRSMCollectionBarChartData("", "", "", "", "", "", ""),
-    ]);
-
-    if (receivablesCategoryList.categoryData.isEmpty) {
-      await _loadCustomerCategoryWise();
-    }
-    await applyFinanceReceivablesVariables();
   }
 
   Future<void> removeFilter() async {
@@ -3018,7 +3004,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       options.updateAll((key, value) => false);
     });
     allCategoriesState.clear();
-    loadDataFuture = loadData("");
+    await loadData("");
     setState(() {
       chartDataLoadedReceivables = true;
     });
@@ -3164,14 +3150,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                               ),
                               child: CircularPercentIndicator(
                                 arcType: ArcType.HALF,
-                                radius: 70.0,
-                                lineWidth: 27.0,
+                                radius: 75.0,
+                                lineWidth: 30.0,
                                 animation: true,
                                 percent: receivablePercentage / 100,
                                 curve: Curves.linear,
                                 circularStrokeCap: CircularStrokeCap.butt,
                                 progressColor: const Color(0xFF2CA9DF),
-                                arcBackgroundColor: const Color(0xFFB8ECFF),
+                                arcBackgroundColor: const Color(0xFF97D7F3),
                                 center: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -3244,8 +3230,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                               ),
                               child: CircularPercentIndicator(
                                 arcType: ArcType.HALF,
-                                radius: 70.0,
-                                lineWidth: 27.0,
+                                radius: 75.0,
+                                lineWidth: 30.0,
                                 animation: true,
                                 percent: netReceivablePercentage / 100,
                                 curve: Curves.linear,
@@ -3623,28 +3609,24 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // for (final categoryData in receivablesCategoryList.categoryData)
                                     Column(
                                       children: [
                                         Container(
                                           height: 8,
                                           width: 16,
                                           color: const Color(0xFFFF9F47),
-                                          // color: getCategoryColor(categoryData.categoryId),
                                         ),
                                         const SizedBox(height: 6),
                                         Container(
                                           height: 8,
                                           width: 16,
                                           color: const Color(0xFF97D7F3),
-                                          // color: getCategoryColor(categoryData.categoryId),
                                         ),
                                         const SizedBox(height: 6),
                                         Container(
                                           height: 8,
                                           width: 16,
                                           color: const Color(0xFF78E25D),
-                                          // color: getCategoryColor(categoryData.categoryId),
                                         ),
                                         const SizedBox(height: 6),
                                       ],
@@ -4388,7 +4370,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                       TextSpan(
                         text:
                             'Total'
-                            ': ${(formatAmount(advanceCustomerList.agingData[5].agingGroupTotal + advanceCustomerList.agingData[4].agingGroupTotal + advanceCustomerList.agingData[3].agingGroupTotal + advanceCustomerList.agingData[2].agingGroupTotal + advanceCustomerList.agingData[1].agingGroupTotal + advanceCustomerList.agingData[0].agingGroupTotal))} ',
+                            ': ${(formatAmount(advanceCustomerList.agingData[5].agingTotal))} ',
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
                           fontSize: 12,
@@ -5069,32 +5051,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                             1 // "Date" index
                                     ? Column(
                                         children: [
-                                          // ListTile(
-                                          //   title: const Text("From Date"),
-                                          //   subtitle: Text(fromDateFilter !=
-                                          //           null
-                                          //       ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
-                                          //       : formatDateString(
-                                          //           fiscalYearStartDate!)),
-                                          //   trailing: const Icon(
-                                          //       Icons.calendar_today),
-                                          //   onTap: () async {
-                                          //     final picked =
-                                          //         await showDatePicker(
-                                          //       context: context,
-                                          //       initialDate: fromDateFilter ??
-                                          //           DateTime.now(),
-                                          //       firstDate: fiscalYearStartDate!,
-                                          //       lastDate: currentDate!,
-                                          //     );
-                                          //     if (picked != null) {
-                                          //       setState(() {
-                                          //         fromDateFilter = picked;
-                                          //         dateFilterFlag = true;
-                                          //       });
-                                          //     }
-                                          //   },
-                                          // ),
                                           ListTile(
                                             title: const Text("To Date"),
                                             subtitle: Text(
@@ -5138,7 +5094,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                               filterOptions[selectedCategoryIndex][index],
                                             ),
                                             value:
-                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
+                                                (selectedCategoryIndex <
+                                                        savedFinanceReceivablesOptions
+                                                            .length &&
+                                                    index <
+                                                        savedFinanceReceivablesOptions[selectedCategoryIndex]
+                                                            .length)
+                                                ? savedFinanceReceivablesOptions[selectedCategoryIndex][index]
+                                                : false,
                                             onChanged: (bool? value) {
                                               setState(() {
                                                 if (value == true) {
@@ -5222,8 +5185,15 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                       savedFinanceReceivablesOptionsTemp =
                                           savedFinanceReceivablesOptions;
 
-                                      // toggleCheckbox();
-                                      loadDataFuture = filterFunction();
+                                      loadDataFuture = loadDataWithFilter(
+                                        touchedReceivables,
+                                        touchedNetReceivables,
+                                        touchedAdvance,
+                                        touchedCustomer,
+                                        touchedRegionalManager,
+                                        touchedSalesManager,
+                                        touchedSalesPerson,
+                                      );
 
                                       setState(() {
                                         resetFinanceReceivablesOptions();
@@ -5246,9 +5216,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                     ),
                                     onPressed: () {
                                       Navigator.pop(context);
-                                      setState(() {
-                                        chartDataLoadedReceivables = false;
-                                      });
+
                                       fromFilter = false;
                                       savedFinanceReceivablesOptionsTemp
                                           .clear();
@@ -5256,13 +5224,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         fromDateFilter = null;
                                         toDateFilter = null;
                                         dateFilterFlag = false;
-                                        chartDataLoadedReceivables = false;
-                                        chartDataLoadedReceivables = false;
-                                        setState(() {
-                                          chartDataLoadedReceivables = false;
-                                        });
-                                        loadDataFuture = removeFilter();
                                       });
+                                      loadDataFuture = removeFilter();
                                     },
                                     child: const Padding(
                                       padding: EdgeInsets.all(8.0),

@@ -1,17 +1,49 @@
 // ignore_for_file: file_names
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 // ignore: deprecated_member_use, avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-
+// import 'dart:html' as html;
+import 'report_service_platform.dart';
 import '../../api_helper.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_downloader/flutter_downloader.dart';
+
 class ReportService {
+  Future<String> getDownloadPath() async {
+    if (Platform.isAndroid) {
+      final dir = Directory('/storage/emulated/0/Download');
+      if (await dir.exists()) {
+        return dir.path;
+      }
+    }
+
+    // fallback
+    final dir = await getApplicationDocumentsDirectory();
+    return dir.path;
+  }
+
+  Future<void> handleFileSave(BuildContext context, String path) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('File saved to Downloads'),
+        action: SnackBarAction(
+          label: 'OPEN',
+          onPressed: () {
+            OpenFile.open(path);
+          },
+        ),
+      ),
+    );
+  }
+
   Future<String> getStorageDirectory() async {
     String? externalDir = (await getExternalStorageDirectory())?.path;
     if (externalDir != null) {
@@ -38,12 +70,15 @@ class ReportService {
   }
 
   // ---------------- PDF GENERATOR ----------------
+
   Future<void> generatePDF({
+    BuildContext? context,
     required String title,
     required List<String> headers,
     required List<List<dynamic>> rows,
     required String fileName,
-    List<int>? numericColumns,
+    List<int>?
+    amountColumns, // optional: 1-based column indices for numeric formatting
   }) async {
     try {
       final pdf = pw.Document();
@@ -131,7 +166,7 @@ class ReportService {
                 // Header
                 pw.TableRow(
                   children: List.generate(headers.length, (i) {
-                    final isNumeric = numericColumns?.contains(i + 1) ?? false;
+                    final isNumeric = amountColumns?.contains(i + 1) ?? false;
 
                     return pw.Padding(
                       padding: const pw.EdgeInsets.all(5),
@@ -152,12 +187,8 @@ class ReportService {
                 ...rows.map((row) {
                   return pw.TableRow(
                     children: row.asMap().entries.map((entry) {
-                      // final index = entry.key;
                       final cell = entry.value;
 
-                      // final isNumeric =
-                      //     numericColumns?.contains(index + 1) ?? false;
-                      // final numValue = double.tryParse(cell.toString());
                       final text = cell.toString().trim();
 
                       final isNumeric = RegExp(
@@ -190,7 +221,7 @@ class ReportService {
                     final cell = entry.value;
 
                     final isNumeric =
-                        numericColumns?.contains(index + 1) ?? false;
+                        amountColumns?.contains(index + 1) ?? false;
                     final numValue = double.tryParse(cell.toString());
 
                     return pw.Padding(
@@ -221,8 +252,16 @@ class ReportService {
       final bytes = await pdf.save();
 
       if (kIsWeb) {
-        _downloadPDFWeb(fileName, bytes);
+        downloadPDFWeb(fileName, bytes);
       } else {
+        // final url = await uploadPDF(Uint8List.fromList(bytes), fileName);
+
+        // if (url != null) {
+        //   await downloadFile(url, fileName); // DownloadManager
+        // } else {
+        //   debugPrint("Upload failed");
+        // }
+
         final dir = await getStorageDirectory();
         final file = File('$dir/$fileName');
         await file.writeAsBytes(bytes);
@@ -239,9 +278,14 @@ class ReportService {
     required List<String> headers,
     required List<List<dynamic>> rows,
     required String fileName,
-    List<int>? amountColumns, // optional
+    List<int>?
+    amountColumns, // optional: 1-based column indices for numeric formatting
     bool addTotalRow = false, // optional
     String reportTitle = "", // optional
+    bool enableStyling = false, // optional
+    bool highlightSections = false, // optional
+    bool highlightProfitability = false, // optional
+    bool highlightNegative = false, // optional
   }) async {
     try {
       final userName = await getUserName();
@@ -311,23 +355,107 @@ class ReportService {
       // ---------------- DATA ----------------
       for (int i = 0; i < rows.length; i++) {
         final rowIndex = i + 5;
+        final row = rows[i];
 
-        for (int j = 0; j < rows[i].length; j++) {
+        // -------- Detect row types (SAFE - only if enabled) --------
+        final isSectionRow =
+            highlightSections &&
+            row.sublist(1).every((e) => e == "" || e == null);
+
+        final isSpacerRow =
+            highlightSections &&
+            row.sublist(0).every((e) => e == "" || e == null);
+
+        final title = row[0]?.toString().toLowerCase() ?? "";
+
+        final isProfitability =
+            highlightProfitability &&
+            (title.contains("ebitda") ||
+                title.contains("pbt") ||
+                title.contains("pat"));
+
+        final isTotalRow = title.startsWith("total");
+
+        for (int j = 0; j < row.length; j++) {
           final cell = sheet.getRangeByIndex(rowIndex, j + 1);
+          final value = row[j];
 
-          final value = rows[i][j];
-
-          // Try to convert numeric strings → number
-          final numValue = double.tryParse(value.toString());
-
-          if (numValue != null) {
-            cell.setNumber(numValue);
+          // -------- VALUE HANDLING (IMPROVED) --------
+          if (value is num) {
+            cell.setNumber(value.toDouble());
             cell.cellStyle.hAlign = xlsio.HAlignType.right;
           } else {
-            cell.setText(value.toString());
+            final numValue = double.tryParse(value.toString());
+            if (numValue != null) {
+              cell.setNumber(numValue);
+              cell.cellStyle.hAlign = xlsio.HAlignType.right;
+            } else {
+              cell.setText(value?.toString() ?? "");
+            }
+          }
+
+          // -------- SECTION STYLE --------
+          if (isSectionRow && !isSpacerRow) {
+            cell.cellStyle.bold = true;
+            if (enableStyling) {
+              cell.cellStyle.fontSize = 13;
+              cell.cellStyle.backColor = "#D9E1F2";
+            }
+          }
+          // -------- SPACER ROW --------
+          if (isSpacerRow) {
+            if (enableStyling) {
+              cell.cellStyle.backColor = "#EEEEEE";
+            }
+          }
+
+          // -------- PROFITABILITY STYLE --------
+          if (isProfitability) {
+            cell.cellStyle.bold = true;
+            if (enableStyling) {
+              cell.cellStyle.backColor = "#E2EFDA";
+            }
+          }
+
+          // -------- NEGATIVE VALUES --------
+          if (highlightNegative) {
+            final numValue = value is num
+                ? value
+                : double.tryParse(value.toString());
+
+            if (numValue != null && numValue < 0) {
+              cell.cellStyle.fontColor = "#FF0000";
+            }
+          }
+
+          if (isTotalRow) {
+            cell.cellStyle.bold = true;
+            if (enableStyling) {
+              cell.cellStyle.backColor = "#FFF2CC"; // light yellow
+            }
           }
         }
       }
+
+      // for (int i = 0; i < rows.length; i++) {
+      //   final rowIndex = i + 5;
+
+      //   for (int j = 0; j < rows[i].length; j++) {
+      //     final cell = sheet.getRangeByIndex(rowIndex, j + 1);
+
+      //     final value = rows[i][j];
+
+      //     // Try to convert numeric strings → number
+      //     final numValue = double.tryParse(value.toString());
+
+      //     if (numValue != null) {
+      //       cell.setNumber(numValue);
+      //       cell.cellStyle.hAlign = xlsio.HAlignType.right;
+      //     } else {
+      //       cell.setText(value.toString());
+      //     }
+      //   }
+      // }
 
       int totalRows = rows.length + 4;
       if (addTotalRow) {
@@ -447,7 +575,7 @@ class ReportService {
       workbook.dispose();
 
       if (kIsWeb) {
-        _downloadExcelWeb(fileName, bytes);
+        downloadExcelWeb(fileName, bytes);
       } else {
         final dir = await getStorageDirectory();
         final file = File('$dir/$fileName');
@@ -459,32 +587,58 @@ class ReportService {
     }
   }
 
-  void _downloadExcelWeb(String fileName, List<int> bytes) {
-    final blob = html.Blob([
-      Uint8List.fromList(bytes),
-    ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    Future.delayed(const Duration(milliseconds: 100), () {
-      html.AnchorElement(href: url)
-        ..setAttribute("download", fileName)
-        ..target = "_blank"
-        ..click();
-      html.Url.revokeObjectUrl(url);
-    });
-    // html.AnchorElement(href: url)
-    //   ..setAttribute("download", fileName)
-    //   ..click();
-    // html.Url.revokeObjectUrl(url);
+  Future<String?> uploadPDF(Uint8List bytes, String fileName) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiHelper.baseUrl}upload-report'),
+    );
+
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
+
+    final response = await request.send();
+
+    if (response.statusCode == 200) {
+      final respStr = await response.stream.bytesToString();
+      final jsonData = jsonDecode(respStr);
+
+      return jsonData['url'];
+    }
+
+    return null;
   }
 
-  void _downloadPDFWeb(String fileName, List<int> bytes) {
-    final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-
-    html.AnchorElement(href: url)
-      ..download = fileName
-      ..click();
-
-    html.Url.revokeObjectUrl(url);
+  Future<void> downloadFile(String url, String fileName) async {
+    await FlutterDownloader.enqueue(
+      url: url,
+      savedDir: '/storage/emulated/0/Download',
+      fileName: fileName,
+      showNotification: true,
+      openFileFromNotification: true,
+    );
   }
+
+  // void _downloadExcelWeb(String fileName, List<int> bytes) {
+  //   final blob = html.Blob([
+  //     Uint8List.fromList(bytes),
+  //   ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  //   final url = html.Url.createObjectUrlFromBlob(blob);
+  //   Future.delayed(const Duration(milliseconds: 100), () {
+  //     html.AnchorElement(href: url)
+  //       ..setAttribute("download", fileName)
+  //       ..target = "_blank"
+  //       ..click();
+  //     html.Url.revokeObjectUrl(url);
+  //   });
+  // }
+
+  // void _downloadPDFWeb(String fileName, List<int> bytes) {
+  //   final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
+  //   final url = html.Url.createObjectUrlFromBlob(blob);
+  //   html.AnchorElement(href: url)
+  //     ..download = fileName
+  //     ..click();
+  //   html.Url.revokeObjectUrl(url);
+  // }
 }
