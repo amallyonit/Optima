@@ -579,16 +579,19 @@ class _VendorPaymentState extends State<VendorPayment> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -839,6 +842,7 @@ class _VendorPaymentState extends State<VendorPayment> {
         duration: Duration(seconds: 2),
         content: Text(''),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -922,6 +926,7 @@ class _VendorPaymentState extends State<VendorPayment> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1000,11 +1005,13 @@ class _VendorPaymentState extends State<VendorPayment> {
             style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       } else {
         const snackBar = SnackBar(
           content: Text('Payment comments updation failed'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -1012,6 +1019,7 @@ class _VendorPaymentState extends State<VendorPayment> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1062,6 +1070,7 @@ class _VendorPaymentState extends State<VendorPayment> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1153,6 +1162,7 @@ class _VendorPaymentState extends State<VendorPayment> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1360,37 +1370,21 @@ class _VendorPaymentState extends State<VendorPayment> {
     setState(() {
       chartDataLoaded = false;
       loadData("");
-      // selectedCheckbox = index;
     });
   }
-
-  // void _toggleSelectAll(bool? selectAll) {
-  //   if (selectAll == null) return;
-  //   setState(() {
-  //     for (int i = 0; i < invoiceList.length; i++) {
-  //       // if this invoice is in your filtered/search results...
-  //       if (invoiceList.contains(invoiceListTemp[i])) {
-  //         // … set its checkbox state
-  //         if (i < collectionCheckList.length) {
-  //           collectionCheckList[i] = selectAll;
-  //           // or whatever
-  //         } else {
-  //           // log or ignore
-  //           debugPrint('Skipped index $i because list length is ${collectionCheckList.length}');
-  //         }
-  //       }
-  //     }
-  //   });
-  // }
 
   @override
   void initState() {
     _focusInvoice = FocusNode();
-    // selectedModeOfPayment = null;
     loadDataFuture = loadData("");
     super.initState();
     toDateFilter = currentDate;
     fromDateFilter = fiscalYearStartDate;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override

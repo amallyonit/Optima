@@ -435,6 +435,7 @@ class _SampleDataPageState extends State<SampleDataPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }

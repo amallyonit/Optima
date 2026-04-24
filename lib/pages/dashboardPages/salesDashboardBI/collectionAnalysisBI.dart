@@ -874,6 +874,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1006,6 +1007,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1117,15 +1119,18 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1171,16 +1176,19 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2798,6 +2806,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2899,6 +2908,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2956,6 +2966,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3096,6 +3107,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3154,6 +3166,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3313,6 +3326,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3371,6 +3385,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3489,6 +3504,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3547,6 +3563,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3665,6 +3682,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3708,6 +3726,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3825,6 +3844,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3880,6 +3900,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -4018,6 +4039,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

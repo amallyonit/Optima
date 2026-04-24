@@ -170,6 +170,7 @@ class _LeadActivityAnalysisState extends State<LeadActivityAnalysis>
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
@@ -181,15 +182,18 @@ class _LeadActivityAnalysisState extends State<LeadActivityAnalysis>
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User details not found'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text(e.toString()));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

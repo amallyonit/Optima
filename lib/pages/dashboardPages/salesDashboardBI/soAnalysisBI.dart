@@ -1010,6 +1010,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2391,17 +2392,20 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       if (mounted) {
         final snackBar = SnackBar(content: Text('Error: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -2448,17 +2452,20 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       if (mounted) {
         final snackBar = SnackBar(content: Text('Error: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -2686,6 +2693,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2857,6 +2865,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2908,6 +2917,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3064,6 +3074,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3105,6 +3116,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3239,6 +3251,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3290,6 +3303,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3408,6 +3422,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3454,6 +3469,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3572,6 +3588,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3623,6 +3640,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3747,6 +3765,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3798,6 +3817,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3917,6 +3937,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3940,6 +3961,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -4041,6 +4063,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

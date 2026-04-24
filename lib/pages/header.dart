@@ -210,12 +210,14 @@ class HeaderPageState extends State<HeaderPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -225,6 +227,7 @@ class HeaderPageState extends State<HeaderPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -291,6 +294,7 @@ class HeaderPageState extends State<HeaderPage> {
             const snackBar = SnackBar(
               content: Text('Leads activity details not found.'),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         } else {
@@ -303,12 +307,14 @@ class HeaderPageState extends State<HeaderPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -316,6 +322,7 @@ class HeaderPageState extends State<HeaderPage> {
         final snackBar = SnackBar(
           content: Text('Lead details not found for Lead ID: $widget.leadsId'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -323,6 +330,7 @@ class HeaderPageState extends State<HeaderPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -360,6 +368,7 @@ class HeaderPageState extends State<HeaderPage> {
       super.dispose();
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

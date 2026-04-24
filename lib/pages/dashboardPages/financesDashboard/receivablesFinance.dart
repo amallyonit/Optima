@@ -1763,15 +1763,18 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1817,16 +1820,19 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2116,6 +2122,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2177,6 +2184,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2194,6 +2202,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2213,6 +2222,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2230,6 +2240,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2257,6 +2268,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2282,6 +2294,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2301,6 +2314,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2318,6 +2332,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2337,6 +2352,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2354,6 +2370,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2373,6 +2390,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2390,6 +2408,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2407,6 +2426,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   Future<void> loadData(String selectedUser) async {
+    if (!mounted) return;
     setState(() {
       chartDataLoadedReceivables = false;
     });
@@ -2521,6 +2541,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     // -------------------------------
     // 5. Update UI
     // -------------------------------
+    if (!mounted) return;
     setState(() {
       netReceivablePercentage = netReceivablePercentageLocal;
 
@@ -3067,6 +3088,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         .toList();
 
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override

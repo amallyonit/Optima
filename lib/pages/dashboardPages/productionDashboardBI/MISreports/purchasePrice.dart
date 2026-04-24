@@ -623,9 +623,6 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
             )
             .toList();
       });
-
-      // final bars = aggregatePurchaseList(purchasePrice);
-      // itemSubGroupList.items.addAll(bars.toList());
     } catch (e) {
       if (kDebugMode) {
         print(e);
@@ -634,6 +631,7 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -979,6 +977,7 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

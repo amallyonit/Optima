@@ -76,8 +76,11 @@ class DisableScrollGlowBehavior extends ScrollBehavior {}
 class HospitalMeetingPage extends StatefulWidget {
   final CheckinDetails? checkInDetails;
   final bool fromHomePage;
-  const HospitalMeetingPage(
-      {super.key, this.checkInDetails, required this.fromHomePage});
+  const HospitalMeetingPage({
+    super.key,
+    this.checkInDetails,
+    required this.fromHomePage,
+  });
 
   @override
   State<HospitalMeetingPage> createState() => _HospitalMeetingPageState();
@@ -154,12 +157,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         duration: Duration(seconds: 1),
         content: Text(
           "Please Enter Account Name",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -218,8 +219,9 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
     if (!_isFunctionExecuted) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (scrollControllerMain.hasClients) {
-          scrollControllerMain
-              .jumpTo(scrollControllerMain.position.maxScrollExtent);
+          scrollControllerMain.jumpTo(
+            scrollControllerMain.position.maxScrollExtent,
+          );
           _isFunctionExecuted = true;
         }
       });
@@ -317,9 +319,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error getting location: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error getting location: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -340,7 +341,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             return AlertDialog(
               title: const Text('Location Permission Denied'),
               content: const Text(
-                  'Location access is required to use this feature. Please enable location permissions in your browser settings.'),
+                'Location access is required to use this feature. Please enable location permissions in your browser settings.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -380,20 +382,22 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error getting location: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error getting location: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
   }
 
   Future<void> getPlacemarkFromCoordinates(
-      double latitude, double longitude) async {
+    double latitude,
+    double longitude,
+  ) async {
     const apiKey =
         'pk.2f409db63cf27b6b04b7dc624ff8b704'; // Replace with your LocationIQ API key
     final url = Uri.parse(
-        'https://us1.locationiq.com/v1/reverse.php?key=$apiKey&lat=$latitude&lon=$longitude&format=json');
+      'https://us1.locationiq.com/v1/reverse.php?key=$apiKey&lat=$latitude&lon=$longitude&format=json',
+    );
 
     try {
       final response = await http.get(url);
@@ -422,8 +426,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
     List<Product> prdList = convertProductList(productList);
     await Future.delayed(const Duration(microseconds: 500));
     newPrdList = prdList
-        .where((element) =>
-            element.ProductName.toLowerCase().contains(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.ProductName.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
 
     return newPrdList;
@@ -431,36 +437,44 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
 
   List<Product> convertProductList(List<Map<String, dynamic>> productList) {
     return productList
-        .map((map) => Product(
-              ProductId: int.tryParse(map['ItemId']?.toString() ?? '') ?? 0,
-              ProductCode: map['ItemCode']?.toString() ?? '',
-              ProductName: map['ItemName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => Product(
+            ProductId: int.tryParse(map['ItemId']?.toString() ?? '') ?? 0,
+            ProductCode: map['ItemCode']?.toString() ?? '',
+            ProductName: map['ItemName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
   Future<List<ProductCategoryList>> getProductCategoryData(
-      String search) async {
-    List<ProductCategoryList> prdList =
-        convertProductCategoryList(productCategoryList);
+    String search,
+  ) async {
+    List<ProductCategoryList> prdList = convertProductCategoryList(
+      productCategoryList,
+    );
     List<ProductCategoryList> newPrdList = [];
     await Future.delayed(const Duration(microseconds: 500));
     newPrdList = prdList
-        .where((element) =>
-            element.prodCatgName.toLowerCase().contains(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.prodCatgName.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
 
     return newPrdList;
   }
 
   List<ProductCategoryList> convertProductCategoryList(
-      List<Map<String, dynamic>> categoryList) {
+    List<Map<String, dynamic>> categoryList,
+  ) {
     return productCategoryList
-        .map((map) => ProductCategoryList(
-              prodCatgId:
-                  int.tryParse(map['ProdCatgId']?.toString() ?? '') ?? 0,
-              prodCatgName: map['ProdCatgName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => ProductCategoryList(
+            prodCatgId: int.tryParse(map['ProdCatgId']?.toString() ?? '') ?? 0,
+            prodCatgName: map['ProdCatgName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
@@ -469,29 +483,35 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
     List<InputMaterial> newMatList = [];
     await Future.delayed(const Duration(microseconds: 500));
     newMatList = matList
-        .where((element) =>
-            element.MaterialName.toLowerCase().contains(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.MaterialName.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
     return newMatList;
   }
 
   List<InputMaterial> convertMaterialList(
-      List<Map<String, dynamic>> materialList) {
+    List<Map<String, dynamic>> materialList,
+  ) {
     return materialList
-        .map((map) => InputMaterial(
-              MaterialId:
-                  int.tryParse(map['MaterialId']?.toString() ?? '') ?? 0,
-              MaterialName: map['MaterialName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => InputMaterial(
+            MaterialId: int.tryParse(map['MaterialId']?.toString() ?? '') ?? 0,
+            MaterialName: map['MaterialName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
   List<Hospital> convertList(List<Map<String, dynamic>> customerList) {
     return customerList
-        .map((map) => Hospital(
-              CustomerCode: map['CustomerCode']?.toString() ?? '',
-              CustomerName: map['CustomerName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => Hospital(
+            CustomerCode: map['CustomerCode']?.toString() ?? '',
+            CustomerName: map['CustomerName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
@@ -524,32 +544,32 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
 
       // ignore: unused_local_variable
       StreamSubscription<Position> positionStream =
-          Geolocator.getPositionStream(locationSettings: locationSettings)
-              .listen((Position position) async {
-        latitudeFooter = position.latitude.toString();
-        longitudeFooter = position.longitude.toString();
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-        if (placemarks.isNotEmpty) {
-          Placemark placemark = placemarks.first;
-          String location = [
-            placemark.name ?? '',
-            placemark.subLocality ?? '',
-            placemark.locality ?? '',
-            '${placemark.administrativeArea ?? ''}${placemark.postalCode != null ? ' - ' : ''}${placemark.postalCode ?? ''}',
-            placemark.country ?? '',
-          ].where((part) => part.isNotEmpty).join(', ');
-          locationControllerFooter.text = location;
-        } else {
-          locationControllerFooter.clear();
-        }
-      });
+          Geolocator.getPositionStream(
+            locationSettings: locationSettings,
+          ).listen((Position position) async {
+            latitudeFooter = position.latitude.toString();
+            longitudeFooter = position.longitude.toString();
+            List<Placemark> placemarks = await placemarkFromCoordinates(
+              position.latitude,
+              position.longitude,
+            );
+            if (placemarks.isNotEmpty) {
+              Placemark placemark = placemarks.first;
+              String location = [
+                placemark.name ?? '',
+                placemark.subLocality ?? '',
+                placemark.locality ?? '',
+                '${placemark.administrativeArea ?? ''}${placemark.postalCode != null ? ' - ' : ''}${placemark.postalCode ?? ''}',
+                placemark.country ?? '',
+              ].where((part) => part.isNotEmpty).join(', ');
+              locationControllerFooter.text = location;
+            } else {
+              locationControllerFooter.clear();
+            }
+          });
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error getting location: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -557,19 +577,24 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
   Future<List<Hospital>> getCustomer(String search) async {
     List<Hospital> hospitalList = convertList(customerList);
     List<Hospital> filteredHospitals = hospitalList
-        .where((element) =>
-            element.CustomerName.toLowerCase().contains(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.CustomerName.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
 
     return filteredHospitals;
   }
 
   Future<void> _loadCustomer(
-      String userId, String userJwtToken, String userMailID) async {
+    String userId,
+    String userJwtToken,
+    String userMailID,
+  ) async {
     final data = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'UserId': userId
+      'UserId': userId,
     };
     const apiUrl = '${ApiHelper.baseUrl}selectcustomermaster';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -603,18 +628,17 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -622,22 +646,25 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         final snackBar = SnackBar(
           content: Text('HTTP Error: ${response.statusCode}'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text(e.toString()),
-      );
+      final snackBar = SnackBar(content: Text(e.toString()));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> _loadProducts(
-      String userId, String userJwtToken, String userMailID) async {
+    String userId,
+    String userJwtToken,
+    String userMailID,
+  ) async {
     final data = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'ItemCode': "0"
+      'ItemCode': "0",
     };
     const apiUrl = '${ApiHelper.baseUrl}selectitemmaster';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -672,36 +699,34 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text(e.toString()),
-      );
+      final snackBar = SnackBar(content: Text(e.toString()));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> _loadProductCategory(
-      String userId, String userJwtToken, String userMailID) async {
-    final data = {
-      'UserJwtToken': userJwtToken,
-      'UsermailID': userMailID,
-    };
+    String userId,
+    String userJwtToken,
+    String userMailID,
+  ) async {
+    final data = {'UserJwtToken': userJwtToken, 'UsermailID': userMailID};
     const apiUrl = '${ApiHelper.baseUrl}selectproductcategory';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
     try {
@@ -734,26 +759,24 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -792,32 +815,31 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text(e.toString()),
-      );
+      final snackBar = SnackBar(content: Text(e.toString()));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   List<LeadParticipant> convertToList(
-      List<Map<String, dynamic>> participantList) {
+    List<Map<String, dynamic>> participantList,
+  ) {
     return participantList.map((participant) {
       return LeadParticipant(
         leadParticipantId: 0,
@@ -831,18 +853,22 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
 
   List<Contacts> convertContact(List<Map<String, dynamic>> contList) {
     return contList
-        .map((map) => Contacts(
-              CustomerCode: map['CustContactId']?.toString() ?? '',
-              CustomerName: map['CustContactName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => Contacts(
+            CustomerCode: map['CustContactId']?.toString() ?? '',
+            CustomerName: map['CustContactName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
   Future<List<Contacts>> getContacts(String search) async {
     List<Contacts> contList = convertContact(contactMasterList);
     List<Contacts> filteredList = contList
-        .where((element) =>
-            element.CustomerName.toLowerCase().contains(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.CustomerName.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
 
     return filteredList;
@@ -863,7 +889,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
     final data = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'CustomerCode': selectedHospitalId
+      'CustomerCode': selectedHospitalId,
     };
     const apiUrl = '${ApiHelper.baseUrl}selectcustomercontactperson';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -913,18 +939,17 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -934,6 +959,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -941,16 +967,17 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   void navigateToHomePage() {
     selectedParticipantHospital.clear();
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: "")),
+        builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: ""),
+      ),
     );
   }
 
@@ -963,15 +990,18 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         style: const TextStyle(color: Colors.white, fontSize: 16),
       ),
     );
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
   void validateInputMaterials() {
     List<InputMaterial> inputMaterialList = convertMaterialList(materialList);
     List<InputMaterial> matchingMaterial = inputMaterialList
-        .where((element) =>
-            element.MaterialName.toLowerCase() ==
-            inputMaterialController.text.toLowerCase())
+        .where(
+          (element) =>
+              element.MaterialName.toLowerCase() ==
+              inputMaterialController.text.toLowerCase(),
+        )
         .toList();
     validInputMaterial = true;
     if (matchingMaterial.isEmpty) {
@@ -988,32 +1018,33 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
     final userId = prefs.getString('userId') ?? '';
     List<Map<String, Object>> selectedStagesList = selectedStages
         .whereType<StageList>()
-        .map((StageList item) => {
-              'StageId': item.id,
-              'StageName': item.name,
-            })
+        .map((StageList item) => {'StageId': item.id, 'StageName': item.name})
         .toList();
     participantList = selectedParticipantHospital
         .whereType<LeadParticipant>()
-        .map((LeadParticipant item) => {
-              'LeadParticipantId': item.leadParticipantId,
-              'ParticipantId': item.leadParticipantUserId,
-            })
+        .map(
+          (LeadParticipant item) => {
+            'LeadParticipantId': item.leadParticipantId,
+            'ParticipantId': item.leadParticipantUserId,
+          },
+        )
         .toList();
     selectedProductList = selectedProduct
         .whereType<Product>()
-        .map((Product item) => {
-              'leadProductId': item.ProductId,
-              'leadProductCode': item.ProductCode,
-              'leadProductName': item.ProductName,
-            })
+        .map(
+          (Product item) => {
+            'leadProductId': item.ProductId,
+            'leadProductCode': item.ProductCode,
+            'leadProductName': item.ProductName,
+          },
+        )
         .toList();
 
     String selectedPromotionType = "";
 
     if (selectedProductCategory.length == 1) {
-      selectedPromotionType =
-          selectedProductCategory.first.prodCatgName[0].toUpperCase();
+      selectedPromotionType = selectedProductCategory.first.prodCatgName[0]
+          .toUpperCase();
     } else if (selectedProductCategory.length > 1) {
       selectedPromotionType = "O";
     }
@@ -1035,8 +1066,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
       'LeadBusinessType': newBusinessCheck && existingBusinessCheck == true
           ? 'O'
           : newBusinessCheck == true
-              ? 'N'
-              : 'E',
+          ? 'N'
+          : 'E',
       'LeadPromotionType': selectedPromotionType,
       'LeadSummary': summaryController.text,
       'LeadStages': selectedStagesList,
@@ -1081,12 +1112,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             duration: Duration(seconds: 1),
             content: Text(
               'Saved Successfully...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -1095,25 +1124,23 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('Lead entry save failed'),
-        );
+        const snackBar = SnackBar(content: Text('Lead entry save failed'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -1121,6 +1148,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1144,12 +1172,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
           duration: Duration(seconds: 1),
           content: Text(
             'Location missing, Please try again...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
         break;
       }
@@ -1189,12 +1215,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: Duration(seconds: 1),
               content: Text(
                 'Saved Successfully...',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           } else {
             if (responseJson.containsKey("Error") &&
@@ -1204,25 +1228,23 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                 duration: const Duration(seconds: 1),
                 content: Text(
                   responseJson["Error"].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
         } else {
-          const snackBar = SnackBar(
-            content: Text('Checkin failed'),
-          );
+          const snackBar = SnackBar(content: Text('Checkin failed'));
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -1230,6 +1252,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1273,12 +1296,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             duration: Duration(seconds: 1),
             content: Text(
               'Saved Successfully...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -1287,25 +1308,23 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('Checkout failed'),
-        );
+        const snackBar = SnackBar(content: Text('Checkout failed'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -1313,6 +1332,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1326,11 +1346,13 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
       List<Map<String, Object>> selectedParticipantList =
           selectedParticipantHospital
               .whereType<LeadParticipant>()
-              .map((LeadParticipant item) => {
-                    'ParticipantName': item.leadParticipantUserName,
-                    'LeadParticipantId': 0,
-                    'ParticipantId': item.leadParticipantUserId,
-                  })
+              .map(
+                (LeadParticipant item) => {
+                  'ParticipantName': item.leadParticipantUserName,
+                  'LeadParticipantId': 0,
+                  'ParticipantId': item.leadParticipantUserId,
+                },
+              )
               .toList();
       final leadactivity = {
         'UserJwtToken': userJwtToken,
@@ -1348,7 +1370,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         'LeadActivityStatus': nextActionValue,
         'LeadActivityImage': "",
         'LeadActivityType': "On Site",
-        'participantList': selectedParticipantList
+        'participantList': selectedParticipantList,
       };
       const apiUrl = '${ApiHelper.baseUrl}insertleadactivity';
       var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -1368,8 +1390,9 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             summarySave = true;
             summaryController.clear();
             inputMaterialController.clear();
-            _dateController.text =
-                DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now());
+            _dateController.text = DateFormat(
+              'dd/MM/yyyy hh:mm a',
+            ).format(DateTime.now());
             nextActionValue = 'Stages';
             leadId = "";
             setState(() {
@@ -1388,18 +1411,17 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                 duration: const Duration(seconds: 1),
                 content: Text(
                   responseJson["Error"].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
@@ -1408,6 +1430,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             duration: Duration(seconds: 1),
             content: Text('Lead activity save failed'),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -1415,6 +1438,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -1422,6 +1446,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1440,7 +1465,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         'LeadHospitalCode': selectedHospitalId,
         'LeadHospitalName': _searchController.text,
         'LeadDistributorCode': "",
-        'LeadDistributorName': ""
+        'LeadDistributorName': "",
       };
       const apiUrl = '${ApiHelper.baseUrl}insertcustomermaster';
       var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -1465,12 +1490,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                 duration: const Duration(seconds: 1),
                 content: Text(
                   responseJson["Error"].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
@@ -1478,6 +1501,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                 final snackBar = SnackBar(
                   content: Text(responseJson["Error"].toString()),
                 );
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(snackBar);
               }
             }
@@ -1487,6 +1511,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             duration: Duration(seconds: 1),
             content: Text('Customer save failed'),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -1494,6 +1519,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -1501,6 +1527,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1523,8 +1550,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
     super.dispose();
   }
 
-  void _listen(TextEditingController txtController, bool isListening,
-      Function setListeningState) async {
+  void _listen(
+    TextEditingController txtController,
+    bool isListening,
+    Function setListeningState,
+  ) async {
     if (!isListening) {
       _checkMicPermissions();
       bool available = await _speech.initialize();
@@ -1620,8 +1650,12 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
   Widget build(BuildContext context) {
     _executeFunctionOnce();
     final prodCategoryList = prodCatgList
-        .map((participant) => MultiSelectItem<ProductCategoryList>(
-            participant, participant.prodCatgName))
+        .map(
+          (participant) => MultiSelectItem<ProductCategoryList>(
+            participant,
+            participant.prodCatgName,
+          ),
+        )
         .toList();
 
     if (MediaQuery.of(context).orientation == Orientation.portrait) {
@@ -1691,9 +1725,12 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         backgroundColor: Colors.white,
         body: Padding(
           padding: /*widget.fromHomePage ?  const EdgeInsets.only(top: 50.0, bottom: 8.0, left: 8.0, right: 8.0)
-              : */
-              const EdgeInsets.only(
-                  top: 8.0, bottom: 8.0, left: 8.0, right: 8.0),
+              : */ const EdgeInsets.only(
+            top: 8.0,
+            bottom: 8.0,
+            left: 8.0,
+            right: 8.0,
+          ),
           child: GestureDetector(
             onTap: () {
               FocusScope.of(context).unfocus();
@@ -1734,35 +1771,39 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                   },
                                   displayStringForOption: (Hospital option) =>
                                       option.CustomerName,
-                                  fieldViewBuilder: (context,
-                                      textEditingController,
-                                      focusNode,
-                                      onFieldSubmitted) {
-                                    return TextField(
-                                      controller: textEditingController,
-                                      focusNode: focusNode,
-                                      onSubmitted: (value) =>
-                                          onFieldSubmitted(),
-                                      decoration: InputDecoration(
-                                        labelText: 'Enter Account Name',
-                                        labelStyle: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w400,
-                                            color: Color(0xFF8F8F8F)),
-                                        suffixIcon: IconButton(
-                                          icon: _searchController.text == ""
-                                              ? const Icon(
-                                                  Icons.search,
-                                                  color: Color(0xff2ca9df),
-                                                )
-                                              : const Icon(Icons.clear),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                  fieldViewBuilder:
+                                      (
+                                        context,
+                                        textEditingController,
+                                        focusNode,
+                                        onFieldSubmitted,
+                                      ) {
+                                        return TextField(
+                                          controller: textEditingController,
+                                          focusNode: focusNode,
+                                          onSubmitted: (value) =>
+                                              onFieldSubmitted(),
+                                          decoration: InputDecoration(
+                                            labelText: 'Enter Account Name',
+                                            labelStyle: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w400,
+                                              color: Color(0xFF8F8F8F),
+                                            ),
+                                            suffixIcon: IconButton(
+                                              icon: _searchController.text == ""
+                                                  ? const Icon(
+                                                      Icons.search,
+                                                      color: Color(0xff2ca9df),
+                                                    )
+                                                  : const Icon(Icons.clear),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
                                   onSelected: (Hospital value) {
                                     _searchController.text = value.CustomerName;
                                     setState(() {
@@ -1779,38 +1820,48 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                       selectedHospitalName = value.CustomerName;
                                     });
                                   },
-                                  optionsViewBuilder: (BuildContext context,
-                                      void Function(Hospital) onSelected,
-                                      Iterable<Hospital> options) {
-                                    return Material(
-                                      elevation: 4.0,
-                                      child: Container(
-                                        constraints: const BoxConstraints(
-                                            maxHeight: 200),
-                                        child: ListView.builder(
-                                          padding: EdgeInsets.zero,
-                                          physics:
-                                              const ClampingScrollPhysics(),
-                                          shrinkWrap: true,
-                                          itemCount: options.length,
-                                          itemBuilder: (BuildContext context,
-                                              int index) {
-                                            final Hospital option =
-                                                options.elementAt(index);
-                                            return GestureDetector(
-                                              onTap: () {
-                                                onSelected(option);
-                                              },
-                                              child: ListTile(
-                                                title:
-                                                    Text(option.CustomerName),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                  optionsViewBuilder:
+                                      (
+                                        BuildContext context,
+                                        void Function(Hospital) onSelected,
+                                        Iterable<Hospital> options,
+                                      ) {
+                                        return Material(
+                                          elevation: 4.0,
+                                          child: Container(
+                                            constraints: const BoxConstraints(
+                                              maxHeight: 200,
+                                            ),
+                                            child: ListView.builder(
+                                              padding: EdgeInsets.zero,
+                                              physics:
+                                                  const ClampingScrollPhysics(),
+                                              shrinkWrap: true,
+                                              itemCount: options.length,
+                                              itemBuilder:
+                                                  (
+                                                    BuildContext context,
+                                                    int index,
+                                                  ) {
+                                                    final Hospital option =
+                                                        options.elementAt(
+                                                          index,
+                                                        );
+                                                    return GestureDetector(
+                                                      onTap: () {
+                                                        onSelected(option);
+                                                      },
+                                                      child: ListTile(
+                                                        title: Text(
+                                                          option.CustomerName,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                            ),
+                                          ),
+                                        );
+                                      },
                                 )
                               : SizedBox(
                                   height: deviceOrientation == "Portrait"
@@ -1833,8 +1884,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           focusNode: _focus,
                                           maxListHeight:
                                               deviceOrientation == "Portrait"
-                                                  ? 370
-                                                  : 220,
+                                              ? 370
+                                              : 220,
                                           decoration: InputDecoration(
                                             border: UnderlineInputBorder(
                                               borderRadius:
@@ -1844,9 +1895,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                 FloatingLabelBehavior.never,
                                             labelText: 'Account Name',
                                             labelStyle: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w400,
-                                                color: Color(0xFF8F8F8F)),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w400,
+                                              color: Color(0xFF8F8F8F),
+                                            ),
                                             focusedBorder: UnderlineInputBorder(
                                               borderSide: const BorderSide(
                                                 color: Colors
@@ -1857,10 +1909,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                             ),
                                             contentPadding:
                                                 const EdgeInsets.only(
-                                                    left: 0,
-                                                    right: 30,
-                                                    top: 0,
-                                                    bottom: 0),
+                                                  left: 0,
+                                                  right: 30,
+                                                  top: 0,
+                                                  bottom: 0,
+                                                ),
                                           ),
                                           controller: _searchController,
                                           inputKey: hospitalKey,
@@ -1870,12 +1923,12 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                   hospital.CustomerName;
                                               _searchController.text =
                                                   hospital.CustomerName;
-                                              var customer =
-                                                  customerList.firstWhere(
-                                                (map) =>
-                                                    map['CustomerName'] ==
-                                                    hospital.CustomerName,
-                                              );
+                                              var customer = customerList
+                                                  .firstWhere(
+                                                    (map) =>
+                                                        map['CustomerName'] ==
+                                                        hospital.CustomerName,
+                                                  );
                                               selectedHospitalId =
                                                   customer['CustomerCode']
                                                       .toString();
@@ -1885,9 +1938,12 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                             await loadContacs();
                                           },
                                           suggestionBuilder: (data) => ListTile(
-                                            title: Text(data.CustomerName,
-                                                style: const TextStyle(
-                                                    fontSize: 14)),
+                                            title: Text(
+                                              data.CustomerName,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                              ),
+                                            ),
                                           ),
                                           asyncSuggestions: (searchValue) =>
                                               getCustomer(searchValue),
@@ -1914,37 +1970,40 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                 });
                                                 // loadContacs();
                                               },
-                                              child: _searchController.text ==
-                                                      ""
+                                              child:
+                                                  _searchController.text == ""
                                                   ? Container(
                                                       decoration:
                                                           const BoxDecoration(
-                                                        color:
-                                                            Colors.transparent,
-                                                      ),
+                                                            color: Colors
+                                                                .transparent,
+                                                          ),
                                                       child: const Padding(
                                                         padding:
                                                             EdgeInsets.only(
-                                                                top: 14,
-                                                                right: 2),
+                                                              top: 14,
+                                                              right: 2,
+                                                            ),
                                                         child: Icon(
                                                           Icons.search,
-                                                          color:
-                                                              Color(0xff2ca9df),
+                                                          color: Color(
+                                                            0xff2ca9df,
+                                                          ),
                                                         ),
                                                       ),
                                                     )
                                                   : Container(
                                                       decoration:
                                                           const BoxDecoration(
-                                                        color:
-                                                            Colors.transparent,
-                                                      ),
+                                                            color: Colors
+                                                                .transparent,
+                                                          ),
                                                       child: const Padding(
                                                         padding:
                                                             EdgeInsets.only(
-                                                                top: 14,
-                                                                right: 2),
+                                                              top: 14,
+                                                              right: 2,
+                                                            ),
                                                         child: Icon(
                                                           Icons.close_rounded,
                                                           size: 20,
@@ -1986,9 +2045,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               "New\nBusiness",
                                               textAlign: TextAlign.left,
                                               style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: Color(0xFF8F8F8F)),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w400,
+                                                color: Color(0xFF8F8F8F),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -2001,26 +2061,30 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                             Transform.scale(
                                               scale: .7,
                                               child: Checkbox(
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            2.0),
-                                                  ),
-                                                  side: WidgetStateBorderSide
-                                                      .resolveWith(
-                                                    (states) =>
-                                                        const BorderSide(
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        2.0,
+                                                      ),
+                                                ),
+                                                side:
+                                                    WidgetStateBorderSide.resolveWith(
+                                                      (states) =>
+                                                          const BorderSide(
                                                             width: 1.0,
                                                             color: Color(
-                                                                0xFF8F8F8F)),
-                                                  ),
-                                                  value: newBusinessCheck,
-                                                  onChanged: (bool? value) {
-                                                    setState(() {
-                                                      newBusinessCheck =
-                                                          value ?? false;
-                                                    });
-                                                  }),
+                                                              0xFF8F8F8F,
+                                                            ),
+                                                          ),
+                                                    ),
+                                                value: newBusinessCheck,
+                                                onChanged: (bool? value) {
+                                                  setState(() {
+                                                    newBusinessCheck =
+                                                        value ?? false;
+                                                  });
+                                                },
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -2033,9 +2097,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                             Text(
                                               "Existing\nBusiness",
                                               style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: Color(0xFF8F8F8F)),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w400,
+                                                color: Color(0xFF8F8F8F),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -2048,26 +2113,30 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                             Transform.scale(
                                               scale: .7,
                                               child: Checkbox(
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            2.0),
-                                                  ),
-                                                  side: WidgetStateBorderSide
-                                                      .resolveWith(
-                                                    (states) =>
-                                                        const BorderSide(
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        2.0,
+                                                      ),
+                                                ),
+                                                side:
+                                                    WidgetStateBorderSide.resolveWith(
+                                                      (states) =>
+                                                          const BorderSide(
                                                             width: 1.0,
                                                             color: Color(
-                                                                0xFF8F8F8F)),
-                                                  ),
-                                                  value: existingBusinessCheck,
-                                                  onChanged: (bool? value) {
-                                                    setState(() {
-                                                      existingBusinessCheck =
-                                                          value ?? false;
-                                                    });
-                                                  }),
+                                                              0xFF8F8F8F,
+                                                            ),
+                                                          ),
+                                                    ),
+                                                value: existingBusinessCheck,
+                                                onChanged: (bool? value) {
+                                                  setState(() {
+                                                    existingBusinessCheck =
+                                                        value ?? false;
+                                                  });
+                                                },
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -2075,49 +2144,49 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           absorbing:
                                               widget.checkInDetails != null,
                                           child: ElevatedButton(
-                                              onPressed: () async {
-                                                BuildContext? dialogContext;
-                                                showDialog(
-                                                  context: context,
-                                                  barrierDismissible: false,
-                                                  builder:
-                                                      (BuildContext context) {
-                                                    dialogContext = context;
-                                                    return const Center(
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                        valueColor:
-                                                            AlwaysStoppedAnimation<
-                                                                    Color>(
-                                                                Colors.white),
-                                                      ),
-                                                    );
-                                                  },
-                                                );
-                                                try {
-                                                  await submitCheckin();
-                                                  Navigator.of(dialogContext!)
-                                                      .pop();
-                                                  navigateToHomePage();
-                                                } catch (error) {
-                                                  // print('Error: $error');
-                                                }
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: widget
-                                                            .checkInDetails ==
-                                                        null
-                                                    ? const Color(0xff2ca9df)
-                                                    : Colors.grey,
-                                                shape:
-                                                    const RoundedRectangleBorder(),
+                                            onPressed: () async {
+                                              BuildContext? dialogContext;
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (BuildContext context) {
+                                                  dialogContext = context;
+                                                  return const Center(
+                                                    child: CircularProgressIndicator(
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.white),
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                              try {
+                                                await submitCheckin();
+                                                Navigator.of(
+                                                  dialogContext!,
+                                                ).pop();
+                                                navigateToHomePage();
+                                              } catch (error) {
+                                                // print('Error: $error');
+                                              }
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  widget.checkInDetails == null
+                                                  ? const Color(0xff2ca9df)
+                                                  : Colors.grey,
+                                              shape:
+                                                  const RoundedRectangleBorder(),
+                                            ),
+                                            child: const Text(
+                                              "Check In",
+                                              style: TextStyle(
+                                                color: Colors.white,
                                               ),
-                                              child: const Text(
-                                                "Check In",
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              )),
-                                        )
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -2127,7 +2196,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             MultiSelectDialogField<
-                                                ProductCategoryList>(
+                                              ProductCategoryList
+                                            >(
                                               checkColor: Colors.white,
                                               searchable: true,
                                               listType:
@@ -2135,9 +2205,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               separateSelectedItems: false,
                                               items: prodCategoryList,
                                               title: const Text(
-                                                  "Product Category"),
-                                              selectedColor:
-                                                  const Color(0xff2ca9df),
+                                                "Product Category",
+                                              ),
+                                              selectedColor: const Color(
+                                                0xff2ca9df,
+                                              ),
                                               buttonIcon: const Icon(
                                                 Icons.search,
                                                 color: Color(0xff2ca9df),
@@ -2159,19 +2231,24 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                   selectedProductCategory
                                                       .clear();
                                                   for (var ex in results) {
-                                                    if (ex.prodCatgName
+                                                    if (ex
+                                                        .prodCatgName
                                                         .isNotEmpty) {
-                                                      selectedProductCategory.add(
-                                                          ProductCategoryList(
+                                                      selectedProductCategory
+                                                          .add(
+                                                            ProductCategoryList(
                                                               prodCatgId: 0,
                                                               prodCatgName: ex
-                                                                  .prodCatgName));
+                                                                  .prodCatgName,
+                                                            ),
+                                                          );
                                                     } else {
-                                                      SnackBar snackBar =
-                                                          const SnackBar(
+                                                      SnackBar
+                                                      snackBar = const SnackBar(
                                                         showCloseIcon: true,
                                                         duration: Duration(
-                                                            seconds: 1),
+                                                          seconds: 1,
+                                                        ),
                                                         content: Text(
                                                           "Please Enter Product Category",
                                                           style: TextStyle(
@@ -2181,9 +2258,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                         ),
                                                       );
                                                       ScaffoldMessenger.of(
-                                                              context)
-                                                          .showSnackBar(
-                                                              snackBar);
+                                                        context,
+                                                      ).showSnackBar(snackBar);
                                                     }
                                                   }
                                                 });
@@ -2192,16 +2268,22 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
 
                                             // Custom chip display for handling tap to remove chips
                                             MultiSelectChipDisplay<
-                                                ProductCategoryList>(
+                                              ProductCategoryList
+                                            >(
                                               items: selectedProductCategory
-                                                  .map((item) =>
-                                                      MultiSelectItem(item,
-                                                          item.prodCatgName))
+                                                  .map(
+                                                    (item) => MultiSelectItem(
+                                                      item,
+                                                      item.prodCatgName,
+                                                    ),
+                                                  )
                                                   .toList(),
-                                              chipColor:
-                                                  const Color(0xff2ca9df),
+                                              chipColor: const Color(
+                                                0xff2ca9df,
+                                              ),
                                               textStyle: const TextStyle(
-                                                  color: Colors.white),
+                                                color: Colors.white,
+                                              ),
                                               onTap: (selected) {
                                                 setState(() {
                                                   // Remove the tapped item from the selectedProductCategory list
@@ -2213,32 +2295,35 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           ],
                                         )
                                       : SizedBox(
-                                          height: deviceOrientation ==
-                                                  "Portrait"
+                                          height:
+                                              deviceOrientation == "Portrait"
                                               ? containerHeight
                                               : containerDropDownHeight / 1.5,
                                           child: Stack(
                                             children: [
                                               Positioned.fill(
-                                                child: AsyncAutocomplete<
-                                                    ProductCategoryList>(
+                                                child: AsyncAutocomplete<ProductCategoryList>(
                                                   onChanged: (s) {
                                                     setState(() {});
                                                   },
                                                   onSubmitted: (prod) {
                                                     setState(() {
                                                       if (prod != "") {
-                                                        selectedProductCategory.add(
-                                                            ProductCategoryList(
+                                                        selectedProductCategory
+                                                            .add(
+                                                              ProductCategoryList(
                                                                 prodCatgId: 0,
                                                                 prodCatgName:
-                                                                    prod));
+                                                                    prod,
+                                                              ),
+                                                            );
                                                       } else {
-                                                        SnackBar snackBar =
-                                                            const SnackBar(
+                                                        SnackBar
+                                                        snackBar = const SnackBar(
                                                           showCloseIcon: true,
                                                           duration: Duration(
-                                                              seconds: 1),
+                                                            seconds: 1,
+                                                          ),
                                                           content: Text(
                                                             "Please Enter Product Category",
                                                             style: TextStyle(
@@ -2249,9 +2334,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                           ),
                                                         );
                                                         ScaffoldMessenger.of(
-                                                                context)
-                                                            .showSnackBar(
-                                                                snackBar);
+                                                          context,
+                                                        ).showSnackBar(
+                                                          snackBar,
+                                                        );
                                                       }
                                                       productCategoryController
                                                           .clear();
@@ -2259,9 +2345,9 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                   },
                                                   maxListHeight:
                                                       deviceOrientation ==
-                                                              "Portrait"
-                                                          ? 370
-                                                          : 200,
+                                                          "Portrait"
+                                                      ? 370
+                                                      : 200,
                                                   decoration: InputDecoration(
                                                     labelText:
                                                         'Product Category',
@@ -2274,20 +2360,23 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     ),
                                                     focusedBorder:
                                                         UnderlineInputBorder(
-                                                      borderSide:
-                                                          const BorderSide(
-                                                        color: Colors.blue,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              0.0),
-                                                    ),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color:
+                                                                    Colors.blue,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                0.0,
+                                                              ),
+                                                        ),
                                                     contentPadding:
                                                         const EdgeInsets.only(
-                                                            left: 0,
-                                                            right: 0,
-                                                            top: 0,
-                                                            bottom: 0),
+                                                          left: 0,
+                                                          right: 0,
+                                                          top: 0,
+                                                          bottom: 0,
+                                                        ),
                                                   ),
                                                   controller:
                                                       productCategoryController,
@@ -2296,26 +2385,32 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     reverseScroll = true;
                                                   },
                                                   onTapItem:
-                                                      (ProductCategoryList
-                                                          categoryList) {
-                                                    setState(() {
-                                                      selectedProductCategory
-                                                          .add(categoryList);
-                                                    });
-                                                  },
+                                                      (
+                                                        ProductCategoryList
+                                                        categoryList,
+                                                      ) {
+                                                        setState(() {
+                                                          selectedProductCategory
+                                                              .add(
+                                                                categoryList,
+                                                              );
+                                                        });
+                                                      },
                                                   suggestionBuilder: (data) =>
                                                       ListTile(
-                                                    title: Text(
-                                                      data.prodCatgName,
-                                                      style: const TextStyle(
-                                                        fontSize: 14,
+                                                        title: Text(
+                                                          data.prodCatgName,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                              ),
+                                                        ),
                                                       ),
-                                                    ),
-                                                  ),
                                                   asyncSuggestions:
                                                       (searchValue) =>
                                                           getProductCategoryData(
-                                                              searchValue),
+                                                            searchValue,
+                                                          ),
                                                 ),
                                               ),
                                               Positioned(
@@ -2324,60 +2419,57 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                 child: SizedBox(
                                                   child:
                                                       productCategoryController
-                                                                  .text ==
-                                                              ""
-                                                          ? Container(
-                                                              decoration:
-                                                                  const BoxDecoration(
+                                                              .text ==
+                                                          ""
+                                                      ? Container(
+                                                          decoration:
+                                                              const BoxDecoration(
                                                                 color: Colors
                                                                     .transparent,
                                                               ),
-                                                              child:
-                                                                  const Padding(
-                                                                padding: EdgeInsets
-                                                                    .only(
-                                                                        top: 14,
-                                                                        right:
-                                                                            2),
-                                                                child: Icon(
-                                                                  Icons.search,
-                                                                  color: Color(
-                                                                      0xff2ca9df),
+                                                          child: const Padding(
+                                                            padding:
+                                                                EdgeInsets.only(
+                                                                  top: 14,
+                                                                  right: 2,
                                                                 ),
-                                                              ),
-                                                            )
-                                                          : Container(
-                                                              decoration:
-                                                                  const BoxDecoration(
-                                                                color: Colors
-                                                                    .transparent,
-                                                              ),
-                                                              child: Padding(
-                                                                padding:
-                                                                    const EdgeInsets
-                                                                        .only(
-                                                                        top: 7,
-                                                                        right:
-                                                                            2),
-                                                                child:
-                                                                    IconButton(
-                                                                  onPressed:
-                                                                      () {
-                                                                    setState(
-                                                                        () {
-                                                                      productCategoryController
-                                                                          .clear();
-                                                                    });
-                                                                  },
-                                                                  icon: const Icon(
-                                                                      Icons
-                                                                          .close_rounded,
-                                                                      size: 20),
-                                                                  color: Colors
-                                                                      .grey,
-                                                                ),
+                                                            child: Icon(
+                                                              Icons.search,
+                                                              color: Color(
+                                                                0xff2ca9df,
                                                               ),
                                                             ),
+                                                          ),
+                                                        )
+                                                      : Container(
+                                                          decoration:
+                                                              const BoxDecoration(
+                                                                color: Colors
+                                                                    .transparent,
+                                                              ),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets.only(
+                                                                  top: 7,
+                                                                  right: 2,
+                                                                ),
+                                                            child: IconButton(
+                                                              onPressed: () {
+                                                                setState(() {
+                                                                  productCategoryController
+                                                                      .clear();
+                                                                });
+                                                              },
+                                                              icon: const Icon(
+                                                                Icons
+                                                                    .close_rounded,
+                                                                size: 20,
+                                                              ),
+                                                              color:
+                                                                  Colors.grey,
+                                                            ),
+                                                          ),
+                                                        ),
                                                 ),
                                               ),
                                             ],
@@ -2390,54 +2482,53 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                       child: SizedBox(
                                         height: 100,
                                         child: ListView.builder(
-                                            physics:
-                                                const ClampingScrollPhysics(),
-                                            itemCount:
-                                                selectedProductCategory.length,
-                                            itemBuilder: (BuildContext context,
-                                                int index) {
-                                              return Card(
-                                                  color:
-                                                      const Color(0xff2ca9df),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Expanded(
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(8.0),
-                                                          child: Text(
-                                                            selectedProductCategory[
-                                                                    index]
-                                                                .prodCatgName,
-                                                            style:
-                                                                const TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 14,
-                                                            ),
+                                          physics:
+                                              const ClampingScrollPhysics(),
+                                          itemCount:
+                                              selectedProductCategory.length,
+                                          itemBuilder: (BuildContext context, int index) {
+                                            return Card(
+                                              color: const Color(0xff2ca9df),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Expanded(
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
                                                           ),
+                                                      child: Text(
+                                                        selectedProductCategory[index]
+                                                            .prodCatgName,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 14,
                                                         ),
                                                       ),
-                                                      IconButton(
-                                                          onPressed: () {
-                                                            setState(() {
-                                                              selectedProductCategory
-                                                                  .remove(
-                                                                      selectedProductCategory[
-                                                                          index]);
-                                                            });
-                                                          },
-                                                          icon: const Icon(
-                                                            Icons.close,
-                                                            color: Colors.white,
-                                                          ))
-                                                    ],
-                                                  ));
-                                            }),
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        selectedProductCategory
+                                                            .remove(
+                                                              selectedProductCategory[index],
+                                                            );
+                                                      });
+                                                    },
+                                                    icon: const Icon(
+                                                      Icons.close,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -2446,78 +2537,97 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           textEditingController:
                                               productController,
                                           focusNode: _focus3,
-                                          optionsBuilder:
-                                              (TextEditingValue val) {
+                                          optionsBuilder: (TextEditingValue val) {
                                             if (val.text == '') {
                                               return const Iterable<
-                                                  Product>.empty();
+                                                Product
+                                              >.empty();
                                             }
-                                            return prodListWeb
-                                                .where((Product option) {
-                                              return option.ProductName
-                                                      .toLowerCase()
+                                            return prodListWeb.where((
+                                              Product option,
+                                            ) {
+                                              return option
+                                                      .ProductName.toLowerCase()
                                                   .contains(
-                                                      val.text.toLowerCase());
+                                                    val.text.toLowerCase(),
+                                                  );
                                             });
                                           },
                                           displayStringForOption:
                                               (Product option) =>
                                                   option.ProductName,
-                                          fieldViewBuilder: (context,
-                                              textEditingController,
-                                              focusNode,
-                                              onFieldSubmitted) {
-                                            return TextField(
-                                              controller: textEditingController,
-                                              focusNode: focusNode,
-                                              onSubmitted: (value) {
-                                                setState(() {
-                                                  selectedProduct.add(Product(
-                                                      ProductId: 0,
-                                                      ProductCode: "0",
-                                                      ProductName: value));
-                                                  productController.clear();
-                                                });
-                                              },
-                                              decoration: InputDecoration(
-                                                labelText: '   Products',
-                                                labelStyle: const TextStyle(
-                                                  color: Color(0xFF454545),
-                                                  fontFamily: "Poppins",
-                                                  fontWeight: FontWeight.w400,
-                                                  fontSize: 14,
-                                                ),
-                                                suffixIcon: IconButton(
-                                                  icon: _searchController
-                                                              .text ==
-                                                          ""
-                                                      ? const Icon(
-                                                          Icons.search,
-                                                          color:
-                                                              Color(0xff2ca9df),
-                                                        )
-                                                      : const Icon(Icons.clear),
-                                                  onPressed: () {
-                                                    _searchController.clear();
+                                          fieldViewBuilder:
+                                              (
+                                                context,
+                                                textEditingController,
+                                                focusNode,
+                                                onFieldSubmitted,
+                                              ) {
+                                                return TextField(
+                                                  controller:
+                                                      textEditingController,
+                                                  focusNode: focusNode,
+                                                  onSubmitted: (value) {
+                                                    setState(() {
+                                                      selectedProduct.add(
+                                                        Product(
+                                                          ProductId: 0,
+                                                          ProductCode: "0",
+                                                          ProductName: value,
+                                                        ),
+                                                      );
+                                                      productController.clear();
+                                                    });
                                                   },
-                                                ),
-                                              ),
-                                            );
-                                          },
+                                                  decoration: InputDecoration(
+                                                    labelText: '   Products',
+                                                    labelStyle: const TextStyle(
+                                                      color: Color(0xFF454545),
+                                                      fontFamily: "Poppins",
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                      fontSize: 14,
+                                                    ),
+                                                    suffixIcon: IconButton(
+                                                      icon:
+                                                          _searchController
+                                                                  .text ==
+                                                              ""
+                                                          ? const Icon(
+                                                              Icons.search,
+                                                              color: Color(
+                                                                0xff2ca9df,
+                                                              ),
+                                                            )
+                                                          : const Icon(
+                                                              Icons.clear,
+                                                            ),
+                                                      onPressed: () {
+                                                        _searchController
+                                                            .clear();
+                                                      },
+                                                    ),
+                                                  ),
+                                                );
+                                              },
                                           onSelected: (Product value) {
                                             setState(() {
                                               if (value.ProductName != "") {
-                                                selectedProduct.add(Product(
+                                                selectedProduct.add(
+                                                  Product(
                                                     ProductId: 0,
                                                     ProductCode: "0",
                                                     ProductName:
-                                                        value.ProductName));
+                                                        value.ProductName,
+                                                  ),
+                                                );
                                               } else {
-                                                SnackBar snackBar =
-                                                    const SnackBar(
+                                                SnackBar
+                                                snackBar = const SnackBar(
                                                   showCloseIcon: true,
-                                                  duration:
-                                                      Duration(seconds: 1),
+                                                  duration: Duration(
+                                                    seconds: 1,
+                                                  ),
                                                   content: Text(
                                                     "Please Enter Product Name",
                                                     style: TextStyle(
@@ -2526,59 +2636,72 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     ),
                                                   ),
                                                 );
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(snackBar);
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(snackBar);
                                               }
                                               productController.clear();
                                             });
                                           },
-                                          optionsViewBuilder: (BuildContext
-                                                  context,
-                                              void Function(Product) onSelected,
-                                              Iterable<Product> options) {
-                                            return Material(
-                                              elevation: 4.0,
-                                              child: Container(
-                                                constraints:
-                                                    const BoxConstraints(
-                                                        maxHeight: 200),
-                                                child: ListView.builder(
-                                                  padding: EdgeInsets.zero,
-                                                  physics:
-                                                      const ClampingScrollPhysics(),
-                                                  shrinkWrap: true,
-                                                  itemCount: options.length,
-                                                  itemBuilder:
-                                                      (BuildContext context,
-                                                          int index) {
-                                                    final Product option =
-                                                        options
-                                                            .elementAt(index);
-                                                    return GestureDetector(
-                                                      onTap: () {
-                                                        onSelected(option);
-                                                      },
-                                                      child: ListTile(
-                                                        title: Text(
-                                                            option.ProductName),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                            );
-                                          },
+                                          optionsViewBuilder:
+                                              (
+                                                BuildContext context,
+                                                void Function(Product)
+                                                onSelected,
+                                                Iterable<Product> options,
+                                              ) {
+                                                return Material(
+                                                  elevation: 4.0,
+                                                  child: Container(
+                                                    constraints:
+                                                        const BoxConstraints(
+                                                          maxHeight: 200,
+                                                        ),
+                                                    child: ListView.builder(
+                                                      padding: EdgeInsets.zero,
+                                                      physics:
+                                                          const ClampingScrollPhysics(),
+                                                      shrinkWrap: true,
+                                                      itemCount: options.length,
+                                                      itemBuilder:
+                                                          (
+                                                            BuildContext
+                                                            context,
+                                                            int index,
+                                                          ) {
+                                                            final Product
+                                                            option = options
+                                                                .elementAt(
+                                                                  index,
+                                                                );
+                                                            return GestureDetector(
+                                                              onTap: () {
+                                                                onSelected(
+                                                                  option,
+                                                                );
+                                                              },
+                                                              child: ListTile(
+                                                                title: Text(
+                                                                  option
+                                                                      .ProductName,
+                                                                ),
+                                                              ),
+                                                            );
+                                                          },
+                                                    ),
+                                                  ),
+                                                );
+                                              },
                                         )
                                       : SizedBox(
-                                          height: deviceOrientation ==
-                                                  "Portrait"
+                                          height:
+                                              deviceOrientation == "Portrait"
                                               ? containerHeight
                                               : containerDropDownHeight / 1.5,
                                           child: Stack(
                                             children: [
                                               Positioned.fill(
-                                                child:
-                                                    AsyncAutocomplete<Product>(
+                                                child: AsyncAutocomplete<Product>(
                                                   onChanged: (s) {
                                                     setState(() {});
                                                   },
@@ -2586,18 +2709,19 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     setState(() {
                                                       if (prod != "") {
                                                         selectedProduct.add(
-                                                            Product(
-                                                                ProductId: 0,
-                                                                ProductCode:
-                                                                    "0",
-                                                                ProductName:
-                                                                    prod));
+                                                          Product(
+                                                            ProductId: 0,
+                                                            ProductCode: "0",
+                                                            ProductName: prod,
+                                                          ),
+                                                        );
                                                       } else {
-                                                        SnackBar snackBar =
-                                                            const SnackBar(
+                                                        SnackBar
+                                                        snackBar = const SnackBar(
                                                           showCloseIcon: true,
                                                           duration: Duration(
-                                                              seconds: 1),
+                                                            seconds: 1,
+                                                          ),
                                                           content: Text(
                                                             "Please Enter Product Name",
                                                             style: TextStyle(
@@ -2608,9 +2732,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                           ),
                                                         );
                                                         ScaffoldMessenger.of(
-                                                                context)
-                                                            .showSnackBar(
-                                                                snackBar);
+                                                          context,
+                                                        ).showSnackBar(
+                                                          snackBar,
+                                                        );
                                                       }
                                                       productController.clear();
                                                     });
@@ -2618,9 +2743,9 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                   focusNode: _focus3,
                                                   maxListHeight:
                                                       deviceOrientation ==
-                                                              "Portrait"
-                                                          ? 370
-                                                          : 200,
+                                                          "Portrait"
+                                                      ? 370
+                                                      : 200,
                                                   decoration: InputDecoration(
                                                     labelText: 'Products',
                                                     labelStyle: const TextStyle(
@@ -2632,20 +2757,23 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     ),
                                                     focusedBorder:
                                                         UnderlineInputBorder(
-                                                      borderSide:
-                                                          const BorderSide(
-                                                        color: Colors.blue,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              0.0),
-                                                    ),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color:
+                                                                    Colors.blue,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                0.0,
+                                                              ),
+                                                        ),
                                                     contentPadding:
                                                         const EdgeInsets.only(
-                                                            left: 0,
-                                                            right: 0,
-                                                            top: 0,
-                                                            bottom: 0),
+                                                          left: 0,
+                                                          right: 0,
+                                                          top: 0,
+                                                          bottom: 0,
+                                                        ),
                                                   ),
                                                   controller: productController,
                                                   inputKey: productKey,
@@ -2655,62 +2783,67 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                   onTapItem: (Product product) {
                                                     setState(() {
                                                       reverseScroll = false;
-                                                      selectedProduct
-                                                          .add(product);
+                                                      selectedProduct.add(
+                                                        product,
+                                                      );
                                                     });
                                                   },
                                                   suggestionBuilder: (data) =>
                                                       ListTile(
-                                                    title: Text(
-                                                      data.ProductName,
-                                                      style: const TextStyle(
-                                                        fontSize: 14,
+                                                        title: Text(
+                                                          data.ProductName,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                              ),
+                                                        ),
                                                       ),
-                                                    ),
-                                                  ),
                                                   asyncSuggestions:
                                                       (searchValue) =>
                                                           getProductData(
-                                                              searchValue),
+                                                            searchValue,
+                                                          ),
                                                 ),
                                               ),
                                               Positioned(
                                                 top: 0,
                                                 right: 0,
                                                 child: SizedBox(
-                                                  child: productController
-                                                              .text ==
+                                                  child:
+                                                      productController.text ==
                                                           ""
                                                       ? Container(
                                                           decoration:
                                                               const BoxDecoration(
-                                                            color: Colors
-                                                                .transparent,
-                                                          ),
+                                                                color: Colors
+                                                                    .transparent,
+                                                              ),
                                                           child: const Padding(
                                                             padding:
                                                                 EdgeInsets.only(
-                                                                    top: 14,
-                                                                    right: 2),
+                                                                  top: 14,
+                                                                  right: 2,
+                                                                ),
                                                             child: Icon(
                                                               Icons.search,
                                                               color: Color(
-                                                                  0xff2ca9df),
+                                                                0xff2ca9df,
+                                                              ),
                                                             ),
                                                           ),
                                                         )
                                                       : Container(
                                                           decoration:
                                                               const BoxDecoration(
-                                                            color: Colors
-                                                                .transparent,
-                                                          ),
+                                                                color: Colors
+                                                                    .transparent,
+                                                              ),
                                                           child: Padding(
                                                             padding:
-                                                                const EdgeInsets
-                                                                    .only(
-                                                                    top: 7,
-                                                                    right: 2),
+                                                                const EdgeInsets.only(
+                                                                  top: 7,
+                                                                  right: 2,
+                                                                ),
                                                             child: IconButton(
                                                               onPressed: () {
                                                                 setState(() {
@@ -2719,9 +2852,10 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                 });
                                                               },
                                                               icon: const Icon(
-                                                                  Icons
-                                                                      .close_rounded,
-                                                                  size: 20),
+                                                                Icons
+                                                                    .close_rounded,
+                                                                size: 20,
+                                                              ),
                                                               color:
                                                                   Colors.grey,
                                                             ),
@@ -2737,12 +2871,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                     child: SizedBox(
                                       height: kIsWeb ? 200 : 100,
                                       child: ListView.builder(
-                                          physics:
-                                              const ClampingScrollPhysics(),
-                                          itemCount: selectedProduct.length,
-                                          itemBuilder: (BuildContext context,
-                                              int index) {
-                                            return Card(
+                                        physics: const ClampingScrollPhysics(),
+                                        itemCount: selectedProduct.length,
+                                        itemBuilder:
+                                            (BuildContext context, int index) {
+                                              return Card(
                                                 color: const Color(0xff2ca9df),
                                                 child: Row(
                                                   mainAxisAlignment:
@@ -2752,39 +2885,42 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     Expanded(
                                                       child: Padding(
                                                         padding:
-                                                            const EdgeInsets
-                                                                .all(8.0),
+                                                            const EdgeInsets.all(
+                                                              8.0,
+                                                            ),
                                                         child: Text(
                                                           selectedProduct[index]
                                                               .ProductName,
                                                           style:
                                                               const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 14,
-                                                          ),
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 14,
+                                                              ),
                                                         ),
                                                       ),
                                                     ),
                                                     IconButton(
-                                                        onPressed: () {
-                                                          setState(() {
-                                                            selectedProduct.remove(
-                                                                selectedProduct[
-                                                                    index]);
-                                                          });
-                                                        },
-                                                        icon: const Icon(
-                                                          Icons.close,
-                                                          color: Colors.white,
-                                                        ))
+                                                      onPressed: () {
+                                                        setState(() {
+                                                          selectedProduct.remove(
+                                                            selectedProduct[index],
+                                                          );
+                                                        });
+                                                      },
+                                                      icon: const Icon(
+                                                        Icons.close,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
                                                   ],
-                                                ));
-                                          }),
+                                                ),
+                                              );
+                                            },
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
+                                  const SizedBox(height: 20),
                                   const Text(
                                     "Contact Person Details",
                                     style: TextStyle(
@@ -2794,13 +2930,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                   ),
                                   Center(
                                     child: // ignore: sized_box_for_whitespace
-                                        Form(
+                                    Form(
                                       key: formKey,
                                       child: Column(
                                         children: [
-                                          const SizedBox(
-                                            height: 10,
-                                          ),
+                                          const SizedBox(height: 10),
                                           Column(
                                             children: [
                                               Column(
@@ -2809,192 +2943,203 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                 children: [
                                                   kIsWeb
                                                       ? RawAutocomplete<
-                                                          Contacts>(
+                                                          Contacts
+                                                        >(
                                                           textEditingController:
                                                               _searchController3,
                                                           focusNode: _focus2,
                                                           optionsBuilder:
-                                                              (TextEditingValue
-                                                                  val) {
-                                                            if (val.text ==
-                                                                '') {
-                                                              return const Iterable<
-                                                                  Contacts>.empty();
-                                                            }
-                                                            return contactListWeb
-                                                                .where((Contacts
-                                                                    option) {
-                                                              return option
-                                                                          .CustomerName
-                                                                      .toLowerCase()
-                                                                  .contains(val
-                                                                      .text
-                                                                      .toLowerCase());
-                                                            });
-                                                          },
+                                                              (
+                                                                TextEditingValue
+                                                                val,
+                                                              ) {
+                                                                if (val.text ==
+                                                                    '') {
+                                                                  return const Iterable<
+                                                                    Contacts
+                                                                  >.empty();
+                                                                }
+                                                                return contactListWeb.where((
+                                                                  Contacts
+                                                                  option,
+                                                                ) {
+                                                                  return option
+                                                                          .CustomerName.toLowerCase()
+                                                                      .contains(
+                                                                        val.text
+                                                                            .toLowerCase(),
+                                                                      );
+                                                                });
+                                                              },
                                                           displayStringForOption:
-                                                              (Contacts
-                                                                      option) =>
-                                                                  option
-                                                                      .CustomerName,
-                                                          fieldViewBuilder: (context,
-                                                              textEditingController,
-                                                              focusNode,
-                                                              onFieldSubmitted) {
-                                                            return TextField(
-                                                              controller:
-                                                                  textEditingController,
-                                                              focusNode:
-                                                                  focusNode,
-                                                              onSubmitted:
-                                                                  (value) =>
-                                                                      onFieldSubmitted(),
-                                                              decoration:
-                                                                  InputDecoration(
-                                                                labelText:
-                                                                    'Contact Person',
-                                                                labelStyle: const TextStyle(
-                                                                    fontSize:
-                                                                        14,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w400,
-                                                                    color: Color(
-                                                                        0xFF8F8F8F)),
-                                                                suffixIcon:
-                                                                    IconButton(
-                                                                  icon: _searchController3
-                                                                              .text ==
-                                                                          ""
-                                                                      ? const Icon(
-                                                                          Icons
-                                                                              .search,
-                                                                          color:
-                                                                              Color(0xff2ca9df),
-                                                                        )
-                                                                      : const Icon(
-                                                                          Icons
-                                                                              .clear),
-                                                                  onPressed:
-                                                                      () {
-                                                                    _searchController3
-                                                                        .clear();
-                                                                  },
-                                                                ),
-                                                              ),
-                                                            );
-                                                          },
-                                                          onSelected:
-                                                              (Contacts value) {
+                                                              (
+                                                                Contacts option,
+                                                              ) => option
+                                                                  .CustomerName,
+                                                          fieldViewBuilder:
+                                                              (
+                                                                context,
+                                                                textEditingController,
+                                                                focusNode,
+                                                                onFieldSubmitted,
+                                                              ) {
+                                                                return TextField(
+                                                                  controller:
+                                                                      textEditingController,
+                                                                  focusNode:
+                                                                      focusNode,
+                                                                  onSubmitted:
+                                                                      (value) =>
+                                                                          onFieldSubmitted(),
+                                                                  decoration: InputDecoration(
+                                                                    labelText:
+                                                                        'Contact Person',
+                                                                    labelStyle: const TextStyle(
+                                                                      fontSize:
+                                                                          14,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w400,
+                                                                      color: Color(
+                                                                        0xFF8F8F8F,
+                                                                      ),
+                                                                    ),
+                                                                    suffixIcon: IconButton(
+                                                                      icon:
+                                                                          _searchController3.text ==
+                                                                              ""
+                                                                          ? const Icon(
+                                                                              Icons.search,
+                                                                              color: Color(
+                                                                                0xff2ca9df,
+                                                                              ),
+                                                                            )
+                                                                          : const Icon(
+                                                                              Icons.clear,
+                                                                            ),
+                                                                      onPressed: () {
+                                                                        _searchController3
+                                                                            .clear();
+                                                                      },
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                          onSelected: (Contacts value) {
                                                             setState(() {
                                                               selectedOption = value
                                                                   .CustomerName;
                                                               _searchController3
-                                                                      .text =
-                                                                  value
-                                                                      .CustomerName;
-                                                              var customer =
-                                                                  contactMasterList
-                                                                      .firstWhere(
+                                                                  .text = value
+                                                                  .CustomerName;
+                                                              var customer = contactMasterList.firstWhere(
                                                                 (map) =>
                                                                     map['CustContactName'] ==
                                                                     value
                                                                         .CustomerName,
                                                                 orElse: () =>
-                                                                    <String,
-                                                                        dynamic>{
-                                                                  'CustContactId':
-                                                                      null
-                                                                },
+                                                                    <
+                                                                      String,
+                                                                      dynamic
+                                                                    >{
+                                                                      'CustContactId':
+                                                                          null,
+                                                                    },
                                                               );
                                                               selectedLeadContactId =
-                                                                  customer[
-                                                                          'CustContactId']
+                                                                  customer['CustContactId']
                                                                       .toString();
                                                               _phoneController
-                                                                  .text = customer[
-                                                                      'CustContactMobileNo']
-                                                                  .toString();
+                                                                      .text =
+                                                                  customer['CustContactMobileNo']
+                                                                      .toString();
                                                               _emailController
-                                                                  .text = customer[
-                                                                      'CustContactEmailId']
-                                                                  .toString();
+                                                                      .text =
+                                                                  customer['CustContactEmailId']
+                                                                      .toString();
                                                               _designationController
-                                                                  .text = customer[
-                                                                      'DesignationName']
-                                                                  .toString();
+                                                                      .text =
+                                                                  customer['DesignationName']
+                                                                      .toString();
                                                               _departmentController
-                                                                  .text = customer[
-                                                                      'DepartmentName']
-                                                                  .toString();
+                                                                      .text =
+                                                                  customer['DepartmentName']
+                                                                      .toString();
                                                             });
                                                           },
                                                           optionsViewBuilder:
-                                                              (BuildContext
-                                                                      context,
-                                                                  void Function(
-                                                                          Contacts)
-                                                                      onSelected,
-                                                                  Iterable<
-                                                                          Contacts>
-                                                                      options) {
-                                                            return Material(
-                                                              elevation: 4.0,
-                                                              child: Container(
-                                                                constraints:
-                                                                    const BoxConstraints(
-                                                                        maxHeight:
-                                                                            200),
-                                                                child: ListView
-                                                                    .builder(
-                                                                  padding:
-                                                                      EdgeInsets
-                                                                          .zero,
-                                                                  physics:
-                                                                      const ClampingScrollPhysics(),
-                                                                  shrinkWrap:
-                                                                      true,
-                                                                  itemCount:
-                                                                      options
-                                                                          .length,
-                                                                  itemBuilder:
-                                                                      (BuildContext
-                                                                              context,
-                                                                          int index) {
-                                                                    final Contacts
-                                                                        option =
-                                                                        options.elementAt(
-                                                                            index);
-                                                                    return GestureDetector(
-                                                                      onTap:
-                                                                          () {
-                                                                        onSelected(
-                                                                            option);
-                                                                      },
-                                                                      child:
-                                                                          ListTile(
-                                                                        title: Text(
-                                                                            option.CustomerName),
-                                                                      ),
-                                                                    );
-                                                                  },
-                                                                ),
-                                                              ),
-                                                            );
-                                                          },
+                                                              (
+                                                                BuildContext
+                                                                context,
+                                                                void Function(
+                                                                  Contacts,
+                                                                )
+                                                                onSelected,
+                                                                Iterable<
+                                                                  Contacts
+                                                                >
+                                                                options,
+                                                              ) {
+                                                                return Material(
+                                                                  elevation:
+                                                                      4.0,
+                                                                  child: Container(
+                                                                    constraints:
+                                                                        const BoxConstraints(
+                                                                          maxHeight:
+                                                                              200,
+                                                                        ),
+                                                                    child: ListView.builder(
+                                                                      padding:
+                                                                          EdgeInsets
+                                                                              .zero,
+                                                                      physics:
+                                                                          const ClampingScrollPhysics(),
+                                                                      shrinkWrap:
+                                                                          true,
+                                                                      itemCount:
+                                                                          options
+                                                                              .length,
+                                                                      itemBuilder:
+                                                                          (
+                                                                            BuildContext
+                                                                            context,
+                                                                            int
+                                                                            index,
+                                                                          ) {
+                                                                            final Contacts
+                                                                            option = options.elementAt(
+                                                                              index,
+                                                                            );
+                                                                            return GestureDetector(
+                                                                              onTap: () {
+                                                                                onSelected(
+                                                                                  option,
+                                                                                );
+                                                                              },
+                                                                              child: ListTile(
+                                                                                title: Text(
+                                                                                  option.CustomerName,
+                                                                                ),
+                                                                              ),
+                                                                            );
+                                                                          },
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
                                                         )
                                                       : SizedBox(
-                                                          height: deviceOrientation ==
+                                                          height:
+                                                              deviceOrientation ==
                                                                   "Portrait"
                                                               ? containerHeight
                                                               : containerDropDownHeight /
-                                                                  1.5,
+                                                                    1.5,
                                                           child: Stack(
                                                             children: [
                                                               Positioned.fill(
-                                                                child:
-                                                                    AsyncAutocomplete<
-                                                                        Contacts>(
+                                                                child: AsyncAutocomplete<Contacts>(
                                                                   focusNode:
                                                                       _focus2,
                                                                   onTap: () {
@@ -3003,124 +3148,117 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                   },
                                                                   maxListHeight:
                                                                       deviceOrientation ==
-                                                                              "Portrait"
-                                                                          ? 370
-                                                                          : 200,
-                                                                  decoration:
-                                                                      InputDecoration(
+                                                                          "Portrait"
+                                                                      ? 370
+                                                                      : 200,
+                                                                  decoration: InputDecoration(
                                                                     labelText:
                                                                         'Name',
-                                                                    labelStyle:
-                                                                        const TextStyle(
+                                                                    labelStyle: const TextStyle(
                                                                       fontSize:
                                                                           14,
                                                                       color: Color(
-                                                                          0xFF8F8F8F),
+                                                                        0xFF8F8F8F,
+                                                                      ),
                                                                       fontWeight:
                                                                           FontWeight
                                                                               .w500,
                                                                       fontFamily:
                                                                           "Poppins",
                                                                     ),
-                                                                    focusedBorder:
-                                                                        UnderlineInputBorder(
-                                                                      borderSide:
-                                                                          const BorderSide(
+                                                                    focusedBorder: UnderlineInputBorder(
+                                                                      borderSide: const BorderSide(
                                                                         color: Colors
                                                                             .blue,
                                                                       ),
                                                                       borderRadius:
                                                                           BorderRadius.circular(
-                                                                              0.0),
+                                                                            0.0,
+                                                                          ),
                                                                     ),
-                                                                    contentPadding: const EdgeInsets
-                                                                        .only(
-                                                                        left: 0,
-                                                                        right:
-                                                                            0,
-                                                                        top: 0,
-                                                                        bottom:
-                                                                            0),
+                                                                    contentPadding:
+                                                                        const EdgeInsets.only(
+                                                                          left:
+                                                                              0,
+                                                                          right:
+                                                                              0,
+                                                                          top:
+                                                                              0,
+                                                                          bottom:
+                                                                              0,
+                                                                        ),
                                                                   ),
                                                                   controller:
                                                                       _searchController3,
                                                                   inputKey:
                                                                       contactKey,
                                                                   onTapItem:
-                                                                      (Contacts
-                                                                          contact) {
-                                                                    setState(
-                                                                        () {
-                                                                      reverseScroll =
-                                                                          false;
-                                                                      selectedOption =
-                                                                          contact
+                                                                      (
+                                                                        Contacts
+                                                                        contact,
+                                                                      ) {
+                                                                        setState(() {
+                                                                          reverseScroll =
+                                                                              false;
+                                                                          selectedOption =
+                                                                              contact.CustomerName;
+                                                                          _searchController3
+                                                                              .text = contact
                                                                               .CustomerName;
-                                                                      _searchController3
-                                                                              .text =
-                                                                          contact
-                                                                              .CustomerName;
-                                                                      var customer =
-                                                                          contactMasterList
-                                                                              .firstWhere(
-                                                                        (map) =>
-                                                                            map['CustContactName'] ==
-                                                                            contact.CustomerName,
-                                                                        orElse: () =>
-                                                                            <String,
-                                                                                dynamic>{
-                                                                          'CustContactId':
-                                                                              null
-                                                                        },
-                                                                      );
-                                                                      selectedLeadContactId =
-                                                                          customer['CustContactId']
+                                                                          var customer = contactMasterList.firstWhere(
+                                                                            (
+                                                                              map,
+                                                                            ) =>
+                                                                                map['CustContactName'] ==
+                                                                                contact.CustomerName,
+                                                                            orElse: () =>
+                                                                                <
+                                                                                  String,
+                                                                                  dynamic
+                                                                                >{
+                                                                                  'CustContactId': null,
+                                                                                },
+                                                                          );
+                                                                          selectedLeadContactId =
+                                                                              customer['CustContactId'].toString();
+                                                                          _phoneController
+                                                                              .text = customer['CustContactMobileNo']
                                                                               .toString();
-                                                                      _phoneController
-                                                                          .text = customer[
-                                                                              'CustContactMobileNo']
-                                                                          .toString();
-                                                                      _emailController
-                                                                          .text = customer[
-                                                                              'CustContactEmailId']
-                                                                          .toString();
-                                                                      _designationController
-                                                                          .text = customer[
-                                                                              'DesignationName']
-                                                                          .toString();
-                                                                      _departmentController
-                                                                          .text = customer[
-                                                                              'DepartmentName']
-                                                                          .toString();
-                                                                    });
-                                                                  },
-                                                                  suggestionBuilder:
-                                                                      (data) =>
-                                                                          ListTile(
+                                                                          _emailController
+                                                                              .text = customer['CustContactEmailId']
+                                                                              .toString();
+                                                                          _designationController
+                                                                              .text = customer['DesignationName']
+                                                                              .toString();
+                                                                          _departmentController
+                                                                              .text = customer['DepartmentName']
+                                                                              .toString();
+                                                                        });
+                                                                      },
+                                                                  suggestionBuilder: (data) => ListTile(
                                                                     title: Text(
                                                                       data.CustomerName,
-                                                                      style:
-                                                                          const TextStyle(
+                                                                      style: const TextStyle(
                                                                         fontSize:
                                                                             14,
                                                                       ),
                                                                     ),
                                                                   ),
                                                                   asyncSuggestions:
-                                                                      (searchValue) =>
-                                                                          getContacts(
-                                                                              searchValue),
+                                                                      (
+                                                                        searchValue,
+                                                                      ) => getContacts(
+                                                                        searchValue,
+                                                                      ),
                                                                 ),
                                                               ),
                                                               Positioned(
                                                                 top: 0,
                                                                 right: 0,
                                                                 child: SizedBox(
-                                                                  child:
-                                                                      GestureDetector(
+                                                                  child: GestureDetector(
                                                                     onTap: () {
-                                                                      setState(
-                                                                          () {
+                                                                      setState(() {
                                                                         selectedOption =
                                                                             '';
                                                                         _searchController3
@@ -3128,35 +3266,43 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                         _clearContactSummary();
                                                                       });
                                                                     },
-                                                                    child: _searchController3.text ==
+                                                                    child:
+                                                                        _searchController3.text ==
                                                                             ""
                                                                         ? Container(
-                                                                            decoration:
-                                                                                const BoxDecoration(
+                                                                            decoration: const BoxDecoration(
                                                                               color: Colors.transparent,
                                                                             ),
-                                                                            child:
-                                                                                const Padding(
-                                                                              padding: EdgeInsets.only(top: 14, right: 2),
+                                                                            child: const Padding(
+                                                                              padding: EdgeInsets.only(
+                                                                                top: 14,
+                                                                                right: 2,
+                                                                              ),
                                                                               child: Icon(
                                                                                 Icons.search,
-                                                                                color: Color(0xff2ca9df),
+                                                                                color: Color(
+                                                                                  0xff2ca9df,
+                                                                                ),
                                                                               ),
                                                                             ),
                                                                           )
                                                                         : Container(
-                                                                            decoration:
-                                                                                const BoxDecoration(
+                                                                            decoration: const BoxDecoration(
                                                                               color: Colors.transparent,
                                                                             ),
-                                                                            child:
-                                                                                Padding(
-                                                                              padding: const EdgeInsets.only(top: 7, right: 2),
+                                                                            child: Padding(
+                                                                              padding: const EdgeInsets.only(
+                                                                                top: 7,
+                                                                                right: 2,
+                                                                              ),
                                                                               child: IconButton(
                                                                                 onPressed: () {
                                                                                   _clearContactSummary();
                                                                                 },
-                                                                                icon: const Icon(Icons.close_rounded, size: 20),
+                                                                                icon: const Icon(
+                                                                                  Icons.close_rounded,
+                                                                                  size: 20,
+                                                                                ),
                                                                                 color: Colors.grey,
                                                                               ),
                                                                             ),
@@ -3171,13 +3317,15 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               ),
                                               Padding(
                                                 padding: const EdgeInsets.only(
-                                                    top: 10),
+                                                  top: 10,
+                                                ),
                                                 child: SizedBox(
-                                                  height: deviceOrientation ==
+                                                  height:
+                                                      deviceOrientation ==
                                                           "Portrait"
                                                       ? containerHeight
                                                       : containerDropDownHeight /
-                                                          1.5,
+                                                            1.5,
                                                   child: TextFormField(
                                                     controller:
                                                         _designationController,
@@ -3187,29 +3335,34 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       labelText: 'Designation',
                                                       labelStyle:
                                                           const TextStyle(
-                                                        fontSize: 14,
-                                                        color:
-                                                            Color(0xFF8F8F8F),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontFamily: "Poppins",
-                                                      ),
+                                                            fontSize: 14,
+                                                            color: Color(
+                                                              0xFF8F8F8F,
+                                                            ),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            fontFamily:
+                                                                "Poppins",
+                                                          ),
                                                       focusedBorder:
                                                           UnderlineInputBorder(
-                                                        borderSide:
-                                                            const BorderSide(
-                                                          color: Colors.blue,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(0.0),
-                                                      ),
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Colors
+                                                                      .blue,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  0.0,
+                                                                ),
+                                                          ),
                                                       contentPadding:
                                                           const EdgeInsets.only(
-                                                              left: 0,
-                                                              right: 0,
-                                                              top: 0,
-                                                              bottom: 0),
+                                                            left: 0,
+                                                            right: 0,
+                                                            top: 0,
+                                                            bottom: 0,
+                                                          ),
                                                     ),
                                                     validator: (value) {
                                                       if ((value == null ||
@@ -3228,13 +3381,15 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               ),
                                               Padding(
                                                 padding: const EdgeInsets.only(
-                                                    top: 10),
+                                                  top: 10,
+                                                ),
                                                 child: SizedBox(
-                                                  height: deviceOrientation ==
+                                                  height:
+                                                      deviceOrientation ==
                                                           "Portrait"
                                                       ? containerHeight
                                                       : containerDropDownHeight /
-                                                          1.5,
+                                                            1.5,
                                                   child: TextFormField(
                                                     controller:
                                                         _departmentController,
@@ -3244,29 +3399,34 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       labelText: 'Department',
                                                       labelStyle:
                                                           const TextStyle(
-                                                        fontSize: 14,
-                                                        color:
-                                                            Color(0xFF8F8F8F),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontFamily: "Poppins",
-                                                      ),
+                                                            fontSize: 14,
+                                                            color: Color(
+                                                              0xFF8F8F8F,
+                                                            ),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            fontFamily:
+                                                                "Poppins",
+                                                          ),
                                                       focusedBorder:
                                                           UnderlineInputBorder(
-                                                        borderSide:
-                                                            const BorderSide(
-                                                          color: Colors.blue,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(0.0),
-                                                      ),
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Colors
+                                                                      .blue,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  0.0,
+                                                                ),
+                                                          ),
                                                       contentPadding:
                                                           const EdgeInsets.only(
-                                                              left: 0,
-                                                              right: 0,
-                                                              top: 0,
-                                                              bottom: 0),
+                                                            left: 0,
+                                                            right: 0,
+                                                            top: 0,
+                                                            bottom: 0,
+                                                          ),
                                                     ),
                                                     validator: (value) {
                                                       if (value == null ||
@@ -3282,13 +3442,15 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               ),
                                               Padding(
                                                 padding: const EdgeInsets.only(
-                                                    top: 10),
+                                                  top: 10,
+                                                ),
                                                 child: SizedBox(
-                                                  height: deviceOrientation ==
+                                                  height:
+                                                      deviceOrientation ==
                                                           "Portrait"
                                                       ? containerHeight
                                                       : containerDropDownHeight /
-                                                          1.5,
+                                                            1.5,
                                                   child: TextFormField(
                                                     controller:
                                                         _phoneController,
@@ -3299,36 +3461,42 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                           'Contact Number',
                                                       labelStyle:
                                                           const TextStyle(
-                                                        fontSize: 14,
-                                                        color:
-                                                            Color(0xFF8F8F8F),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontFamily: "Poppins",
-                                                      ),
+                                                            fontSize: 14,
+                                                            color: Color(
+                                                              0xFF8F8F8F,
+                                                            ),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            fontFamily:
+                                                                "Poppins",
+                                                          ),
                                                       focusedBorder:
                                                           UnderlineInputBorder(
-                                                        borderSide:
-                                                            const BorderSide(
-                                                          color: Colors.blue,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(0.0),
-                                                      ),
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Colors
+                                                                      .blue,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  0.0,
+                                                                ),
+                                                          ),
                                                       contentPadding:
                                                           const EdgeInsets.only(
-                                                              left: 0,
-                                                              right: 0,
-                                                              top: 0,
-                                                              bottom: 0),
+                                                            left: 0,
+                                                            right: 0,
+                                                            top: 0,
+                                                            bottom: 0,
+                                                          ),
                                                     ),
                                                     validator: (value) {
                                                       if (value == null ||
                                                           value.isEmpty) {
                                                         return 'Please enter your contact number.';
                                                       } else if (!isValidPhoneNumber(
-                                                          value)) {
+                                                        value,
+                                                      )) {
                                                         return 'Please enter a valid phone number';
                                                       }
                                                       return null;
@@ -3338,13 +3506,15 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               ),
                                               Padding(
                                                 padding: const EdgeInsets.only(
-                                                    top: 10),
+                                                  top: 10,
+                                                ),
                                                 child: SizedBox(
-                                                  height: deviceOrientation ==
+                                                  height:
+                                                      deviceOrientation ==
                                                           "Portrait"
                                                       ? containerHeight
                                                       : containerDropDownHeight /
-                                                          1.5,
+                                                            1.5,
                                                   child: TextFormField(
                                                     controller:
                                                         _emailController,
@@ -3354,43 +3524,50 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       labelText: 'Email',
                                                       labelStyle:
                                                           const TextStyle(
-                                                        fontSize: 14,
-                                                        color:
-                                                            Color(0xFF8F8F8F),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontFamily: "Poppins",
-                                                      ),
+                                                            fontSize: 14,
+                                                            color: Color(
+                                                              0xFF8F8F8F,
+                                                            ),
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            fontFamily:
+                                                                "Poppins",
+                                                          ),
                                                       focusedBorder:
                                                           UnderlineInputBorder(
-                                                        borderSide:
-                                                            const BorderSide(
-                                                          color: Colors.blue,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(0.0),
-                                                      ),
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Colors
+                                                                      .blue,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  0.0,
+                                                                ),
+                                                          ),
                                                       contentPadding:
                                                           const EdgeInsets.only(
-                                                              left: 0,
-                                                              right: 0,
-                                                              top: 0,
-                                                              bottom: 0),
+                                                            left: 0,
+                                                            right: 0,
+                                                            top: 0,
+                                                            bottom: 0,
+                                                          ),
                                                     ),
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(
-                                                height: 5,
-                                              ),
+                                              const SizedBox(height: 5),
                                               Padding(
-                                                padding: deviceOrientation ==
+                                                padding:
+                                                    deviceOrientation ==
                                                         "Portrait"
                                                     ? const EdgeInsets.only(
-                                                        left: 0.0)
+                                                        left: 0.0,
+                                                      )
                                                     : const EdgeInsets.only(
-                                                        left: 0.0, right: 0.0),
+                                                        left: 0.0,
+                                                        right: 0.0,
+                                                      ),
                                                 child: Row(
                                                   mainAxisAlignment:
                                                       MainAxisAlignment
@@ -3401,14 +3578,15 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                         const Text(
                                                           'Decision Maker :',
                                                           style: TextStyle(
-                                                              color: Color(
-                                                                  0xFF8F8F8F),
-                                                              fontFamily:
-                                                                  "Poppins",
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              fontSize: 14),
+                                                            color: Color(
+                                                              0xFF8F8F8F,
+                                                            ),
+                                                            fontFamily:
+                                                                "Poppins",
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            fontSize: 14,
+                                                          ),
                                                         ),
                                                         Checkbox(
                                                           value: selectedValue,
@@ -3428,23 +3606,25 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     //           "",
                                                     //  child:
                                                     IconButton(
-                                                        onPressed: () {
-                                                          if (!kIsWeb) {
-                                                            getCurrentLocation();
-                                                          } else {
-                                                            getCurrentLocationWeb();
-                                                          }
-                                                        },
-                                                        icon: (!kIsWeb
-                                                                ? locationLoading
-                                                                : false)
-                                                            ? const CircularProgressIndicator()
-                                                            : const Icon(
-                                                                Icons
-                                                                    .location_on,
-                                                                color: Color(
-                                                                    0xFF2CA9DF),
-                                                              )),
+                                                      onPressed: () {
+                                                        if (!kIsWeb) {
+                                                          getCurrentLocation();
+                                                        } else {
+                                                          getCurrentLocationWeb();
+                                                        }
+                                                      },
+                                                      icon:
+                                                          (!kIsWeb
+                                                              ? locationLoading
+                                                              : false)
+                                                          ? const CircularProgressIndicator()
+                                                          : const Icon(
+                                                              Icons.location_on,
+                                                              color: Color(
+                                                                0xFF2CA9DF,
+                                                              ),
+                                                            ),
+                                                    ),
                                                     // ),
                                                     Row(
                                                       children: [
@@ -3460,25 +3640,28 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                               } else {
                                                                 const snackBar =
                                                                     SnackBar(
-                                                                  content: Text(
-                                                                      'Contact details not added to the list'),
-                                                                );
+                                                                      content: Text(
+                                                                        'Contact details not added to the list',
+                                                                      ),
+                                                                    );
                                                                 ScaffoldMessenger.of(
-                                                                        context)
-                                                                    .showSnackBar(
-                                                                        snackBar);
+                                                                  context,
+                                                                ).showSnackBar(
+                                                                  snackBar,
+                                                                );
                                                               }
                                                             },
                                                             child: Container(
                                                               width: 0,
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: const Color(
-                                                                    0xFF2CA9DF),
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF2CA9DF,
+                                                                    ),
                                                                 borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            0.0),
+                                                                    BorderRadius.circular(
+                                                                      0.0,
+                                                                    ),
                                                               ),
                                                               child: const Row(
                                                                 mainAxisAlignment:
@@ -3488,11 +3671,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                   Padding(
                                                                     padding:
                                                                         EdgeInsets.all(
-                                                                            8.0),
+                                                                          8.0,
+                                                                        ),
                                                                     child: Text(
                                                                       'Add',
-                                                                      style:
-                                                                          TextStyle(
+                                                                      style: TextStyle(
                                                                         color: Colors
                                                                             .white,
                                                                         fontSize:
@@ -3501,13 +3684,15 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                     ),
                                                                   ),
                                                                   SizedBox(
-                                                                      width: 4),
+                                                                    width: 4,
+                                                                  ),
                                                                   Icon(
-                                                                      Icons
-                                                                          .add_circle_outline,
-                                                                      color: Colors
-                                                                          .white,
-                                                                      size: 18),
+                                                                    Icons
+                                                                        .add_circle_outline,
+                                                                    color: Colors
+                                                                        .white,
+                                                                    size: 18,
+                                                                  ),
                                                                 ],
                                                               ),
                                                             ),
@@ -3518,25 +3703,22 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                   ],
                                                 ),
                                               ),
-                                              const SizedBox(
-                                                height: 5,
-                                              ),
+                                              const SizedBox(height: 5),
                                               SizedBox(
                                                 height: 200,
                                                 child: ListView.builder(
                                                   physics:
                                                       const ClampingScrollPhysics(),
                                                   itemCount: contactList.length,
-                                                  itemBuilder:
-                                                      (BuildContext context,
-                                                          int index) {
+                                                  itemBuilder: (BuildContext context, int index) {
                                                     return Column(
                                                       children: <Widget>[
                                                         SizedBox(
                                                           width: 350,
                                                           child: Container(
                                                             color: const Color(
-                                                                0xFFefefef),
+                                                              0xFFefefef,
+                                                            ),
                                                             child: Row(
                                                               mainAxisAlignment:
                                                                   MainAxisAlignment
@@ -3546,19 +3728,21 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                       .start,
                                                               children: [
                                                                 Expanded(
-                                                                  child:
-                                                                      ListTile(
+                                                                  child: ListTile(
                                                                     title: Text(
-                                                                        contactList[index]['leadContactName'] ??
-                                                                            '',
-                                                                        style: const TextStyle(
-                                                                            fontSize:
-                                                                                14,
-                                                                            color:
-                                                                                Color(0xff454545),
-                                                                            fontFamily: "Poppins")),
-                                                                    subtitle:
-                                                                        Column(
+                                                                      contactList[index]['leadContactName'] ??
+                                                                          '',
+                                                                      style: const TextStyle(
+                                                                        fontSize:
+                                                                            14,
+                                                                        color: Color(
+                                                                          0xff454545,
+                                                                        ),
+                                                                        fontFamily:
+                                                                            "Poppins",
+                                                                      ),
+                                                                    ),
+                                                                    subtitle: Column(
                                                                       crossAxisAlignment:
                                                                           CrossAxisAlignment
                                                                               .start,
@@ -3566,35 +3750,77 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                         Row(
                                                                           children: [
                                                                             Expanded(
-                                                                              child: Text(contactList[index]['leadContactDepartment'] ?? '', style: const TextStyle(fontSize: 14, color: Color(0xff454545))),
+                                                                              child: Text(
+                                                                                contactList[index]['leadContactDepartment'] ??
+                                                                                    '',
+                                                                                style: const TextStyle(
+                                                                                  fontSize: 14,
+                                                                                  color: Color(
+                                                                                    0xff454545,
+                                                                                  ),
+                                                                                ),
+                                                                              ),
                                                                             ),
-                                                                            const SizedBox(width: 10),
-                                                                            const Text("/",
-                                                                                style: TextStyle(fontSize: 14, color: Color(0xff454545))),
-                                                                            const SizedBox(width: 10),
+                                                                            const SizedBox(
+                                                                              width: 10,
+                                                                            ),
+                                                                            const Text(
+                                                                              "/",
+                                                                              style: TextStyle(
+                                                                                fontSize: 14,
+                                                                                color: Color(
+                                                                                  0xff454545,
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                            const SizedBox(
+                                                                              width: 10,
+                                                                            ),
                                                                             Expanded(
                                                                               child: Text(
-                                                                                contactList[index]['leadContactDesignation'] ?? '',
+                                                                                contactList[index]['leadContactDesignation'] ??
+                                                                                    '',
                                                                                 style: const TextStyle(
                                                                                   fontSize: 14,
                                                                                 ),
                                                                               ),
                                                                             ),
-                                                                            const SizedBox(width: 70),
+                                                                            const SizedBox(
+                                                                              width: 70,
+                                                                            ),
                                                                             Row(
                                                                               children: [
-                                                                                Visibility(visible: contactList[index]["leadContactDecisionMaker"].toString() == "Yes", child: const Text('DM')),
+                                                                                Visibility(
+                                                                                  visible:
+                                                                                      contactList[index]["leadContactDecisionMaker"].toString() ==
+                                                                                      "Yes",
+                                                                                  child: const Text(
+                                                                                    'DM',
+                                                                                  ),
+                                                                                ),
                                                                                 const SizedBox(
                                                                                   width: 15,
                                                                                 ),
                                                                                 GestureDetector(
                                                                                   onTap: () {
-                                                                                    loadContactDetails(contactList[index]);
-                                                                                    setState(() {
-                                                                                      contactList.remove(contactList[index]);
-                                                                                    });
+                                                                                    loadContactDetails(
+                                                                                      contactList[index],
+                                                                                    );
+                                                                                    setState(
+                                                                                      () {
+                                                                                        contactList.remove(
+                                                                                          contactList[index],
+                                                                                        );
+                                                                                      },
+                                                                                    );
                                                                                   },
-                                                                                  child: const Icon(Icons.edit, size: 16.0, color: Color(0xff454545)),
+                                                                                  child: const Icon(
+                                                                                    Icons.edit,
+                                                                                    size: 16.0,
+                                                                                    color: Color(
+                                                                                      0xff454545,
+                                                                                    ),
+                                                                                  ),
                                                                                 ),
                                                                               ],
                                                                             ),
@@ -3622,25 +3848,21 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(
-                                    height: 10,
+                                  const SizedBox(height: 10),
+                                  const Text(
+                                    "Meeting Summary",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
                                   ),
-                                  const Text("Meeting Summary",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      )),
-                                  const SizedBox(
-                                    height: 10,
-                                  ),
+                                  const SizedBox(height: 10),
                                   SizedBox(
                                     height: 150,
                                     width: 400,
                                     child: ParticipantMultiLevelDropDown(),
                                   ),
-                                  const SizedBox(
-                                    height: 10,
-                                  ),
+                                  const SizedBox(height: 10),
                                   TextField(
                                     controller: summaryController,
                                     keyboardType: TextInputType.multiline,
@@ -3649,32 +3871,42 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                     decoration: InputDecoration(
                                       enabledBorder: OutlineInputBorder(
                                         borderSide: const BorderSide(
-                                            color: Color(0xFF8F8F8F)),
+                                          color: Color(0xFF8F8F8F),
+                                        ),
                                         borderRadius: BorderRadius.circular(1),
                                       ),
                                       labelText: "Summary of Discussion",
                                       labelStyle: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w400,
-                                          color: Color(0xFF8F8F8F)),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                        color: Color(0xFF8F8F8F),
+                                      ),
                                       focusedBorder: const OutlineInputBorder(
-                                          borderSide: BorderSide(
-                                              width: 1, color: Colors.grey)),
+                                        borderSide: BorderSide(
+                                          width: 1,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
                                       contentPadding: const EdgeInsets.only(
-                                          left: 15,
-                                          right: 0,
-                                          top: 15,
-                                          bottom: 0),
+                                        left: 15,
+                                        right: 0,
+                                        top: 15,
+                                        bottom: 0,
+                                      ),
                                       suffixIcon: IconButton(
-                                        icon: Icon(_isSummaryListening
-                                            ? Icons.mic
-                                            : Icons.mic_none),
+                                        icon: Icon(
+                                          _isSummaryListening
+                                              ? Icons.mic
+                                              : Icons.mic_none,
+                                        ),
                                         onPressed: () {
-                                          _listen(summaryController,
-                                              _isSummaryListening,
-                                              (bool isListening) {
-                                            _isSummaryListening = isListening;
-                                          });
+                                          _listen(
+                                            summaryController,
+                                            _isSummaryListening,
+                                            (bool isListening) {
+                                              _isSummaryListening = isListening;
+                                            },
+                                          );
                                         },
                                       ),
                                     ),
@@ -3683,31 +3915,36 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                     mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
                                       const Text(
-                                          "Any Input Material submitted ?",
-                                          style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w400,
-                                              color: Color(0xFF8F8F8F))),
+                                        "Any Input Material submitted ?",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          color: Color(0xFF8F8F8F),
+                                        ),
+                                      ),
                                       Transform.scale(
                                         scale: .7,
                                         child: Checkbox(
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(2.0),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              2.0,
                                             ),
-                                            side: WidgetStateBorderSide
-                                                .resolveWith(
-                                              (states) => const BorderSide(
+                                          ),
+                                          side:
+                                              WidgetStateBorderSide.resolveWith(
+                                                (states) => const BorderSide(
                                                   width: 1.0,
-                                                  color: Color(0xFF8F8F8F)),
-                                            ),
-                                            value: inputMaterialCheck,
-                                            onChanged: (bool? value) {
-                                              setState(() {
-                                                inputMaterialCheck =
-                                                    value ?? false;
-                                              });
-                                            }),
+                                                  color: Color(0xFF8F8F8F),
+                                                ),
+                                              ),
+                                          value: inputMaterialCheck,
+                                          onChanged: (bool? value) {
+                                            setState(() {
+                                              inputMaterialCheck =
+                                                  value ?? false;
+                                            });
+                                          },
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -3720,81 +3957,95 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                 textEditingController:
                                                     materialController,
                                                 focusNode: _focusInputMaterial,
-                                                optionsBuilder:
-                                                    (TextEditingValue val) {
+                                                optionsBuilder: (TextEditingValue val) {
                                                   if (val.text == '') {
                                                     return const Iterable<
-                                                        InputMaterial>.empty();
+                                                      InputMaterial
+                                                    >.empty();
                                                   }
-                                                  return inputMaterialWeb.where(
-                                                      (InputMaterial option) {
-                                                    return option.MaterialName
-                                                            .toLowerCase()
-                                                        .contains(val.text
-                                                            .toLowerCase());
+                                                  return inputMaterialWeb.where((
+                                                    InputMaterial option,
+                                                  ) {
+                                                    return option
+                                                            .MaterialName.toLowerCase()
+                                                        .contains(
+                                                          val.text
+                                                              .toLowerCase(),
+                                                        );
                                                   });
                                                 },
                                                 displayStringForOption:
                                                     (InputMaterial option) =>
                                                         option.MaterialName,
-                                                fieldViewBuilder: (context,
-                                                    textEditingController,
-                                                    focusNode,
-                                                    onFieldSubmitted) {
-                                                  return TextField(
-                                                    controller:
-                                                        textEditingController,
-                                                    focusNode: focusNode,
-                                                    onSubmitted: (value) {},
-                                                    decoration: InputDecoration(
-                                                      labelText:
-                                                          '   Input Materials',
-                                                      labelStyle:
-                                                          const TextStyle(
-                                                        color:
-                                                            Color(0xFF454545),
-                                                        fontFamily: "Poppins",
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        fontSize: 14,
-                                                      ),
-                                                      suffixIcon: IconButton(
-                                                        icon: _searchController
-                                                                    .text ==
-                                                                ""
-                                                            ? const Icon(
-                                                                Icons.search,
+                                                fieldViewBuilder:
+                                                    (
+                                                      context,
+                                                      textEditingController,
+                                                      focusNode,
+                                                      onFieldSubmitted,
+                                                    ) {
+                                                      return TextField(
+                                                        controller:
+                                                            textEditingController,
+                                                        focusNode: focusNode,
+                                                        onSubmitted: (value) {},
+                                                        decoration: InputDecoration(
+                                                          labelText:
+                                                              '   Input Materials',
+                                                          labelStyle:
+                                                              const TextStyle(
                                                                 color: Color(
-                                                                    0xff2ca9df),
-                                                              )
-                                                            : const Icon(
-                                                                Icons.clear),
-                                                        onPressed: () {
-                                                          _searchController
-                                                              .clear();
-                                                        },
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                                onSelected:
-                                                    (InputMaterial value) {
+                                                                  0xFF454545,
+                                                                ),
+                                                                fontFamily:
+                                                                    "Poppins",
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                fontSize: 14,
+                                                              ),
+                                                          suffixIcon: IconButton(
+                                                            icon:
+                                                                _searchController
+                                                                        .text ==
+                                                                    ""
+                                                                ? const Icon(
+                                                                    Icons
+                                                                        .search,
+                                                                    color: Color(
+                                                                      0xff2ca9df,
+                                                                    ),
+                                                                  )
+                                                                : const Icon(
+                                                                    Icons.clear,
+                                                                  ),
+                                                            onPressed: () {
+                                                              _searchController
+                                                                  .clear();
+                                                            },
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                onSelected: (InputMaterial value) {
                                                   setState(() {
                                                     if (value.MaterialName !=
                                                         "") {
-                                                      selectedMaterial
-                                                          .add(value);
+                                                      selectedMaterial.add(
+                                                        value,
+                                                      );
                                                       inputMaterialController
                                                               .text =
                                                           value.MaterialName;
                                                       materialController
                                                           .clear();
                                                     } else {
-                                                      SnackBar snackBar =
-                                                          const SnackBar(
+                                                      SnackBar
+                                                      snackBar = const SnackBar(
                                                         showCloseIcon: true,
                                                         duration: Duration(
-                                                            seconds: 1),
+                                                          seconds: 1,
+                                                        ),
                                                         content: Text(
                                                           "Please Enter Product Name",
                                                           style: TextStyle(
@@ -3804,145 +4055,154 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                         ),
                                                       );
                                                       ScaffoldMessenger.of(
-                                                              context)
-                                                          .showSnackBar(
-                                                              snackBar);
+                                                        context,
+                                                      ).showSnackBar(snackBar);
                                                     }
                                                     productController.clear();
                                                   });
                                                 },
                                                 optionsViewBuilder:
-                                                    (BuildContext context,
-                                                        void Function(
-                                                                InputMaterial)
-                                                            onSelected,
-                                                        Iterable<InputMaterial>
-                                                            options) {
-                                                  return Material(
-                                                    elevation: 4.0,
-                                                    child: Container(
-                                                      constraints:
-                                                          const BoxConstraints(
-                                                              maxHeight: 200),
-                                                      child: ListView.builder(
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        physics:
-                                                            const ClampingScrollPhysics(),
-                                                        shrinkWrap: true,
-                                                        itemCount:
-                                                            options.length,
-                                                        itemBuilder:
-                                                            (BuildContext
-                                                                    context,
-                                                                int index) {
-                                                          final InputMaterial
-                                                              option =
-                                                              options.elementAt(
-                                                                  index);
-                                                          return GestureDetector(
-                                                            onTap: () {
-                                                              onSelected(
-                                                                  option);
-                                                            },
-                                                            child: ListTile(
-                                                              title: Text(option
-                                                                  .MaterialName),
-                                                            ),
-                                                          );
-                                                        },
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
+                                                    (
+                                                      BuildContext context,
+                                                      void Function(
+                                                        InputMaterial,
+                                                      )
+                                                      onSelected,
+                                                      Iterable<InputMaterial>
+                                                      options,
+                                                    ) {
+                                                      return Material(
+                                                        elevation: 4.0,
+                                                        child: Container(
+                                                          constraints:
+                                                              const BoxConstraints(
+                                                                maxHeight: 200,
+                                                              ),
+                                                          child: ListView.builder(
+                                                            padding:
+                                                                EdgeInsets.zero,
+                                                            physics:
+                                                                const ClampingScrollPhysics(),
+                                                            shrinkWrap: true,
+                                                            itemCount:
+                                                                options.length,
+                                                            itemBuilder:
+                                                                (
+                                                                  BuildContext
+                                                                  context,
+                                                                  int index,
+                                                                ) {
+                                                                  final InputMaterial
+                                                                  option = options
+                                                                      .elementAt(
+                                                                        index,
+                                                                      );
+                                                                  return GestureDetector(
+                                                                    onTap: () {
+                                                                      onSelected(
+                                                                        option,
+                                                                      );
+                                                                    },
+                                                                    child: ListTile(
+                                                                      title: Text(
+                                                                        option
+                                                                            .MaterialName,
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                },
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
                                               )
                                             : SizedBox(
-                                                height: deviceOrientation ==
+                                                height:
+                                                    deviceOrientation ==
                                                         "Portrait"
                                                     ? containerHeight
                                                     : containerDropDownHeight /
-                                                        1.5,
+                                                          1.5,
                                                 child: Stack(
                                                   children: [
                                                     Positioned.fill(
-                                                      child: AsyncAutocomplete<
-                                                          InputMaterial>(
+                                                      child: AsyncAutocomplete<InputMaterial>(
                                                         onChanged: (s) {
                                                           setState(() {});
                                                         },
                                                         onSubmitted:
                                                             (material) {
-                                                          setState(() {});
-                                                        },
+                                                              setState(() {});
+                                                            },
                                                         maxListHeight:
                                                             deviceOrientation ==
-                                                                    "Portrait"
-                                                                ? 370
-                                                                : 200,
-                                                        decoration:
-                                                            InputDecoration(
+                                                                "Portrait"
+                                                            ? 370
+                                                            : 200,
+                                                        decoration: InputDecoration(
                                                           labelText:
                                                               'Input Materials',
                                                           labelStyle:
                                                               const TextStyle(
-                                                            fontSize: 14,
-                                                            color: Color(
-                                                                0xFF8F8F8F),
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            fontFamily:
-                                                                "Poppins",
-                                                          ),
-                                                          focusedBorder:
-                                                              UnderlineInputBorder(
+                                                                fontSize: 14,
+                                                                color: Color(
+                                                                  0xFF8F8F8F,
+                                                                ),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                fontFamily:
+                                                                    "Poppins",
+                                                              ),
+                                                          focusedBorder: UnderlineInputBorder(
                                                             borderSide:
                                                                 const BorderSide(
-                                                              color:
-                                                                  Colors.blue,
-                                                            ),
+                                                                  color: Colors
+                                                                      .blue,
+                                                                ),
                                                             borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        0.0),
+                                                                BorderRadius.circular(
+                                                                  0.0,
+                                                                ),
                                                           ),
                                                           contentPadding:
-                                                              const EdgeInsets
-                                                                  .only(
-                                                                  left: 0,
-                                                                  right: 0,
-                                                                  top: 0,
-                                                                  bottom: 0),
+                                                              const EdgeInsets.only(
+                                                                left: 0,
+                                                                right: 0,
+                                                                top: 0,
+                                                                bottom: 0,
+                                                              ),
                                                         ),
                                                         controller:
                                                             materialController,
                                                         inputKey: materialKey,
-                                                        onTapItem:
-                                                            (InputMaterial
-                                                                mat) {
+                                                        onTapItem: (InputMaterial mat) {
                                                           setState(() {
                                                             selectedMaterial
                                                                 .add(mat);
                                                             inputMaterialController
-                                                                    .text =
-                                                                mat.MaterialName;
+                                                                .text = mat
+                                                                .MaterialName;
                                                             materialController
                                                                 .clear();
                                                           });
                                                         },
                                                         suggestionBuilder:
                                                             (data) => ListTile(
-                                                          title: Text(
-                                                            data.MaterialName,
-                                                            style:
-                                                                const TextStyle(
-                                                              fontSize: 14,
+                                                              title: Text(
+                                                                data.MaterialName,
+                                                                style:
+                                                                    const TextStyle(
+                                                                      fontSize:
+                                                                          14,
+                                                                    ),
+                                                              ),
                                                             ),
-                                                          ),
-                                                        ),
                                                         asyncSuggestions:
                                                             (searchValue) =>
                                                                 getInputMaterialData(
-                                                                    searchValue),
+                                                                  searchValue,
+                                                                ),
                                                       ),
                                                     ),
                                                     Positioned(
@@ -3951,63 +4211,60 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       child: SizedBox(
                                                         child:
                                                             materialController
-                                                                        .text ==
-                                                                    ""
-                                                                ? Container(
-                                                                    decoration:
-                                                                        const BoxDecoration(
+                                                                    .text ==
+                                                                ""
+                                                            ? Container(
+                                                                decoration:
+                                                                    const BoxDecoration(
                                                                       color: Colors
                                                                           .transparent,
                                                                     ),
-                                                                    child:
-                                                                        const Padding(
-                                                                      padding: EdgeInsets.only(
-                                                                          top:
-                                                                              14,
-                                                                          right:
-                                                                              2),
-                                                                      child:
-                                                                          Icon(
-                                                                        Icons
-                                                                            .search,
-                                                                        color: Color(
-                                                                            0xff2ca9df),
+                                                                child: const Padding(
+                                                                  padding:
+                                                                      EdgeInsets.only(
+                                                                        top: 14,
+                                                                        right:
+                                                                            2,
                                                                       ),
-                                                                    ),
-                                                                  )
-                                                                : Container(
-                                                                    decoration:
-                                                                        const BoxDecoration(
-                                                                      color: Colors
-                                                                          .transparent,
-                                                                    ),
-                                                                    child:
-                                                                        Padding(
-                                                                      padding: const EdgeInsets
-                                                                          .only(
-                                                                          top:
-                                                                              7,
-                                                                          right:
-                                                                              2),
-                                                                      child:
-                                                                          IconButton(
-                                                                        onPressed:
-                                                                            () {
-                                                                          setState(
-                                                                              () {
-                                                                            materialController.clear();
-                                                                          });
-                                                                        },
-                                                                        icon: const Icon(
-                                                                            Icons
-                                                                                .close_rounded,
-                                                                            size:
-                                                                                20),
-                                                                        color: Colors
-                                                                            .grey,
-                                                                      ),
+                                                                  child: Icon(
+                                                                    Icons
+                                                                        .search,
+                                                                    color: Color(
+                                                                      0xff2ca9df,
                                                                     ),
                                                                   ),
+                                                                ),
+                                                              )
+                                                            : Container(
+                                                                decoration:
+                                                                    const BoxDecoration(
+                                                                      color: Colors
+                                                                          .transparent,
+                                                                    ),
+                                                                child: Padding(
+                                                                  padding:
+                                                                      const EdgeInsets.only(
+                                                                        top: 7,
+                                                                        right:
+                                                                            2,
+                                                                      ),
+                                                                  child: IconButton(
+                                                                    onPressed: () {
+                                                                      setState(() {
+                                                                        materialController
+                                                                            .clear();
+                                                                      });
+                                                                    },
+                                                                    icon: const Icon(
+                                                                      Icons
+                                                                          .close_rounded,
+                                                                      size: 20,
+                                                                    ),
+                                                                    color: Colors
+                                                                        .grey,
+                                                                  ),
+                                                                ),
+                                                              ),
                                                       ),
                                                     ),
                                                   ],
@@ -4018,112 +4275,114 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           child: SizedBox(
                                             height: 100,
                                             child: ListView.builder(
-                                                physics:
-                                                    const ClampingScrollPhysics(),
-                                                itemCount:
-                                                    selectedMaterial.length,
-                                                itemBuilder:
-                                                    (BuildContext context,
-                                                        int index) {
-                                                  return Card(
-                                                      color: const Color(
-                                                          0xff2ca9df),
-                                                      child: Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .spaceBetween,
-                                                        children: [
-                                                          Expanded(
-                                                            child: Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(8.0),
-                                                              child: Text(
-                                                                selectedMaterial[
-                                                                        index]
-                                                                    .MaterialName,
-                                                                style:
-                                                                    const TextStyle(
+                                              physics:
+                                                  const ClampingScrollPhysics(),
+                                              itemCount:
+                                                  selectedMaterial.length,
+                                              itemBuilder: (BuildContext context, int index) {
+                                                return Card(
+                                                  color: const Color(
+                                                    0xff2ca9df,
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Expanded(
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            selectedMaterial[index]
+                                                                .MaterialName,
+                                                            style:
+                                                                const TextStyle(
                                                                   color: Colors
                                                                       .white,
                                                                   fontSize: 14,
                                                                 ),
-                                                              ),
-                                                            ),
                                                           ),
-                                                          IconButton(
-                                                              onPressed: () {
-                                                                setState(() {
-                                                                  selectedMaterial.remove(
-                                                                      selectedMaterial[
-                                                                          index]);
-                                                                });
-                                                              },
-                                                              icon: const Icon(
-                                                                Icons.close,
-                                                                color: Colors
-                                                                    .white,
-                                                              ))
-                                                        ],
-                                                      ));
-                                                }),
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            selectedMaterial.remove(
+                                                              selectedMaterial[index],
+                                                            );
+                                                          });
+                                                        },
+                                                        icon: const Icon(
+                                                          Icons.close,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
+                                  const SizedBox(height: 15),
                                   SizedBox(
                                     height: 70,
                                     width: 400,
                                     child: Padding(
-                                        padding: const EdgeInsets.only(top: 0),
-                                        child: DropdownButtonFormField<String>(
-                                          hint: const Text(
-                                            'Stages',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w400,
-                                                color: Color(0xFF8F8F8F)),
+                                      padding: const EdgeInsets.only(top: 0),
+                                      child: DropdownButtonFormField<String>(
+                                        hint: const Text(
+                                          'Stages',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w400,
+                                            color: Color(0xFF8F8F8F),
                                           ),
-                                          initialValue: nextActionValue,
-                                          icon: const Icon(
-                                            Icons.search,
-                                            color: Color(0xff2ca9df),
-                                          ),
-                                          onChanged: (String? newValue) {
-                                            setState(() {
-                                              nextActionValue = newValue!;
-                                            });
-                                          },
-                                          items: <String>[
-                                            'Stages',
-                                            '1st Meeting',
-                                            '2nd Meeting',
-                                            'Approved-If sample is approved',
-                                            'Rejected - If sample is rejected',
-                                            'Quotation',
-                                            'Negotiations',
-                                          ].map<DropdownMenuItem<String>>(
-                                              (String value) {
-                                            return DropdownMenuItem<String>(
-                                              value: value,
-                                              child: Text(
-                                                value,
-                                                style: const TextStyle(
+                                        ),
+                                        initialValue: nextActionValue,
+                                        icon: const Icon(
+                                          Icons.search,
+                                          color: Color(0xff2ca9df),
+                                        ),
+                                        onChanged: (String? newValue) {
+                                          setState(() {
+                                            nextActionValue = newValue!;
+                                          });
+                                        },
+                                        items:
+                                            <String>[
+                                              'Stages',
+                                              '1st Meeting',
+                                              '2nd Meeting',
+                                              'Approved-If sample is approved',
+                                              'Rejected - If sample is rejected',
+                                              'Quotation',
+                                              'Negotiations',
+                                            ].map<DropdownMenuItem<String>>((
+                                              String value,
+                                            ) {
+                                              return DropdownMenuItem<String>(
+                                                value: value,
+                                                child: Text(
+                                                  value,
+                                                  style: const TextStyle(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w400,
-                                                    color: Color(0xFF8F8F8F)),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        )),
+                                                    color: Color(0xFF8F8F8F),
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                      ),
+                                    ),
                                   ),
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
+                                  const SizedBox(height: 15),
                                   Column(
                                     children: [
                                       Row(
@@ -4131,110 +4390,116 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           Expanded(
                                             flex: 1,
                                             child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 0),
-                                                child: DropdownButtonFormField<
-                                                    String>(
-                                                  hint: const Text(
-                                                    'Business Expected within',
-                                                    style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color:
-                                                            Color(0xFF8F8F8F)),
+                                              padding: const EdgeInsets.only(
+                                                top: 0,
+                                              ),
+                                              child: DropdownButtonFormField<String>(
+                                                hint: const Text(
+                                                  'Business Expected within',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: Color(0xFF8F8F8F),
                                                   ),
-                                                  initialValue:
-                                                      businessExpectedWithin,
-                                                  icon: const Icon(
-                                                    Icons.search,
-                                                    color: Color(0xff2ca9df),
-                                                  ),
-                                                  onChanged:
-                                                      (String? newValue) {
-                                                    setState(() {
-                                                      businessExpectedWithin =
-                                                          newValue!;
-                                                    });
-                                                  },
-                                                  items: <String>[
-                                                    '1 Week',
-                                                    '2-3 Weeks',
-                                                    '1 month',
-                                                    '2-3 month'
-                                                  ].map<
-                                                          DropdownMenuItem<
-                                                              String>>(
-                                                      (String value) {
-                                                    return DropdownMenuItem<
-                                                        String>(
-                                                      value: value,
-                                                      child: Text(
-                                                        value,
-                                                        style: const TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color: Color(
-                                                                0xFF8F8F8F)),
-                                                      ),
-                                                    );
-                                                  }).toList(),
-                                                )),
+                                                ),
+                                                initialValue:
+                                                    businessExpectedWithin,
+                                                icon: const Icon(
+                                                  Icons.search,
+                                                  color: Color(0xff2ca9df),
+                                                ),
+                                                onChanged: (String? newValue) {
+                                                  setState(() {
+                                                    businessExpectedWithin =
+                                                        newValue!;
+                                                  });
+                                                },
+                                                items:
+                                                    <String>[
+                                                      '1 Week',
+                                                      '2-3 Weeks',
+                                                      '1 month',
+                                                      '2-3 month',
+                                                    ].map<
+                                                      DropdownMenuItem<String>
+                                                    >((String value) {
+                                                      return DropdownMenuItem<
+                                                        String
+                                                      >(
+                                                        value: value,
+                                                        child: Text(
+                                                          value,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color: Color(
+                                                                  0xFF8F8F8F,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                      );
+                                                    }).toList(),
+                                              ),
+                                            ),
                                           ),
-                                          const SizedBox(
-                                            width: 20,
-                                          ),
+                                          const SizedBox(width: 20),
                                           Expanded(
                                             flex: 1,
                                             child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 0),
-                                                child: DropdownButtonFormField<
-                                                    String>(
-                                                  hint: const Text(
-                                                    'Expected Value',
-                                                    style: TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color:
-                                                            Color(0xFF8F8F8F)),
+                                              padding: const EdgeInsets.only(
+                                                top: 0,
+                                              ),
+                                              child: DropdownButtonFormField<String>(
+                                                hint: const Text(
+                                                  'Expected Value',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: Color(0xFF8F8F8F),
                                                   ),
-                                                  initialValue: expectedValue,
-                                                  icon: const Icon(
-                                                    Icons.search,
-                                                    color: Color(0xff2ca9df),
-                                                  ),
-                                                  onChanged:
-                                                      (String? newValue) {
-                                                    setState(() {
-                                                      expectedValue = newValue!;
-                                                    });
-                                                  },
-                                                  items: <String>[
-                                                    'Deal Value < 50,000',
-                                                    '50,001 - 2,00,000',
-                                                    '> 2,00,000'
-                                                  ].map<
-                                                          DropdownMenuItem<
-                                                              String>>(
-                                                      (String value) {
-                                                    return DropdownMenuItem<
-                                                        String>(
-                                                      value: value,
-                                                      child: Text(
-                                                        value,
-                                                        style: const TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color: Color(
-                                                                0xFF8F8F8F)),
-                                                      ),
-                                                    );
-                                                  }).toList(),
-                                                )),
+                                                ),
+                                                initialValue: expectedValue,
+                                                icon: const Icon(
+                                                  Icons.search,
+                                                  color: Color(0xff2ca9df),
+                                                ),
+                                                onChanged: (String? newValue) {
+                                                  setState(() {
+                                                    expectedValue = newValue!;
+                                                  });
+                                                },
+                                                items:
+                                                    <String>[
+                                                      'Deal Value < 50,000',
+                                                      '50,001 - 2,00,000',
+                                                      '> 2,00,000',
+                                                    ].map<
+                                                      DropdownMenuItem<String>
+                                                    >((String value) {
+                                                      return DropdownMenuItem<
+                                                        String
+                                                      >(
+                                                        value: value,
+                                                        child: Text(
+                                                          value,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color: Color(
+                                                                  0xFF8F8F8F,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                      );
+                                                    }).toList(),
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -4243,61 +4508,63 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           Expanded(
                                             flex: 1,
                                             child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 0),
-                                                child: DropdownButtonFormField<
-                                                    String>(
-                                                  hint: const Text(
-                                                    'Stages',
-                                                    style: TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color:
-                                                            Color(0xFF8F8F8F)),
+                                              padding: const EdgeInsets.only(
+                                                top: 0,
+                                              ),
+                                              child: DropdownButtonFormField<String>(
+                                                hint: const Text(
+                                                  'Stages',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: Color(0xFF8F8F8F),
                                                   ),
-                                                  initialValue: stageValue,
-                                                  icon: const Icon(
-                                                    Icons.search,
-                                                    color: Color(0xff2ca9df),
-                                                  ),
-                                                  onChanged:
-                                                      (String? newValue) {
-                                                    setState(() {
-                                                      stageValue = newValue!;
-                                                    });
-                                                  },
-                                                  items: <String>[
-                                                    'Stages',
-                                                    '1st Meeting',
-                                                    '2nd Meeting',
-                                                    'Approved',
-                                                    'Rejected',
-                                                    'Quotation',
-                                                    'Negotiations',
-                                                  ].map<
-                                                          DropdownMenuItem<
-                                                              String>>(
-                                                      (String value) {
-                                                    return DropdownMenuItem<
-                                                        String>(
-                                                      value: value,
-                                                      child: Text(
-                                                        value,
-                                                        style: const TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.w400,
-                                                            color: Color(
-                                                                0xFF8F8F8F)),
-                                                      ),
-                                                    );
-                                                  }).toList(),
-                                                )),
+                                                ),
+                                                initialValue: stageValue,
+                                                icon: const Icon(
+                                                  Icons.search,
+                                                  color: Color(0xff2ca9df),
+                                                ),
+                                                onChanged: (String? newValue) {
+                                                  setState(() {
+                                                    stageValue = newValue!;
+                                                  });
+                                                },
+                                                items:
+                                                    <String>[
+                                                      'Stages',
+                                                      '1st Meeting',
+                                                      '2nd Meeting',
+                                                      'Approved',
+                                                      'Rejected',
+                                                      'Quotation',
+                                                      'Negotiations',
+                                                    ].map<
+                                                      DropdownMenuItem<String>
+                                                    >((String value) {
+                                                      return DropdownMenuItem<
+                                                        String
+                                                      >(
+                                                        value: value,
+                                                        child: Text(
+                                                          value,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color: Color(
+                                                                  0xFF8F8F8F,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                      );
+                                                    }).toList(),
+                                              ),
+                                            ),
                                           ),
-                                          const SizedBox(
-                                            width: 20,
-                                          ),
+                                          const SizedBox(width: 20),
                                           Flexible(
                                             child: TextField(
                                               canRequestFocus: false,
@@ -4309,7 +4576,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               decoration: const InputDecoration(
                                                 suffixIcon: Padding(
                                                   padding: EdgeInsets.only(
-                                                      left: 20.0),
+                                                    left: 20.0,
+                                                  ),
                                                   child: Icon(
                                                     Icons.calendar_today,
                                                     color: Color(0xff2ca9df),
@@ -4319,42 +4587,46 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                 floatingLabelBehavior:
                                                     FloatingLabelBehavior.never,
                                                 labelText: 'On',
-                                                contentPadding:
-                                                    EdgeInsets.only(bottom: 0),
+                                                contentPadding: EdgeInsets.only(
+                                                  bottom: 0,
+                                                ),
                                                 labelStyle: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w400,
-                                                    color: Color(0xFF8F8F8F)),
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: Color(0xFF8F8F8F),
+                                                ),
                                               ),
                                               onTap: () async {
                                                 DateTime? selectedDate =
                                                     await showDatePicker(
-                                                  context: context,
-                                                  initialDate: DateTime.now(),
-                                                  firstDate: DateTime(2000),
-                                                  lastDate: DateTime(2101),
-                                                  initialEntryMode:
-                                                      DatePickerEntryMode
-                                                          .calendar,
-                                                );
+                                                      context: context,
+                                                      initialDate:
+                                                          DateTime.now(),
+                                                      firstDate: DateTime(2000),
+                                                      lastDate: DateTime(2101),
+                                                      initialEntryMode:
+                                                          DatePickerEntryMode
+                                                              .calendar,
+                                                    );
                                                 TimeOfDay? selectedTime =
                                                     await showTimePicker(
-                                                  context: context,
-                                                  initialTime: TimeOfDay.now(),
-                                                );
+                                                      context: context,
+                                                      initialTime:
+                                                          TimeOfDay.now(),
+                                                    );
                                                 if (selectedTime != null) {
                                                   String formattedDateTime =
                                                       DateFormat(
-                                                              'dd/MM/yyyy hh:mm a')
-                                                          .format(
-                                                    DateTime(
-                                                      selectedDate!.year,
-                                                      selectedDate.month,
-                                                      selectedDate.day,
-                                                      selectedTime.hour,
-                                                      selectedTime.minute,
-                                                    ),
-                                                  );
+                                                        'dd/MM/yyyy hh:mm a',
+                                                      ).format(
+                                                        DateTime(
+                                                          selectedDate!.year,
+                                                          selectedDate.month,
+                                                          selectedDate.day,
+                                                          selectedTime.hour,
+                                                          selectedTime.minute,
+                                                        ),
+                                                      );
                                                   _dateController.text =
                                                       formattedDateTime;
                                                 }
@@ -4363,9 +4635,7 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(
-                                        height: 20,
-                                      ),
+                                      const SizedBox(height: 20),
                                       TextField(
                                         showCursor: false,
                                         controller: supportController,
@@ -4373,56 +4643,67 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                         maxLines: 4,
                                         maxLength: 500,
                                         decoration: InputDecoration(
-                                            enabledBorder: OutlineInputBorder(
-                                              borderSide: const BorderSide(
-                                                  color: Colors.grey),
-                                              borderRadius:
-                                                  BorderRadius.circular(2),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderSide: const BorderSide(
+                                              color: Colors.grey,
                                             ),
-                                            labelText:
-                                                "Any other support required from Head Office?",
-                                            labelStyle: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w400,
-                                                color: Color(0xFF8F8F8F)),
-                                            focusedBorder:
-                                                const OutlineInputBorder(
-                                                    borderSide: BorderSide(
-                                                        width: 1,
-                                                        color: Colors.grey)),
-                                            contentPadding:
-                                                const EdgeInsets.only(
-                                                    left: 15,
-                                                    right: 0,
-                                                    top: 15,
-                                                    bottom: 0),
-                                            suffixIcon: IconButton(
-                                              icon: Icon(_isSupportListening
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
+                                          ),
+                                          labelText:
+                                              "Any other support required from Head Office?",
+                                          labelStyle: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w400,
+                                            color: Color(0xFF8F8F8F),
+                                          ),
+                                          focusedBorder:
+                                              const OutlineInputBorder(
+                                                borderSide: BorderSide(
+                                                  width: 1,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                          contentPadding: const EdgeInsets.only(
+                                            left: 15,
+                                            right: 0,
+                                            top: 15,
+                                            bottom: 0,
+                                          ),
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _isSupportListening
                                                   ? Icons.mic
-                                                  : Icons.mic_none),
-                                              onPressed: () {
-                                                _listen(supportController,
-                                                    _isSupportListening,
-                                                    (bool isListening) {
+                                                  : Icons.mic_none,
+                                            ),
+                                            onPressed: () {
+                                              _listen(
+                                                supportController,
+                                                _isSupportListening,
+                                                (bool isListening) {
                                                   _isSupportListening =
                                                       isListening;
-                                                });
-                                              },
-                                            )),
+                                                },
+                                              );
+                                            },
+                                          ),
+                                        ),
                                       ),
                                       const SizedBox(height: 20),
                                       Center(
                                         child: ElevatedButton(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0xff2ca9df),
+                                            backgroundColor: const Color(
+                                              0xff2ca9df,
+                                            ),
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(5.0),
                                             ),
                                           ),
-                                          onPressed: widget.checkInDetails ==
-                                                  null
+                                          onPressed:
+                                              widget.checkInDetails == null
                                               ? null
                                               : () async {
                                                   if (inputMaterialCheck) {
@@ -4437,16 +4718,18 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     final snackBar = SnackBar(
                                                       backgroundColor:
                                                           const Color(
-                                                              0xFF2CA9DF),
+                                                            0xFF2CA9DF,
+                                                          ),
                                                       duration: const Duration(
-                                                          seconds: 2),
+                                                        seconds: 2,
+                                                      ),
                                                       content: Text(
                                                         contactList.isEmpty
                                                             ? 'Add contact person.'
                                                             : validInputMaterial ==
-                                                                    false
-                                                                ? 'Please select a valid Material Name and try again...'
-                                                                : 'Location is missing, Please add location and try again...',
+                                                                  false
+                                                            ? 'Please select a valid Material Name and try again...'
+                                                            : 'Location is missing, Please add location and try again...',
                                                         style: const TextStyle(
                                                           color: Colors.white,
                                                           fontSize: 14,
@@ -4454,24 +4737,21 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       ),
                                                     );
                                                     ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(snackBar);
+                                                      context,
+                                                    ).showSnackBar(snackBar);
                                                   } else {
                                                     BuildContext? dialogContext;
                                                     showDialog(
                                                       context: context,
                                                       barrierDismissible: false,
-                                                      builder: (BuildContext
-                                                          context) {
+                                                      builder: (BuildContext context) {
                                                         dialogContext = context;
                                                         return const Center(
-                                                          child:
-                                                              CircularProgressIndicator(
+                                                          child: CircularProgressIndicator(
                                                             valueColor:
                                                                 AlwaysStoppedAnimation<
-                                                                        Color>(
-                                                                    Colors
-                                                                        .white),
+                                                                  Color
+                                                                >(Colors.white),
                                                           ),
                                                         );
                                                       },
@@ -4480,8 +4760,8 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       await submitLeads();
                                                       // await submitStageSummary();
                                                       Navigator.of(
-                                                              dialogContext!)
-                                                          .pop();
+                                                        dialogContext!,
+                                                      ).pop();
                                                       navigateToHomePage();
                                                     } catch (error) {
                                                       // print('Error: $error');
@@ -4494,15 +4774,16 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                               child: Text(
                                                 "Save",
                                                 style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.white),
+                                                  fontSize: 14,
+                                                  color: Colors.white,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ],
-                                  )
+                                  ),
                                 ],
                               ),
                             ),

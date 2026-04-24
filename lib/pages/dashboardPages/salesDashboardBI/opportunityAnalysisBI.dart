@@ -203,18 +203,21 @@ class _OpportunityAnalysisPageState extends State<OpportunityAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -284,18 +287,21 @@ class _OpportunityAnalysisPageState extends State<OpportunityAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -369,18 +375,21 @@ class _OpportunityAnalysisPageState extends State<OpportunityAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -802,12 +811,14 @@ class _OpportunityAnalysisPageState extends State<OpportunityAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -815,10 +826,12 @@ class _OpportunityAnalysisPageState extends State<OpportunityAnalysisPage> {
         final snackBar = SnackBar(
           content: Text('HTTP Error: ${response.statusCode}'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text(e.toString()));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

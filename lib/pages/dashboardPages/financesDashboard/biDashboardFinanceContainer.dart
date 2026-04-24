@@ -29,35 +29,24 @@ class FinanceBIPage extends StatefulWidget {
 String menuPermissionMenuIds = "";
 
 class _FinanceBIPageState extends State<FinanceBIPage> {
-  List<String> items = [
-    "",
-    "Receivables",
-    "Payables",
-    "Cash Flow",
-    "Expenses",
-    "Monthly\nP/L",
-    "Cash Conversion\n Cycle",
-    "Monthly Collection\nReport",
-    "Daily Costing\nReport",
-    "Product\nMargin Report",
-    "Customer\nCollection",
-    "Vendor Payment",
-  ];
+  List<String> items = [];
 
-  List<Widget> pages = [
-    const LoaderPage(),
-    const ReceivablesFinance(),
-    const PayableFinance(),
-    const CashFlowFinance(),
-    const ExpensesFinance(),
-    const MonthlyPLFinance(),
-    const CashConversionFinance(),
-    const MonthlyCollectionReport(),
-    const DailyCostingReport(),
-    const ProductMarginReport(),
-    const CustomerCollectionAnalysis(),
-    const VendorPayment(),
-  ];
+  // List<Widget> pages = [
+  //   const LoaderPage(),
+  //   const ReceivablesFinance(),
+  //   const PayableFinance(),
+  //   const CashFlowFinance(),
+  //   const ExpensesFinance(),
+  //   const MonthlyPLFinance(),
+  //   const CashConversionFinance(),
+  //   const MonthlyCollectionReport(),
+  //   const DailyCostingReport(),
+  //   const ProductMarginReport(),
+  //   const CustomerCollectionAnalysis(),
+  //   const VendorPayment(),
+  // ];
+  List<Widget Function()> pages = [];
+  Map<int, Widget> pageCache = {};
   List<int> menuIds = [];
   int current = 0;
   PageController pageController = PageController();
@@ -109,6 +98,7 @@ class _FinanceBIPageState extends State<FinanceBIPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -138,37 +128,38 @@ class _FinanceBIPageState extends State<FinanceBIPage> {
 
     // Create a map to link menu IDs to pages
     final Map<int, dynamic> menuToPageMap = {
-      6: {"title": "Receivables", "page": const ReceivablesFinance()},
-      7: {"title": "Payables", "page": const PayableFinance()},
-      8: {"title": "Cash Flow", "page": const CashFlowFinance()},
-      9: {"title": "Expenses", "page": const ExpensesFinance()},
-      10: {"title": "Monthly \nP&L", "page": const MonthlyPLFinance()},
+      0: {"title": "", "page": () => const LoaderPage()},
+      6: {"title": "Receivables", "page": () => const ReceivablesFinance()},
+      7: {"title": "Payables", "page": () => const PayableFinance()},
+      8: {"title": "Cash Flow", "page": () => const CashFlowFinance()},
+      9: {"title": "Expenses", "page": () => const ExpensesFinance()},
+      10: {"title": "Monthly \nP&L", "page": () => const MonthlyPLFinance()},
       11: {
         "title": "Cash Conversion\n Cycle",
-        "page": const CashConversionFinance(),
+        "page": () => const CashConversionFinance(),
       },
       32: {
         "title": "Monthly Collection\nReport",
-        "page": const MonthlyCollectionReport(),
+        "page": () => const MonthlyCollectionReport(),
       },
       33: {
         "title": "Daily Costing\nReport",
-        "page": const DailyCostingReport(),
+        "page": () => const DailyCostingReport(),
       },
       31: {
         "title": "Product\nMargin Report",
-        "page": const ProductMarginReport(),
+        "page": () => const ProductMarginReport(),
       },
       34: {
         "title": "Customer\nCollection",
-        "page": const CustomerCollectionAnalysis(),
+        "page": () => const CustomerCollectionAnalysis(),
       },
-      35: {"title": "Vendor Payment", "page": const VendorPayment()},
+      35: {"title": "Vendor Payment", "page": () => const VendorPayment()},
     };
 
-    // Filter the items and pages based on the permission IDs
-    items = [""]; // Reset items with the first entry for the loader
-    pages = [const LoaderPage()]; // Reset pages with the loader
+    items.add(menuToPageMap[0]["title"]);
+    pages.add(menuToPageMap[0]["page"]);
+    pageCache.clear();
 
     for (var id in menuIds) {
       if (menuToPageMap.containsKey(id)) {
@@ -176,8 +167,18 @@ class _FinanceBIPageState extends State<FinanceBIPage> {
         pages.add(menuToPageMap[id]["page"]);
       }
     }
+    // Filter the items and pages based on the permission IDs
+    // items = [""]; // Reset items with the first entry for the loader
+    // pages = [const LoaderPage()]; // Reset pages with the loader
 
-    // setState(() {});
+    // for (var id in menuIds) {
+    //   if (menuToPageMap.containsKey(id)) {
+    //     items.add(menuToPageMap[id]["title"]);
+    //     pages.add(menuToPageMap[id]["page"]);
+    //   }
+    // }
+
+    setState(() {});
   }
 
   @override
@@ -299,7 +300,7 @@ class _FinanceBIPageState extends State<FinanceBIPage> {
                   controller: pageController,
                   physics: const NeverScrollableScrollPhysics(),
                   itemBuilder: (context, index) {
-                    return pages[index];
+                    return pageCache.putIfAbsent(index, () => pages[index]());
                   },
                 ),
               ),

@@ -528,6 +528,7 @@ class _ManpowerCostingReportOldState extends State<ManpowerCostingReportOld> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -590,6 +591,7 @@ class _ManpowerCostingReportOldState extends State<ManpowerCostingReportOld> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -659,6 +661,7 @@ class _ManpowerCostingReportOldState extends State<ManpowerCostingReportOld> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -745,11 +748,13 @@ class _ManpowerCostingReportOldState extends State<ManpowerCostingReportOld> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -757,12 +762,14 @@ class _ManpowerCostingReportOldState extends State<ManpowerCostingReportOld> {
         const snackBar = SnackBar(
           content: Text('Sales target details not found.'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       const snackBar = SnackBar(
         content: Text('SAP Server down, Please try again after some time.'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1579,6 +1586,7 @@ class _ManpowerCostingReportOldState extends State<ManpowerCostingReportOld> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

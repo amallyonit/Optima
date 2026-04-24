@@ -35,8 +35,11 @@ List<Map<String, dynamic>> participantList = [];
 
 class FooterPage extends StatefulWidget {
   final String leadsId, leadStageForEdit;
-  const FooterPage(
-      {super.key, required this.leadsId, required this.leadStageForEdit});
+  const FooterPage({
+    super.key,
+    required this.leadsId,
+    required this.leadStageForEdit,
+  });
   static final GlobalKey<FooterPageState> footerPageKey =
       GlobalKey<FooterPageState>();
 
@@ -46,26 +49,27 @@ class FooterPage extends StatefulWidget {
 
 class LeadMasterFooterPageProvider with ChangeNotifier {
   LeadMaster _leadMaster = LeadMaster(
-      leadID: 0,
-      customerPaymentTerms: 0,
-      customerCode: '',
-      customerCreditLimit: 0,
-      customerMOV: 0,
-      customerName: '',
-      customerAddress: '',
-      leadStageLevel: '',
-      leadStage: 0,
-      leadStartDate: '',
-      leadAging: '',
-      leadAssigneeName: '',
-      leadHospitalCode: '',
-      leadDistributorCode: '',
-      leadAssigneeId: 0,
-      leadDealValue: '',
-      leadHospitalName: '',
-      leadDistributorName: '',
-      leadProductName: '',
-      leadType: '');
+    leadID: 0,
+    customerPaymentTerms: 0,
+    customerCode: '',
+    customerCreditLimit: 0,
+    customerMOV: 0,
+    customerName: '',
+    customerAddress: '',
+    leadStageLevel: '',
+    leadStage: 0,
+    leadStartDate: '',
+    leadAging: '',
+    leadAssigneeName: '',
+    leadHospitalCode: '',
+    leadDistributorCode: '',
+    leadAssigneeId: 0,
+    leadDealValue: '',
+    leadHospitalName: '',
+    leadDistributorName: '',
+    leadProductName: '',
+    leadType: '',
+  );
 
   LeadMaster get leadMaster => _leadMaster;
   void updateLeadMaster(LeadMaster newLeadMaster) {
@@ -86,33 +90,37 @@ class LeadActivityFooterPageProvider with ChangeNotifier {
 class FooterPageState extends State<FooterPage> {
   late Future<void> loadDataFuture;
   LeadMaster leadMaster = LeadMaster(
-      leadID: 0,
-      customerPaymentTerms: 0,
-      customerCreditLimit: 0,
-      customerMOV: 0,
-      customerCode: '',
-      customerName: '',
-      customerAddress: '',
-      leadStageLevel: '',
-      leadStage: 0,
-      leadStartDate: '',
-      leadAging: '',
-      leadAssigneeName: '',
-      leadHospitalCode: '',
-      leadDistributorCode: '',
-      leadAssigneeId: 0,
-      leadDealValue: '',
-      leadHospitalName: '',
-      leadDistributorName: '',
-      leadProductName: '',
-      leadType: '');
+    leadID: 0,
+    customerPaymentTerms: 0,
+    customerCreditLimit: 0,
+    customerMOV: 0,
+    customerCode: '',
+    customerName: '',
+    customerAddress: '',
+    leadStageLevel: '',
+    leadStage: 0,
+    leadStartDate: '',
+    leadAging: '',
+    leadAssigneeName: '',
+    leadHospitalCode: '',
+    leadDistributorCode: '',
+    leadAssigneeId: 0,
+    leadDealValue: '',
+    leadHospitalName: '',
+    leadDistributorName: '',
+    leadProductName: '',
+    leadType: '',
+  );
   Timer? _timer;
 
   late stt.SpeechToText _speech;
   bool _isSummaryListening = false;
 
-  void _listen(TextEditingController txtController, bool isListening,
-      Function setListeningState) async {
+  void _listen(
+    TextEditingController txtController,
+    bool isListening,
+    Function setListeningState,
+  ) async {
     if (!isListening) {
       _checkMicPermissions();
       bool available = await _speech.initialize();
@@ -165,36 +173,38 @@ class FooterPageState extends State<FooterPage> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   void clearControls() {
     leadMaster = LeadMaster(
-        leadID: 0,
-        customerPaymentTerms: 0,
-        customerCreditLimit: 0,
-        customerCode: '',
-        customerMOV: 0,
-        customerName: '',
-        customerAddress: '',
-        leadStageLevel: '',
-        leadStage: 0,
-        leadStartDate: '',
-        leadAging: '',
-        leadAssigneeName: '',
-        leadHospitalCode: '',
-        leadDistributorCode: '',
-        leadAssigneeId: 0,
-        leadDealValue: '',
-        leadHospitalName: '',
-        leadDistributorName: '',
-        leadProductName: '',
-        leadType: '');
+      leadID: 0,
+      customerPaymentTerms: 0,
+      customerCreditLimit: 0,
+      customerCode: '',
+      customerMOV: 0,
+      customerName: '',
+      customerAddress: '',
+      leadStageLevel: '',
+      leadStage: 0,
+      leadStartDate: '',
+      leadAging: '',
+      leadAssigneeName: '',
+      leadHospitalCode: '',
+      leadDistributorCode: '',
+      leadAssigneeId: 0,
+      leadDealValue: '',
+      leadHospitalName: '',
+      leadDistributorName: '',
+      leadProductName: '',
+      leadType: '',
+    );
     leadContacts = [];
-    followupDateControllerFooter.text =
-        DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now());
+    followupDateControllerFooter.text = DateFormat(
+      'dd/MM/yyyy hh:mm a',
+    ).format(DateTime.now());
     summaryControllerFooter.text = "";
     selectedStatusFooter = 'Next Action';
     selectedParticipantFooter = [];
@@ -211,12 +221,15 @@ class FooterPageState extends State<FooterPage> {
   }
 
   Future<void> _selectLeadsDetails(
-      String userId, String userJwtToken, String userMailID) async {
+    String userId,
+    String userJwtToken,
+    String userMailID,
+  ) async {
     final data = {
       'UserID': userId,
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'LeadId': leadId
+      'LeadId': leadId,
     };
     const apiUrl = '${ApiHelper.baseUrl}selectleadsdetails';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -238,8 +251,8 @@ class FooterPageState extends State<FooterPage> {
               if (masData is Map) {
                 setState(() {
                   context.read<LeadMasterFooterPageProvider>().updateLeadMaster(
-                        LeadMaster.fromJson(masData as Map<String, dynamic>),
-                      );
+                    LeadMaster.fromJson(masData as Map<String, dynamic>),
+                  );
                 });
               }
             }
@@ -247,6 +260,7 @@ class FooterPageState extends State<FooterPage> {
             const snackBar = SnackBar(
               content: Text('Leads details not found.'),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         } else {
@@ -256,18 +270,17 @@ class FooterPageState extends State<FooterPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -275,6 +288,7 @@ class FooterPageState extends State<FooterPage> {
         final snackBar = SnackBar(
           content: Text('Lead details not found for Lead ID: $widget.leadsId'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -282,12 +296,17 @@ class FooterPageState extends State<FooterPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
-  Future<void> _selectLeadActivity(String userId, String userJwtToken,
-      String userMailID, String userName) async {
+  Future<void> _selectLeadActivity(
+    String userId,
+    String userJwtToken,
+    String userMailID,
+    String userName,
+  ) async {
     selectedParticipantFooter = [];
     if (leadStageForEdit != "0") {
       final data = {
@@ -298,7 +317,7 @@ class FooterPageState extends State<FooterPage> {
         'LeadId': leadId,
         'LeadStage': leadStageForEdit,
         'LeadDate': "",
-        'ShowScheduledOnly': 0
+        'ShowScheduledOnly': 0,
       };
 
       const apiUrl = '${ApiHelper.baseUrl}selectleadsactivity';
@@ -327,14 +346,14 @@ class FooterPageState extends State<FooterPage> {
                       data[0][0]["LeadActivitySummary"].toString();
                   followupDateControllerFooter.text =
                       data[0][0]["LeadActivityFollowupDate"].toString();
-                  latitudeFooter =
-                      data[0][0]["LeadActivityLatitude"].toString();
-                  longitudeFooter =
-                      data[0][0]["LeadActivityLongitude"].toString();
+                  latitudeFooter = data[0][0]["LeadActivityLatitude"]
+                      .toString();
+                  longitudeFooter = data[0][0]["LeadActivityLongitude"]
+                      .toString();
                   locationControllerFooter.text =
                       data[0][0]["LeadActivityLocation"].toString();
-                  selectedStatusFooter =
-                      data[0][0]["LeadActivityStatus"].toString();
+                  selectedStatusFooter = data[0][0]["LeadActivityStatus"]
+                      .toString();
                   selectedStatusFooter = selectedStatusFooter == ""
                       ? 'Next Action'
                       : selectedStatusFooter;
@@ -376,6 +395,7 @@ class FooterPageState extends State<FooterPage> {
               const snackBar = SnackBar(
                 content: Text('Leads activity details not found.'),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           } else {
@@ -386,18 +406,17 @@ class FooterPageState extends State<FooterPage> {
                 duration: const Duration(seconds: 1),
                 content: Text(
                   responseJson["Error"].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
@@ -405,6 +424,7 @@ class FooterPageState extends State<FooterPage> {
           const snackBar = SnackBar(
             content: Text('Leads activity details not found.'),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -412,6 +432,7 @@ class FooterPageState extends State<FooterPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } else {
@@ -432,7 +453,10 @@ class FooterPageState extends State<FooterPage> {
   }
 
   Future<void> _selectLeadActivityImage(
-      String userId, String userJwtToken, String userMailID) async {
+    String userId,
+    String userJwtToken,
+    String userMailID,
+  ) async {
     imageIsSelected = false;
     if (leadStageForEdit != "0") {
       final data = {
@@ -442,7 +466,7 @@ class FooterPageState extends State<FooterPage> {
         'LoadFullCustomerData': 0,
         'LeadId': leadId,
         'LeadStage': leadStageForEdit,
-        'LeadDate': ""
+        'LeadDate': "",
       };
 
       const apiUrl = '${ApiHelper.baseUrl}selectleadsactivityimage';
@@ -471,6 +495,7 @@ class FooterPageState extends State<FooterPage> {
               const snackBar = SnackBar(
                 content: Text('Leads activity image not found...'),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           } else {
@@ -481,18 +506,17 @@ class FooterPageState extends State<FooterPage> {
                 duration: const Duration(seconds: 1),
                 content: Text(
                   responseJson["Error"].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
@@ -500,6 +524,7 @@ class FooterPageState extends State<FooterPage> {
           const snackBar = SnackBar(
             content: Text('Leads activity image not found...'),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -507,6 +532,7 @@ class FooterPageState extends State<FooterPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } else {
@@ -543,9 +569,8 @@ class FooterPageState extends State<FooterPage> {
       }
       _updateLocation(locationSettings);
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error getting location: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -554,36 +579,40 @@ class FooterPageState extends State<FooterPage> {
     // ignore: unused_local_variable
     StreamSubscription<Position> positionStream =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-            (Position position) async {
-      latitudeFooter = position.latitude.toString();
-      longitudeFooter = position.longitude.toString();
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-      if (placemarks.isNotEmpty) {
-        Placemark placemark = placemarks.first;
-        String location = [
-          placemark.name ?? '',
-          placemark.subLocality ?? '',
-          placemark.locality ?? '',
-          '${placemark.administrativeArea ?? ''}${placemark.postalCode != null ? ' - ' : ''}${placemark.postalCode ?? ''}',
-          placemark.country ?? '',
-        ].where((part) => part.isNotEmpty).join(', ');
-        locationControllerFooter.text = location;
-      } else {
-        locationControllerFooter.clear();
-      }
-    }, onError: (e) {
-      final snackBar = SnackBar(
-        content: Text('Error in positionStream: $e'),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    });
+          (Position position) async {
+            latitudeFooter = position.latitude.toString();
+            longitudeFooter = position.longitude.toString();
+            List<Placemark> placemarks = await placemarkFromCoordinates(
+              position.latitude,
+              position.longitude,
+            );
+            if (placemarks.isNotEmpty) {
+              Placemark placemark = placemarks.first;
+              String location = [
+                placemark.name ?? '',
+                placemark.subLocality ?? '',
+                placemark.locality ?? '',
+                '${placemark.administrativeArea ?? ''}${placemark.postalCode != null ? ' - ' : ''}${placemark.postalCode ?? ''}',
+                placemark.country ?? '',
+              ].where((part) => part.isNotEmpty).join(', ');
+              locationControllerFooter.text = location;
+            } else {
+              locationControllerFooter.clear();
+            }
+          },
+          onError: (e) {
+            final snackBar = SnackBar(
+              content: Text('Error in positionStream: $e'),
+            );
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          },
+        );
   }
 
   List<LeadParticipant> convertToList(
-      List<Map<String, dynamic>> participantList) {
+    List<Map<String, dynamic>> participantList,
+  ) {
     return participantList.map((participant) {
       return LeadParticipant(
         leadParticipantId: 0,
@@ -596,7 +625,10 @@ class FooterPageState extends State<FooterPage> {
   }
 
   Future<void> _loadparticipant(
-      String userId, String userJwtToken, String userMailID) async {
+    String userId,
+    String userJwtToken,
+    String userMailID,
+  ) async {
     final data = {
       'UserID': userId,
       'UserJwtToken': userJwtToken,
@@ -634,18 +666,17 @@ class FooterPageState extends State<FooterPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -653,6 +684,7 @@ class FooterPageState extends State<FooterPage> {
         const snackBar = SnackBar(
           content: Text('Participants details not found.'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -660,6 +692,7 @@ class FooterPageState extends State<FooterPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -684,55 +717,6 @@ class FooterPageState extends State<FooterPage> {
     );
   }
 
-  // Future<void> getCurrentLocationOld() async {
-  //   try {
-  //     Position? position;
-  //     if (!kIsWeb) {
-  //       position = await Geolocator.getLastKnownPosition();
-  //     }
-  //     position ??= await Geolocator.getCurrentPosition(
-  //       desiredAccuracy: LocationAccuracy.high,
-  //     );
-  //     latitudeFooter = position.latitude.toString();
-  //     longitudeFooter = position.longitude.toString();
-  //     List<Placemark> placemarks = await placemarkFromCoordinates(
-  //       position.latitude,
-  //       position.longitude,
-  //     );
-  //     if (placemarks.isNotEmpty) {
-  //       Placemark placemark = placemarks.first;
-  //       String location = [
-  //         placemark.name ?? '',
-  //         placemark.subLocality ?? '',
-  //         placemark.locality ?? '',
-  //         '${placemark.administrativeArea ?? ''}${placemark.postalCode != null ? ' - ' : ''}${placemark.postalCode ?? ''}',
-  //         placemark.country ?? '',
-  //       ].where((part) => part.isNotEmpty).join(', ');
-  //       locationControllerFooter.text = location;
-  //     } else {
-  //       locationControllerFooter.clear();
-  //     }
-  //     setState(() {
-  //       locationLoading = true;
-  //     });
-  //     if (locationControllerFooter.text == "") {
-  //       _timer = Timer(const Duration(seconds: 30), () {
-  //         if (locationLoading) {
-  //           setState(() {
-  //             locationLoading = false;
-  //           });
-  //           _showLocationFetchFailedAlert();
-  //         }
-  //       });
-  //     }
-  //   } catch (e) {
-  //     final snackBar = SnackBar(
-  //       content: Text('Error getting location: $e'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
-
   Future<void> getCurrentLocation() async {
     try {
       // Choose platform-specific settings or use general LocationSettings
@@ -743,13 +727,8 @@ class FooterPageState extends State<FooterPage> {
               forceLocationManager: false,
             )
           : Platform.isIOS
-              ? AppleSettings(
-                  accuracy: LocationAccuracy.high,
-                  distanceFilter: 0,
-                )
-              : const LocationSettings(
-                  accuracy: LocationAccuracy.high,
-                );
+          ? AppleSettings(accuracy: LocationAccuracy.high, distanceFilter: 0)
+          : const LocationSettings(accuracy: LocationAccuracy.high);
 
       Position? position = await Geolocator.getCurrentPosition(
         locationSettings: locationSettings,
@@ -794,9 +773,8 @@ class FooterPageState extends State<FooterPage> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error getting location: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error getting location: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -810,21 +788,25 @@ class FooterPageState extends State<FooterPage> {
       List<Map<String, Object>> selectedParticipantList =
           selectedParticipantFooter
               .whereType<LeadParticipant>()
-              .map((LeadParticipant item) => {
-                    'ParticipantName': item.leadParticipantUserName,
-                    'LeadParticipantId': '0',
-                    'ParticipantId': item.leadParticipantUserId,
-                  })
+              .map(
+                (LeadParticipant item) => {
+                  'ParticipantName': item.leadParticipantUserName,
+                  'LeadParticipantId': '0',
+                  'ParticipantId': item.leadParticipantUserId,
+                },
+              )
               .toList();
 
       if (selectedParticipantList.isEmpty) {
         selectedParticipantList = initialParticipant
             .whereType<LeadParticipant>()
-            .map((LeadParticipant item) => {
-                  'ParticipantName': item.leadParticipantUserName,
-                  'LeadParticipantId': '0',
-                  'ParticipantId': item.leadParticipantUserId,
-                })
+            .map(
+              (LeadParticipant item) => {
+                'ParticipantName': item.leadParticipantUserName,
+                'LeadParticipantId': '0',
+                'ParticipantId': item.leadParticipantUserId,
+              },
+            )
             .toList();
       }
       final leadactivity = {
@@ -842,7 +824,7 @@ class FooterPageState extends State<FooterPage> {
         'LeadActivityLocation': locationControllerFooter.text,
         'LeadActivityStatus': selectedStatusFooter,
         'LeadActivityImage': _selectedImage,
-        'participantList': selectedParticipantList
+        'participantList': selectedParticipantList,
       };
       const apiUrl = '${ApiHelper.baseUrl}insertleadactivity';
       var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -857,8 +839,9 @@ class FooterPageState extends State<FooterPage> {
           bool status = responseJson["Status"];
           if (status && responseJson["Data"].toString().isNotEmpty) {
             summaryControllerFooter.clear();
-            followupDateControllerFooter.text =
-                DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now());
+            followupDateControllerFooter.text = DateFormat(
+              'dd/MM/yyyy hh:mm a',
+            ).format(DateTime.now());
             selectedStatusFooter = 'Next Action';
             _leadID = "";
             _leadStage = "";
@@ -875,12 +858,10 @@ class FooterPageState extends State<FooterPage> {
               duration: Duration(seconds: 1),
               content: Text(
                 'Saved Successfully...',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           } else {
             if (responseJson.containsKey("Error") &&
@@ -890,18 +871,17 @@ class FooterPageState extends State<FooterPage> {
                 duration: const Duration(seconds: 1),
                 content: Text(
                   responseJson["Error"].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
@@ -910,6 +890,7 @@ class FooterPageState extends State<FooterPage> {
             duration: Duration(seconds: 1),
             content: Text('Lead activity save failed.'),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -917,6 +898,7 @@ class FooterPageState extends State<FooterPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -924,6 +906,7 @@ class FooterPageState extends State<FooterPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1006,29 +989,31 @@ class FooterPageState extends State<FooterPage> {
     try {
       if (mounted) {
         leadMaster = LeadMaster(
-            leadID: 0,
-            customerPaymentTerms: 0,
-            customerCreditLimit: 0,
-            customerCode: '',
-            customerMOV: 0,
-            customerName: '',
-            customerAddress: '',
-            leadStageLevel: '',
-            leadStage: 0,
-            leadStartDate: '',
-            leadAging: '',
-            leadAssigneeName: '',
-            leadHospitalCode: '',
-            leadDistributorCode: '',
-            leadAssigneeId: 0,
-            leadDealValue: '',
-            leadHospitalName: '',
-            leadDistributorName: '',
-            leadProductName: '',
-            leadType: '');
+          leadID: 0,
+          customerPaymentTerms: 0,
+          customerCreditLimit: 0,
+          customerCode: '',
+          customerMOV: 0,
+          customerName: '',
+          customerAddress: '',
+          leadStageLevel: '',
+          leadStage: 0,
+          leadStartDate: '',
+          leadAging: '',
+          leadAssigneeName: '',
+          leadHospitalCode: '',
+          leadDistributorCode: '',
+          leadAssigneeId: 0,
+          leadDealValue: '',
+          leadHospitalName: '',
+          leadDistributorName: '',
+          leadProductName: '',
+          leadType: '',
+        );
         leadContacts = [];
-        followupDateControllerFooter.text =
-            DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now());
+        followupDateControllerFooter.text = DateFormat(
+          'dd/MM/yyyy hh:mm a',
+        ).format(DateTime.now());
         summaryControllerFooter.text = "";
         selectedStatusFooter = 'Next Action';
         selectedParticipantFooter = [];
@@ -1042,9 +1027,8 @@ class FooterPageState extends State<FooterPage> {
       }
       super.dispose();
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1068,8 +1052,9 @@ class FooterPageState extends State<FooterPage> {
   }
 
   Widget footerHome(String leadsId) {
-    LeadMaster leadMaster =
-        context.watch<LeadMasterFooterPageProvider>().leadMaster;
+    LeadMaster leadMaster = context
+        .watch<LeadMasterFooterPageProvider>()
+        .leadMaster;
     _leadID = leadMaster.leadID.toString();
     _leadStage = leadMaster.leadStage.toString();
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1091,50 +1076,51 @@ class FooterPageState extends State<FooterPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text("Meeting Summary",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              )),
+                          const Text(
+                            "Meeting Summary",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
                           Visibility(
                             visible: locationControllerFooter.text == "",
                             child: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    manualLocationFetchStart = true;
-                                  });
-                                  getCurrentLocation();
-                                },
-                                icon:
-                                    locationLoading && manualLocationFetchStart
-                                        ? const CircularProgressIndicator()
-                                        : const Icon(
-                                            Icons.location_on,
-                                            color: Color(0xFF2CA9DF),
-                                          )),
+                              onPressed: () {
+                                setState(() {
+                                  manualLocationFetchStart = true;
+                                });
+                                getCurrentLocation();
+                              },
+                              icon: locationLoading && manualLocationFetchStart
+                                  ? const CircularProgressIndicator()
+                                  : const Icon(
+                                      Icons.location_on,
+                                      color: Color(0xFF2CA9DF),
+                                    ),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(
-                        height: 10,
-                      ),
+                      const SizedBox(height: 10),
                       const Text(
                         'Participant',
                         style: TextStyle(
-                            color: Color(0xFF454545),
-                            fontFamily: "Poppins",
-                            fontWeight: FontWeight.w400),
+                          color: Color(0xFF454545),
+                          fontFamily: "Poppins",
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 150,
                         width: textFieldDropDownWidth,
                         child: MultiLevelDropDown(
-                            stageNumber: widget.leadStageForEdit,
-                            selectedParticipantFooter:
-                                selectedParticipantFooter,
-                            availableParticipant: availableParticipant,
-                            initialParticipant: initialParticipant),
+                          stageNumber: widget.leadStageForEdit,
+                          selectedParticipantFooter: selectedParticipantFooter,
+                          availableParticipant: availableParticipant,
+                          initialParticipant: initialParticipant,
+                        ),
                       ),
                     ],
                   ),
@@ -1159,16 +1145,23 @@ class FooterPageState extends State<FooterPage> {
                         ),
                         border: const OutlineInputBorder(),
                         contentPadding: const EdgeInsets.only(
-                            left: 15, right: 0, top: 15, bottom: 0),
+                          left: 15,
+                          right: 0,
+                          top: 15,
+                          bottom: 0,
+                        ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                              _isSummaryListening ? Icons.mic : Icons.mic_none),
+                            _isSummaryListening ? Icons.mic : Icons.mic_none,
+                          ),
                           onPressed: () {
                             _listen(
-                                summaryControllerFooter, _isSummaryListening,
-                                (bool isListening) {
-                              _isSummaryListening = isListening;
-                            });
+                              summaryControllerFooter,
+                              _isSummaryListening,
+                              (bool isListening) {
+                                _isSummaryListening = isListening;
+                              },
+                            );
                           },
                         ),
                       ),
@@ -1195,8 +1188,8 @@ class FooterPageState extends State<FooterPage> {
                                     decoration: const BoxDecoration(
                                       border: Border(
                                         bottom: BorderSide(
-                                            color: Colors
-                                                .grey), // Add bottom border
+                                          color: Colors.grey,
+                                        ), // Add bottom border
                                       ),
                                     ),
                                     child: DropdownButton<String>(
@@ -1221,27 +1214,30 @@ class FooterPageState extends State<FooterPage> {
                                       underline:
                                           Container(), // Remove the default underline
                                       icon: const Icon(Icons.search, size: 20),
-                                      items: <String>[
-                                        'Next Action',
-                                        'Sampling',
-                                        'Re Sampling',
-                                        'Approved',
-                                        'Rejected'
-                                      ].map<DropdownMenuItem<String>>(
-                                        (String value) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(value),
-                                          );
-                                        },
-                                      ).toList(),
+                                      items:
+                                          <String>[
+                                            'Next Action',
+                                            'Sampling',
+                                            'Re Sampling',
+                                            'Approved',
+                                            'Rejected',
+                                          ].map<DropdownMenuItem<String>>((
+                                            String value,
+                                          ) {
+                                            return DropdownMenuItem<String>(
+                                              value: value,
+                                              child: Text(value),
+                                            );
+                                          }).toList(),
                                     ),
                                   ),
                                 ),
                                 Container(
                                   width: textFieldWidth / 1.6,
                                   padding: const EdgeInsets.only(
-                                      left: 10.0, right: 0.0),
+                                    left: 10.0,
+                                    right: 0.0,
+                                  ),
                                   child: Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -1263,9 +1259,9 @@ class FooterPageState extends State<FooterPage> {
                                               followupDateControllerFooter,
                                           readOnly: true,
                                           decoration: InputDecoration(
-                                            hintText:
-                                                DateFormat('dd/MM/yyyy hh:mm a')
-                                                    .format(DateTime.now()),
+                                            hintText: DateFormat(
+                                              'dd/MM/yyyy hh:mm a',
+                                            ).format(DateTime.now()),
                                             border:
                                                 const UnderlineInputBorder(),
                                             hintStyle: const TextStyle(
@@ -1279,14 +1275,16 @@ class FooterPageState extends State<FooterPage> {
                                         ),
                                       ),
                                       Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 10.0),
+                                        padding: const EdgeInsets.only(
+                                          right: 10.0,
+                                        ),
                                         child: IconButton(
                                           icon: const Icon(
-                                              Icons.calendar_month_outlined),
+                                            Icons.calendar_month_outlined,
+                                          ),
                                           onPressed: () async {
-                                            DateTime? selectedDate =
-                                                await showDatePicker(
+                                            DateTime?
+                                            selectedDate = await showDatePicker(
                                               context: context,
                                               initialDate: DateTime.now(),
                                               firstDate: DateTime(2000),
@@ -1296,25 +1294,26 @@ class FooterPageState extends State<FooterPage> {
                                             );
                                             TimeOfDay? selectedTime =
                                                 await showTimePicker(
-                                              context: context,
-                                              initialTime: TimeOfDay.now(),
-                                            );
+                                                  context: context,
+                                                  initialTime: TimeOfDay.now(),
+                                                );
                                             if (selectedTime != null) {
                                               String formattedDateTime =
                                                   DateFormat(
-                                                          'dd/MM/yyyy hh:mm a')
-                                                      .format(
-                                                DateTime(
-                                                  selectedDate!.year,
-                                                  selectedDate.month,
-                                                  selectedDate.day,
-                                                  selectedTime.hour,
-                                                  selectedTime.minute,
-                                                ),
-                                              );
+                                                    'dd/MM/yyyy hh:mm a',
+                                                  ).format(
+                                                    DateTime(
+                                                      selectedDate!.year,
+                                                      selectedDate.month,
+                                                      selectedDate.day,
+                                                      selectedTime.hour,
+                                                      selectedTime.minute,
+                                                    ),
+                                                  );
 
                                               followupDateControllerFooter
-                                                  .text = formattedDateTime;
+                                                      .text =
+                                                  formattedDateTime;
                                             }
                                           },
                                         ),
@@ -1332,7 +1331,7 @@ class FooterPageState extends State<FooterPage> {
                 ),
                 const SizedBox(height: 5),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -1360,8 +1359,12 @@ class MultiLevelDropDown extends StatefulWidget {
 
 class _MultiLevelDropDownState extends State<MultiLevelDropDown> {
   final _participant = availableParticipant
-      .map((participant) => MultiSelectItem<LeadParticipant>(
-          participant, participant.leadParticipantUserName))
+      .map(
+        (participant) => MultiSelectItem<LeadParticipant>(
+          participant,
+          participant.leadParticipantUserName,
+        ),
+      )
       .toList();
   @override
   void initState() {
@@ -1371,61 +1374,59 @@ class _MultiLevelDropDownState extends State<MultiLevelDropDown> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: const Color.fromARGB(255, 242, 240, 240),
-        body: SingleChildScrollView(
-          child: Container(
-            height: null,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.only(top: 20, left: 10, right: 10),
-            child: Column(
-              children: <Widget>[
-                MultiSelectDialogField(
-                  listType: MultiSelectListType.CHIP,
-                  initialValue: availableParticipant.where((element) {
-                    return initialParticipant.any((selected) =>
+      backgroundColor: const Color.fromARGB(255, 242, 240, 240),
+      body: SingleChildScrollView(
+        child: Container(
+          height: null,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.only(top: 20, left: 10, right: 10),
+          child: Column(
+            children: <Widget>[
+              MultiSelectDialogField(
+                listType: MultiSelectListType.CHIP,
+                initialValue: availableParticipant.where((element) {
+                  return initialParticipant.any(
+                    (selected) =>
                         selected.leadParticipantUserId ==
-                        element.leadParticipantUserId);
-                  }).toList(),
-                  separateSelectedItems: true,
-                  items: _participant,
-                  title: const Text("Participants"),
-                  selectedColor: const Color(0xff2ca9df),
-                  decoration: BoxDecoration(
-                    color: const Color(0xffCFCFCF).withValues(alpha: 0.1),
-                    borderRadius: const BorderRadius.all(Radius.circular(0)),
-                    border: Border.all(
-                      color: const Color(0xffCFCFCF),
-                      width: 2,
-                    ),
-                  ),
-                  buttonIcon: const Icon(
-                    Icons.people_alt_outlined,
-                    color: Color(0xff454545),
-                  ),
-                  buttonText: const Text(
-                    "Select Participant",
-                    style: TextStyle(
-                      color: Color(0xFF454545),
-                      fontFamily: "Poppins",
-                      fontWeight: FontWeight.w400,
-                      fontSize: 14,
-                    ),
-                  ),
-                  onConfirm: (results) {
-                    setState(() {
-                      selectedParticipantFooter = results;
-                      selectedParticipant = results;
-                      initialParticipant = selectedParticipant;
-                    });
-                  },
-                  selectedItemsTextStyle: const TextStyle(
-                    color: Colors.white,
+                        element.leadParticipantUserId,
+                  );
+                }).toList(),
+                separateSelectedItems: true,
+                items: _participant,
+                title: const Text("Participants"),
+                selectedColor: const Color(0xff2ca9df),
+                decoration: BoxDecoration(
+                  color: const Color(0xffCFCFCF).withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.all(Radius.circular(0)),
+                  border: Border.all(color: const Color(0xffCFCFCF), width: 2),
+                ),
+                buttonIcon: const Icon(
+                  Icons.people_alt_outlined,
+                  color: Color(0xff454545),
+                ),
+                buttonText: const Text(
+                  "Select Participant",
+                  style: TextStyle(
+                    color: Color(0xFF454545),
+                    fontFamily: "Poppins",
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
                   ),
                 ),
-              ],
-            ),
+                onConfirm: (results) {
+                  setState(() {
+                    selectedParticipantFooter = results;
+                    selectedParticipant = results;
+                    initialParticipant = selectedParticipant;
+                  });
+                },
+                selectedItemsTextStyle: const TextStyle(color: Colors.white),
+              ),
+            ],
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   @override

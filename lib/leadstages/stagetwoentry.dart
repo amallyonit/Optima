@@ -215,6 +215,7 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
       leadPrdId = "";
     } else {
       const snackBar = SnackBar(content: Text('Product adding failed'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -264,21 +265,25 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('No products available'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text(e.toString()));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -388,6 +393,7 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -399,18 +405,21 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -479,6 +488,7 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -490,12 +500,14 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -505,6 +517,7 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
         duration: const Duration(seconds: 1),
         content: Text('$e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -579,18 +592,21 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -747,27 +763,6 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                                     },
                                     onSubmitted: (prod) {
                                       setState(() {
-                                        // if(prod != "") {
-                                        //   selectedProduct.add(Product(
-                                        //       ProductId: 0,
-                                        //       ProductCode: "0",
-                                        //       ProductName: prod));
-                                        // }
-                                        // else {
-                                        //   SnackBar snackBar = const SnackBar(
-                                        //     showCloseIcon: true,
-                                        //     duration: Duration(seconds: 1),
-                                        //     content: Text(
-                                        //       "Please Enter Product Name",
-                                        //       style: TextStyle(
-                                        //         color: Colors.white,
-                                        //         fontSize: 16,
-                                        //       ),
-                                        //     ),
-                                        //   );
-                                        //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                                        // }
-                                        //
                                         _productController.text = prod;
                                       });
                                     },

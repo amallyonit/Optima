@@ -154,6 +154,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -215,6 +216,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
     } catch (e) {
       if (mounted) {
         final snackBar = SnackBar(content: Text('Error getting location: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -344,12 +346,14 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -357,10 +361,12 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
         final snackBar = SnackBar(
           content: Text('HTTP Error: ${response.statusCode}'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -397,6 +403,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
           style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -479,6 +486,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -490,18 +498,21 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -528,6 +539,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
             style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
         break;
       }
@@ -570,6 +582,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           } else {
             if (responseJson.containsKey("Error") &&
@@ -582,17 +595,20 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
         } else {
           const snackBar = SnackBar(content: Text('Checkin failed'));
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -600,6 +616,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -646,6 +663,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -657,17 +675,20 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('Checkout failed'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -675,6 +696,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -747,6 +769,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -758,12 +781,14 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -773,6 +798,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
         duration: const Duration(seconds: 1),
         content: Text('$e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -819,6 +845,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
@@ -826,6 +853,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
                 final snackBar = SnackBar(
                   content: Text(responseJson["Error"].toString()),
                 );
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(snackBar);
               }
             }
@@ -835,6 +863,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
             duration: Duration(seconds: 1),
             content: Text('Customer save failed'),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -842,6 +871,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -849,6 +879,7 @@ class _DistributorMeetingPageState extends State<DistributorMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

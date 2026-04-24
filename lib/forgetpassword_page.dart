@@ -53,6 +53,7 @@ class OTPScreenState extends State<OTPScreen> {
       navigateToResetPassword(email);
     } else {
       const snackBar = SnackBar(content: Text('Invalid OTP'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -76,11 +77,13 @@ class OTPScreenState extends State<OTPScreen> {
         if (status) {
         } else {
           const snackBar = SnackBar(content: Text('Failed'));
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

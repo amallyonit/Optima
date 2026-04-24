@@ -227,12 +227,14 @@ class _CustomerDeliverAnalysisState extends State<CustomerDeliverAnalysis> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -240,6 +242,7 @@ class _CustomerDeliverAnalysisState extends State<CustomerDeliverAnalysis> {
         const snackBar = SnackBar(
           content: Text('Distributor details not available.'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -247,6 +250,7 @@ class _CustomerDeliverAnalysisState extends State<CustomerDeliverAnalysis> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

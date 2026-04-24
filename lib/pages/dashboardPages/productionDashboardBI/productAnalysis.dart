@@ -2123,6 +2123,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2231,6 +2232,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2278,6 +2280,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2387,6 +2390,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2436,6 +2440,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2544,6 +2549,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2593,6 +2599,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2701,6 +2708,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2748,6 +2756,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2856,6 +2865,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

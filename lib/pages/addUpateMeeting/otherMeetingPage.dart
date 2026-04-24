@@ -39,8 +39,11 @@ String _text = '';
 class OtherMeetingPage extends StatefulWidget {
   final CheckinDetails? checkInDetails;
   final bool fromHomePage;
-  const OtherMeetingPage(
-      {super.key, this.checkInDetails, required this.fromHomePage});
+  const OtherMeetingPage({
+    super.key,
+    this.checkInDetails,
+    required this.fromHomePage,
+  });
 
   @override
   State<OtherMeetingPage> createState() => _OtherMeetingPageState();
@@ -59,7 +62,8 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
   void navigateToHomePage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: "")),
+        builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: ""),
+      ),
     );
   }
 
@@ -69,11 +73,13 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
     final userMailID = prefs.getString('userMailID') ?? '';
     List<Map<String, Object>> selectedParticipantList = selectedParticipantOther
         .whereType<LeadParticipant>()
-        .map((LeadParticipant item) => {
-              'ParticipantName': item.leadParticipantUserName,
-              'LeadParticipantId': 0,
-              'ParticipantId': item.leadParticipantUserId,
-            })
+        .map(
+          (LeadParticipant item) => {
+            'ParticipantName': item.leadParticipantUserName,
+            'LeadParticipantId': 0,
+            'ParticipantId': item.leadParticipantUserId,
+          },
+        )
         .toList();
     summarySave = false;
     final leadactivity = {
@@ -91,7 +97,7 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
       'LeadActivityStatus': "",
       'LeadActivityImage': "",
       'LeadActivityType': "On Site",
-      'participantList': selectedParticipantList
+      'participantList': selectedParticipantList,
     };
     const apiUrl = '${ApiHelper.baseUrl}insertleadactivity';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -123,18 +129,17 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToHomePage();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -144,6 +149,7 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
         duration: const Duration(seconds: 1),
         content: Text('$e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -156,10 +162,12 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
 
     participantListOther = selectedParticipantOther
         .whereType<LeadParticipant>()
-        .map((LeadParticipant item) => {
-              'LeadParticipantId': item.leadParticipantId,
-              'ParticipantId': item.leadParticipantUserId,
-            })
+        .map(
+          (LeadParticipant item) => {
+            'LeadParticipantId': item.leadParticipantId,
+            'ParticipantId': item.leadParticipantUserId,
+          },
+        )
         .toList();
 
     final leadmaster = {
@@ -215,12 +223,10 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
             duration: Duration(seconds: 1),
             content: Text(
               'Saved Successfully...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -229,26 +235,24 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToHomePage();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('$e'),
-      );
+      final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -322,9 +326,8 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
         });
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error getting location: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -345,7 +348,8 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
             return AlertDialog(
               title: const Text('Location Permission Denied'),
               content: const Text(
-                  'Location access is required to use this feature. Please enable location permissions in your browser settings.'),
+                'Location access is required to use this feature. Please enable location permissions in your browser settings.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -384,20 +388,22 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          content: Text('Error getting location: $e'),
-        );
+        final snackBar = SnackBar(content: Text('Error getting location: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
   }
 
   Future<void> getPlacemarkFromCoordinates(
-      double latitude, double longitude) async {
+    double latitude,
+    double longitude,
+  ) async {
     const apiKey =
         'pk.2f409db63cf27b6b04b7dc624ff8b704'; // Replace with your LocationIQ API key
     final url = Uri.parse(
-        'https://us1.locationiq.com/v1/reverse.php?key=$apiKey&lat=$latitude&lon=$longitude&format=json');
+      'https://us1.locationiq.com/v1/reverse.php?key=$apiKey&lat=$latitude&lon=$longitude&format=json',
+    );
 
     try {
       final response = await http.get(url);
@@ -470,9 +476,9 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   Future<void> submitCheckin() async {
@@ -494,12 +500,10 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
           duration: Duration(seconds: 1),
           content: Text(
             'Location missing, Please try again...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
         break;
       }
@@ -538,12 +542,10 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
               duration: Duration(seconds: 1),
               content: Text(
                 'Saved Successfully...',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           } else {
             if (responseJson.containsKey("Error") &&
@@ -553,25 +555,23 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
                 duration: const Duration(seconds: 1),
                 content: Text(
                   responseJson["Error"].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
         } else {
-          const snackBar = SnackBar(
-            content: Text('Checkin failed'),
-          );
+          const snackBar = SnackBar(content: Text('Checkin failed'));
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
@@ -579,6 +579,7 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -626,12 +627,10 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
             duration: Duration(seconds: 1),
             content: Text(
               'Saved Successfully...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -640,25 +639,23 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('Checkout failed'),
-        );
+        const snackBar = SnackBar(content: Text('Checkout failed'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -666,6 +663,7 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -752,111 +750,107 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
                   decoration: const InputDecoration(
                     hintText: "Place of Visit",
                     hintStyle: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF8F8F8F)),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF8F8F8F),
+                    ),
                   ),
                 ),
-                const SizedBox(
-                  height: 15,
-                ),
+                const SizedBox(height: 15),
                 AbsorbPointer(
                   absorbing: widget.checkInDetails != null,
                   child: ElevatedButton(
-                      onPressed: () async {
-                        if (placeOfVisitController.text == "") {
-                          const snackBar = SnackBar(
-                            backgroundColor: Color(0xFF2CA9DF),
-                            duration: Duration(seconds: 2),
-                            content: Text(
-                              'Please enter place of visit and try again...',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
-                            ),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                        } else {
-                          BuildContext? dialogContext;
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (BuildContext context) {
-                              dialogContext = context;
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white),
+                    onPressed: () async {
+                      if (placeOfVisitController.text == "") {
+                        const snackBar = SnackBar(
+                          backgroundColor: Color(0xFF2CA9DF),
+                          duration: Duration(seconds: 2),
+                          content: Text(
+                            'Please enter place of visit and try again...',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                        );
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                      } else {
+                        BuildContext? dialogContext;
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            dialogContext = context;
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
                                 ),
-                              );
-                            },
-                          );
-                          try {
-                            await submitCheckin();
-                            Navigator.of(dialogContext!).pop();
-                            navigateToHomePage();
-                          } catch (error) {
-                            // print('Error: $error');
-                          }
+                              ),
+                            );
+                          },
+                        );
+                        try {
+                          await submitCheckin();
+                          Navigator.of(dialogContext!).pop();
+                          navigateToHomePage();
+                        } catch (error) {
+                          // print('Error: $error');
                         }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.checkInDetails == null
-                            ? const Color(0xff2ca9df)
-                            : Colors.grey,
-                        shape: const RoundedRectangleBorder(),
-                      ),
-                      child: const Text(
-                        "Check In",
-                        style: TextStyle(color: Colors.white),
-                      )),
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.checkInDetails == null
+                          ? const Color(0xff2ca9df)
+                          : Colors.grey,
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    child: const Text(
+                      "Check In",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       "Visit Summary",
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     // Visibility(
                     //   visible: locationControllerFooter.text == "",
                     //   child:
                     IconButton(
-                        onPressed: () {
-                          setState(() {
-                            manualLocationFetchStart = true;
-                          });
-                          if (!kIsWeb) {
-                            getCurrentLocation();
-                          } else {
-                            getCurrentLocationWeb();
-                          }
-                        },
-                        icon: (!kIsWeb ? locationLoading : false)
-                            ? const CircularProgressIndicator()
-                            : const Icon(
-                                Icons.location_on,
-                                color: Color(0xFF2CA9DF),
-                              )),
+                      onPressed: () {
+                        setState(() {
+                          manualLocationFetchStart = true;
+                        });
+                        if (!kIsWeb) {
+                          getCurrentLocation();
+                        } else {
+                          getCurrentLocationWeb();
+                        }
+                      },
+                      icon: (!kIsWeb ? locationLoading : false)
+                          ? const CircularProgressIndicator()
+                          : const Icon(
+                              Icons.location_on,
+                              color: Color(0xFF2CA9DF),
+                            ),
+                    ),
                     // ),
                   ],
                 ),
-                const SizedBox(
-                  height: 15,
-                ),
+                const SizedBox(height: 15),
                 SizedBox(
                   height: 150,
                   width: 400,
                   child: ParticipantMultiLevelDropDown(),
                 ),
-                const SizedBox(
-                  height: 20,
-                ),
+                const SizedBox(height: 20),
                 TextField(
                   controller: reasonController,
                   keyboardType: TextInputType.multiline,
@@ -869,13 +863,19 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
                     ),
                     labelText: "Reason of Visit",
                     labelStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF8F8F8F)),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF8F8F8F),
+                    ),
                     focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 1, color: Colors.grey)),
+                      borderSide: BorderSide(width: 1, color: Colors.grey),
+                    ),
                     contentPadding: const EdgeInsets.only(
-                        left: 15, right: 0, top: 15, bottom: 0),
+                      left: 15,
+                      right: 0,
+                      top: 15,
+                      bottom: 0,
+                    ),
                     suffixIcon: IconButton(
                       icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
                       onPressed: () {
@@ -884,9 +884,7 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 20,
-                ),
+                const SizedBox(height: 20),
                 Center(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -910,8 +908,9 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
                                   ),
                                 ),
                               );
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(snackBar);
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(snackBar);
                             } else {
                               BuildContext? dialogContext;
                               showDialog(
@@ -922,7 +921,8 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
                                   return const Center(
                                     child: CircularProgressIndicator(
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
+                                        Colors.white,
+                                      ),
                                     ),
                                   );
                                 },

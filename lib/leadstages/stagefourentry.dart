@@ -189,18 +189,21 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -266,18 +269,21 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -449,6 +455,7 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -460,18 +467,21 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -540,6 +550,7 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -551,12 +562,14 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -566,6 +579,7 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
         duration: const Duration(seconds: 1),
         content: Text('$e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1459,6 +1473,7 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                           ),
                         ),
                       );
+                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(snackBar);
                     } else {
                       BuildContext? dialogContext;
@@ -1483,6 +1498,7 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                         navigateToHomePage();
                       } catch (e) {
                         final snackBar = SnackBar(content: Text('$e'));
+                        if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(snackBar);
                       }
                     }

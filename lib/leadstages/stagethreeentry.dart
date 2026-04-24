@@ -30,15 +30,15 @@ List<Map<String, Object>> selectedProductList = [];
 String deviceOrientation = "";
 TextEditingController feedbackController = TextEditingController();
 TextEditingController sampleReceivedDateController = TextEditingController(
-    text: DateFormat('dd/MM/yyyy')
-        .format(DateTime.now())
-        .toString()
-        .substring(0, 10));
+  text: DateFormat(
+    'dd/MM/yyyy',
+  ).format(DateTime.now()).toString().substring(0, 10),
+);
 TextEditingController sampleSubmittedDateController = TextEditingController(
-    text: DateFormat('dd/MM/yyyy')
-        .format(DateTime.now())
-        .toString()
-        .substring(0, 10));
+  text: DateFormat(
+    'dd/MM/yyyy',
+  ).format(DateTime.now()).toString().substring(0, 10),
+);
 TextEditingController sampleSubmittedToController = TextEditingController();
 TextEditingController feedbackDateController = TextEditingController();
 bool selectedMailValue = false;
@@ -100,8 +100,11 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
   Timer? _timer;
   bool _isSummaryListening = false;
 
-  void _listen(TextEditingController txtController, bool isListening,
-      Function setListeningState) async {
+  void _listen(
+    TextEditingController txtController,
+    bool isListening,
+    Function setListeningState,
+  ) async {
     if (!isListening) {
       _checkMicPermissions();
       bool available = await _speech.initialize();
@@ -132,9 +135,9 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   void _showLocationFetchFailedAlert() {
@@ -201,9 +204,8 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
         });
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('Error getting location: $e'),
-      );
+      final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -264,76 +266,86 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
   }
 
   List<Map<String, Object>> convertLeadProductsToMapList(
-      List<LeadProducts> leadProducts) {
+    List<LeadProducts> leadProducts,
+  ) {
     return leadProducts
-        .where((leadProduct) =>
-            leadProduct.leadStage4EntryId == 0 ||
-            leadProduct.leadStage4Status == 'Re sampling')
+        .where(
+          (leadProduct) =>
+              leadProduct.leadStage4EntryId == 0 ||
+              leadProduct.leadStage4Status == 'Re sampling',
+        )
         .map((leadProducts) {
-      DateTime? parseDateString(String dateString) {
-        if (dateString == '01/01/1900') {
-          return null; // Treat '01/01/1900' as an invalid date
-        }
-        try {
-          List<String> parts = dateString.split('/');
-          int day = int.parse(parts[0]);
-          int month = int.parse(parts[1]);
-          int year = int.parse(parts[2]);
+          DateTime? parseDateString(String dateString) {
+            if (dateString == '01/01/1900') {
+              return null; // Treat '01/01/1900' as an invalid date
+            }
+            try {
+              List<String> parts = dateString.split('/');
+              int day = int.parse(parts[0]);
+              int month = int.parse(parts[1]);
+              int year = int.parse(parts[2]);
 
-          return DateTime(year, month, day);
-        } catch (e) {
-          return null;
-        }
-      }
+              return DateTime(year, month, day);
+            } catch (e) {
+              return null;
+            }
+          }
 
-      DateTime? parsedDate =
-          parseDateString(leadProducts.leadStage3RecievedDate);
-      String leadStage3RecievedDate =
-          parsedDate != null ? leadProducts.leadStage3RecievedDate : '';
+          DateTime? parsedDate = parseDateString(
+            leadProducts.leadStage3RecievedDate,
+          );
+          String leadStage3RecievedDate = parsedDate != null
+              ? leadProducts.leadStage3RecievedDate
+              : '';
 
-      parsedDate = parseDateString(leadProducts.leadStage3SubmittedDate);
-      String leadStage3SubmittedDate =
-          parsedDate != null ? leadProducts.leadStage3SubmittedDate : '';
+          parsedDate = parseDateString(leadProducts.leadStage3SubmittedDate);
+          String leadStage3SubmittedDate = parsedDate != null
+              ? leadProducts.leadStage3SubmittedDate
+              : '';
 
-      bool leadEditable = leadProducts.leadStage3Id.toString() != '0' &&
-              leadProducts.leadStage4Id.toString() == '0'
-          ? true
-          : false;
-      return {
-        "leadProductId": leadProducts.leadProductId,
-        "leadProductName": leadProducts.leadProductName,
-        "leadCompetitorName": leadProducts.leadCompetitorName,
-        "leadHospitalPrice": leadProducts.leadHospitalPrice,
-        "leadDistributorPrice": leadProducts.leadDistributorPrice,
-        "leadDateofPurchase": leadProducts.leadDateofPurchase,
-        "leadPurchasePrice": leadProducts.leadPurchasePrice,
-        "leadDateofSubmission": leadProducts.leadDateofSubmission,
-        "leadDclrNumber": leadProducts.leadDclrNumber,
-        "leadTargetedPrice": leadProducts.leadTargetedPrice,
-        "leadRemark": leadProducts.leadRemark,
-        "leadSamplePurchased": leadProducts.leadSamplePurchased,
-        "leadSampleSubmitted": leadProducts.leadSampleSubmitted,
-        "leadAgingDays": leadProducts.leadAgingDays,
-        "leadHospitalCode": leadProducts.leadHospitalCode,
-        "leadStage3Id": leadProducts.leadStage3Id,
-        "leadEditable": leadEditable,
-        "leadStage3RecievedDate": leadStage3RecievedDate,
-        "leadStage3SubmittedDate": leadStage3SubmittedDate,
-        "leadStage3ContactName": leadProducts.leadStage3ContactName,
-        "leadStage3ContactCode": leadProducts.leadStage3ContactCode,
-        "leadStage3EntryId": leadProducts.leadStage3EntryId,
-      };
-    }).toList();
+          bool leadEditable =
+              leadProducts.leadStage3Id.toString() != '0' &&
+                  leadProducts.leadStage4Id.toString() == '0'
+              ? true
+              : false;
+          return {
+            "leadProductId": leadProducts.leadProductId,
+            "leadProductName": leadProducts.leadProductName,
+            "leadCompetitorName": leadProducts.leadCompetitorName,
+            "leadHospitalPrice": leadProducts.leadHospitalPrice,
+            "leadDistributorPrice": leadProducts.leadDistributorPrice,
+            "leadDateofPurchase": leadProducts.leadDateofPurchase,
+            "leadPurchasePrice": leadProducts.leadPurchasePrice,
+            "leadDateofSubmission": leadProducts.leadDateofSubmission,
+            "leadDclrNumber": leadProducts.leadDclrNumber,
+            "leadTargetedPrice": leadProducts.leadTargetedPrice,
+            "leadRemark": leadProducts.leadRemark,
+            "leadSamplePurchased": leadProducts.leadSamplePurchased,
+            "leadSampleSubmitted": leadProducts.leadSampleSubmitted,
+            "leadAgingDays": leadProducts.leadAgingDays,
+            "leadHospitalCode": leadProducts.leadHospitalCode,
+            "leadStage3Id": leadProducts.leadStage3Id,
+            "leadEditable": leadEditable,
+            "leadStage3RecievedDate": leadStage3RecievedDate,
+            "leadStage3SubmittedDate": leadStage3SubmittedDate,
+            "leadStage3ContactName": leadProducts.leadStage3ContactName,
+            "leadStage3ContactCode": leadProducts.leadStage3ContactCode,
+            "leadStage3EntryId": leadProducts.leadStage3EntryId,
+          };
+        })
+        .toList();
   }
 
   Future<void> _selectLeadProducts(
-      String userJwtToken, String userMailID) async {
+    String userJwtToken,
+    String userMailID,
+  ) async {
     productList = [];
     leadId = widget.leadsId;
     final data = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'LeadId': widget.leadsId
+      'LeadId': widget.leadsId,
     };
     const apiUrl = '${ApiHelper.baseUrl}selectleadproducts';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -353,9 +365,9 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
                 .map((item) => LeadProducts.fromJson(item))
                 .toList();
             setState(() {
-              context
-                  .read<LeadProductsStage3Provider>()
-                  .updateLeadProducts(newLeadProducts);
+              context.read<LeadProductsStage3Provider>().updateLeadProducts(
+                newLeadProducts,
+              );
               productList = convertLeadProductsToMapList(newLeadProducts);
               if (data[0].length > 0) {
                 agingDays = data[0][0]['LeadAgingDays'].toString();
@@ -379,18 +391,17 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -398,12 +409,12 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
         final snackBar = SnackBar(
           content: Text('HTTP Error: ${response.statusCode}'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('$e'),
-      );
+      final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -412,7 +423,7 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
     final data = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'CustomerCode': leadHospitalCode
+      'CustomerCode': leadHospitalCode,
     };
     const apiUrl = '${ApiHelper.baseUrl}selectcustomercontactperson';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -449,18 +460,17 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -468,12 +478,12 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
         final snackBar = SnackBar(
           content: Text('HTTP Error: ${response.statusCode}'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('$e'),
-      );
+      final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -481,7 +491,8 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
   void loadSelectedProducts() async {
     selectedProductList = productList
         .where(
-            (product) => selectedProductIds.contains(product['leadProductId']))
+          (product) => selectedProductIds.contains(product['leadProductId']),
+        )
         .toList();
   }
 
@@ -531,12 +542,10 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
             duration: Duration(seconds: 1),
             content: Text(
               'Saved Successfully...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -545,26 +554,24 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('$e'),
-      );
+      final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -609,9 +616,8 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
             productList.clear();
             selectedProductList.clear();
           });
-          const snackBar = SnackBar(
-            content: Text('Saved Successfully...'),
-          );
+          const snackBar = SnackBar(content: Text('Saved Successfully...'));
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -620,26 +626,24 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        content: Text('$e'),
-      );
+      final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -651,11 +655,13 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
     List<Map<String, Object>> selectedParticipantList =
         selectedParticipantFooter
             .whereType<LeadParticipant>()
-            .map((LeadParticipant item) => {
-                  'ParticipantName': item.leadParticipantUserName,
-                  'LeadParticipantId': 0,
-                  'ParticipantId': item.leadParticipantUserId,
-                })
+            .map(
+              (LeadParticipant item) => {
+                'ParticipantName': item.leadParticipantUserName,
+                'LeadParticipantId': 0,
+                'ParticipantId': item.leadParticipantUserId,
+              },
+            )
             .toList();
     final leadactivity = {
       'UserJwtToken': userJwtToken,
@@ -673,7 +679,7 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
       'LeadActivityStatus': selectedStatusFooter,
       'LeadActivityImage': "",
       'LeadActivityType': "On Site",
-      'participantList': selectedParticipantList
+      'participantList': selectedParticipantList,
     };
     const apiUrl = '${ApiHelper.baseUrl}insertleadactivity';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -688,8 +694,9 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
         bool status = responseJson["Status"];
         if (status && responseJson["Data"].toString().isNotEmpty) {
           summaryControllerFooter.clear();
-          followupDateControllerFooter.text =
-              DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now());
+          followupDateControllerFooter.text = DateFormat(
+            'dd/MM/yyyy hh:mm a',
+          ).format(DateTime.now());
           selectedStatusFooter = 'Next Action';
           leadId = "";
           setState(() {
@@ -702,12 +709,10 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
             duration: Duration(seconds: 1),
             content: Text(
               'Saved Successfully...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -716,18 +721,17 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -737,16 +741,21 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
         duration: const Duration(seconds: 1),
         content: Text('$e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 
   Future<void> loadProductDetailsForEdit(
-      String Stage3EntryId, List<Map<String, Object>> productList) async {
+    String Stage3EntryId,
+    List<Map<String, Object>> productList,
+  ) async {
     int? leadStage3EntryId = int.tryParse(Stage3EntryId);
     selectedProductList = productList
-        .where((productItem) =>
-            productItem['leadStage3EntryId'] == leadStage3EntryId)
+        .where(
+          (productItem) =>
+              productItem['leadStage3EntryId'] == leadStage3EntryId,
+        )
         .toList();
     selectedProductNames.clear();
     selectedProductIds.clear();
@@ -767,15 +776,18 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
   void navigateToHomePage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: "")),
+        builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: ""),
+      ),
     );
   }
 
   Future<List<Contacts>> getContacts(String search) async {
     List<Contacts> contList = convertContact(contactMasterList);
     List<Contacts> filteredList = contList
-        .where((element) =>
-            element.CustomerName.toLowerCase().contains(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.CustomerName.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
 
     return filteredList;
@@ -783,10 +795,12 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
 
   List<Contacts> convertContact(List<Map<String, dynamic>> contList) {
     return contList
-        .map((map) => Contacts(
-              CustomerCode: map['CustContactId']?.toString() ?? '',
-              CustomerName: map['CustContactName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => Contacts(
+            CustomerCode: map['CustContactId']?.toString() ?? '',
+            CustomerName: map['CustContactName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
@@ -879,1271 +893,1413 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
           child:
               // ignore: sized_box_for_whitespace
               SingleChildScrollView(
-            reverse: false,
-            controller: scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  SizedBox(
-                    height: 160, // Set a fixed height or adjust as needed
-                    child: HeaderPage(leadsId: leadId, leadStageForEdit: "3"),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: SizedBox(
-                      width: 500,
-                      height: 125 * productList.length.toDouble() <= 375
-                          ? 150 * productList.length.toDouble()
-                          : 325,
-                      child: ListView.separated(
-                        itemCount: productList.length,
-                        separatorBuilder: (context, index) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final item = productList[index];
-                          bool initialCheckboxState =
-                              item['leadEditable'] as bool;
-                          while (checkboxStateList.length <= index) {
-                            checkboxStateList.add(initialCheckboxState);
-                          }
-                          bool checkboxState = checkboxStateList[index];
-                          return Container(
-                              height: 160,
-                              color: index % 2 == 0
-                                  ? const Color(0xFFfdfdfd)
-                                  : const Color(0xFFfdfdfd),
-                              child: SingleChildScrollView(
+                reverse: false,
+                controller: scrollController,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 0,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        height: 160, // Set a fixed height or adjust as needed
+                        child: HeaderPage(
+                          leadsId: leadId,
+                          leadStageForEdit: "3",
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: SizedBox(
+                          width: 500,
+                          height: 125 * productList.length.toDouble() <= 375
+                              ? 150 * productList.length.toDouble()
+                              : 325,
+                          child: ListView.separated(
+                            itemCount: productList.length,
+                            separatorBuilder: (context, index) =>
+                                const Divider(),
+                            itemBuilder: (context, index) {
+                              final item = productList[index];
+                              bool initialCheckboxState =
+                                  item['leadEditable'] as bool;
+                              while (checkboxStateList.length <= index) {
+                                checkboxStateList.add(initialCheckboxState);
+                              }
+                              bool checkboxState = checkboxStateList[index];
+                              return Container(
+                                height: 160,
+                                color: index % 2 == 0
+                                    ? const Color(0xFFfdfdfd)
+                                    : const Color(0xFFfdfdfd),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    children: [
+                                      const SizedBox(height: 10),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.start,
+                                            children: [
+                                              Transform.scale(
+                                                scale: 0.7,
+                                                child: Checkbox(
+                                                  value: checkboxState,
+                                                  onChanged: (bool? value) {
+                                                    setState(() {
+                                                      checkboxStateList[index] =
+                                                          value!;
+                                                      if (value == true) {
+                                                        selectedProductNames.add(
+                                                          item['leadProductName']
+                                                              as String,
+                                                        );
+                                                        selectedProductIds.add(
+                                                          item['leadProductId']
+                                                              as int,
+                                                        );
+                                                      } else {
+                                                        selectedProductNames.remove(
+                                                          item['leadProductName'],
+                                                        );
+                                                        selectedProductIds.remove(
+                                                          item['leadProductId'],
+                                                        );
+                                                      }
+                                                      _productNameController
+                                                              .text =
+                                                          selectedProductNames
+                                                              .join(', ');
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  'Product : ${item['leadProductName']}',
+                                                  style: const TextStyle(
+                                                    fontFamily: "Poppins",
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                              const Padding(
+                                                padding: EdgeInsets.only(
+                                                  right: 12.0,
+                                                ),
+                                                child: Icon(
+                                                  Icons.edit_outlined,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 16.0,
+                                              right: 16,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                const Text(
+                                                  'Sample Received:',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Color(0xff454545),
+                                                  ),
+                                                ),
+                                                Visibility(
+                                                  visible:
+                                                      checkboxStateList[index],
+                                                  child: Text(
+                                                    ' ${sampleReceivedDateController.text}',
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 16.0,
+                                              right: 16,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                const Text(
+                                                  'Submitted to Key Contact:',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Color(0xff454545),
+                                                  ),
+                                                ),
+                                                Visibility(
+                                                  visible:
+                                                      checkboxStateList[index],
+                                                  child: Text(
+                                                    ' ${sampleSubmittedDateController.text}',
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 16.0,
+                                              right: 16,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                const Text(
+                                                  'Sample Submitted to:',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Color(0xff454545),
+                                                  ),
+                                                ),
+                                                Visibility(
+                                                  visible:
+                                                      checkboxStateList[index],
+                                                  child: Text(
+                                                    sampleSubmittedToController
+                                                        .text,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 5),
+                                          const Padding(
+                                            padding: EdgeInsets.only(
+                                              left: 16.0,
+                                              right: 16,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'Sample/ \nRe Sample :',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Color(0xff454545),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'View History',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    decoration: TextDecoration
+                                                        .underline,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Padding(
+                                            padding: EdgeInsets.all(8.0),
+                                            child: SizedBox(
+                                              width: double.infinity,
+                                              child: Divider(
+                                                color: Color(0xff454545),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 16.0, right: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Sample Submission",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Container(
+                        color: const Color(0xffefefef),
+                        child: Padding(
+                          padding: const EdgeInsets.all(18.0),
+                          child: Column(
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Sample Received Date \n From HO',
+                                        style: TextStyle(
+                                          color: Color(0xff454545),
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: "Poppins",
+                                          fontSize: 14.0,
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 140,
+                                        height: containerHeight,
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: TextField(
+                                                readOnly: true,
+                                                controller:
+                                                    _sampleRecivedfromHOController,
+                                                decoration: InputDecoration(
+                                                  hintText: DateFormat(
+                                                    'dd/MM/yyyy',
+                                                  ).format(DateTime.now()),
+                                                  hintStyle: const TextStyle(
+                                                    color: Color(0xff454545),
+                                                    fontWeight: FontWeight.w500,
+                                                    fontFamily: "Poppins",
+                                                    fontSize: 14.0,
+                                                  ),
+                                                  border: InputBorder.none,
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.calendar_month_outlined,
+                                              ),
+                                              onPressed: () async {
+                                                DateTime? selectedDate =
+                                                    await showDatePicker(
+                                                      context: context,
+                                                      initialDate:
+                                                          DateTime.now(),
+                                                      firstDate: DateTime(2000),
+                                                      lastDate: DateTime.now(),
+                                                      initialEntryMode:
+                                                          DatePickerEntryMode
+                                                              .calendarOnly,
+                                                    );
+                                                String formattedDate =
+                                                    selectedDate != null
+                                                    ? DateFormat(
+                                                        'dd/MM/yyyy',
+                                                      ).format(selectedDate)
+                                                    : DateFormat(
+                                                        'dd/MM/yyyy',
+                                                      ).format(DateTime.now());
+                                                _sampleRecivedfromHOController
+                                                        .text =
+                                                    formattedDate;
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Sample Submitted \n Date ',
+                                        style: TextStyle(
+                                          color: Color(0xff454545),
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: "Poppins",
+                                          fontSize: 14.0,
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 140,
+                                        height: containerHeight,
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: TextField(
+                                                readOnly: true,
+                                                controller:
+                                                    _sampleSubmittedToCustomerController,
+                                                decoration: InputDecoration(
+                                                  hintText: DateFormat(
+                                                    'dd/MM/yyyy',
+                                                  ).format(DateTime.now()),
+                                                  hintStyle: const TextStyle(
+                                                    color: Color(0xff454545),
+                                                    fontWeight: FontWeight.w500,
+                                                    fontFamily: "Poppins",
+                                                    fontSize: 14.0,
+                                                  ),
+                                                  border: InputBorder.none,
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.calendar_month_outlined,
+                                              ),
+                                              onPressed: () async {
+                                                DateTime? selectedDate =
+                                                    await showDatePicker(
+                                                      context: context,
+                                                      initialDate:
+                                                          DateTime.now(),
+                                                      firstDate: DateTime(2000),
+                                                      lastDate: DateTime.now(),
+                                                      initialEntryMode:
+                                                          DatePickerEntryMode
+                                                              .calendarOnly,
+                                                    );
+                                                String formattedDate =
+                                                    selectedDate != null
+                                                    ? DateFormat(
+                                                        'dd/MM/yyyy',
+                                                      ).format(selectedDate)
+                                                    : DateFormat(
+                                                        'dd/MM/yyyy',
+                                                      ).format(DateTime.now());
+                                                _sampleSubmittedToCustomerController
+                                                        .text =
+                                                    formattedDate;
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Padding(
+                                padding: deviceOrientation == "Portrait"
+                                    ? const EdgeInsets.only(left: 2.0)
+                                    : const EdgeInsets.only(right: 0),
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const SizedBox(
-                                      height: 10,
+                                    SizedBox(
+                                      height: deviceOrientation == "Portrait"
+                                          ? containerHeight
+                                          : containerDropDownHeight + 2,
+                                      width: textFieldDropDownWidth,
+                                      child: Stack(
+                                        children: [
+                                          Positioned.fill(
+                                            child: AsyncAutocomplete<Contacts>(
+                                              inputTextStyle: const TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                                fontFamily: "Poppins",
+                                                fontSize: 14,
+                                              ),
+                                              focusNode: _focusContact,
+                                              maxListHeight:
+                                                  deviceOrientation ==
+                                                      "Portrait"
+                                                  ? 370
+                                                  : 200,
+                                              decoration: InputDecoration(
+                                                border: UnderlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(0),
+                                                ),
+                                                labelText:
+                                                    'Sample Submitted to',
+                                                labelStyle: const TextStyle(
+                                                  color: Color(0xff454545),
+                                                  fontWeight: FontWeight.w500,
+                                                  fontFamily: "Poppins",
+                                                  fontSize: 14.0,
+                                                ),
+                                                focusedBorder:
+                                                    const UnderlineInputBorder(),
+                                                contentPadding:
+                                                    const EdgeInsets.only(
+                                                      left: 0,
+                                                      right: 30,
+                                                      top: 2,
+                                                      bottom: 0,
+                                                    ),
+                                                suffixIcon: const Padding(
+                                                  padding: EdgeInsets.only(
+                                                    top: 10.0,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.search,
+                                                    size: 20,
+                                                  ),
+                                                ),
+                                              ),
+                                              controller: _searchController2,
+                                              inputKey: contactKey,
+                                              onTapItem: (Contacts contact) {
+                                                setState(() {
+                                                  _searchController2.text =
+                                                      contact.CustomerName;
+                                                  var customer = contactMasterList
+                                                      .firstWhere(
+                                                        (map) =>
+                                                            map['CustContactName'] ==
+                                                            contact
+                                                                .CustomerName,
+                                                        orElse: () =>
+                                                            <String, dynamic>{
+                                                              'CustContactId':
+                                                                  null,
+                                                            },
+                                                      );
+                                                  selectedContactId =
+                                                      customer['CustContactId']
+                                                          .toString();
+                                                });
+                                              },
+                                              suggestionBuilder: (data) =>
+                                                  ListTile(
+                                                    title: Text(
+                                                      data.CustomerName,
+                                                      style: const TextStyle(
+                                                        color: Color(
+                                                          0xff454545,
+                                                        ),
+                                                        fontSize: 14.0,
+                                                        fontFamily: "Poppins",
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              asyncSuggestions: (searchValue) =>
+                                                  getContacts(searchValue),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    Column(
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  left: 8.0,
+                                  right: 8,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Sample/Re Sample'),
+                                    SizedBox(
+                                      child: GestureDetector(
+                                        onTap: () async {
+                                          setState(() {
+                                            if (_sampleRecivedfromHOController
+                                                    .text ==
+                                                "") {
+                                              sampleReceivedDateController
+                                                  .text = DateFormat(
+                                                'dd/MM/yyyy',
+                                              ).format(DateTime.now());
+                                            } else {
+                                              sampleReceivedDateController
+                                                      .text =
+                                                  _sampleRecivedfromHOController
+                                                      .text;
+                                            }
+
+                                            if (_sampleSubmittedToCustomerController
+                                                    .text ==
+                                                "") {
+                                              sampleSubmittedDateController
+                                                  .text = DateFormat(
+                                                'dd/MM/yyyy',
+                                              ).format(DateTime.now());
+                                            } else {
+                                              sampleSubmittedDateController
+                                                      .text =
+                                                  _sampleSubmittedToCustomerController
+                                                      .text;
+                                            }
+                                            if (_searchController2.text == "") {
+                                              return;
+                                            } else {
+                                              sampleSubmittedToController.text =
+                                                  _searchController2.text;
+                                            }
+                                          });
+                                          loadSelectedProducts();
+                                        },
+                                        child: Container(
+                                          height: 30,
+                                          width: 80,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF2CA9DF),
+                                            borderRadius: BorderRadius.circular(
+                                              0.0,
+                                            ),
+                                          ),
+                                          child: const Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                'Update',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.update,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 16.0, right: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Sample FeedBack",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      AbsorbPointer(
+                        absorbing: !stage3Edit,
+                        child: Container(
+                          color: const Color(0xffefefef),
+                          child: Padding(
+                            padding: const EdgeInsets.all(18.0),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      width: 140,
+                                      height: containerHeight,
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: TextField(
+                                              readOnly: true,
+                                              controller:
+                                                  feedbackDateController,
+                                              decoration: const InputDecoration(
+                                                hintText: 'Feedback Date',
+                                                hintStyle: TextStyle(
+                                                  color: Color(0xff454545),
+                                                  fontWeight: FontWeight.w500,
+                                                  fontFamily: "Poppins",
+                                                  fontSize: 13.0,
+                                                ),
+                                                border: InputBorder.none,
+                                              ),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.calendar_month_outlined,
+                                            ),
+                                            onPressed: () async {
+                                              DateTime? selectedDate =
+                                                  await showDatePicker(
+                                                    context: context,
+                                                    initialDate: DateTime.now(),
+                                                    firstDate: DateTime(2000),
+                                                    lastDate: DateTime.now(),
+                                                    initialEntryMode:
+                                                        DatePickerEntryMode
+                                                            .calendarOnly,
+                                                  );
+                                              String formattedDate =
+                                                  selectedDate != null
+                                                  ? DateFormat(
+                                                      'dd/MM/yyyy',
+                                                    ).format(selectedDate)
+                                                  : DateFormat(
+                                                      'dd/MM/yyyy',
+                                                    ).format(DateTime.now());
+                                              feedbackDateController.text =
+                                                  formattedDate;
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Container(
+                                      width: textFieldDropDownWidth / 2.97,
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 10.0,
+                                        ),
+                                        child: DropdownButton<String>(
+                                          isExpanded: true,
+                                          value: feedbackStatus,
+                                          hint: const Text(
+                                            "Status ",
+                                            style: TextStyle(
+                                              fontFamily: "Poppins",
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w400,
+                                              color: Color(0xff454545),
+                                              height: 12 / 10,
+                                            ),
+                                            textAlign: TextAlign.left,
+                                          ),
+                                          onChanged: (String? newValue) {
+                                            setState(() {
+                                              feedbackStatus = newValue;
+                                            });
+                                          },
+                                          underline: Container(),
+                                          icon: const Icon(
+                                            Icons.search,
+                                            size: 20,
+                                          ),
+                                          items:
+                                              <String>[
+                                                'Next Action',
+                                                'Re Sampling',
+                                                'Approved',
+                                                'Rejected',
+                                              ].map<DropdownMenuItem<String>>((
+                                                String value,
+                                              ) {
+                                                return DropdownMenuItem<String>(
+                                                  value: value,
+                                                  child: Text(
+                                                    value,
+                                                    style: const TextStyle(
+                                                      fontFamily: "Poppins",
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Color(0xff454545),
+                                                      height: 12 / 10,
+                                                    ),
+                                                  ),
+                                                );
+                                              }).toList(),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Padding(
+                                  padding: deviceOrientation == "Portrait"
+                                      ? const EdgeInsets.only(left: 2.0)
+                                      : const EdgeInsets.only(right: 0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Container(
+                                          color: Colors.white,
+                                          height: 60,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                              right: 8,
+                                            ),
+                                            child: TextField(
+                                              controller: feedbackController,
+                                              maxLines: 6,
+                                              decoration: InputDecoration(
+                                                labelText: 'Feedback.',
+                                                labelStyle: const TextStyle(
+                                                  color: Color(0xFF454545),
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w400,
+                                                  fontFamily: 'Poppins',
+                                                ),
+                                                contentPadding:
+                                                    const EdgeInsets.only(
+                                                      top: 15.0,
+                                                    ),
+                                                suffixIcon: IconButton(
+                                                  icon: Icon(
+                                                    _isFeedbackListening
+                                                        ? Icons.mic
+                                                        : Icons.mic_none,
+                                                  ),
+                                                  onPressed: () {
+                                                    _listen(
+                                                      feedbackController,
+                                                      _isFeedbackListening,
+                                                      (bool isListening) {
+                                                        _isFeedbackListening =
+                                                            isListening;
+                                                      },
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Details Send to HO \nvia Mail ?',
+                                      ),
+                                      Checkbox(
+                                        value: selectedMailValue,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            selectedMailValue = value!;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // SizedBox(
+                      //   height: 460, // Set a fixed height or adjust as needed
+                      //   child: FooterPage(leadsId: leadId, leadStageForEdit: "3"),
+                      // ),
+                      SizedBox(
+                        height: 500,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 10.0, bottom: 0),
+                          child: Column(
+                            children: [
+                              Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(18.0),
+                                    child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           mainAxisAlignment:
-                                              MainAxisAlignment.start,
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Transform.scale(
-                                              scale: 0.7,
-                                              child: Checkbox(
-                                                value: checkboxState,
-                                                onChanged: (bool? value) {
+                                            const Text(
+                                              "Meeting Summary",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Visibility(
+                                              visible:
+                                                  locationControllerFooter
+                                                      .text ==
+                                                  "",
+                                              child: IconButton(
+                                                onPressed: () {
                                                   setState(() {
-                                                    checkboxStateList[index] =
-                                                        value!;
-                                                    if (value == true) {
-                                                      selectedProductNames.add(
-                                                          item['leadProductName']
-                                                              as String);
-                                                      selectedProductIds.add(
-                                                          item['leadProductId']
-                                                              as int);
-                                                    } else {
-                                                      selectedProductNames
-                                                          .remove(item[
-                                                              'leadProductName']);
-                                                      selectedProductIds.remove(
-                                                          item[
-                                                              'leadProductId']);
-                                                    }
-                                                    _productNameController
-                                                            .text =
-                                                        selectedProductNames
-                                                            .join(', ');
+                                                    manualLocationFetchStart =
+                                                        true;
                                                   });
+                                                  getCurrentLocation();
                                                 },
+                                                icon:
+                                                    locationLoading &&
+                                                        manualLocationFetchStart
+                                                    ? const CircularProgressIndicator()
+                                                    : const Icon(
+                                                        Icons.location_on,
+                                                        color: Color(
+                                                          0xFF2CA9DF,
+                                                        ),
+                                                      ),
                                               ),
-                                            ),
-                                            Expanded(
-                                              child: Text(
-                                                'Product : ${item['leadProductName']}',
-                                                style: const TextStyle(
-                                                    fontFamily: "Poppins",
-                                                    fontWeight:
-                                                        FontWeight.w500),
-                                              ),
-                                            ),
-                                            const Padding(
-                                              padding:
-                                                  EdgeInsets.only(right: 12.0),
-                                              child: Icon(Icons.edit_outlined,
-                                                  size: 16),
                                             ),
                                           ],
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              left: 16.0, right: 16),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              const Text(
-                                                'Sample Received:',
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Color(0xff454545)),
-                                              ),
-                                              Visibility(
-                                                visible:
-                                                    checkboxStateList[index],
-                                                child: Text(
-                                                    ' ${sampleReceivedDateController.text}',
-                                                    style: const TextStyle(
-                                                        fontSize: 14)),
-                                              ),
-                                            ],
+                                        const SizedBox(height: 10),
+                                        const Text(
+                                          'Participant',
+                                          style: TextStyle(
+                                            color: Color(0xFF454545),
+                                            fontFamily: "Poppins",
+                                            fontWeight: FontWeight.w400,
                                           ),
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              left: 16.0, right: 16),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              const Text(
-                                                'Submitted to Key Contact:',
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Color(0xff454545)),
-                                              ),
-                                              Visibility(
-                                                visible:
-                                                    checkboxStateList[index],
-                                                child: Text(
-                                                    ' ${sampleSubmittedDateController.text}',
-                                                    style: const TextStyle(
-                                                        fontSize: 14)),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              left: 16.0, right: 16),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              const Text(
-                                                'Sample Submitted to:',
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Color(0xff454545)),
-                                              ),
-                                              Visibility(
-                                                visible:
-                                                    checkboxStateList[index],
-                                                child: Text(
-                                                    sampleSubmittedToController
-                                                        .text,
-                                                    style: const TextStyle(
-                                                        fontSize: 14)),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        const Padding(
-                                          padding: EdgeInsets.only(
-                                              left: 16.0, right: 16),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                'Sample/ \nRe Sample :',
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Color(0xff454545)),
-                                              ),
-                                              Text('View History',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    decoration: TextDecoration
-                                                        .underline,
-                                                  )),
-                                            ],
-                                          ),
-                                        ),
-                                        const Padding(
-                                          padding: EdgeInsets.all(8.0),
-                                          child: SizedBox(
-                                            width: double.infinity,
-                                            child: Divider(
-                                              color: Color(0xff454545),
-                                            ),
+                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          height: 150,
+                                          width: textFieldDropDownWidth,
+                                          child: MultiLevelDropDown(
+                                            stageNumber: "3",
+                                            selectedParticipantFooter:
+                                                selectedParticipantFooter,
+                                            availableParticipant:
+                                                availableParticipant,
+                                            initialParticipant:
+                                                initialParticipant,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ));
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 25,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16.0, right: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Sample Submission",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    color: const Color(0xffefefef),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Sample Received Date \n From HO',
-                                    style: TextStyle(
-                                      color: Color(0xff454545),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: "Poppins",
-                                      fontSize: 14.0,
-                                    ),
                                   ),
-                                  Container(
-                                    width: 140,
-                                    height: containerHeight,
-                                    decoration: const BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(color: Colors.grey),
-                                      ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 16,
+                                      right: 16,
                                     ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: TextField(
-                                            readOnly: true,
-                                            controller:
-                                                _sampleRecivedfromHOController,
-                                            decoration: InputDecoration(
-                                              hintText: DateFormat('dd/MM/yyyy')
-                                                  .format(DateTime.now()),
-                                              hintStyle: const TextStyle(
-                                                color: Color(0xff454545),
-                                                fontWeight: FontWeight.w500,
-                                                fontFamily: "Poppins",
-                                                fontSize: 14.0,
-                                              ),
-                                              border: InputBorder.none,
-                                            ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                              Icons.calendar_month_outlined),
-                                          onPressed: () async {
-                                            DateTime? selectedDate =
-                                                await showDatePicker(
-                                              context: context,
-                                              initialDate: DateTime.now(),
-                                              firstDate: DateTime(2000),
-                                              lastDate: DateTime.now(),
-                                              initialEntryMode:
-                                                  DatePickerEntryMode
-                                                      .calendarOnly,
-                                            );
-                                            String formattedDate =
-                                                selectedDate != null
-                                                    ? DateFormat('dd/MM/yyyy')
-                                                        .format(selectedDate)
-                                                    : DateFormat('dd/MM/yyyy')
-                                                        .format(DateTime.now());
-                                            _sampleRecivedfromHOController
-                                                .text = formattedDate;
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(width: 20),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Sample Submitted \n Date ',
-                                    style: TextStyle(
-                                      color: Color(0xff454545),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: "Poppins",
-                                      fontSize: 14.0,
-                                    ),
-                                  ),
-                                  Container(
-                                    width: 140,
-                                    height: containerHeight,
-                                    decoration: const BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(color: Colors.grey),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: TextField(
-                                            readOnly: true,
-                                            controller:
-                                                _sampleSubmittedToCustomerController,
-                                            decoration: InputDecoration(
-                                              hintText: DateFormat('dd/MM/yyyy')
-                                                  .format(DateTime.now()),
-                                              hintStyle: const TextStyle(
-                                                color: Color(0xff454545),
-                                                fontWeight: FontWeight.w500,
-                                                fontFamily: "Poppins",
-                                                fontSize: 14.0,
-                                              ),
-                                              border: InputBorder.none,
-                                            ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                              Icons.calendar_month_outlined),
-                                          onPressed: () async {
-                                            DateTime? selectedDate =
-                                                await showDatePicker(
-                                              context: context,
-                                              initialDate: DateTime.now(),
-                                              firstDate: DateTime(2000),
-                                              lastDate: DateTime.now(),
-                                              initialEntryMode:
-                                                  DatePickerEntryMode
-                                                      .calendarOnly,
-                                            );
-                                            String formattedDate =
-                                                selectedDate != null
-                                                    ? DateFormat('dd/MM/yyyy')
-                                                        .format(selectedDate)
-                                                    : DateFormat('dd/MM/yyyy')
-                                                        .format(DateTime.now());
-                                            _sampleSubmittedToCustomerController
-                                                .text = formattedDate;
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Padding(
-                            padding: deviceOrientation == "Portrait"
-                                ? const EdgeInsets.only(left: 2.0)
-                                : const EdgeInsets.only(right: 0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                  height: deviceOrientation == "Portrait"
-                                      ? containerHeight
-                                      : containerDropDownHeight + 2,
-                                  width: textFieldDropDownWidth,
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: AsyncAutocomplete<Contacts>(
-                                          inputTextStyle: const TextStyle(
-                                            fontWeight: FontWeight.w500,
+                                    child: SizedBox(
+                                      width: textFieldDropDownWidth,
+                                      height: 120,
+                                      child: TextField(
+                                        controller: summaryControllerFooter,
+                                        maxLines: 4,
+                                        maxLength: 1000,
+                                        decoration: InputDecoration(
+                                          labelText: 'Summary of Discussion.',
+                                          labelStyle: const TextStyle(
                                             fontFamily: "Poppins",
                                             fontSize: 14,
+                                            fontWeight: FontWeight.w400,
+                                            color: Color(0xff909090),
+                                            height: 15 / 10,
                                           ),
-                                          focusNode: _focusContact,
-                                          maxListHeight:
-                                              deviceOrientation == "Portrait"
-                                                  ? 370
-                                                  : 200,
-                                          decoration: InputDecoration(
-                                            border: UnderlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(0),
-                                            ),
-                                            labelText: 'Sample Submitted to',
-                                            labelStyle: const TextStyle(
-                                              color: Color(0xff454545),
-                                              fontWeight: FontWeight.w500,
-                                              fontFamily: "Poppins",
-                                              fontSize: 14.0,
-                                            ),
-                                            focusedBorder:
-                                                const UnderlineInputBorder(),
-                                            contentPadding:
-                                                const EdgeInsets.only(
-                                                    left: 0,
-                                                    right: 30,
-                                                    top: 2,
-                                                    bottom: 0),
-                                            suffixIcon: const Padding(
-                                              padding:
-                                                  EdgeInsets.only(top: 10.0),
-                                              child:
-                                                  Icon(Icons.search, size: 20),
-                                            ),
+                                          border: const OutlineInputBorder(),
+                                          contentPadding: const EdgeInsets.only(
+                                            left: 15,
+                                            right: 0,
+                                            top: 15,
+                                            bottom: 0,
                                           ),
-                                          controller: _searchController2,
-                                          inputKey: contactKey,
-                                          onTapItem: (Contacts contact) {
-                                            setState(() {
-                                              _searchController2.text =
-                                                  contact.CustomerName;
-                                              var customer =
-                                                  contactMasterList.firstWhere(
-                                                (map) =>
-                                                    map['CustContactName'] ==
-                                                    contact.CustomerName,
-                                                orElse: () => <String, dynamic>{
-                                                  'CustContactId': null
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _isSummaryListening
+                                                  ? Icons.mic
+                                                  : Icons.mic_none,
+                                            ),
+                                            onPressed: () {
+                                              _listen(
+                                                summaryControllerFooter,
+                                                _isSummaryListening,
+                                                (bool isListening) {
+                                                  _isSummaryListening =
+                                                      isListening;
                                                 },
                                               );
-                                              selectedContactId =
-                                                  customer['CustContactId']
-                                                      .toString();
-                                            });
-                                          },
-                                          suggestionBuilder: (data) => ListTile(
-                                            title: Text(
-                                              data.CustomerName,
-                                              style: const TextStyle(
-                                                  color: Color(0xff454545),
-                                                  fontSize: 14.0,
-                                                  fontFamily: "Poppins",
-                                                  fontWeight: FontWeight.w500),
-                                            ),
-                                          ),
-                                          asyncSuggestions: (searchValue) =>
-                                              getContacts(searchValue),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(
-                            height: 20,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0, right: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Sample/Re Sample'),
-                                SizedBox(
-                                  child: GestureDetector(
-                                    onTap: () async {
-                                      setState(() {
-                                        if (_sampleRecivedfromHOController
-                                                .text ==
-                                            "") {
-                                          sampleReceivedDateController.text =
-                                              DateFormat('dd/MM/yyyy')
-                                                  .format(DateTime.now());
-                                        } else {
-                                          sampleReceivedDateController.text =
-                                              _sampleRecivedfromHOController
-                                                  .text;
-                                        }
-
-                                        if (_sampleSubmittedToCustomerController
-                                                .text ==
-                                            "") {
-                                          sampleSubmittedDateController.text =
-                                              DateFormat('dd/MM/yyyy')
-                                                  .format(DateTime.now());
-                                        } else {
-                                          sampleSubmittedDateController.text =
-                                              _sampleSubmittedToCustomerController
-                                                  .text;
-                                        }
-                                        if (_searchController2.text == "") {
-                                          return;
-                                        } else {
-                                          sampleSubmittedToController.text =
-                                              _searchController2.text;
-                                        }
-                                      });
-                                      loadSelectedProducts();
-                                    },
-                                    child: Container(
-                                      height: 30,
-                                      width: 80,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF2CA9DF),
-                                        borderRadius:
-                                            BorderRadius.circular(0.0),
-                                      ),
-                                      child: const Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            'Update',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          Icon(
-                                            Icons.update,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16.0, right: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Sample FeedBack",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  AbsorbPointer(
-                    absorbing: !stage3Edit,
-                    child: Container(
-                      color: const Color(0xffefefef),
-                      child: Padding(
-                        padding: const EdgeInsets.all(18.0),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  width: 140,
-                                  height: containerHeight,
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      bottom: BorderSide(color: Colors.grey),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          readOnly: true,
-                                          controller: feedbackDateController,
-                                          decoration: const InputDecoration(
-                                            hintText: 'Feedback Date',
-                                            hintStyle: TextStyle(
-                                              color: Color(0xff454545),
-                                              fontWeight: FontWeight.w500,
-                                              fontFamily: "Poppins",
-                                              fontSize: 13.0,
-                                            ),
-                                            border: InputBorder.none,
+                                            },
                                           ),
                                         ),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(
-                                            Icons.calendar_month_outlined),
-                                        onPressed: () async {
-                                          DateTime? selectedDate =
-                                              await showDatePicker(
-                                            context: context,
-                                            initialDate: DateTime.now(),
-                                            firstDate: DateTime(2000),
-                                            lastDate: DateTime.now(),
-                                            initialEntryMode:
-                                                DatePickerEntryMode
-                                                    .calendarOnly,
-                                          );
-                                          String formattedDate =
-                                              selectedDate != null
-                                                  ? DateFormat('dd/MM/yyyy')
-                                                      .format(selectedDate)
-                                                  : DateFormat('dd/MM/yyyy')
-                                                      .format(DateTime.now());
-                                          feedbackDateController.text =
-                                              formattedDate;
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Container(
-                                  width: textFieldDropDownWidth / 2.97,
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      bottom: BorderSide(color: Colors.grey),
                                     ),
                                   ),
-                                  child: Padding(
+                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 20),
+                                  Padding(
                                     padding: const EdgeInsets.only(
                                       left: 10.0,
+                                      right: 0.0,
                                     ),
-                                    child: DropdownButton<String>(
-                                      isExpanded: true,
-                                      value: feedbackStatus,
-                                      hint: const Text(
-                                        "Status ",
-                                        style: TextStyle(
-                                          fontFamily: "Poppins",
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w400,
-                                          color: Color(0xff454545),
-                                          height: 12 / 10,
-                                        ),
-                                        textAlign: TextAlign.left,
-                                      ),
-                                      onChanged: (String? newValue) {
-                                        setState(() {
-                                          feedbackStatus = newValue;
-                                        });
-                                      },
-                                      underline: Container(),
-                                      icon: const Icon(Icons.search, size: 20),
-                                      items: <String>[
-                                        'Next Action',
-                                        'Re Sampling',
-                                        'Approved',
-                                        'Rejected'
-                                      ].map<DropdownMenuItem<String>>(
-                                        (String value) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(value,
-                                                style: const TextStyle(
-                                                  fontFamily: "Poppins",
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Color(0xff454545),
-                                                  height: 12 / 10,
-                                                )),
-                                          );
-                                        },
-                                      ).toList(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Padding(
-                              padding: deviceOrientation == "Portrait"
-                                  ? const EdgeInsets.only(left: 2.0)
-                                  : const EdgeInsets.only(right: 0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Container(
-                                      color: Colors.white,
-                                      height: 60,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 8.0, right: 8),
-                                        child: TextField(
-                                          controller: feedbackController,
-                                          maxLines: 6,
-                                          decoration: InputDecoration(
-                                            labelText: 'Feedback.',
-                                            labelStyle: const TextStyle(
-                                              color: Color(0xFF454545),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w400,
-                                              fontFamily: 'Poppins',
-                                            ),
-                                            contentPadding:
-                                                const EdgeInsets.only(
-                                                    top: 15.0),
-                                            suffixIcon: IconButton(
-                                              icon: Icon(_isFeedbackListening
-                                                  ? Icons.mic
-                                                  : Icons.mic_none),
-                                              onPressed: () {
-                                                _listen(feedbackController,
-                                                    _isFeedbackListening,
-                                                    (bool isListening) {
-                                                  _isFeedbackListening =
-                                                      isListening;
-                                                });
-                                              },
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text('Details Send to HO \nvia Mail ?'),
-                                  Checkbox(
-                                    value: selectedMailValue,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        selectedMailValue = value!;
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // SizedBox(
-                  //   height: 460, // Set a fixed height or adjust as needed
-                  //   child: FooterPage(leadsId: leadId, leadStageForEdit: "3"),
-                  // ),
-
-                  SizedBox(
-                    height: 500,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 10.0, bottom: 0),
-                      child: Column(
-                        children: [
-                          Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(18.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        const Text("Meeting Summary",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            )),
-                                        Visibility(
-                                          visible:
-                                              locationControllerFooter.text ==
-                                                  "",
-                                          child: IconButton(
-                                              onPressed: () {
-                                                setState(() {
-                                                  manualLocationFetchStart =
-                                                      true;
-                                                });
-                                                getCurrentLocation();
-                                              },
-                                              icon: locationLoading &&
-                                                      manualLocationFetchStart
-                                                  ? const CircularProgressIndicator()
-                                                  : const Icon(
-                                                      Icons.location_on,
-                                                      color: Color(0xFF2CA9DF),
-                                                    )),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(
-                                      height: 10,
-                                    ),
-                                    const Text(
-                                      'Participant',
-                                      style: TextStyle(
-                                          color: Color(0xFF454545),
-                                          fontFamily: "Poppins",
-                                          fontWeight: FontWeight.w400),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    SizedBox(
-                                      height: 150,
-                                      width: textFieldDropDownWidth,
-                                      child: MultiLevelDropDown(
-                                          stageNumber: "3",
-                                          selectedParticipantFooter:
-                                              selectedParticipantFooter,
-                                          availableParticipant:
-                                              availableParticipant,
-                                          initialParticipant:
-                                              initialParticipant),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 16, right: 16),
-                                child: SizedBox(
-                                  width: textFieldDropDownWidth,
-                                  height: 120,
-                                  child: TextField(
-                                    controller: summaryControllerFooter,
-                                    maxLines: 4,
-                                    maxLength: 1000,
-                                    decoration: InputDecoration(
-                                      labelText: 'Summary of Discussion.',
-                                      labelStyle: const TextStyle(
-                                        fontFamily: "Poppins",
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w400,
-                                        color: Color(0xff909090),
-                                        height: 15 / 10,
-                                      ),
-                                      border: const OutlineInputBorder(),
-                                      contentPadding: const EdgeInsets.only(
-                                          left: 15,
-                                          right: 0,
-                                          top: 15,
-                                          bottom: 0),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(_isSummaryListening
-                                            ? Icons.mic
-                                            : Icons.mic_none),
-                                        onPressed: () {
-                                          _listen(summaryControllerFooter,
-                                              _isSummaryListening,
-                                              (bool isListening) {
-                                            _isSummaryListening = isListening;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              const SizedBox(height: 20),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                    left: 10.0, right: 0.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        SizedBox(
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left: 8.0),
-                                                child: Container(
-                                                  width:
-                                                      textFieldDateWidth / 2.8,
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    border: Border(
-                                                      bottom: BorderSide(
-                                                          color: Colors
-                                                              .grey), // Add bottom border
-                                                    ),
-                                                  ),
-                                                  child: DropdownButton<String>(
-                                                    isExpanded: true,
-                                                    value: selectedStatusFooter,
-                                                    hint: const Text(
-                                                      "Next Action ",
-                                                      style: TextStyle(
-                                                        fontFamily: "Poppins",
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color:
-                                                            Color(0xff454545),
-                                                        height: 12 / 10,
-                                                      ),
-                                                      textAlign: TextAlign.left,
-                                                    ),
-                                                    onChanged:
-                                                        (String? newValue) {
-                                                      setState(() {
-                                                        selectedStatusFooter =
-                                                            newValue;
-                                                      });
-                                                    },
-                                                    underline:
-                                                        Container(), // Remove the default underline
-                                                    icon: const Icon(
-                                                        Icons.search,
-                                                        size: 20),
-                                                    items: <String>[
-                                                      'Next Action',
-                                                      'Sampling',
-                                                      'Re Sampling',
-                                                      'Approved',
-                                                      'Rejected'
-                                                    ].map<
-                                                        DropdownMenuItem<
-                                                            String>>(
-                                                      (String value) {
-                                                        return DropdownMenuItem<
-                                                            String>(
-                                                          value: value,
-                                                          child: Text(value),
-                                                        );
-                                                      },
-                                                    ).toList(),
-                                                  ),
-                                                ),
-                                              ),
-                                              Container(
-                                                width: textFieldDateWidth / 1.7,
-                                                padding: const EdgeInsets.only(
-                                                    left: 10.0, right: 0.0),
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    const Text(
-                                                      "On",
-                                                      style: TextStyle(
-                                                        fontFamily: "Poppins",
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color:
-                                                            Color(0xff454545),
-                                                      ),
-                                                      textAlign: TextAlign.left,
-                                                    ),
-                                                    const SizedBox(width: 15),
-                                                    Expanded(
-                                                      child: TextField(
-                                                        controller:
-                                                            followupDateControllerFooter,
-                                                        readOnly: true,
-                                                        decoration:
-                                                            InputDecoration(
-                                                          hintText: DateFormat(
-                                                                  'dd/MM/yyyy hh:mm a')
-                                                              .format(DateTime
-                                                                  .now()),
-                                                          border:
-                                                              const UnderlineInputBorder(),
-                                                          hintStyle:
-                                                              const TextStyle(
+                                        Row(
+                                          children: [
+                                            SizedBox(
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 8.0,
+                                                        ),
+                                                    child: Container(
+                                                      width:
+                                                          textFieldDateWidth /
+                                                          2.8,
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                            border: Border(
+                                                              bottom: BorderSide(
+                                                                color:
+                                                                    Colors.grey,
+                                                              ), // Add bottom border
+                                                            ),
+                                                          ),
+                                                      child: DropdownButton<String>(
+                                                        isExpanded: true,
+                                                        value:
+                                                            selectedStatusFooter,
+                                                        hint: const Text(
+                                                          "Next Action ",
+                                                          style: TextStyle(
                                                             fontFamily:
                                                                 "Poppins",
                                                             fontSize: 14,
                                                             fontWeight:
                                                                 FontWeight.w400,
                                                             color: Color(
-                                                                0xff454545),
+                                                              0xff454545,
+                                                            ),
                                                             height: 12 / 10,
                                                           ),
+                                                          textAlign:
+                                                              TextAlign.left,
                                                         ),
+                                                        onChanged:
+                                                            (String? newValue) {
+                                                              setState(() {
+                                                                selectedStatusFooter =
+                                                                    newValue;
+                                                              });
+                                                            },
+                                                        underline:
+                                                            Container(), // Remove the default underline
+                                                        icon: const Icon(
+                                                          Icons.search,
+                                                          size: 20,
+                                                        ),
+                                                        items:
+                                                            <String>[
+                                                              'Next Action',
+                                                              'Sampling',
+                                                              'Re Sampling',
+                                                              'Approved',
+                                                              'Rejected',
+                                                            ].map<
+                                                              DropdownMenuItem<
+                                                                String
+                                                              >
+                                                            >((String value) {
+                                                              return DropdownMenuItem<
+                                                                String
+                                                              >(
+                                                                value: value,
+                                                                child: Text(
+                                                                  value,
+                                                                ),
+                                                              );
+                                                            }).toList(),
                                                       ),
                                                     ),
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                              right: 10.0),
-                                                      child: IconButton(
-                                                        icon: const Icon(Icons
-                                                            .calendar_month_outlined),
-                                                        onPressed: () async {
-                                                          DateTime?
-                                                              selectedDate =
-                                                              await showDatePicker(
-                                                            context: context,
-                                                            initialDate:
-                                                                DateTime.now(),
-                                                            firstDate:
-                                                                DateTime(2000),
-                                                            lastDate:
-                                                                DateTime(2101),
-                                                            initialEntryMode:
-                                                                DatePickerEntryMode
-                                                                    .calendar,
-                                                          );
-                                                          TimeOfDay?
-                                                              selectedTime =
-                                                              await showTimePicker(
-                                                            context: context,
-                                                            initialTime:
-                                                                TimeOfDay.now(),
-                                                          );
-                                                          if (selectedTime !=
-                                                              null) {
-                                                            String
-                                                                formattedDateTime =
-                                                                DateFormat(
-                                                                        'dd/MM/yyyy hh:mm a')
-                                                                    .format(
-                                                              DateTime(
-                                                                selectedDate!
-                                                                    .year,
-                                                                selectedDate
-                                                                    .month,
-                                                                selectedDate
-                                                                    .day,
-                                                                selectedTime
-                                                                    .hour,
-                                                                selectedTime
-                                                                    .minute,
+                                                  ),
+                                                  Container(
+                                                    width:
+                                                        textFieldDateWidth /
+                                                        1.7,
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 10.0,
+                                                          right: 0.0,
+                                                        ),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        const Text(
+                                                          "On",
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                "Poppins",
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.w400,
+                                                            color: Color(
+                                                              0xff454545,
+                                                            ),
+                                                          ),
+                                                          textAlign:
+                                                              TextAlign.left,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 15,
+                                                        ),
+                                                        Expanded(
+                                                          child: TextField(
+                                                            controller:
+                                                                followupDateControllerFooter,
+                                                            readOnly: true,
+                                                            decoration: InputDecoration(
+                                                              hintText:
+                                                                  DateFormat(
+                                                                    'dd/MM/yyyy hh:mm a',
+                                                                  ).format(
+                                                                    DateTime.now(),
+                                                                  ),
+                                                              border:
+                                                                  const UnderlineInputBorder(),
+                                                              hintStyle: const TextStyle(
+                                                                fontFamily:
+                                                                    "Poppins",
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color: Color(
+                                                                  0xff454545,
+                                                                ),
+                                                                height: 12 / 10,
                                                               ),
-                                                            );
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets.only(
+                                                                right: 10.0,
+                                                              ),
+                                                          child: IconButton(
+                                                            icon: const Icon(
+                                                              Icons
+                                                                  .calendar_month_outlined,
+                                                            ),
+                                                            onPressed: () async {
+                                                              DateTime?
+                                                              selectedDate = await showDatePicker(
+                                                                context:
+                                                                    context,
+                                                                initialDate:
+                                                                    DateTime.now(),
+                                                                firstDate:
+                                                                    DateTime(
+                                                                      2000,
+                                                                    ),
+                                                                lastDate:
+                                                                    DateTime(
+                                                                      2101,
+                                                                    ),
+                                                                initialEntryMode:
+                                                                    DatePickerEntryMode
+                                                                        .calendar,
+                                                              );
+                                                              TimeOfDay?
+                                                              selectedTime =
+                                                                  await showTimePicker(
+                                                                    context:
+                                                                        context,
+                                                                    initialTime:
+                                                                        TimeOfDay.now(),
+                                                                  );
+                                                              if (selectedTime !=
+                                                                  null) {
+                                                                String
+                                                                formattedDateTime =
+                                                                    DateFormat(
+                                                                      'dd/MM/yyyy hh:mm a',
+                                                                    ).format(
+                                                                      DateTime(
+                                                                        selectedDate!
+                                                                            .year,
+                                                                        selectedDate
+                                                                            .month,
+                                                                        selectedDate
+                                                                            .day,
+                                                                        selectedTime
+                                                                            .hour,
+                                                                        selectedTime
+                                                                            .minute,
+                                                                      ),
+                                                                    );
 
-                                                            followupDateControllerFooter
-                                                                    .text =
-                                                                formattedDateTime;
-                                                          }
-                                                        },
-                                                      ),
+                                                                followupDateControllerFooter
+                                                                        .text =
+                                                                    formattedDateTime;
+                                                              }
+                                                            },
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
                                       ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          SizedBox(
+                            width: textFieldWidth,
+                            child: GestureDetector(
+                              onTap: () async {
+                                if (locationControllerFooter.text == "" ||
+                                    selectedProductList.isEmpty) {
+                                  final snackBar = SnackBar(
+                                    backgroundColor: const Color(0xFF2CA9DF),
+                                    duration: const Duration(seconds: 2),
+                                    content: Text(
+                                      selectedProductList.isEmpty
+                                          ? 'Select at least one product from the list to proceed.'
+                                          : 'Location is missing, Please add location and try again...',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(snackBar);
+                                } else {
+                                  BuildContext? dialogContext;
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (BuildContext context) {
+                                      dialogContext = context;
+                                      return const Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                  try {
+                                    await submitStageThree();
+                                    await submitStageSummary("3");
+                                    Navigator.of(dialogContext!).pop();
+                                    navigateToHomePage();
+                                  } catch (error) {
+                                    // print('Error: $error');
+                                  }
+                                }
+                              },
+                              child: Container(
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2CA9DF),
+                                  borderRadius: BorderRadius.circular(0.0),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Sample Submit',
+                                      style: TextStyle(
+                                        color: Color(0xfffdfdfd),
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 5),
-                            ],
-                          )
+                            ),
+                          ),
+                          SizedBox(
+                            width: textFieldWidth,
+                            child: GestureDetector(
+                              onTap: () async {
+                                loadSelectedProducts();
+                                if (locationControllerFooter.text == "" ||
+                                    selectedProductList.isEmpty) {
+                                  final snackBar = SnackBar(
+                                    backgroundColor: const Color(0xFF2CA9DF),
+                                    duration: const Duration(seconds: 2),
+                                    content: Text(
+                                      selectedProductList.isEmpty
+                                          ? 'Select at least one product from the list to proceed.'
+                                          : 'Location is missing, Please add location and try again...',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(snackBar);
+                                } else {
+                                  BuildContext? dialogContext;
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (BuildContext context) {
+                                      dialogContext = context;
+                                      return const Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                  try {
+                                    await submitStageFour();
+                                    await submitStageSummary("4");
+                                    Navigator.of(dialogContext!).pop();
+                                    navigateToHomePage();
+                                  } catch (error) {
+                                    // print('Error: $error');
+                                  }
+                                }
+                              },
+                              child: Container(
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2CA9DF),
+                                  borderRadius: BorderRadius.circular(0.0),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Sample Feedback',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      SizedBox(
-                        width: textFieldWidth,
-                        child: GestureDetector(
-                          onTap: () async {
-                            if (locationControllerFooter.text == "" ||
-                                selectedProductList.isEmpty) {
-                              final snackBar = SnackBar(
-                                backgroundColor: const Color(0xFF2CA9DF),
-                                duration: const Duration(seconds: 2),
-                                content: Text(
-                                  selectedProductList.isEmpty
-                                      ? 'Select at least one product from the list to proceed.'
-                                      : 'Location is missing, Please add location and try again...',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              );
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(snackBar);
-                            } else {
-                              BuildContext? dialogContext;
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (BuildContext context) {
-                                  dialogContext = context;
-                                  return const Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  );
-                                },
-                              );
-                              try {
-                                await submitStageThree();
-                                await submitStageSummary("3");
-                                Navigator.of(dialogContext!).pop();
-                                navigateToHomePage();
-                              } catch (error) {
-                                // print('Error: $error');
-                              }
-                            }
-                          },
-                          child: Container(
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2CA9DF),
-                              borderRadius: BorderRadius.circular(0.0),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Sample Submit',
-                                  style: TextStyle(
-                                    color: Color(0xfffdfdfd),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: textFieldWidth,
-                        child: GestureDetector(
-                          onTap: () async {
-                            loadSelectedProducts();
-                            if (locationControllerFooter.text == "" ||
-                                selectedProductList.isEmpty) {
-                              final snackBar = SnackBar(
-                                backgroundColor: const Color(0xFF2CA9DF),
-                                duration: const Duration(seconds: 2),
-                                content: Text(
-                                  selectedProductList.isEmpty
-                                      ? 'Select at least one product from the list to proceed.'
-                                      : 'Location is missing, Please add location and try again...',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              );
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(snackBar);
-                            } else {
-                              BuildContext? dialogContext;
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (BuildContext context) {
-                                  dialogContext = context;
-                                  return const Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  );
-                                },
-                              );
-                              try {
-                                await submitStageFour();
-                                await submitStageSummary("4");
-                                Navigator.of(dialogContext!).pop();
-                                navigateToHomePage();
-                              } catch (error) {
-                                // print('Error: $error');
-                              }
-                            }
-                          },
-                          child: Container(
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2CA9DF),
-                              borderRadius: BorderRadius.circular(0.0),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Sample Feedback',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      const SizedBox(height: 10),
                     ],
                   ),
-                  const SizedBox(
-                    height: 10,
-                  )
-                ],
+                ),
               ),
-            ),
-          ),
         ),
       ),
     );
@@ -2157,16 +2313,17 @@ class StageThreeLeadEntryPageState extends State<StageThreeLeadEntryPage> {
     Widget? prefixIcon,
     String? hintText,
     String? labelText,
-  }) =>
-      InputDecoration(
-          enabledBorder: enabledBorder ??
-              const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blueGrey, width: 2.0)),
-          border:
-              border ?? const UnderlineInputBorder(borderSide: BorderSide()),
-          fillColor: fillColor ?? Colors.white,
-          filled: filled ?? true,
-          prefixIcon: prefixIcon,
-          hintText: hintText,
-          labelText: labelText);
+  }) => InputDecoration(
+    enabledBorder:
+        enabledBorder ??
+        const UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.blueGrey, width: 2.0),
+        ),
+    border: border ?? const UnderlineInputBorder(borderSide: BorderSide()),
+    fillColor: fillColor ?? Colors.white,
+    filled: filled ?? true,
+    prefixIcon: prefixIcon,
+    hintText: hintText,
+    labelText: labelText,
+  );
 }

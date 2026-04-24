@@ -2,13 +2,11 @@
 // import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:excel/excel.dart' as xl;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,8 +16,9 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+final reportService = ReportService();
 
 class DailyCostingReport extends StatefulWidget {
   const DailyCostingReport({super.key});
@@ -98,6 +97,7 @@ double expiredValue = 0;
 double inventoryOpeningValue = 0;
 double inventoryClosingValue = 0;
 double cogsValue = 0;
+double inventoryAchieved = 0;
 
 MonthlyCollectionReportList weeklyData = MonthlyCollectionReportList(
   weeklyData: [],
@@ -264,6 +264,22 @@ class DailyCostingResult {
   final double inventoryOpeningValue;
   final double inventoryClosingValue;
   final double cogsValue;
+  final double inventoryAchieved;
+
+  final double monthlySOvalue;
+  final double lowVal;
+  final double mediumVal;
+  final double highVal;
+  final double lessThan30DaysValue;
+  final double a30to60DaysValue;
+  final double a60to90DaysValue;
+  final double a91DaysValue;
+
+  final double medicalDeviceTarget;
+  final double ipdTarget;
+  final double purchaseTarget;
+  final double cogsTarget;
+  final double inventoryTarget;
 
   // the graph arrays (your DailyCostingGraphData type)
   final List<DailyCostingGraphData> revenueGraph;
@@ -285,6 +301,23 @@ class DailyCostingResult {
     required this.inventoryOpeningValue,
     required this.inventoryClosingValue,
     required this.cogsValue,
+    required this.inventoryAchieved,
+
+    required this.monthlySOvalue,
+    required this.lowVal,
+    required this.mediumVal,
+    required this.highVal,
+    required this.lessThan30DaysValue,
+    required this.a30to60DaysValue,
+    required this.a60to90DaysValue,
+    required this.a91DaysValue,
+
+    required this.medicalDeviceTarget,
+    required this.ipdTarget,
+    required this.purchaseTarget,
+    required this.cogsTarget,
+    required this.inventoryTarget,
+
     required this.revenueGraph,
     required this.dailyCostingGraph,
     required this.saleOrderPriorityGraph,
@@ -333,11 +366,12 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     return months[m];
   })();
 
-  double medicalDeviceTarget = 0,
-      ipdTarget = 0,
-      purchaseTarget = 0,
-      cogsTarget = 0,
-      inventoryTarget = 0;
+  double medicalDeviceTarget = 0;
+  double ipdTarget = 0;
+  double purchaseTarget = 0;
+  double cogsTarget = 0;
+  double inventoryTarget = 0;
+  // double productionTarget = 0;
 
   for (final t in input.salesTarget) {
     if (t.financialYear == currentFY) {
@@ -367,12 +401,12 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
 
   // Fast date parsing: convert record dates to epoch once and sum in single pass where possible
 
-  double monthlySales = 0;
-  double medicalDevicesSales = 0;
-  double ipdSales = 0;
+  monthlySales = 0;
+  medicalDevicesSales = 0;
+  ipdSales = 0;
 
   for (final s in input.sales) {
-    // assume invoiceDate in format dd/MM/yyyy -- convert safely
+    // invoiceDate in format dd/MM/yyyy -- convert safely
     DateTime inv;
     try {
       inv = s.invoiceDate;
@@ -415,8 +449,12 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     filteredSO.add(so);
   }
 
-  double lowVal = 0, mediumVal = 0, highVal = 0;
-  double karnatakaPOSum = 0, tamilNaduPOSum = 0, othersPOSum = 0;
+  lowVal = 0;
+  mediumVal = 0;
+  highVal = 0;
+  karnatakaPOSum = 0;
+  tamilNaduPOSum = 0;
+  othersPOSum = 0;
 
   for (final so in filteredSO) {
     final pending = double.tryParse(so.pendingValue) ?? 0;
@@ -435,7 +473,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   // Purchase lists in current month
-  double monthlyPurchasePriceSum = 0;
+  monthlyPurchasePriceSum = 0;
   for (final p in input.purchasePrice) {
     DateTime inv;
     try {
@@ -450,7 +488,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   // GRN sum in current month
-  double monthlyPurchasePriceGrnSum = 0;
+  monthlyPurchasePriceGrnSum = 0;
   for (final g in input.grnList) {
     DateTime inv;
     try {
@@ -465,10 +503,10 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   // PO lists partitions
-  double monthlyPOSum = 0,
-      currentMonthPOSum = 0,
-      lastMonthPOSum = 0,
-      tillLastMonthPOSum = 0;
+  monthlyPOSum = 0;
+  currentMonthPOSum = 0;
+  lastMonthPOSum = 0;
+  tillLastMonthPOSum = 0;
 
   for (final po in input.poListOpen) {
     final pending = double.tryParse(po.pendingValue) ?? 0;
@@ -490,11 +528,11 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   // Inventory ageing buckets
-  double lessThan30DaysValue = 0,
-      a30to60DaysValue = 0,
-      a60to90DaysValue = 0,
-      nearExpiryValue = 0,
-      expiredValue = 0;
+  lessThan30DaysValue = 0;
+  a30to60DaysValue = 0;
+  a60to90DaysValue = 0;
+  nearExpiryValue = 0;
+  expiredValue = 0;
 
   double inventoryOpeningValue = 0;
   for (final it in input.inventory) {
@@ -530,13 +568,13 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     }
   }
 
-  double inventoryClosingValue = 0;
+  inventoryClosingValue = 0;
   for (final it in input.inventoryClosing) {
     inventoryClosingValue += (double.tryParse(it.totalValue) ?? 0);
   }
 
   // COGS calculation
-  final cogsValue =
+  cogsValue =
       (inventoryOpeningValue + monthlyPurchasePriceGrnSum) -
       (lessThan30DaysValue +
           a30to60DaysValue +
@@ -544,7 +582,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
           nearExpiryValue +
           expiredValue);
 
-  final inventoryAchieved =
+  inventoryAchieved =
       lessThan30DaysValue +
       a30to60DaysValue +
       a60to90DaysValue +
@@ -734,6 +772,20 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     inventoryOpeningValue: inventoryOpeningValue,
     inventoryClosingValue: inventoryClosingValue,
     cogsValue: cogsValue,
+    inventoryAchieved: inventoryAchieved,
+    monthlySOvalue: monthlySOvalue,
+    lowVal: lowVal,
+    mediumVal: mediumVal,
+    highVal: highVal,
+    lessThan30DaysValue: lessThan30DaysValue,
+    a30to60DaysValue: a30to60DaysValue,
+    a60to90DaysValue: a60to90DaysValue,
+    a91DaysValue: a91DaysValue,
+    medicalDeviceTarget: medicalDeviceTarget,
+    ipdTarget: ipdTarget,
+    purchaseTarget: purchaseTarget,
+    cogsTarget: cogsTarget,
+    inventoryTarget: inventoryTarget,
     revenueGraph: revenueGraph,
     dailyCostingGraph: dailyCostingGraph,
     saleOrderPriorityGraph: saleOrderPriorityGraph,
@@ -742,14 +794,46 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   );
 }
 
+List<SalesList> parseSalesList(List<dynamic> data) {
+  return data.map((e) => SalesList.fromJson(e)).toList();
+}
+
+List<SODetailsList> parseSOList(List<dynamic> data) {
+  return data.map((e) => SODetailsList.fromJson(e)).toList();
+}
+
+List<PurchaseList> parsePurchaseList(List<dynamic> data) {
+  return data.map((e) => PurchaseList.fromJson(e)).toList();
+}
+
+List<POList> parsePOList(List<dynamic> data) {
+  return data.map((e) => POList.fromJson(e)).toList();
+}
+
+List<InventoryList> parseInventoryList(List<dynamic> data) {
+  return data.map((e) => InventoryList.fromJson(e)).toList();
+}
+
+List<InventoryList> parseInventoryClosingList(List<dynamic> data) {
+  return data.map((e) => InventoryList.fromJson(e)).toList();
+}
+
+List<SalesTargetList> parseSalesTargetList(List<dynamic> data) {
+  return data.map((e) => SalesTargetList.fromJson(e)).toList();
+}
+
+List<GRNList> parseGRNList(List<dynamic> data) {
+  return data.map((e) => GRNList.fromJson(e)).toList();
+}
+
 class _DailyCostingReportState extends State<DailyCostingReport> {
   @override
   void initState() {
     super.initState();
+
     loadDates();
     if (isUserLoggedIn && isBiDashboardStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        showLoadingOverlay(context, message: "Loading dashboard…");
         loadDataFuture = loadData("");
       });
     }
@@ -957,14 +1041,18 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     reservedSize: 30,
     showTitles: true,
     getTitlesWidget: (value, meta) {
-      String text = '';
       List<DailyCostingGraphData> mData = dailyCostingData.graphData;
-      text = mData.elementAt(value.toInt()).name;
+      final index = value.toInt();
+
+      if (index < 0 || index >= mData.length) {
+        return const SizedBox();
+      }
+
       return Padding(
         padding: const EdgeInsets.only(top: 4.0),
         child: RotationTransition(
           turns: const AlwaysStoppedAnimation(-25 / 360),
-          child: Text(text, style: const TextStyle(fontSize: 12)),
+          child: Text(mData[index].name, style: const TextStyle(fontSize: 12)),
         ),
       );
     },
@@ -974,14 +1062,18 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     reservedSize: 30,
     showTitles: true,
     getTitlesWidget: (value, meta) {
-      String text = '';
       List<DailyCostingGraphData> mData = revenueBreakup.graphData;
-      text = mData.elementAt(value.toInt()).name;
+      final index = value.toInt();
+
+      if (index < 0 || index >= mData.length) {
+        return const SizedBox();
+      }
+
       return Padding(
         padding: const EdgeInsets.only(top: 4.0),
         child: RotationTransition(
           turns: const AlwaysStoppedAnimation(-25 / 360),
-          child: Text(text, style: const TextStyle(fontSize: 12)),
+          child: Text(mData[index].name, style: const TextStyle(fontSize: 12)),
         ),
       );
     },
@@ -991,14 +1083,18 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     reservedSize: 30,
     showTitles: true,
     getTitlesWidget: (value, meta) {
-      String text = '';
       List<DailyCostingGraphData> mData = saleOrderPriorityBreakup.graphData;
-      text = mData.elementAt(value.toInt()).name;
+      final index = value.toInt();
+
+      if (index < 0 || index >= mData.length) {
+        return const SizedBox();
+      }
+
       return Padding(
         padding: const EdgeInsets.only(top: 4.0),
         child: RotationTransition(
           turns: const AlwaysStoppedAnimation(-25 / 360),
-          child: Text(text, style: const TextStyle(fontSize: 12)),
+          child: Text(mData[index].name, style: const TextStyle(fontSize: 12)),
         ),
       );
     },
@@ -1008,14 +1104,18 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     reservedSize: 30,
     showTitles: true,
     getTitlesWidget: (value, meta) {
-      String text = '';
       List<DailyCostingGraphData> mData = saleOrderWarehouseBreakup.graphData;
-      text = mData.elementAt(value.toInt()).name;
+      final index = value.toInt();
+
+      if (index < 0 || index >= mData.length) {
+        return const SizedBox();
+      }
+
       return Padding(
         padding: const EdgeInsets.only(top: 4.0),
         child: RotationTransition(
           turns: const AlwaysStoppedAnimation(-25 / 360),
-          child: Text(text, style: const TextStyle(fontSize: 12)),
+          child: Text(mData[index].name, style: const TextStyle(fontSize: 12)),
         ),
       );
     },
@@ -1025,14 +1125,18 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     reservedSize: 30,
     showTitles: true,
     getTitlesWidget: (value, meta) {
-      String text = '';
       List<DailyCostingGraphData> mData = inventoryAging.graphData;
-      text = mData.elementAt(value.toInt()).name;
+      final index = value.toInt();
+
+      if (index < 0 || index >= mData.length) {
+        return const SizedBox();
+      }
+
       return Padding(
         padding: const EdgeInsets.only(top: 4.0),
         child: RotationTransition(
           turns: const AlwaysStoppedAnimation(-25 / 360),
-          child: Text(text, style: const TextStyle(fontSize: 12)),
+          child: Text(mData[index].name, style: const TextStyle(fontSize: 12)),
         ),
       );
     },
@@ -1227,8 +1331,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   }
 
   Future<void> loadData(String selectedUser) async {
-    // SHOW ONLY ONCE
-    showLoadingOverlay(context, message: "Loading dashboard…");
+    showLoadingOverlay(context, message: "Loading daily costing report...");
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -1249,45 +1352,14 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       await _loadGRN(userName, userLevel);
       await _loadDailyCostingReport("", "");
 
-      // When everything is done
+      if (!mounted) return;
       setState(() => chartDataLoadedDailyCosting = true);
-
       hideLoadingOverlay();
       showBottomToast(context, "Dashboard Ready");
     } catch (e) {
       hideLoadingOverlay(); // avoid stuck overlay
       showBottomToast(context, "Failed: $e");
     }
-  }
-
-  Future<void> loadDataOld(String selectedUser) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userName = selectedUser == ""
-        ? prefs.getString('userName') ?? ''
-        : selectedUser;
-    userLevel = prefs.getString('userLevel') ?? '';
-    await _loadSales(userName, userLevel);
-    await _loadSODetails(userName, userLevel);
-    showLoadingOverlay(context, message: "Sales order loaded…");
-    await _loadPurchasePrice(userName, userLevel);
-    showLoadingOverlay(context, message: "Purchase price loaded…");
-    await _loadPOList(userName, userLevel);
-    showLoadingOverlay(context, message: "Purchase order loaded…");
-    await _loadInventory(userName, userLevel);
-    showLoadingOverlay(context, message: "Inventory data loaded…");
-    await _loadInventoryClosing(userName, userLevel);
-    showLoadingOverlay(context, message: "Inventory closing data loaded…");
-    await _loadSalesTarget(userName, userLevel);
-    showLoadingOverlay(context, message: "Sales target loaded…");
-    await _loadGRN(userName, userLevel);
-    showLoadingOverlay(context, message: "GRN loaded…");
-    await _loadDailyCostingReport("", "");
-    showLoadingOverlay(context, message: "Finalizing…");
-
-    setState(() => chartDataLoadedDailyCosting = true);
-
-    hideLoadingOverlay();
-    showBottomToast(context, "Dashboard Ready");
   }
 
   Future<void> _loadSales(String userName, String userLevel) async {
@@ -1317,7 +1389,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
           "sapToken": DataManager.readSapToken(),
         };
 
-        late http.Response response;
+        http.Response? response;
 
         // Retry logic
         for (int retry = 0; retry < 3; retry++) {
@@ -1342,19 +1414,14 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
           }
         }
 
-        if (response.statusCode == 200) {
+        if (response!.statusCode == 200) {
           final jsonMap = jsonDecode(response.body);
-          final data = jsonMap["responseData"];
+          final data = jsonMap["responseData"] ?? [];
 
           if (data == null || (data is List && data.isEmpty)) {
             fetchedCount = 0;
           } else {
-            // FIXED compute() call
-            final parsed = await compute<List<dynamic>, List<SalesList>>(
-              _parseSalesList,
-              data,
-            );
-
+            final parsed = parseSalesList(data);
             salesList.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
@@ -1382,10 +1449,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         context,
       ).showSnackBar(SnackBar(content: Text("Sales load failed: $e")));
     }
-  }
-
-  List<SalesList> _parseSalesList(List<dynamic> data) {
-    return data.map((e) => SalesList.fromJson(e)).toList();
   }
 
   Future<void> _loadSODetails(String userName, String userLevel) async {
@@ -1444,16 +1507,12 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         if (response.statusCode == 200) {
           final jsonMap = jsonDecode(response.body);
-          final List<dynamic>? data = jsonMap["responseData"];
+          final List<dynamic>? data = jsonMap["responseData"] ?? [];
 
           if (data == null || data.isEmpty) {
             fetchedCount = 0;
           } else {
-            final parsed = await compute<List<dynamic>, List<SODetailsList>>(
-              _parseSOList,
-              data,
-            );
-
+            final parsed = parseSOList(data);
             soDetailList.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
@@ -1485,10 +1544,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         context,
       ).showSnackBar(SnackBar(content: Text("SO Details load failed: $e")));
     }
-  }
-
-  List<SODetailsList> _parseSOList(List<dynamic> data) {
-    return data.map((e) => SODetailsList.fromJson(e)).toList();
   }
 
   Future<void> _loadPurchasePrice(String userName, String userLevel) async {
@@ -1546,16 +1601,12 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         if (response.statusCode == 200) {
           final jsonMap = jsonDecode(response.body);
-          final List<dynamic>? data = jsonMap["responseData"];
+          final List<dynamic>? data = jsonMap["responseData"] ?? [];
 
           if (data == null || data.isEmpty) {
             fetchedCount = 0;
           } else {
-            final parsed = await compute<List<dynamic>, List<PurchaseList>>(
-              _parsePurchaseList,
-              data,
-            );
-
+            final parsed = parsePurchaseList(data);
             purchaseList.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
@@ -1589,10 +1640,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         ),
       );
     }
-  }
-
-  List<PurchaseList> _parsePurchaseList(List<dynamic> data) {
-    return data.map((e) => PurchaseList.fromJson(e)).toList();
   }
 
   Future<void> _loadPOList(String userName, String userLevel) async {
@@ -1645,17 +1692,12 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         if (response.statusCode == 200) {
           final jsonMap = jsonDecode(response.body);
-          final List<dynamic>? data = jsonMap["responseData"];
+          final List<dynamic>? data = jsonMap["responseData"] ?? [];
 
           if (data == null || data.isEmpty) {
             fetchedCount = 0;
           } else {
-            // 🧠 MOVE HEAVY PARSING TO ISOLATE
-            final parsed = await compute<List<dynamic>, List<POList>>(
-              _parsePOList,
-              data,
-            );
-
+            final parsed = parsePOList(data);
             poItems.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
@@ -1691,10 +1733,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         ),
       );
     }
-  }
-
-  List<POList> _parsePOList(List<dynamic> data) {
-    return data.map((e) => POList.fromJson(e)).toList();
   }
 
   Future<void> _loadInventory(String userName, String userLevel) async {
@@ -1748,17 +1786,12 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         if (response.statusCode == 200) {
           final jsonMap = jsonDecode(response.body);
-          final List<dynamic>? data = jsonMap["responseData"];
+          final List<dynamic>? data = jsonMap["responseData"] ?? [];
 
           if (data == null || data.isEmpty) {
             fetchedCount = 0;
           } else {
-            // 🧠 heavy parsing → background isolate
-            final parsed = await compute<List<dynamic>, List<InventoryList>>(
-              _parseInventoryList,
-              data,
-            );
-
+            final parsed = parseInventoryList(data);
             inventoryList.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
@@ -1790,10 +1823,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         ),
       );
     }
-  }
-
-  List<InventoryList> _parseInventoryList(List<dynamic> data) {
-    return data.map((e) => InventoryList.fromJson(e)).toList();
   }
 
   Future<void> _loadInventoryClosing(String userName, String userLevel) async {
@@ -1846,17 +1875,12 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         if (response.statusCode == 200) {
           final jsonMap = jsonDecode(response.body);
-          final List<dynamic>? data = jsonMap["responseData"];
+          final List<dynamic>? data = jsonMap["responseData"] ?? [];
 
           if (data == null || data.isEmpty) {
             fetchedCount = 0;
           } else {
-            // Parse JSON on background isolate
-            final parsed = await compute<List<dynamic>, List<InventoryList>>(
-              _parseInventoryClosingList,
-              data,
-            );
-
+            final parsed = parseInventoryClosingList(data);
             closingList.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
@@ -1889,10 +1913,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         ),
       );
     }
-  }
-
-  List<InventoryList> _parseInventoryClosingList(List<dynamic> data) {
-    return data.map((e) => InventoryList.fromJson(e)).toList();
   }
 
   Future<void> _loadSalesTarget(String userName, String userLevel) async {
@@ -1965,7 +1985,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       final jsonMap = jsonDecode(response.body);
 
-      final List<dynamic>? data = jsonMap["responseData"];
+      final List<dynamic>? data = jsonMap["responseData"] ?? [];
 
       if (data == null || data.isEmpty) {
         if (!mounted) return;
@@ -1975,12 +1995,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         return;
       }
 
-      // Heavy parsing → isolate
-      final parsedList = await compute<List<dynamic>, List<SalesTargetList>>(
-        _parseSalesTargetList,
-        data,
-      );
-
+      final parsedList = parseSalesTargetList(data);
       if (!mounted) return;
 
       // UPDATE UI
@@ -1999,10 +2014,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         ),
       );
     }
-  }
-
-  List<SalesTargetList> _parseSalesTargetList(List<dynamic> data) {
-    return data.map((e) => SalesTargetList.fromJson(e)).toList();
   }
 
   Future<void> _loadGRN(String userName, String userLevel) async {
@@ -2061,17 +2072,12 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         if (response.statusCode == 200) {
           final jsonMap = jsonDecode(response.body);
-          final List<dynamic>? data = jsonMap["responseData"];
+          final List<dynamic>? data = jsonMap["responseData"] ?? [];
 
           if (data == null || data.isEmpty) {
             fetchedCount = 0;
           } else {
-            // Heavy parsing → isolate
-            final parsed = await compute<List<dynamic>, List<GRNList>>(
-              _parseGRNList,
-              data,
-            );
-
+            final parsed = parseGRNList(data);
             grnItems.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
@@ -2105,22 +2111,14 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     }
   }
 
-  List<GRNList> _parseGRNList(List<dynamic> data) {
-    return data.map((e) => GRNList.fromJson(e)).toList();
-  }
-
-  // ---- UI wrapper: call this from your widget (replaces your previous CPU-heavy function) ----
   Future<void> _loadDailyCostingReport(
     String priority,
     String warehouse,
   ) async {
-    // show a small overlay or toast if you want. (Optional)
-    showLoadingOverlay(context, message: "Preparing daily costing report...");
-
     final input = DailyCostingInput(
       priority: priority,
       warehouse: warehouse,
-      sales: sales, // your global lists
+      sales: sales,
       soList: soList,
       purchasePrice: purchasePrice,
       grnList: grnList,
@@ -2163,6 +2161,23 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         inventoryOpeningValue = result.inventoryOpeningValue;
         inventoryClosingValue = result.inventoryClosingValue;
         cogsValue = result.cogsValue;
+        inventoryAchieved = result.inventoryAchieved;
+
+        monthlySOvalue = result.monthlySOvalue;
+        lowVal = result.lowVal;
+        mediumVal = result.mediumVal;
+        highVal = result.highVal;
+
+        lessThan30DaysValue = result.lessThan30DaysValue;
+        a30to60DaysValue = result.a30to60DaysValue;
+        a60to90DaysValue = result.a60to90DaysValue;
+        a91DaysValue = result.a91DaysValue;
+
+        medicalDeviceTarget = result.medicalDeviceTarget;
+        ipdTarget = result.ipdTarget;
+        purchaseTarget = result.purchaseTarget;
+        cogsTarget = result.cogsTarget;
+        inventoryTarget = result.inventoryTarget;
 
         // graphs — replace your graph data lists with the computed ones
         revenueBreakup.graphData = result.revenueGraph;
@@ -2211,1421 +2226,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     return weeks;
   }
 
-  // Future<void> _loadSalesOld(String UserName, String UserLevel) async {
-  //   int index = 0;
-  //   int limit = 10000;
-  //   int fetchedCount = 0;
-  //   List<SalesList> salesList = [];
-  //   final prefs = await SharedPreferences.getInstance();
-  //   String selectedUser = '';
-  //   final userName = selectedUser == ""
-  //       ? prefs.getString('userName') ?? ''
-  //       : selectedUser;
-  //   try {
-  //     do {
-  //       var body = {
-  //         // "FromDate": formatDate(monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-  //         "FromDate": dateFilterFlag
-  //             ? formatDate(fromDateFilter!)
-  //             : formatDate(fiscalYearStartDate!),
-  //         "ToDate": dateFilterFlag
-  //             ? formatDate(toDateFilter!)
-  //             : formatDate(currentDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken(),
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}Crm_SalesList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           //     'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<SalesList> newSalesList =
-  //               (responseJson['responseData'] as List)
-  //                   .map((item) => SalesList.fromJson(item))
-  //                   .toList();
-
-  //           salesList.addAll(newSalesList);
-  //           fetchedCount = newSalesList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else if (response.statusCode == 504) {
-  //         await _loadSales(userName, userLevel);
-  //       } else if (response.statusCode == 502) {
-  //         await _loadSales(userName, userLevel);
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-
-  //     setState(() {
-  //       context.read<DailyCostingSalesProvider>().updateSalesList(salesList);
-  //       List<String> menuNames = usersList
-  //           .where((element) => element.parentMenuId == 0)
-  //           .map((user) => user.menuName)
-  //           .toList();
-  //       menuNames.insert(0, UserName);
-  //       if (int.parse(UserLevel) == 5) {
-  //         if (sales.isEmpty) {
-  //           sales = salesList.toList();
-  //           salesTemp = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) == 4) {
-  //         if (sales.isEmpty) {
-  //           sales = salesList.toList();
-  //           salesTemp = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-  //         if (sales.isEmpty) {
-  //           sales = salesList.toList();
-  //           salesTemp = salesList.toList();
-  //         }
-  //       } else {
-  //         if (sales.isEmpty) {
-  //           sales = salesList.toList();
-  //           salesTemp = salesList.toList();
-  //         }
-  //       }
-  //     });
-  //   } catch (e) {
-  //     final snackBar = SnackBar(
-  //       duration: const Duration(seconds: 2),
-  //       content: Text('Error: $e'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
-
-  // Future<void> _loadSODetailsOld(String UserName, String UserLevel) async {
-  //   int index = 0;
-  //   int limit = 10000; // Maximum limit to fetch all data
-  //   int fetchedCount = 0;
-  //   List<SODetailsList> soDetailList = [];
-  //   String selectedUser = '';
-  //   final prefs = await SharedPreferences.getInstance();
-  //   final userName = selectedUser == ""
-  //       ? prefs.getString('userName') ?? ''
-  //       : selectedUser;
-  //   try {
-  //     do {
-  //       var body = {
-  //         "FromDate": dateFilterFlag
-  //             ? formatDate(fromDateFilter!)
-  //             : formatDate(fiscalYearStartDate!),
-  //         "ToDate": dateFilterFlag
-  //             ? formatDate(toDateFilter!)
-  //             : formatDate(currentDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken(),
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}CRM_SOList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           //     'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<SODetailsList> newSODetailDataList =
-  //               (responseJson['responseData'] as List)
-  //                   .map((item) => SODetailsList.fromJson(item))
-  //                   .toList();
-
-  //           soDetailList.addAll(newSODetailDataList);
-  //           fetchedCount = newSODetailDataList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else if (response.statusCode == 504) {
-  //         await _loadSODetails(userName, userLevel);
-  //       } else if (response.statusCode == 502) {
-  //         await _loadSODetails(userName, userLevel);
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-
-  //     setState(() {
-  //       context.read<DailyCostingSOListProvider>().updateSOList(soDetailList);
-  //       List<String> menuNames = usersList
-  //           .where((element) => element.parentMenuId == 0)
-  //           .map((user) => user.menuName)
-  //           .toList();
-  //       menuNames.insert(0, UserName);
-  //       soListTemp = soDetailList
-  //           .where((test) => test.soStatus == "Open")
-  //           .toList();
-  //       if (int.parse(UserLevel) == 5) {
-  //         if (soList.isEmpty) {
-  //           soList = soDetailList
-  //               .where((test) => test.soStatus == "Open")
-  //               .toList();
-  //         }
-  //       } else if (int.parse(UserLevel) == 4) {
-  //         if (soList.isEmpty) {
-  //           soList = soDetailList
-  //               .where((test) => test.soStatus == "Open")
-  //               .toList();
-  //         }
-  //       } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-  //         if (soList.isEmpty) {
-  //           soList = soDetailList
-  //               .where((test) => test.soStatus == "Open")
-  //               .toList();
-  //         }
-  //       } else {
-  //         if (soList.isEmpty) {
-  //           soList = soDetailList
-  //               .where((test) => test.soStatus == "Open")
-  //               .toList();
-  //         }
-  //       }
-  //     });
-  //   } catch (e) {
-  //     final snackBar = SnackBar(
-  //       duration: const Duration(seconds: 2),
-  //       content: Text('Error: $e'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
-
-  // Future<void> _loadPurchasePriceOld(String UserName, String UserLevel) async {
-  //   int index = 0;
-  //   int limit = 10000;
-  //   int fetchedCount = 0;
-  //   List<PurchaseList> salesList = [];
-  //   final prefs = await SharedPreferences.getInstance();
-  //   String selectedUser = '';
-  //   final userName = selectedUser == ""
-  //       ? prefs.getString('userName') ?? ''
-  //       : selectedUser;
-
-  //   try {
-  //     do {
-  //       var body = {
-  //         "FromDate": dateFilterFlag
-  //             ? formatDate(fromDateFilter!)
-  //             : formatDate(fiscalYearStartDate!),
-  //         "ToDate": dateFilterFlag
-  //             ? formatDate(toDateFilter!)
-  //             : formatDate(currentDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken(),
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}BicxoPurchaseList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           //     'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<PurchaseList> newSalesList =
-  //               (responseJson['responseData'] as List)
-  //                   .map((item) => PurchaseList.fromJson(item))
-  //                   .toList();
-
-  //           salesList.addAll(newSalesList);
-  //           fetchedCount = newSalesList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else if (response.statusCode == 504) {
-  //         await _loadPurchasePrice(userName, userLevel);
-  //       } else if (response.statusCode == 504) {
-  //         await _loadPurchasePrice(userName, userLevel);
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-
-  //     setState(() {
-  //       if (purchasePrice.isEmpty) {
-  //         purchasePrice = salesList.toList();
-  //       }
-  //       context.read<DailyCostingPurchaseProvider>().updatePurchaseList(
-  //         salesList,
-  //       );
-
-  //       List<String> menuNames = usersList
-  //           .where((element) => element.parentMenuId == 0)
-  //           .map((user) => user.menuName)
-  //           .toList();
-  //       menuNames.insert(0, UserName);
-  //       purchasePriceTemp = salesList.toList();
-  //       if (int.parse(UserLevel) == 5) {
-  //         if (purchasePrice.isEmpty) {
-  //           purchasePrice = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) == 4) {
-  //         if (purchasePrice.isEmpty) {
-  //           purchasePrice = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-  //         if (purchasePrice.isEmpty) {
-  //           purchasePrice = salesList.toList();
-  //         }
-  //       } else {
-  //         if (purchasePrice.isEmpty) {
-  //           purchasePrice = salesList.toList();
-  //         }
-  //       }
-  //       if (purchasePrice.isEmpty) {
-  //         purchasePrice = salesList.toList();
-  //       }
-  //     });
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print(e);
-  //     }
-  //     final snackBar = SnackBar(
-  //       duration: const Duration(seconds: 2),
-  //       content: Text('Error: $e'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
-
-  // Future<void> _loadGRNOld(String UserName, String UserLevel) async {
-  //   int index = 0;
-  //   int limit = 10000;
-  //   int fetchedCount = 0;
-  //   List<GRNList> salesList = [];
-  //   final prefs = await SharedPreferences.getInstance();
-  //   String selectedUser = '';
-  //   final userName = selectedUser == ""
-  //       ? prefs.getString('userName') ?? ''
-  //       : selectedUser;
-
-  //   try {
-  //     do {
-  //       var body = {
-  //         "FromDate": dateFilterFlag
-  //             ? formatDate(fromDateFilter!)
-  //             : formatDate(fiscalYearStartDate!),
-  //         "ToDate": dateFilterFlag
-  //             ? formatDate(toDateFilter!)
-  //             : formatDate(currentDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken(),
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}BicxoGoodsReceiptNoteList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           //     'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<GRNList> newSalesList = (responseJson['responseData'] as List)
-  //               .map((item) => GRNList.fromJson(item))
-  //               .toList();
-
-  //           salesList.addAll(newSalesList);
-  //           fetchedCount = newSalesList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else if (response.statusCode == 504) {
-  //         await _loadGRN(userName, userLevel);
-  //       } else if (response.statusCode == 504) {
-  //         await _loadGRN(userName, userLevel);
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-
-  //     setState(() {
-  //       if (grnList.isEmpty) {
-  //         grnList = salesList.toList();
-  //       }
-  //       context.read<DailyCostingGRNProvider>().updatePurchaseList(salesList);
-
-  //       List<String> menuNames = usersList
-  //           .where((element) => element.parentMenuId == 0)
-  //           .map((user) => user.menuName)
-  //           .toList();
-  //       menuNames.insert(0, UserName);
-  //       grnListTemp = salesList.toList();
-  //       if (int.parse(UserLevel) == 5) {
-  //         if (grnList.isEmpty) {
-  //           grnList = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) == 4) {
-  //         if (grnList.isEmpty) {
-  //           grnList = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-  //         if (grnList.isEmpty) {
-  //           grnList = salesList.toList();
-  //         }
-  //       } else {
-  //         if (grnList.isEmpty) {
-  //           grnList = salesList.toList();
-  //         }
-  //       }
-  //       if (grnList.isEmpty) {
-  //         grnList = salesList.toList();
-  //       }
-  //     });
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print(e);
-  //     }
-  //     final snackBar = SnackBar(
-  //       duration: const Duration(seconds: 2),
-  //       content: Text('Error: $e'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
-
-  // Future<void> _loadPOListOld(String UserName, String UserLevel) async {
-  //   int index = 0;
-  //   int limit = 10000; // Maximum limit to fetch all data
-  //   int fetchedCount = 0;
-  //   List<POList> salesList = [];
-  //   final prefs = await SharedPreferences.getInstance();
-  //   String selectedUser = '';
-  //   final userName = selectedUser == ""
-  //       ? prefs.getString('userName') ?? ''
-  //       : selectedUser;
-  //   try {
-  //     do {
-  //       var body = {
-  //         // "FromDate": dateFilterFlag
-  //         //     ? formatDate(fromDateFilter!)
-  //         //     : formatDate(fiscalYearStartDate!),
-  //         "ToDate": dateFilterFlag
-  //             ? formatDate(toDateFilter!)
-  //             : formatDate(currentDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken(),
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}BicxoPOList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           //     'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<POList> newSalesList = (responseJson['responseData'] as List)
-  //               .map((item) => POList.fromJson(item))
-  //               .toList();
-  //           salesList.addAll(newSalesList);
-  //           fetchedCount = newSalesList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else if (response.statusCode == 504) {
-  //         await _loadPOList(userName, userLevel);
-  //       } else if (response.statusCode == 502) {
-  //         await _loadPOList(userName, userLevel);
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-
-  //     setState(() {
-  //       // poList = salesList;
-  //       context.read<DailyCostingPOProvider>().updatePOList(salesList);
-  //       // poList = salesList.where((sale) => sale.type == "Item Purchase").toList();
-  //       if (poListOpen.isEmpty) {
-  //         poListOpen = salesList
-  //             .where(
-  //               (sale) => /*sale.type == "Item Purchase" && */
-  //                   sale.poStatus == "Open" && sale.groupName != "Fixed Assets",
-  //             )
-  //             .toList();
-  //         poListOpenTemp = salesList
-  //             .where(
-  //               (sale) => /*sale.type == "Item Purchase" && */
-  //                   sale.poStatus == "Open" && sale.groupName != "Fixed Assets",
-  //             )
-  //             .toList();
-  //       }
-  //     });
-  //   } catch (e) {
-  //     final snackBar = SnackBar(
-  //       duration: const Duration(seconds: 2),
-  //       content: Text('Error: $e'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
-
-  // Future<void> _loadInventoryOld(String UserName, String UserLevel) async {
-  //   int index = 0;
-  //   int limit = 10000;
-  //   int fetchedCount = 0;
-  //   List<InventoryList> salesList = [];
-  //   final prefs = await SharedPreferences.getInstance();
-  //   String selectedUser = '';
-  //   final userName = selectedUser == ""
-  //       ? prefs.getString('userName') ?? ''
-  //       : selectedUser;
-  //   try {
-  //     do {
-  //       var body = {
-  //         "ToDate": dateFilterFlag
-  //             ? formatDate(toDateFilter!)
-  //             : formatDate(lastMonthToDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken(),
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           // 'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<InventoryList> newSalesList =
-  //               (responseJson['responseData'] as List)
-  //                   .map((item) => InventoryList.fromJson(item))
-  //                   .toList();
-
-  //           salesList.addAll(newSalesList);
-  //           fetchedCount = newSalesList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else if (response.statusCode == 504) {
-  //         await _loadInventory(userName, userLevel);
-  //       } else if (response.statusCode == 502) {
-  //         await _loadInventory(userName, userLevel);
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-
-  //     setState(() {
-  //       context.read<DailyCostingInventoryProvider>().updateInventoryList(
-  //         salesList,
-  //       );
-  //       List<String> menuNames = usersList
-  //           .where((element) => element.parentMenuId == 0)
-  //           .map((user) => user.menuName)
-  //           .toList();
-  //       menuNames.insert(0, UserName);
-  //       if (int.parse(UserLevel) == 5) {
-  //         if (inventory.isEmpty) {
-  //           inventory = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) == 4) {
-  //         if (inventory.isEmpty) {
-  //           inventory = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-  //         if (inventory.isEmpty) {
-  //           inventory = salesList.toList();
-  //         }
-  //       } else {
-  //         if (inventory.isEmpty) {
-  //           inventory = salesList.toList();
-  //         }
-  //       }
-  //     });
-  //   } catch (e) {
-  //     if (mounted) {
-  //       final snackBar = SnackBar(
-  //         duration: const Duration(seconds: 2),
-  //         content: Text('Error: $e'),
-  //       );
-  //       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //     }
-  //   }
-  // }
-
-  // Future<void> _loadInventoryClosingOld(
-  //   String UserName,
-  //   String UserLevel,
-  // ) async {
-  //   int index = 0;
-  //   int limit = 10000;
-  //   int fetchedCount = 0;
-  //   List<InventoryList> salesList = [];
-  //   final prefs = await SharedPreferences.getInstance();
-  //   String selectedUser = '';
-  //   final userName = selectedUser == ""
-  //       ? prefs.getString('userName') ?? ''
-  //       : selectedUser;
-  //   try {
-  //     do {
-  //       var body = {
-  //         "ToDate": dateFilterFlag
-  //             ? formatDate(toDateFilter!)
-  //             : formatDate(currentDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken(),
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           // 'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<InventoryList> newSalesList =
-  //               (responseJson['responseData'] as List)
-  //                   .map((item) => InventoryList.fromJson(item))
-  //                   .toList();
-
-  //           salesList.addAll(newSalesList);
-  //           fetchedCount = newSalesList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else if (response.statusCode == 504) {
-  //         await _loadInventoryClosing(userName, userLevel);
-  //       } else if (response.statusCode == 502) {
-  //         await _loadInventoryClosing(userName, userLevel);
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-
-  //     setState(() {
-  //       context
-  //           .read<DailyCostingInventoryClosingProvider>()
-  //           .updateInventoryList(salesList);
-  //       List<String> menuNames = usersList
-  //           .where((element) => element.parentMenuId == 0)
-  //           .map((user) => user.menuName)
-  //           .toList();
-  //       menuNames.insert(0, UserName);
-  //       if (int.parse(UserLevel) == 5) {
-  //         if (inventoryClosing.isEmpty) {
-  //           inventoryClosing = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) == 4) {
-  //         if (inventoryClosing.isEmpty) {
-  //           inventoryClosing = salesList.toList();
-  //         }
-  //       } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-  //         if (inventoryClosing.isEmpty) {
-  //           inventoryClosing = salesList.toList();
-  //         }
-  //       } else {
-  //         if (inventoryClosing.isEmpty) {
-  //           inventoryClosing = salesList.toList();
-  //         }
-  //       }
-  //     });
-  //   } catch (e) {
-  //     if (mounted) {
-  //       final snackBar = SnackBar(
-  //         duration: const Duration(seconds: 2),
-  //         content: Text('Error: $e'),
-  //       );
-  //       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //     }
-  //   }
-  // }
-
-  // Future<void> _loadSalesTargetOld(String UserName, String UserLevel) async {
-  //   final body = {
-  //     "FromDate": dateFilterFlag
-  //         ? formatDate(fromDateFilter!)
-  //         : formatDate(fiscalYearStartDate!),
-  //     "ToDate": dateFilterFlag
-  //         ? formatDate(toDateFilter!)
-  //         : formatDate(currentDate!),
-  //     "Index": 0,
-  //     "Limit": 0,
-  //     "sapToken": DataManager.readSapToken(),
-  //   };
-  //   const apiUrl = '${ApiHelper.baseUrl}BicxoSalesTargetList';
-  //   var headers = {
-  //     HttpHeaders.contentTypeHeader: 'application/json',
-  //     // HttpHeaders.authorizationHeader: 'Bearer    ${DataManager.readSapToken()}'
-  //   };
-  //   try {
-  //     final response = await http.post(
-  //       Uri.parse(apiUrl),
-  //       body: jsonEncode(body),
-  //       headers: headers,
-  //     );
-  //     if (response.statusCode == 200) {
-  //       final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //       if (responseJson["responseData"].toString().isNotEmpty) {
-  //         List<dynamic> data = responseJson['responseData'];
-  //         if (data.isNotEmpty) {
-  //           List<SalesTargetList> newSalesTargetList = (data)
-  //               .map((item) => SalesTargetList.fromJson(item))
-  //               .toList();
-  //           setState(() {
-  //             List<String> menuNames = usersList
-  //                 .where((element) => element.parentMenuId == 0)
-  //                 .map((user) => user.menuName)
-  //                 .toList();
-  //             menuNames.insert(0, UserName);
-  //             context
-  //                 .read<DailyCostingSalesTargetProvider>()
-  //                 .updateSalesTargetList(newSalesTargetList);
-  //             if (int.parse(UserLevel) == 5) {
-  //               salesTarget = newSalesTargetList;
-  //             } else if (int.parse(UserLevel) == 4) {
-  //               salesTarget = newSalesTargetList;
-  //             } else if (int.parse(UserLevel) <= 3 &&
-  //                 int.parse(UserLevel) >= 2) {
-  //               salesTarget = newSalesTargetList;
-  //             } else {
-  //               salesTarget = newSalesTargetList;
-  //             }
-  //           });
-  //         }
-  //       } else {
-  //         if (responseJson.containsKey("Error") &&
-  //             responseJson["Error"].toString() == "Invalid or Expired Token") {
-  //           final snackBar = SnackBar(
-  //             duration: const Duration(seconds: 1),
-  //             content: Text(
-  //               responseJson["Error"].toString(),
-  //               style: const TextStyle(color: Colors.white, fontSize: 16),
-  //             ),
-  //           );
-  //           ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //           navigateToLoginScreen();
-  //         } else {
-  //           final snackBar = SnackBar(
-  //             content: Text(responseJson["Error"].toString()),
-  //           );
-  //           ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //         }
-  //       }
-  //     } else {
-  //       const snackBar = SnackBar(
-  //         content: Text('Sales target details not found.'),
-  //       );
-  //       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //     }
-  //   } catch (e) {
-  //     const snackBar = SnackBar(
-  //       content: Text('SAP Server down, Please try again after some time.'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
-
-  // Future<void> _loadDailyCostingReportOld(
-  //   String priority,
-  //   String warehouse,
-  // ) async {
-  //   clearVariables();
-  //   List<SalesList> monthlySalesList = [];
-  //   List<SODetailsList> salesOrderList = [];
-  //   List<PurchaseList> purchaseListTemp = [];
-  //   List<GRNList> grnTemp = [];
-  //   List<POList> poListCurrentTemp = [];
-  //   List<POList> poListLastMonthTemp = [];
-  //   List<POList> poListBeforeLastMonth = [];
-  //   List<InventoryList> inventoryTemp = [];
-  //   List<InventoryList> inventoryClosingTemp = [];
-
-  //   String getCurrentFinancialYearSuffix() {
-  //     final now = DateTime.now();
-  //     final year = now.year;
-  //     final month = now.month;
-
-  //     int startYear = (month >= 4) ? year : year - 1;
-  //     int endYear = startYear + 1;
-
-  //     return "FY${startYear % 100}-${endYear % 100}-T";
-  //   }
-
-  //   List<SalesTargetList> tempTarget = salesTarget
-  //       .where((test) => test.financialYear == getCurrentFinancialYearSuffix())
-  //       .toList();
-
-  //   String Month = getMonthName(DateTime.now().month);
-
-  //   for (var target in tempTarget) {
-  //     if (target.salesRep == "MD SALES TARGET") {
-  //       medicalDeviceTarget =
-  //           double.tryParse(target.getTargetForMonth(Month)) ?? 0;
-  //     }
-  //     if (target.salesRep == "IPD SALES TARGET") {
-  //       ipdTarget = double.tryParse(target.getTargetForMonth(Month)) ?? 0;
-  //     }
-  //     if (target.salesRep == "PURCHASE TARGET") {
-  //       purchaseTarget = double.tryParse(target.getTargetForMonth(Month)) ?? 0;
-  //     }
-  //     if (target.salesRep == "COGS TARGET") {
-  //       cogsTarget = double.tryParse(target.getTargetForMonth(Month)) ?? 0;
-  //     }
-  //     if (target.salesRep == "INVENTORY TARGET") {
-  //       inventoryTarget = double.tryParse(target.getTargetForMonth(Month)) ?? 0;
-  //     }
-  //     if (target.salesRep == "PRODUCTION TARGET") {
-  //       productionTarget =
-  //           double.tryParse(target.getTargetForMonth(Month)) ?? 0;
-  //     }
-  //   }
-
-  //   monthlySalesList = sales.where((target) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-  //     return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-  //         invoiceDate.isAtMost(currentMonthToDate!);
-  //   }).toList();
-  //   double salesAmt = 0;
-  //   for (var target in monthlySalesList.toList()) {
-  //     /*      if (target.invoiceType != "Sales Return") {
-  //       salesAmt = double.tryParse(target.rowTotal) ?? 0;
-  //     } else {*/
-  //     salesAmt = (double.tryParse(target.rowTotal) ?? 0);
-
-  //     if (target.itemSubGroup == "Medical Device") {
-  //       medicalDevicesSales += double.tryParse(target.rowTotal) ?? 0;
-  //     } else {
-  //       ipdSales += (double.tryParse(target.rowTotal) ?? 0);
-  //     }
-
-  //     // }
-  //     monthlySales += salesAmt;
-  //   }
-
-  //   revenueBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Medical Device",
-  //       target: medicalDeviceTarget,
-  //       achievement: medicalDevicesSales,
-  //       percentage: (medicalDeviceTarget == 0)
-  //           ? 0
-  //           : double.parse(
-  //               ((medicalDevicesSales / medicalDeviceTarget) * 100)
-  //                   .toStringAsFixed(0),
-  //             ),
-  //     ),
-  //   );
-
-  //   revenueBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "IPD",
-  //       target: ipdTarget,
-  //       achievement: ipdSales,
-  //       percentage: (ipdTarget == 0)
-  //           ? 0
-  //           : double.parse(((ipdSales / ipdTarget) * 100).toStringAsFixed(0)),
-  //     ),
-  //   );
-
-  //   double revenueTarget = medicalDeviceTarget + ipdTarget;
-
-  //   dailyCostingData.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Revenue",
-  //       target: medicalDeviceTarget + ipdTarget,
-  //       achievement: monthlySales,
-  //       percentage: (revenueTarget == 0)
-  //           ? 0
-  //           : double.parse(
-  //               ((monthlySales / revenueTarget) * 100).toStringAsFixed(0),
-  //             ),
-  //     ),
-  //   );
-
-  //   // salesOrderList = soList.where((target) {
-  //   //   return target.soStatus == "Open";
-  //   // }).toList();
-
-  //   salesOrderList = soList.where((target) {
-  //     if (target.soStatus != "Open") return false;
-
-  //     if (priority.isNotEmpty && target.priority != priority) {
-  //       return false;
-  //     }
-
-  //     if (warehouse.isNotEmpty) {
-  //       if (warehouse == "Karnataka State" || warehouse == "Tamil Nadu State") {
-  //         if (target.branchName != warehouse) return false;
-  //       } else if (warehouse == "Others") {
-  //         if (target.branchName == "Karnataka State" ||
-  //             target.branchName == "Tamil Nadu State") {
-  //           return false;
-  //         }
-  //       } else {
-  //         return false;
-  //       }
-  //     }
-
-  //     return true;
-  //   }).toList();
-
-  //   for (var target in salesOrderList) {
-  //     if (target.priority == "Low") {
-  //       lowVal += double.tryParse(target.pendingValue) ?? 0;
-  //     } else if (target.priority == "Medium") {
-  //       mediumVal += (double.tryParse(target.pendingValue) ?? 0);
-  //     } else if (target.priority == "High") {
-  //       highVal += (double.tryParse(target.pendingValue) ?? 0);
-  //     }
-  //     if (target.branchName == "Karnataka State") {
-  //       karnatakaPOSum += double.tryParse(target.pendingValue) ?? 0;
-  //     } else if (target.branchName == "Tamil Nadu State") {
-  //       tamilNaduPOSum += (double.tryParse(target.pendingValue) ?? 0);
-  //     } else {
-  //       othersPOSum += (double.tryParse(target.pendingValue) ?? 0);
-  //     }
-  //     monthlySOvalue += (double.tryParse(target.pendingValue) ?? 0);
-  //   }
-
-  //   saleOrderPriorityBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Low Priority",
-  //       target: 0,
-  //       achievement: lowVal,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   saleOrderPriorityBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Medium Priority",
-  //       target: 0,
-  //       achievement: mediumVal,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   saleOrderPriorityBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "High Priority",
-  //       target: 0,
-  //       achievement: highVal,
-  //       percentage: 0,
-  //     ),
-  //   );
-
-  //   saleOrderWarehouseBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Karnataka State",
-  //       target: 0,
-  //       achievement: karnatakaPOSum,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   saleOrderWarehouseBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Tamil Nadu State",
-  //       target: 0,
-  //       achievement: tamilNaduPOSum,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   saleOrderWarehouseBreakup.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Others",
-  //       target: 0,
-  //       achievement: othersPOSum,
-  //       percentage: 0,
-  //     ),
-  //   );
-
-  //   purchaseListTemp = purchasePrice.where((target) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-  //     return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-  //         invoiceDate.isAtMost(currentMonthToDate!);
-  //   }).toList();
-
-  //   for (var target in purchaseListTemp) {
-  //     monthlyPurchasePriceSum += (double.tryParse(target.rowTotal) ?? 0);
-  //   }
-
-  //   dailyCostingData.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Purchase",
-  //       target: purchaseTarget,
-  //       achievement: monthlyPurchasePriceSum,
-  //       percentage: (purchaseTarget == 0)
-  //           ? 0
-  //           : double.parse(
-  //               ((monthlyPurchasePriceSum / purchaseTarget) * 100)
-  //                   .toStringAsFixed(0),
-  //             ),
-  //     ),
-  //   );
-
-  //   grnTemp = grnList.where((target) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.grnDate);
-  //     return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-  //         invoiceDate.isAtMost(currentMonthToDate!);
-  //   }).toList();
-
-  //   for (var target in grnTemp) {
-  //     monthlyPurchasePriceGrnSum += (double.tryParse(target.rowTotal) ?? 0);
-  //   }
-
-  //   poListCurrentTemp = poListOpen.where((target) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
-  //     return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-  //         invoiceDate.isAtMost(currentMonthToDate!);
-  //   }).toList();
-  //   poListLastMonthTemp = poListOpen.where((target) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
-  //     return invoiceDate.isAtLeast(lastMonthFromDate!) &&
-  //         invoiceDate.isAtMost(lastMonthToDate!);
-  //   }).toList();
-
-  //   poListBeforeLastMonth = poListOpen.where((target) {
-  //     DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
-  //     return invoiceDate.isAtMost(lastMonthFromDate!);
-  //   }).toList();
-
-  //   for (var target in poListOpen) {
-  //     monthlyPOSum += (double.tryParse(target.pendingValue) ?? 0);
-  //   }
-  //   for (var target in poListCurrentTemp) {
-  //     currentMonthPOSum += (double.tryParse(target.pendingValue) ?? 0);
-  //   }
-  //   for (var target in poListLastMonthTemp) {
-  //     lastMonthPOSum += (double.tryParse(target.pendingValue) ?? 0);
-  //   }
-  //   for (var target in poListBeforeLastMonth) {
-  //     tillLastMonthPOSum += (double.tryParse(target.pendingValue) ?? 0);
-  //   }
-
-  //   inventoryTemp = inventory;
-  //   for (var target in inventoryTemp) {
-  //     if (target.ageingBrackets == "<30 Days") {
-  //       lessThan30DaysValue += (double.tryParse(target.totalValue) ?? 0);
-  //     }
-  //     if (target.ageingBrackets == "31-45 Days" ||
-  //         target.ageingBrackets == "31-45 Days") {
-  //       a30to60DaysValue += (double.tryParse(target.totalValue) ?? 0);
-  //     }
-  //     if (target.ageingBrackets == "61-90 Days") {
-  //       a60to90DaysValue += (double.tryParse(target.totalValue) ?? 0);
-  //     }
-  //     if (target.ageingBrackets == "91-120 Days" ||
-  //         target.ageingBrackets == "121-150 Days" ||
-  //         target.ageingBrackets == "151-180 Days" ||
-  //         target.ageingBrackets == "181-365 Days" ||
-  //         target.ageingBrackets == "366-730 Days" ||
-  //         target.ageingBrackets == ">730 Days") {
-  //       a91DaysValue += (double.tryParse(target.totalValue) ?? 0);
-  //     }
-  //     if (target.ageingBrackets == "91-120 Days" ||
-  //         target.ageingBrackets == "121-150 Days" ||
-  //         target.ageingBrackets == "151-180 Days") {
-  //       nearExpiryValue += (double.tryParse(target.totalValue) ?? 0);
-  //     }
-  //     if (target.ageingBrackets == "181-365 Days" ||
-  //         target.ageingBrackets == "366-730 Days" ||
-  //         target.ageingBrackets == ">730 Days") {
-  //       expiredValue += (double.tryParse(target.totalValue) ?? 0);
-  //     }
-
-  //     inventoryOpeningValue += (double.parse(target.totalValue));
-  //   }
-
-  //   inventoryClosingTemp = inventoryClosing;
-  //   for (var target in inventoryClosingTemp) {
-  //     inventoryClosingValue += (double.parse(target.totalValue));
-  //   }
-
-  //   cogsValue =
-  //       (inventoryOpeningValue + monthlyPurchasePriceGrnSum) -
-  //       (lessThan30DaysValue +
-  //           a30to60DaysValue +
-  //           a60to90DaysValue +
-  //           nearExpiryValue +
-  //           expiredValue);
-
-  //   double inventoryAchieved =
-  //       lessThan30DaysValue +
-  //       a30to60DaysValue +
-  //       a60to90DaysValue +
-  //       nearExpiryValue +
-  //       expiredValue;
-
-  //   dailyCostingData.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Inventory",
-  //       target: inventoryTarget,
-  //       achievement: inventoryAchieved,
-  //       percentage: (inventoryTarget == 0)
-  //           ? 0
-  //           : double.parse(
-  //               ((inventoryAchieved / inventoryTarget) * 100).toStringAsFixed(
-  //                 0,
-  //               ),
-  //             ),
-  //     ),
-  //   );
-  //   dailyCostingData.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "COGS",
-  //       target: cogsTarget,
-  //       achievement: cogsValue,
-  //       percentage: (cogsTarget == 0)
-  //           ? 0
-  //           : double.parse(((cogsValue / cogsTarget) * 100).toStringAsFixed(0)),
-  //     ),
-  //   );
-
-  //   inventoryAging.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "> 30 Days",
-  //       target: 0,
-  //       achievement: lessThan30DaysValue,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   inventoryAging.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "31 - 60 Days",
-  //       target: 0,
-  //       achievement: a30to60DaysValue,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   inventoryAging.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "61 - 90 Days",
-  //       target: 0,
-  //       achievement: a30to60DaysValue,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   inventoryAging.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Near Expiry",
-  //       target: 0,
-  //       achievement: nearExpiryValue,
-  //       percentage: 0,
-  //     ),
-  //   );
-  //   inventoryAging.graphData.add(
-  //     DailyCostingGraphData(
-  //       name: "Expired Stock",
-  //       target: 0,
-  //       achievement: expiredValue,
-  //       percentage: 0,
-  //     ),
-  //   );
-  // }
-
-  // Future<void> generateDailyCostingReport() async {
-  //   final excel = xl.Excel.createExcel();
-  //   final sheet = excel['Sheet1'];
-  //   // sheet.getColAutoFits;
-
-  //   sheet.appendRow(
-  //     toCellRow(toCellRow([(DateTime.now().toString().substring(0, 10))])),
-  //   );
-  //   sheet.appendRow(toCellRow(toCellRow(["Financial Year for 25-26"])));
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "",
-  //       "Target - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
-  //       "Achievement - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
-  //       "Percentage - ${getMonthName(DateTime.now().month)} ${DateTime.now().year}",
-  //     ]),
-  //   );
-
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "Revenue",
-  //       "",
-  //       (medicalDeviceTarget + ipdTarget).toStringAsFixed(0),
-  //       monthlySales.toStringAsFixed(0),
-  //       ((monthlySales / (medicalDeviceTarget + ipdTarget)) * 100)
-  //           .toStringAsFixed(0),
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "Medical Devices",
-  //       medicalDeviceTarget.toStringAsFixed(0),
-  //       medicalDevicesSales.toStringAsFixed(0),
-  //       ((medicalDevicesSales / medicalDeviceTarget) * 100).toStringAsFixed(0),
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "IPD",
-  //       ipdTarget.toStringAsFixed(0),
-  //       ipdSales.toStringAsFixed(0),
-  //       ((ipdSales / ipdTarget) * 100).toStringAsFixed(0),
-  //     ]),
-  //   );
-  //   sheet.appendRow(toCellRow([""]));
-
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "Pending Sales Order",
-  //       "",
-  //       "",
-  //       monthlySOvalue.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow(["", "Low Priority", "", lowVal.toStringAsFixed(0), ""]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow(["", "Medium Priority", "", mediumVal.toStringAsFixed(0), ""]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow(["", "High Priority", "", highVal.toStringAsFixed(0), ""]),
-  //   );
-  //   sheet.appendRow(toCellRow([""]));
-
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "Pending Sales Order",
-  //       "",
-  //       "",
-  //       (karnatakaPOSum + tamilNaduPOSum + othersPOSum).toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow(["", "Bangalore", "", karnatakaPOSum.toStringAsFixed(0), ""]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow(["", "Rajapalayam", "", tamilNaduPOSum.toStringAsFixed(0), ""]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow(["", "Others", "", othersPOSum.toStringAsFixed(0), ""]),
-  //   );
-  //   sheet.appendRow(toCellRow([""]));
-
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "Purchases",
-  //       "",
-  //       purchaseTarget.toStringAsFixed(0),
-  //       monthlyPurchasePriceGrnSum.toStringAsFixed(0),
-  //       ((monthlyPurchasePriceGrnSum / purchaseTarget) * 100).toStringAsFixed(
-  //         0,
-  //       ),
-  //     ]),
-  //   );
-  //   sheet.appendRow(toCellRow([""]));
-
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "Pending Purchase Order",
-  //       "",
-  //       "",
-  //       monthlyPOSum.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "Till ${getMonthName(DateTime.now().month - 2)}",
-  //       "",
-  //       tillLastMonthPOSum.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "${getMonthName(DateTime.now().month - 1)} ${DateTime.now().year}",
-  //       "",
-  //       lastMonthPOSum.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "${getMonthName(DateTime.now().month - 0)} ${DateTime.now().year}",
-  //       "",
-  //       currentMonthPOSum.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(toCellRow([""]));
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "Opening Stock",
-  //       "",
-  //       '',
-  //       inventoryOpeningValue.toStringAsFixed(0),
-  //     ]),
-  //   );
-  //   sheet.appendRow(toCellRow([""]));
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "Inventory Aging",
-  //       "",
-  //       inventoryTarget.toStringAsFixed(0),
-  //       (inventoryClosingValue).toStringAsFixed(0),
-  //       (((lessThan30DaysValue +
-  //                       a30to60DaysValue +
-  //                       a60to90DaysValue +
-  //                       nearExpiryValue +
-  //                       expiredValue) /
-  //                   inventoryTarget) *
-  //               100)
-  //           .toStringAsFixed(0),
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "<30 Days",
-  //       "",
-  //       lessThan30DaysValue.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "31-60 Days",
-  //       "",
-  //       a30to60DaysValue.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "61-90 Days",
-  //       "",
-  //       a60to90DaysValue.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow(["", "> 90 Days", "", (a91DaysValue).toStringAsFixed(0), ""]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "Near Expiry",
-  //       "",
-  //       nearExpiryValue.toStringAsFixed(0),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "",
-  //       "Expired Stock",
-  //       "",
-  //       (expiredValue.toStringAsFixed(0)),
-  //       "",
-  //     ]),
-  //   );
-  //   sheet.appendRow(toCellRow([""]));
-
-  //   sheet.appendRow(
-  //     toCellRow([
-  //       "COGS",
-  //       "",
-  //       cogsTarget.toStringAsFixed(0),
-  //       cogsValue.toStringAsFixed(0),
-  //       ((cogsValue / cogsTarget) * 100).toStringAsFixed(0),
-  //     ]),
-  //   );
-
-  //   setState(() {
-  //     // YtdSalesBarChartData = true;
-  //   });
-
-  //   if (kIsWeb) {
-  //     // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-  //     final excelBytes = excel.encode()!;
-  //     saveAndOpenExcel('DailyCostingReport.xlsx', excelBytes);
-
-  //     // var fileBytes = excel.encode();
-  //     //
-  //     // final blob = html.Blob([fileBytes]);
-  //     // final url = html.Url.createObjectUrlFromBlob(blob);
-  //     // final anchor = html.AnchorElement()
-  //     //   ..href = url
-  //     //   ..download = 'monthly_sales_report.xlsx'
-  //     //   ..style.display = 'none';
-  //     // html.document.body!.append(anchor);
-  //     // anchor.click();
-  //     // anchor.remove();
-  //     // html.Url.revokeObjectUrl(url);
-  //   } else {
-  //     String storageDir = await getStorageDirectory();
-  //     final file = File('$storageDir/DailyCostingReport.xlsx');
-  //     await file.writeAsBytes(excel.encode()!);
-  //     OpenFile.open(file.path);
-  //   }
-  // }
-
   Future<void> generateDailyCostingReport() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-
-    // ================= SAFE HELPERS =================
     double safeNum(num? v) => v?.toDouble() ?? 0;
 
     double safePercent(num? value, num? target) {
@@ -3635,239 +2236,91 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       return (v / t) * 100;
     }
 
-    // ================= STYLE =================
-    xl.CellStyle borderedStyle(
-      dynamic value, {
-      bool bold = false,
-      bool center = false,
-    }) {
-      return xl.CellStyle(
-        bold: bold,
-        horizontalAlign: center
-            ? xl.HorizontalAlign.Center
-            : (value is num
-                  ? xl.HorizontalAlign.Right
-                  : xl.HorizontalAlign.Left),
-        verticalAlign: xl.VerticalAlign.Center,
-        topBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-        bottomBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-        leftBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-        rightBorder: xl.Border(borderStyle: xl.BorderStyle.Thin),
-      );
-    }
-
-    // ================= CELL HELPER =================
-    void setCell({
-      required int row,
-      required int col,
-      required dynamic value,
-      bool bold = false,
-      bool center = false,
-    }) {
-      final cell = sheet.cell(
-        xl.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row),
-      );
-
-      if (value is num) {
-        if (value.isNaN || value.isInfinite) {
-          cell.value = xl.DoubleCellValue(0);
-        } else {
-          cell.value = xl.DoubleCellValue(value.toDouble());
-        }
-      } else {
-        cell.value = xl.TextCellValue(value?.toString() ?? "");
-      }
-
-      cell.cellStyle = borderedStyle(value, bold: bold, center: center);
-    }
-
-    int row = 0;
-
-    // ================= HEADER =================
-    setCell(
-      row: row,
-      col: 0,
-      value: DateTime.now().toString().substring(0, 10),
-      bold: true,
-      center: true,
-    );
-
-    sheet.merge(
-      xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
-      xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
-    );
-    sheet.setRowHeight(row, 25);
-    row++;
-
-    setCell(
-      row: row,
-      col: 0,
-      value: "Financial Target for FY 25-26",
-      bold: true,
-      center: true,
-    );
-
-    sheet.merge(
-      xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row),
-      xl.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row),
-    );
-    sheet.setRowHeight(row, 30);
-    row++;
-
-    // ================= TARGET HEADER =================
-    setCell(row: row, col: 0, value: "");
-    setCell(row: row, col: 1, value: "Target", bold: true, center: true);
-    setCell(row: row, col: 2, value: "Achievement", bold: true, center: true);
-    setCell(row: row, col: 3, value: "Percentage", bold: true, center: true);
-    setCell(row: row, col: 4, value: "");
-    row++;
-
-    // ================= COLUMN HEADERS =================
-    setCell(row: row, col: 0, value: "");
-    setCell(row: row, col: 1, value: "Mar-26 Target", bold: true);
-    setCell(row: row, col: 2, value: "");
-    setCell(row: row, col: 3, value: "Mar-26", bold: true);
-    setCell(row: row, col: 4, value: "%", bold: true);
-    row++;
-
-    // ================= REVENUE =================
+    // ================= CALCULATIONS =================
     double totalTarget = safeNum(medicalDeviceTarget) + safeNum(ipdTarget);
 
-    setCell(row: row, col: 0, value: "Revenue", bold: true);
-    setCell(row: row, col: 1, value: totalTarget);
-    setCell(row: row, col: 2, value: "");
-    setCell(row: row, col: 3, value: safeNum(monthlySales));
-    setCell(row: row, col: 4, value: safePercent(monthlySales, totalTarget));
-    row++;
+    // ================= HEADERS =================
+    final headers = ["Category", "Target", "Achievement", "%"];
 
-    setCell(row: row, col: 1, value: "Medical Devices");
-    setCell(row: row, col: 2, value: safeNum(medicalDeviceTarget));
-    setCell(row: row, col: 3, value: safeNum(medicalDevicesSales));
-    setCell(
-      row: row,
-      col: 4,
-      value: safePercent(medicalDevicesSales, medicalDeviceTarget),
+    // ================= ROWS =================
+    final rows = <List<dynamic>>[
+      // ===== REVENUE =====
+      [
+        "Revenue",
+        totalTarget,
+        safeNum(monthlySales),
+        safePercent(monthlySales, totalTarget),
+      ],
+      [
+        "  Medical Devices",
+        safeNum(medicalDeviceTarget),
+        safeNum(medicalDevicesSales),
+        safePercent(medicalDevicesSales, medicalDeviceTarget),
+      ],
+      [
+        "  IPD",
+        safeNum(ipdTarget),
+        safeNum(ipdSales),
+        safePercent(ipdSales, ipdTarget),
+      ],
+
+      ["", "", "", ""],
+
+      // ===== PENDING SALES =====
+      ["Pending Sales Order", "", safeNum(monthlySOvalue), ""],
+      ["  Low Priority", "", safeNum(lowVal), ""],
+      ["  Medium Priority", "", safeNum(mediumVal), ""],
+      ["  High Priority", "", safeNum(highVal), ""],
+
+      ["", "", "", ""],
+
+      // ===== PURCHASE =====
+      [
+        "Purchases",
+        safeNum(purchaseTarget),
+        safeNum(monthlyPurchasePriceGrnSum),
+        safePercent(monthlyPurchasePriceGrnSum, purchaseTarget),
+      ],
+
+      ["", "", "", ""],
+
+      // ===== INVENTORY =====
+      [
+        "Inventory Aging",
+        safeNum(inventoryTarget),
+        safeNum(inventoryClosingValue),
+        "",
+      ],
+      ["  <30 Days", "", safeNum(lessThan30DaysValue), ""],
+      ["  31-60 Days", "", safeNum(a30to60DaysValue), ""],
+      ["  61-90 Days", "", safeNum(a60to90DaysValue), ""],
+      ["  >90 Days", "", safeNum(a91DaysValue), ""],
+
+      ["", "", "", ""],
+
+      // ===== COGS =====
+      [
+        "COGS",
+        safeNum(cogsTarget),
+        safeNum(cogsValue),
+        safePercent(cogsValue, cogsTarget),
+      ],
+    ];
+
+    // ================= CALL SERVICE =================
+    await reportService.generateExcel(
+      sheetName: "Daily Costing",
+      headers: headers,
+      rows: rows,
+      fileName: "DailyCostingReport.xlsx",
+      reportTitle: "Daily Costing Report",
+
+      enableStyling: true,
+      highlightSections: true,
+      highlightNegative: true,
+
+      amountColumns: [2, 3, 4], // Target, Achievement, %
     );
-    row++;
-
-    setCell(row: row, col: 1, value: "IPD");
-    setCell(row: row, col: 2, value: safeNum(ipdTarget));
-    setCell(row: row, col: 3, value: safeNum(ipdSales));
-    setCell(row: row, col: 4, value: safePercent(ipdSales, ipdTarget));
-    row++;
-
-    // ================= PENDING SALES =================
-    row++;
-
-    setCell(row: row, col: 0, value: "Pending Sales Order", bold: true);
-    setCell(row: row, col: 3, value: safeNum(monthlySOvalue));
-    row++;
-
-    setCell(row: row, col: 1, value: "Low Priority");
-    setCell(row: row, col: 3, value: safeNum(lowVal));
-    row++;
-
-    setCell(row: row, col: 1, value: "Medium Priority");
-    setCell(row: row, col: 3, value: safeNum(mediumVal));
-    row++;
-
-    setCell(row: row, col: 1, value: "High Priority");
-    setCell(row: row, col: 3, value: safeNum(highVal));
-    row++;
-
-    // ================= RIGHT PANEL =================
-    int rightCol = 6;
-
-    setCell(row: 2, col: rightCol, value: "Pending Sales Order", bold: true);
-
-    setCell(row: 3, col: rightCol, value: "Bangalore");
-    setCell(row: 3, col: rightCol + 1, value: safeNum(karnatakaPOSum));
-
-    setCell(row: 4, col: rightCol, value: "Rajapalayam");
-    setCell(row: 4, col: rightCol + 1, value: safeNum(tamilNaduPOSum));
-
-    setCell(row: 5, col: rightCol, value: "Others");
-    setCell(row: 5, col: rightCol + 1, value: safeNum(othersPOSum));
-
-    setCell(row: 6, col: rightCol, value: "Total", bold: true);
-    setCell(
-      row: 6,
-      col: rightCol + 1,
-      value:
-          safeNum(karnatakaPOSum) +
-          safeNum(tamilNaduPOSum) +
-          safeNum(othersPOSum),
-    );
-
-    // ================= PURCHASE =================
-    row += 2;
-
-    setCell(row: row, col: 0, value: "Purchases", bold: true);
-    setCell(row: row, col: 1, value: safeNum(purchaseTarget));
-    setCell(row: row, col: 3, value: safeNum(monthlyPurchasePriceGrnSum));
-    setCell(
-      row: row,
-      col: 4,
-      value: safePercent(monthlyPurchasePriceGrnSum, purchaseTarget),
-    );
-    row++;
-
-    // ================= INVENTORY =================
-    row++;
-
-    setCell(row: row, col: 0, value: "Inventory Aging", bold: true);
-    setCell(row: row, col: 1, value: safeNum(inventoryTarget));
-    setCell(row: row, col: 3, value: safeNum(inventoryClosingValue));
-    row++;
-
-    setCell(row: row, col: 1, value: "<30 Days");
-    setCell(row: row, col: 3, value: safeNum(lessThan30DaysValue));
-    row++;
-
-    setCell(row: row, col: 1, value: "31-60 Days");
-    setCell(row: row, col: 3, value: safeNum(a30to60DaysValue));
-    row++;
-
-    setCell(row: row, col: 1, value: "61-90 Days");
-    setCell(row: row, col: 3, value: safeNum(a60to90DaysValue));
-    row++;
-
-    setCell(row: row, col: 1, value: ">90 Days");
-    setCell(row: row, col: 3, value: safeNum(a91DaysValue));
-    row++;
-
-    // ================= COGS =================
-    row++;
-
-    setCell(row: row, col: 0, value: "COGS", bold: true);
-    setCell(row: row, col: 1, value: safeNum(cogsTarget));
-    setCell(row: row, col: 3, value: safeNum(cogsValue));
-    setCell(row: row, col: 4, value: safePercent(cogsValue, cogsTarget));
-
-    // ================= COLUMN WIDTH =================
-    sheet.setColumnWidth(0, 28);
-    sheet.setColumnWidth(1, 18);
-    sheet.setColumnWidth(2, 10);
-    sheet.setColumnWidth(3, 18);
-    sheet.setColumnWidth(4, 12);
-    sheet.setColumnWidth(6, 18);
-    sheet.setColumnWidth(7, 18);
-
-    // ================= SAVE =================
-    final bytes = excel.encode();
-    if (bytes == null) {
-      // print("Excel encoding failed");
-      return;
-    }
-
-    if (kIsWeb) {
-      saveAndOpenExcel('DailyCostingReport.xlsx', bytes);
-    } else {
-      String dir = await getStorageDirectory();
-      final file = File('$dir/DailyCostingReport.xlsx');
-      await file.writeAsBytes(bytes);
-      OpenFile.open(file.path);
-    }
   }
 
   String formatDateString(DateTime date) {
@@ -3987,7 +2440,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     setState(() {
       chartDataLoadedDailyCosting = false;
       loadData("");
-      // selectedCheckbox = index;
     });
   }
 
@@ -4111,8 +2563,14 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   ) async {
     clearVariablesForFilter();
     LoadDates();
-    _loadDailyCostingReport(touchedPriority!, touchedWarehouse!);
+    await _loadDailyCostingReport(touchedPriority!, touchedWarehouse!);
     chartDataLoadedDailyCosting = true;
+  }
+
+  @override
+  void dispose() {
+    hideLoadingOverlay(); // VERY IMPORTANT
+    super.dispose();
   }
 
   @override
@@ -4294,180 +2752,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         if (_loadingOverlay != null) const SizedBox.shrink(),
       ],
     );
-  }
-
-  Widget buildOld(BuildContext context) {
-    return chartDataLoadedDailyCosting == true
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        dateFilterFlag
-                            ? Text(
-                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
-                              )
-                            : Text(
-                                "${formatDateString(currentMonthFromDate!)} - ${formatDateString(currentDate!)}",
-                              ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateDailyCostingReport();
-                                },
-                                child: const Row(
-                                  children: [Text("Download Excel")],
-                                ),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(10, 2, 8, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Daily Costing",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _dailyCostingGraph(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Revenue",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _revenueBreakupGraph(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Pending Sales Order - Priority Wise",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _pendingSalesOrderPriorityGraph(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Pending Sales Order - Warehouse Wise",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _pendingSalesOrderWarehouseGraph(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Inventory Aging",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _inventoryAgingGraph(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-              ],
-            ),
-          )
-        : const Center(child: CircularProgressIndicator());
   }
 
   Widget _dailyCostingGraph() {

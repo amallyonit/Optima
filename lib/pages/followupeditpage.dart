@@ -233,12 +233,14 @@ class FollowUpPageState extends State<FollowUpPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -246,10 +248,12 @@ class FollowUpPageState extends State<FollowUpPage> {
         final snackBar = SnackBar(
           content: Text('HTTP Error: ${response.statusCode}'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -313,6 +317,7 @@ class FollowUpPageState extends State<FollowUpPage> {
             const snackBar = SnackBar(
               content: Text('Leads details not found.'),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         } else {
@@ -325,12 +330,14 @@ class FollowUpPageState extends State<FollowUpPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -338,10 +345,12 @@ class FollowUpPageState extends State<FollowUpPage> {
         final snackBar = SnackBar(
           content: Text('HTTP Error: ${response.statusCode}'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -435,6 +444,7 @@ class FollowUpPageState extends State<FollowUpPage> {
               const snackBar = SnackBar(
                 content: Text('Leads activity details not found.'),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           } else {
@@ -448,18 +458,21 @@ class FollowUpPageState extends State<FollowUpPage> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
         }
       } catch (e) {
         final snackBar = SnackBar(content: Text('$e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } else {
@@ -520,6 +533,7 @@ class FollowUpPageState extends State<FollowUpPage> {
               }
             } else {
               const snackBar = SnackBar(content: Text('No image found...'));
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           } else {
@@ -533,18 +547,21 @@ class FollowUpPageState extends State<FollowUpPage> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
         }
       } catch (e) {
         final snackBar = SnackBar(content: Text('$e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } else {
@@ -608,6 +625,7 @@ class FollowUpPageState extends State<FollowUpPage> {
           });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -671,18 +689,21 @@ class FollowUpPageState extends State<FollowUpPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -731,6 +752,7 @@ class FollowUpPageState extends State<FollowUpPage> {
       super.dispose();
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1053,6 +1075,7 @@ class FooterState extends State<Footer> {
           });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1089,6 +1112,7 @@ class FooterState extends State<Footer> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error getting location: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1241,6 +1265,7 @@ class FooterState extends State<Footer> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
@@ -1252,12 +1277,14 @@ class FooterState extends State<Footer> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -1267,6 +1294,7 @@ class FooterState extends State<Footer> {
         duration: const Duration(seconds: 1),
         content: Text('$e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1572,6 +1600,7 @@ class FooterState extends State<Footer> {
                               ),
                             ),
                           );
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(snackBar);
                         } else {
                           BuildContext? dialogContext;

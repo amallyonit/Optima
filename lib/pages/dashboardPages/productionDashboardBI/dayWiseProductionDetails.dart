@@ -957,6 +957,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1043,6 +1044,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1072,6 +1074,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1159,6 +1162,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1211,6 +1215,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1325,6 +1330,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1356,6 +1362,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1456,6 +1463,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

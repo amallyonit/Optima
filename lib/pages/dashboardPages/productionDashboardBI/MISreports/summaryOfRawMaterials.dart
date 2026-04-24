@@ -335,149 +335,13 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
         stockData = salesList.toList();
         stockDataTemp = salesList.toList();
       });
-      // var currentMonthSales = inventory.where((target) {
-      //   DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //
-      //   return invoiceDate.isAtLeast(currentMonthFromDate!) &&
-      //       invoiceDate.isAtMost(currentDate!);
-      // });
-
-      // double salesAmt = 0;
-      // for (var target in currentMonthSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // CurrentMonthSales = sum;
-      // CurrentMonthSalesStr =
-      // "${(CurrentMonthSales / 100000).toStringAsFixed(2)} L";
-      // if (CurrentMonthSales == 0) {
-      //   CurrentMonthSalesPercentage = 0;
-      // } else {
-      //   CurrentMonthSalesPercentage = double.tryParse(
-      //       ((CurrentMonthSales / SalesGoal) * 100).toStringAsFixed(0))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // CurrentMonthSalesPercentageStr =
-      // "${CurrentMonthSalesPercentage.toString()} %";
-      //
-      // if (CurrentMonthSalesPercentage > 100) {
-      //   CurrentMonthSalesPercentage = 100;
-      // }
-
-      // var lastMonthSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //
-      //   return invoiceDate.isAtLeast(lastMonthFromDate!) &&
-      //       invoiceDate.isAtMost(lastMonthToDate!);
-      // });
-
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in lastMonthSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // LastMonthSales = sum;
-      // LastMonthSalesStr = "${(LastMonthSales / 100000).toStringAsFixed(2)} L";
-      // if (LastMonthSales == 0) {
-      //   LastMonthPercentage = 0;
-      // } else {
-      //   LastMonthPercentage = double.tryParse(
-      //       ((LastMonthSales / LastMonthTarget) * 100)
-      //           .toStringAsFixed(2))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // LastMonthPercentageStr = "${LastMonthPercentage.toString()} %";
-      // if (LastMonthPercentage > 100) {
-      //   LastMonthPercentage = 100;
-      // }
-      //
-      // var curQtrSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //   return invoiceDate.isAtLeast(currentQuarterFromDate!) &&
-      //       invoiceDate.isAtMost(currentQuarterToDate!);
-      // });
-
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in curQtrSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-
-      // CurrentQtrSales = sum;
-      // CurrentQtrSalesStr = "${(CurrentQtrSales / 100000).toStringAsFixed(2)} L";
-      // if (CurrentQtrSales == 0) {
-      //   CurrentQtrPercentage = 0;
-      // } else {
-      //   CurrentQtrPercentage = double.tryParse(
-      //       ((CurrentQtrSales / CurrentQtrTarget) * 100)
-      //           .toStringAsFixed(2))
-      //       ?.ceil() ??
-      //       0;
-      // }
-      // CurrentQtrPercentageStr = "${CurrentQtrPercentage.toString()} %";
-      // if (CurrentQtrPercentage > 100) {
-      //   CurrentQtrPercentage = 100;
-      // }
-      //
-      // var ytdSales = sales.where((target) {
-      //   DateTime invoiceDate =
-      //   DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-      //   return invoiceDate.isAtLeast(fiscalYearStartDate!) &&
-      //       invoiceDate.isAtMost(currentDate!);
-      // });
-      //
-      // sum = 0;
-      // salesAmt = 0;
-      // for (var target in ytdSales.toList()) {
-      //   if (target.invoiceType != "Sales Return") {
-      //     salesAmt = double.tryParse(target.rowTotal) ?? 0;
-      //   } else {
-      //     salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-      //   }
-      //   sum += salesAmt;
-      // }
-      //
-      // YtdSales = sum;
-      // YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
-      // if (YtdSales == 0) {
-      //   YtdPercentage = 0;
-      // } else {
-      //   YtdPercentage =
-      //       double.tryParse(((YtdSales / YtdTarget) * 100).toStringAsFixed(2))
-      //           ?.ceil() ??
-      //           0;
-      // }
-      // YtdPercentageStr = "${YtdPercentage.toString()} %";
-      //
-      // if (YtdPercentage > 100) {
-      //   YtdPercentage = 100;
-      // }zs
     } catch (e) {
       if (mounted) {
         final snackBar = SnackBar(
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -626,6 +490,7 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

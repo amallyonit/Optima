@@ -699,6 +699,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -770,6 +771,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1498,6 +1500,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1591,12 +1594,6 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
 
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
         final pdfBytes = await pdf.save();
 
         saveAndOpenPDF(pdfBytes);
@@ -1608,6 +1605,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1650,6 +1648,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1756,6 +1755,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1798,6 +1798,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1909,6 +1910,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1951,6 +1953,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2058,6 +2061,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2100,6 +2104,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2212,6 +2217,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2254,6 +2260,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2357,6 +2364,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2399,6 +2407,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2505,6 +2514,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

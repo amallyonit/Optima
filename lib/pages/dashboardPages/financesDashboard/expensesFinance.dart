@@ -530,9 +530,8 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 

@@ -539,6 +539,7 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -668,101 +669,6 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
       return (await getApplicationDocumentsDirectory()).path;
     }
   }
-
-  // Future<void> generateAgeingReport(BuildContext context) async {
-  //   try {
-  //     final excel = xl.Excel.createExcel();
-  //
-  //     final sheet = excel['Aging Report'];
-  //     try {
-  //       if (excel.sheets.containsKey('Sheet1')) {
-  //         excel.delete('Sheet1');
-  //       }
-  //     } catch (_) {}
-  //
-  //     sheet.appendRow([
-  //       'AGE WISE FINISHED GOODS AND RAW MATERIAL',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       '',
-  //       ''
-  //     ]);
-  //
-  //     sheet.appendRow([]); // spacer
-  //
-  //     final headers = [
-  //       'Group Name',
-  //       'Sum of 0-30 Days Qty',
-  //       'Sum of 0-30 Days Val',
-  //       'Sum of 31-45 Days Qty',
-  //       'Sum of 31-45 Days Val',
-  //       'Sum of 46-60 Days Qty',
-  //       'Sum of 46-60 Days Val',
-  //       'Sum of 61-90 Days Qty',
-  //       'Sum of 61-90 Days Val',
-  //       'Sum of 91-120 Days Qty',
-  //       'Sum of 91-120 Days Val',
-  //       'Sum of 121-150 Days Qty',
-  //       'Sum of 121-150 Days Val',
-  //       'Sum of 151-180 Days Qty',
-  //       'Sum of 151-180 Days Val',
-  //       'Sum of 181-365 Days Qty',
-  //       'Sum of 181-365 Days Val',
-  //       'Sum of 366-730 Days Qty',
-  //       'Sum of 366-730 Days Val',
-  //       'Sum of >730 Days Days Qty',
-  //       'Sum of >730 Days Days Val',
-  //     ];
-  //     sheet.appendRow(headers);
-  //
-  //     for (var data in itemGroupAgeingSummaryList.items) {
-  //       sheet.appendRow([
-  //         data.groupName,
-  //         data.lessThan30DaysQty,
-  //         data.lessThan30DaysValue,
-  //         data.days31to45Qty,
-  //         data.days31to45Value,
-  //         data.days46to60Qty,
-  //         data.days46to60Value,
-  //         data.days61to90Qty,
-  //         data.days61to90Value,
-  //         data.days91to120Qty,
-  //         data.days91to120Value,
-  //         data.days121to150Qty,
-  //         data.days121to150Value,
-  //         data.days151to180Qty,
-  //         data.days151to180Value,
-  //         data.days181to365Qty,
-  //         data.days181to365Value,
-  //         data.days366to730Qty,
-  //         data.days366to730Value,
-  //         data.greaterThan730DaysQty,
-  //         data.greaterThan730DaysValue,
-  //       ]);
-  //     }
-  //
-  //     if (kIsWeb) {
-  //       final excelBytes = excel.encode()!;
-  //       saveAndOpenExcel('manpower_report.xlsx', excelBytes);
-  //     } else {
-  //       final storageDir = await getStorageDirectory();
-  //       final file = File('$storageDir/manpower_report.xlsx');
-  //       await file.writeAsBytes(excel.encode()!);
-  //       OpenFile.open(file.path);
-  //     }
-  //   } catch (e) {
-  //     final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
 
   double getMaxValue(double maxValue) {
     double divVal = 0;

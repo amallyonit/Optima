@@ -879,16 +879,19 @@ class _PayableFinanceState extends State<PayableFinance> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1039,25 +1042,26 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
 
     // FINAL UI UPDATE
+    if (mounted) {
+      setState(() {
+        payableStr = formatAmount(payables.abs());
+        advanceStr = formatAmount(advance);
+        payableAdvanceStr = formatAmount(payables.abs() - advance);
 
-    setState(() {
-      payableStr = formatAmount(payables.abs());
-      advanceStr = formatAmount(advance);
-      payableAdvanceStr = formatAmount(payables.abs() - advance);
+        payableAdvancePercentage = payableAdvancePercentageLocal;
 
-      payableAdvancePercentage = payableAdvancePercentageLocal;
+        netPayable = netPayableSum;
+        netPayableStr = formatAmount(netPayable.abs());
 
-      netPayable = netPayableSum;
-      netPayableStr = formatAmount(netPayable.abs());
+        overDue = overDueLocal;
+        notDue = notDueLocal;
 
-      overDue = overDueLocal;
-      notDue = notDueLocal;
+        overDueStr = formatAmount(overDue.abs());
+        notDueStr = formatAmount(notDue.abs());
 
-      overDueStr = formatAmount(overDue.abs());
-      notDueStr = formatAmount(notDue.abs());
-
-      netPayablePercentage = netPayablePercentageLocal;
-    });
+        netPayablePercentage = netPayablePercentageLocal;
+      });
+    }
   }
 
   Future<void> _loadExpenses(String userName, String userLevel) async {
@@ -1121,6 +1125,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1187,6 +1192,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1704,6 +1710,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     String documentType,
     String bpGroup,
   ) async {
+    if (!mounted) return;
     setState(() {
       advance = 0;
       payables = 0;
@@ -2322,6 +2329,7 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   Future<void> loadData(String selectedUser) async {
+    if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId') ?? '';
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
@@ -2366,8 +2374,10 @@ class _PayableFinanceState extends State<PayableFinance> {
     } else {
       savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
     }
-    await applyPayablesVariables();
-    chartDataLoadedPayables = true;
+    if (mounted) {
+      await applyPayablesVariables();
+      chartDataLoadedPayables = true;
+    }
   }
 
   Future<void> loadDataWithFilter(
@@ -2925,6 +2935,11 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
     toDateFilter = currentDate;
     fromDateFilter = fiscalYearStartDate;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override

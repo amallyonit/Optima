@@ -611,6 +611,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       final snackBar = SnackBar(
         content: Text('Visit Analysis Data loading failed please try again.'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
       return;
     } else {
@@ -810,18 +811,21 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -887,18 +891,21 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1027,12 +1034,14 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
               navigateToLoginScreen();
             } else {
               final snackBar = SnackBar(
                 content: Text(responseJson["Error"].toString()),
               );
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           }
@@ -1040,6 +1049,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1099,6 +1109,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1158,6 +1169,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1217,6 +1229,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1267,6 +1280,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1330,6 +1344,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       });
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1389,18 +1404,21 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1664,6 +1682,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1729,6 +1748,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1758,6 +1778,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1827,6 +1848,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1856,6 +1878,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1925,6 +1948,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1954,6 +1978,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2049,6 +2074,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2076,6 +2102,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2177,6 +2204,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2204,6 +2232,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2304,6 +2333,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2331,6 +2361,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2429,6 +2460,7 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e.message'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2474,16 +2506,19 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

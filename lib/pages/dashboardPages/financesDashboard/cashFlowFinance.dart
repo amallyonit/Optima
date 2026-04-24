@@ -577,6 +577,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -876,6 +877,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
   }
 
   Future<void> loadData(String selectedUser) async {
+    if (!mounted) return;
     setState(() {
       chartDataLoadedCashFlow = false;
     });
@@ -904,6 +906,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
     } else {
       savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
     }
+    if (!mounted) return;
     setState(() {
       chartDataLoadedCashFlow = true;
     });

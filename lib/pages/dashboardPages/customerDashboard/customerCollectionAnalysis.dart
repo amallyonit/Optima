@@ -15,9 +15,7 @@ import '../../../login_screen.dart';
 
 class ReceivablesData {
   final double receivableAmount;
-  ReceivablesData({
-    required this.receivableAmount,
-  });
+  ReceivablesData({required this.receivableAmount});
 }
 
 class CollectionAnalysisTableData {
@@ -41,40 +39,47 @@ class Distributor {
 
 List<CollectionAnalysisTableData> deliveryDataList = [
   CollectionAnalysisTableData(
-      invoiceDate: "Xxxxx/05/04/23",
-      deliveryValue: 60.00,
-      deliveryStatus: "75 days",
-      deliveryRemarks: "Partially Pending"),
+    invoiceDate: "Xxxxx/05/04/23",
+    deliveryValue: 60.00,
+    deliveryStatus: "75 days",
+    deliveryRemarks: "Partially Pending",
+  ),
   CollectionAnalysisTableData(
-      invoiceDate: "Xxxxx/05/04/23",
-      deliveryValue: 60.00,
-      deliveryStatus: "75 days",
-      deliveryRemarks: "Partially Pending"),
+    invoiceDate: "Xxxxx/05/04/23",
+    deliveryValue: 60.00,
+    deliveryStatus: "75 days",
+    deliveryRemarks: "Partially Pending",
+  ),
   CollectionAnalysisTableData(
-      invoiceDate: "Xxxxx/05/04/23",
-      deliveryValue: 60.00,
-      deliveryStatus: "75 days",
-      deliveryRemarks: "Partially Pending"),
+    invoiceDate: "Xxxxx/05/04/23",
+    deliveryValue: 60.00,
+    deliveryStatus: "75 days",
+    deliveryRemarks: "Partially Pending",
+  ),
   CollectionAnalysisTableData(
-      invoiceDate: "Xxxxx/05/04/23",
-      deliveryValue: 60.00,
-      deliveryStatus: "75 days",
-      deliveryRemarks: "Partially Pending"),
+    invoiceDate: "Xxxxx/05/04/23",
+    deliveryValue: 60.00,
+    deliveryStatus: "75 days",
+    deliveryRemarks: "Partially Pending",
+  ),
   CollectionAnalysisTableData(
-      invoiceDate: "Xxxxx/05/04/23",
-      deliveryValue: 60.00,
-      deliveryStatus: "75 days",
-      deliveryRemarks: "Partially Pending"),
+    invoiceDate: "Xxxxx/05/04/23",
+    deliveryValue: 60.00,
+    deliveryStatus: "75 days",
+    deliveryRemarks: "Partially Pending",
+  ),
   CollectionAnalysisTableData(
-      invoiceDate: "Xxxxx/05/04/23",
-      deliveryValue: 60.00,
-      deliveryStatus: "75 days",
-      deliveryRemarks: "Partially Pending"),
+    invoiceDate: "Xxxxx/05/04/23",
+    deliveryValue: 60.00,
+    deliveryStatus: "75 days",
+    deliveryRemarks: "Partially Pending",
+  ),
   CollectionAnalysisTableData(
-      invoiceDate: "Xxxxx/05/04/23",
-      deliveryValue: 60.00,
-      deliveryStatus: "75 days",
-      deliveryRemarks: "Partially Pending"),
+    invoiceDate: "Xxxxx/05/04/23",
+    deliveryValue: 60.00,
+    deliveryStatus: "75 days",
+    deliveryRemarks: "Partially Pending",
+  ),
 ];
 
 List<ReceivablesData> receivableList = [
@@ -177,10 +182,7 @@ class _CustomerCollectionAnalysisState
   }
 
   Widget getTitles(double value, TitleMeta meta) {
-    const style = TextStyle(
-      color: Colors.black,
-      fontSize: 10,
-    );
+    const style = TextStyle(color: Colors.black, fontSize: 10);
     Widget text;
     switch (value.toInt()) {
       case 0:
@@ -202,29 +204,33 @@ class _CustomerCollectionAnalysisState
         text = const Text('', style: style);
         break;
     }
-    return SideTitleWidget(
-      meta: meta,
-      space: 16,
-      child: text,
-    );
+    return SideTitleWidget(meta: meta, space: 16, child: text);
   }
 
   List<BarChartGroupData> _receivablesChartData(
-      List<ReceivablesData> receivableList) {
+    List<ReceivablesData> receivableList,
+  ) {
     return receivableList
-        .map((data) =>
-            BarChartGroupData(x: receivableList.indexOf(data), barRods: [
+        .map(
+          (data) => BarChartGroupData(
+            x: receivableList.indexOf(data),
+            barRods: [
               BarChartRodData(
-                  color: Colors.cyan,
-                  borderRadius: BorderRadius.zero,
-                  toY: data.receivableAmount,
-                  width: 30)
-            ]))
+                color: Colors.cyan,
+                borderRadius: BorderRadius.zero,
+                toY: data.receivableAmount,
+                width: 30,
+              ),
+            ],
+          ),
+        )
         .toList();
   }
 
-  List<bool> collectionCheckList =
-      List.generate(deliveryDataList.length, (index) => false);
+  List<bool> collectionCheckList = List.generate(
+    deliveryDataList.length,
+    (index) => false,
+  );
 
   var distributorKey = GlobalKey();
   List<Map<String, dynamic>> distributorList = [];
@@ -233,29 +239,37 @@ class _CustomerCollectionAnalysisState
 
   List<Distributor> convertDist(List<Map<String, dynamic>> distributorList) {
     return distributorList
-        .map((map) => Distributor(
-              customerCode: map['CustomerCode']?.toString() ?? '',
-              customerName: map['CustomerName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => Distributor(
+            customerCode: map['CustomerCode']?.toString() ?? '',
+            customerName: map['CustomerName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
   Future<List<Distributor>> getDistributor(String search) async {
     List<Distributor> distList = convertDist(distributorList);
     List<Distributor> filteredList = distList
-        .where((element) =>
-            element.customerName.toLowerCase().startsWith(search.toLowerCase()))
+        .where(
+          (element) => element.customerName.toLowerCase().startsWith(
+            search.toLowerCase(),
+          ),
+        )
         .toList();
 
     return filteredList;
   }
 
   Future<void> _loaddistributor(
-      String userId, String userJwtToken, String userMailID) async {
+    String userId,
+    String userJwtToken,
+    String userMailID,
+  ) async {
     final data = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'UserId': userId
+      'UserId': userId,
     };
     const apiUrl = '${ApiHelper.baseUrl}selectdistributormaster';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -289,18 +303,17 @@ class _CustomerCollectionAnalysisState
               duration: const Duration(seconds: 1),
               content: Text(
                 responseJson["Error"].toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -308,6 +321,7 @@ class _CustomerCollectionAnalysisState
         const snackBar = SnackBar(
           content: Text('Distributor details not available.'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -315,6 +329,7 @@ class _CustomerCollectionAnalysisState
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -322,9 +337,9 @@ class _CustomerCollectionAnalysisState
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   Future<void> loadData() async {
@@ -375,8 +390,11 @@ class _CustomerCollectionAnalysisState
             ],
           ),
           Padding(
-            padding:
-                const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 32.0),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              bottom: 32.0,
+            ),
             child: SizedBox(
               height: deviceOrientation == "Portrait"
                   ? containerHeight
@@ -395,19 +413,25 @@ class _CustomerCollectionAnalysisState
                           customerController.text == s;
                         });
                       },
-                      maxListHeight:
-                          deviceOrientation == "Portrait" ? 370 : 220,
+                      maxListHeight: deviceOrientation == "Portrait"
+                          ? 370
+                          : 220,
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.only(
-                            left: 0, right: 30, top: 0, bottom: 0),
+                          left: 0,
+                          right: 30,
+                          top: 0,
+                          bottom: 0,
+                        ),
                         border: UnderlineInputBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
                         hintText: 'Account Name',
                         hintStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF8F8F8F)),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF8F8F8F),
+                        ),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: const BorderSide(
                             color: Colors.blue, // Set your desired focus color
@@ -427,14 +451,13 @@ class _CustomerCollectionAnalysisState
                             // orElse: () =>
                             //     <String, dynamic>{'CustomerCode': null},
                           );
-                          selectedDistributorId =
-                              customer['CustomerCode'].toString();
+                          selectedDistributorId = customer['CustomerCode']
+                              .toString();
                           selectedDistributorName = distributor.customerName;
                         });
                       },
-                      suggestionBuilder: (data) => ListTile(
-                        title: Text(data.customerName),
-                      ),
+                      suggestionBuilder: (data) =>
+                          ListTile(title: Text(data.customerName)),
                       asyncSuggestions: (searchValue) =>
                           getDistributor(searchValue),
                     ),
@@ -501,15 +524,14 @@ class _CustomerCollectionAnalysisState
                   percent: 0.65,
                   center: const Column(
                     children: [
-                      SizedBox(
-                        height: 40,
-                      ),
+                      SizedBox(height: 40),
                       Text(
                         "65%",
                         style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20.0,
-                            color: Colors.red),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20.0,
+                          color: Colors.red,
+                        ),
                       ),
                       Text(
                         "64,00,000",
@@ -541,21 +563,21 @@ class _CustomerCollectionAnalysisState
                           pieTouchData: PieTouchData(
                             touchCallback:
                                 (FlTouchEvent event, pieTouchResponse) {
-                              setState(() {
-                                if (!event.isInterestedForInteractions ||
-                                    pieTouchResponse == null ||
-                                    pieTouchResponse.touchedSection == null) {
-                                  touchedIndex = -1;
-                                  return;
-                                }
-                                touchedIndex = pieTouchResponse
-                                    .touchedSection!.touchedSectionIndex;
-                              });
-                            },
+                                  setState(() {
+                                    if (!event.isInterestedForInteractions ||
+                                        pieTouchResponse == null ||
+                                        pieTouchResponse.touchedSection ==
+                                            null) {
+                                      touchedIndex = -1;
+                                      return;
+                                    }
+                                    touchedIndex = pieTouchResponse
+                                        .touchedSection!
+                                        .touchedSectionIndex;
+                                  });
+                                },
                           ),
-                          borderData: FlBorderData(
-                            show: false,
-                          ),
+                          borderData: FlBorderData(show: false),
                           sectionsSpace: 0,
                           centerSpaceRadius: 0,
                           startDegreeOffset: 180,
@@ -564,9 +586,7 @@ class _CustomerCollectionAnalysisState
                       ),
                     ),
                   ),
-                  const SizedBox(
-                    height: 40,
-                  ),
+                  const SizedBox(height: 40),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -580,14 +600,8 @@ class _CustomerCollectionAnalysisState
                               width: 16,
                               color: Colors.green,
                             ),
-                            const SizedBox(
-                              height: 8,
-                            ),
-                            Container(
-                              height: 8,
-                              width: 16,
-                              color: Colors.blue,
-                            ),
+                            const SizedBox(height: 8),
+                            Container(height: 8, width: 16, color: Colors.blue),
                           ],
                         ),
                       ),
@@ -604,8 +618,10 @@ class _CustomerCollectionAnalysisState
                           ),
                           Padding(
                             padding: EdgeInsets.only(left: 8.0),
-                            child: Text("0 - 5 Days Delay",
-                                style: TextStyle(fontSize: 10)),
+                            child: Text(
+                              "0 - 5 Days Delay",
+                              style: TextStyle(fontSize: 10),
+                            ),
                           ),
                         ],
                       ),
@@ -622,9 +638,7 @@ class _CustomerCollectionAnalysisState
                                 color: Colors.orange,
                               ),
                             ),
-                            const SizedBox(
-                              height: 8,
-                            ),
+                            const SizedBox(height: 8),
                             Padding(
                               padding: const EdgeInsets.only(left: 8.0),
                               child: Container(
@@ -641,8 +655,10 @@ class _CustomerCollectionAnalysisState
                         children: [
                           Padding(
                             padding: EdgeInsets.only(left: 8.0),
-                            child: Text("6 - 15 Days Delay",
-                                style: TextStyle(fontSize: 10)),
+                            child: Text(
+                              "6 - 15 Days Delay",
+                              style: TextStyle(fontSize: 10),
+                            ),
                           ),
                           Padding(
                             padding: EdgeInsets.only(left: 8.0),
@@ -652,7 +668,7 @@ class _CustomerCollectionAnalysisState
                             ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ],
@@ -661,19 +677,14 @@ class _CustomerCollectionAnalysisState
           ),
           const Padding(
             padding: EdgeInsets.only(left: 16.0, right: 16.0),
-            child: Divider(
-              thickness: 2,
-            ),
+            child: Divider(thickness: 2),
           ),
           const Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Padding(
                 padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0),
-                child: Text(
-                  "Receivables",
-                  style: TextStyle(fontSize: 14),
-                ),
+                child: Text("Receivables", style: TextStyle(fontSize: 14)),
               ),
             ],
           ),
@@ -683,9 +694,7 @@ class _CustomerCollectionAnalysisState
           ),
           const Padding(
             padding: EdgeInsets.only(left: 16.0, right: 16.0),
-            child: Divider(
-              thickness: 2,
-            ),
+            child: Divider(thickness: 2),
           ),
           const Row(
             mainAxisAlignment: MainAxisAlignment.start,
@@ -702,112 +711,164 @@ class _CustomerCollectionAnalysisState
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Center(
-                child: Column(children: <Widget>[
-              Container(
-                margin: const EdgeInsets.all(20),
-                child: Table(
-                  defaultColumnWidth: const FixedColumnWidth(175.0),
-                  border: TableBorder.all(
-                      color: Colors.black,
-                      style: BorderStyle.solid,
-                      width: 0.5),
-                  children: [
-                    const TableRow(children: [
-                      Column(children: [
-                        Text('Invoice No/Date',
-                            style: TextStyle(
-                                fontSize: 14.0, fontWeight: FontWeight.w600))
-                      ]),
-                      Column(children: [
-                        Text('Value (in L)',
-                            style: TextStyle(
-                                fontSize: 14.0, fontWeight: FontWeight.w600))
-                      ]),
-                      Column(children: [
-                        Text('Status',
-                            style: TextStyle(
-                                fontSize: 14.0, fontWeight: FontWeight.w600))
-                      ]),
-                      Column(children: [
-                        Text('Remarks',
-                            style: TextStyle(
-                                fontSize: 14.0, fontWeight: FontWeight.w600))
-                      ]),
-                    ]),
-                    for (var i = 0; i < deliveryDataList.length; i++)
-                      TableRow(children: [
-                        Column(children: [
-                          Row(
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    margin: const EdgeInsets.all(20),
+                    child: Table(
+                      defaultColumnWidth: const FixedColumnWidth(175.0),
+                      border: TableBorder.all(
+                        color: Colors.black,
+                        style: BorderStyle.solid,
+                        width: 0.5,
+                      ),
+                      children: [
+                        const TableRow(
+                          children: [
+                            Column(
+                              children: [
+                                Text(
+                                  'Invoice No/Date',
+                                  style: TextStyle(
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                Text(
+                                  'Value (in L)',
+                                  style: TextStyle(
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                Text(
+                                  'Status',
+                                  style: TextStyle(
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                Text(
+                                  'Remarks',
+                                  style: TextStyle(
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        for (var i = 0; i < deliveryDataList.length; i++)
+                          TableRow(
                             children: [
-                              Transform.scale(
-                                scale: .7,
-                                child: Checkbox(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(2.0),
-                                    ),
-                                    side: WidgetStateBorderSide.resolveWith(
-                                      (states) => const BorderSide(
-                                          width: 1.0, color: Color(0xFF8F8F8F)),
-                                    ),
-                                    value: collectionCheckList[i],
-                                    onChanged: (bool? value) {
-                                      setState(() {
-                                        collectionCheckList[i] = value ?? false;
-                                        if (collectionCheckList[i] == true) {
-                                          totalValue +=
-                                              deliveryDataList[i].deliveryValue;
-                                          valueController.text =
-                                              totalValue.toString();
-                                        }
-                                        if (collectionCheckList[i] == false) {
-                                          if (totalValue != 0) {
-                                            totalValue -= deliveryDataList[i]
-                                                .deliveryValue;
-                                            valueController.text =
-                                                totalValue.toString();
-                                          }
-                                        }
-                                      });
-                                    }),
+                              Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Transform.scale(
+                                        scale: .7,
+                                        child: Checkbox(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              2.0,
+                                            ),
+                                          ),
+                                          side:
+                                              WidgetStateBorderSide.resolveWith(
+                                                (states) => const BorderSide(
+                                                  width: 1.0,
+                                                  color: Color(0xFF8F8F8F),
+                                                ),
+                                              ),
+                                          value: collectionCheckList[i],
+                                          onChanged: (bool? value) {
+                                            setState(() {
+                                              collectionCheckList[i] =
+                                                  value ?? false;
+                                              if (collectionCheckList[i] ==
+                                                  true) {
+                                                totalValue +=
+                                                    deliveryDataList[i]
+                                                        .deliveryValue;
+                                                valueController.text =
+                                                    totalValue.toString();
+                                              }
+                                              if (collectionCheckList[i] ==
+                                                  false) {
+                                                if (totalValue != 0) {
+                                                  totalValue -=
+                                                      deliveryDataList[i]
+                                                          .deliveryValue;
+                                                  valueController.text =
+                                                      totalValue.toString();
+                                                }
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      Text(deliveryDataList[i].invoiceDate),
+                                    ],
+                                  ),
+                                ],
                               ),
-                              Text(deliveryDataList[i].invoiceDate),
+                              TableCell(
+                                verticalAlignment:
+                                    TableCellVerticalAlignment.middle,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    deliveryDataList[i].deliveryValue
+                                        .toString(),
+                                  ),
+                                ),
+                              ),
+                              TableCell(
+                                verticalAlignment:
+                                    TableCellVerticalAlignment.middle,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    deliveryDataList[i].deliveryStatus,
+                                  ),
+                                ),
+                              ),
+                              TableCell(
+                                verticalAlignment:
+                                    TableCellVerticalAlignment.middle,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    deliveryDataList[i].deliveryRemarks,
+                                  ),
+                                ),
+                              ),
                             ],
-                          )
-                        ]),
-                        TableCell(
-                            verticalAlignment:
-                                TableCellVerticalAlignment.middle,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: Text(
-                                  deliveryDataList[i].deliveryValue.toString()),
-                            )),
-                        TableCell(
-                            verticalAlignment:
-                                TableCellVerticalAlignment.middle,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: Text(deliveryDataList[i].deliveryStatus),
-                            )),
-                        TableCell(
-                            verticalAlignment:
-                                TableCellVerticalAlignment.middle,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: Text(deliveryDataList[i].deliveryRemarks),
-                            )),
-                      ]),
-                  ],
-                ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ])),
+            ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              const SizedBox(
-                width: 20,
-              ),
+              const SizedBox(width: 20),
               Container(
                 color: const Color(0xFFD9D9D9),
                 child: const Padding(
@@ -819,47 +880,48 @@ class _CustomerCollectionAnalysisState
           ),
           const Padding(
             padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0),
-            child: Divider(
-              thickness: 2,
-            ),
+            child: Divider(thickness: 2),
           ),
           Padding(
             padding: const EdgeInsets.only(
-                left: 16.0, right: 16.0, top: 8.0, bottom: 16.0),
+              left: 16.0,
+              right: 16.0,
+              top: 8.0,
+              bottom: 16.0,
+            ),
             child: Row(
               children: [
                 Expanded(
                   flex: 1,
                   child: Padding(
-                      padding: const EdgeInsets.only(top: 0),
-                      child: AbsorbPointer(
-                        absorbing: true,
-                        child: TextField(
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xFF8F8F8F)),
-                          controller: valueController,
-                          decoration: const InputDecoration(
-                            border: UnderlineInputBorder(),
-                            hintText: '0.00 L',
-                            hintStyle: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF8F8F8F)),
+                    padding: const EdgeInsets.only(top: 0),
+                    child: AbsorbPointer(
+                      absorbing: true,
+                      child: TextField(
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF8F8F8F),
+                        ),
+                        controller: valueController,
+                        decoration: const InputDecoration(
+                          border: UnderlineInputBorder(),
+                          hintText: '0.00 L',
+                          hintStyle: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF8F8F8F),
                           ),
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(
-                  width: 20,
-                ),
+                const SizedBox(width: 20),
                 Flexible(
                   child: TextField(
                     canRequestFocus: false,
-                    style: const TextStyle(
-                      color: Color(0xFF8F8F8F),
-                    ),
+                    style: const TextStyle(color: Color(0xFF8F8F8F)),
                     keyboardType: TextInputType.none,
                     controller: _dateController,
                     decoration: const InputDecoration(
@@ -875,9 +937,10 @@ class _CustomerCollectionAnalysisState
                       labelText: 'On',
                       contentPadding: EdgeInsets.only(bottom: 0),
                       labelStyle: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF8F8F8F)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF8F8F8F),
+                      ),
                     ),
                     onTap:
                         () /*async {
@@ -893,33 +956,32 @@ class _CustomerCollectionAnalysisState
                                         _dateController.text = DateFormat.yMMMd().format(_selectedDate);
                                       });
                                     }
-                                  }*/
-                        async {
-                      DateTime? selectedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2101),
-                        initialEntryMode: DatePickerEntryMode.calendar,
-                      );
-                      TimeOfDay? selectedTime = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (selectedTime != null) {
-                        String formattedDateTime =
-                            DateFormat('dd/MM/yyyy hh:mm a').format(
-                          DateTime(
-                            selectedDate!.year,
-                            selectedDate.month,
-                            selectedDate.day,
-                            selectedTime.hour,
-                            selectedTime.minute,
-                          ),
-                        );
-                        _dateController.text = formattedDateTime;
-                      }
-                    },
+                                  }*/ async {
+                          DateTime? selectedDate = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2101),
+                            initialEntryMode: DatePickerEntryMode.calendar,
+                          );
+                          TimeOfDay? selectedTime = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          if (selectedTime != null) {
+                            String formattedDateTime =
+                                DateFormat('dd/MM/yyyy hh:mm a').format(
+                                  DateTime(
+                                    selectedDate!.year,
+                                    selectedDate.month,
+                                    selectedDate.day,
+                                    selectedTime.hour,
+                                    selectedTime.minute,
+                                  ),
+                                );
+                            _dateController.text = formattedDateTime;
+                          }
+                        },
                   ),
                 ),
               ],
@@ -931,72 +993,80 @@ class _CustomerCollectionAnalysisState
               height: 70,
               width: 400,
               child: Padding(
-                  padding: const EdgeInsets.only(top: 0),
-                  child: DropdownButtonFormField<String>(
-                    hint: const Text(
-                      'Committed Mode of Payment',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF8F8F8F)),
+                padding: const EdgeInsets.only(top: 0),
+                child: DropdownButtonFormField<String>(
+                  hint: const Text(
+                    'Committed Mode of Payment',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF8F8F8F),
                     ),
-                    initialValue: selectedModeOfPayment,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Color(0xffD9D9D9),
-                      size: 30,
-                    ),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedModeOfPayment = newValue!;
-                      });
-                    },
-                    items: <String>[
-                      'Cheque',
-                      'DD',
-                      'NEFT/RTGS',
-                      'UPI',
-                      'Cash',
-                    ].map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(
-                          value,
-                          style: const TextStyle(
+                  ),
+                  initialValue: selectedModeOfPayment,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xffD9D9D9),
+                    size: 30,
+                  ),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedModeOfPayment = newValue!;
+                    });
+                  },
+                  items: <String>['Cheque', 'DD', 'NEFT/RTGS', 'UPI', 'Cash']
+                      .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            value,
+                            style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w400,
-                              color: Color(0xFF8F8F8F)),
-                        ),
-                      );
-                    }).toList(),
-                  )),
+                              color: Color(0xFF8F8F8F),
+                            ),
+                          ),
+                        );
+                      })
+                      .toList(),
+                ),
+              ),
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              bottom: 8.0,
+            ),
             child: TextField(
               controller: remarksController,
               keyboardType: TextInputType.multiline,
               maxLines: 3,
               maxLength: 1000,
               decoration: InputDecoration(
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFF8F8F8F)),
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                  hintText: "Remarks",
-                  hintStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFF8F8F8F)),
-                  focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(width: 1, color: Colors.grey))),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Color(0xFF8F8F8F)),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+                hintText: "Remarks",
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF8F8F8F),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(width: 1, color: Colors.grey),
+                ),
+              ),
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              bottom: 16.0,
+            ),
             child: Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1036,13 +1106,9 @@ class _CustomerCollectionAnalysisState
             titlesData: FlTitlesData(
               show: true,
               rightTitles: const AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: false,
-                ),
+                sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: AxisTitles(
-                sideTitles: _emptyTitlesTop,
-              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
@@ -1054,10 +1120,7 @@ class _CustomerCollectionAnalysisState
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(
               show: true,
-              border: Border.all(
-                color: const Color(0xff37434d),
-                width: 1,
-              ),
+              border: Border.all(color: const Color(0xff37434d), width: 1),
             ),
             barGroups: _receivablesChartData(receivableList),
             barTouchData: BarTouchData(

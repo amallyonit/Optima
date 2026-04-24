@@ -579,7 +579,7 @@ class DebtorsAgingList {
   final String a91to180Days;
   final String a181Days;
   final String eKartNo;
-  final String commitment;
+  late String commitment;
   late DateTime parsedDueDate;
   late DateTime parsedPostingDate;
   DebtorsAgingList({

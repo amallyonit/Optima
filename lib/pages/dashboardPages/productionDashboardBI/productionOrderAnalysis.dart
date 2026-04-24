@@ -1377,6 +1377,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1520,6 +1521,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -2902,6 +2904,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3002,6 +3005,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3035,6 +3039,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3152,6 +3157,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3185,6 +3191,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3304,6 +3311,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3338,6 +3346,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3458,6 +3467,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3491,6 +3501,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3608,6 +3619,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3639,6 +3651,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3752,6 +3765,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3785,6 +3799,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3899,6 +3914,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3932,6 +3948,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -4045,6 +4062,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -4078,6 +4096,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -4192,6 +4211,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

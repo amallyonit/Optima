@@ -99,11 +99,6 @@ List<List<bool>> savedFinanceReceivablesOptions = filterOptions
     .map((options) => List<bool>.filled(options.length, false))
     .toList();
 
-//29Variables
-//8ChangeNotifier
-//28Functions
-//2Widgets
-
 class CashConversionFinance extends StatefulWidget {
   const CashConversionFinance({super.key});
 
@@ -546,6 +541,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -622,6 +618,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -701,6 +698,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -772,6 +770,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -852,92 +851,11 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
   }
-
-  // Future<void> _loadPurchasePrice(String UserName, String UserLevel) async {
-  //   int index = 0;
-  //   int limit = 10000;
-  //   int fetchedCount = 0;
-  //   List<PurchaseList> salesList = [];
-  //   int monthIndex = DateTime.now().month;
-  //   try {
-  //     do {
-  //       var body = {
-  //         "FromDate": formatDate(
-  //             monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-  //         "ToDate": formatDate(currentDate!),
-  //         "Index": index.toString(),
-  //         "Limit": limit.toString(),
-  //         "sapToken": DataManager.readSapToken()
-  //       };
-  //       const apiUrl = '${ApiHelper.baseUrl}BicxoPurchaseList';
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           HttpHeaders.contentTypeHeader: 'application/json',
-  //           // HttpHeaders.authorizationHeader:
-  //           //     'Bearer    ${DataManager.readSapToken()}'
-  //         },
-  //         body: jsonEncode(body),
-  //       );
-  //
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-  //         if (responseJson["responseData"].toString().isNotEmpty) {
-  //           List<PurchaseList> newSalesList =
-  //           (responseJson['responseData'] as List)
-  //               .map((item) => PurchaseList.fromJson(item))
-  //               .toList();
-  //
-  //           salesList.addAll(newSalesList);
-  //           fetchedCount = newSalesList.length;
-  //           index++;
-  //         } else {
-  //           fetchedCount = 0;
-  //         }
-  //       } else {
-  //         fetchedCount = 0;
-  //       }
-  //     } while (fetchedCount == limit);
-  //
-  //     setState(() {
-  //       purchasePrice = salesList;
-  //       context
-  //           .read<PurchaseCashConversionProvider>()
-  //           .updatePurchaseList(salesList);
-  //
-  //       List<String> menuNames = usersList
-  //           .where((element) => element.parentMenuId == 0)
-  //           .map((user) => user.menuName)
-  //           .toList();
-  //       menuNames.insert(0, UserName);
-  //       if (int.parse(UserLevel) == 5) {
-  //         purchasePrice = salesList.toList();
-  //       } else if (int.parse(UserLevel) == 4) {
-  //         purchasePrice = salesList.toList();
-  //       }
-  //       else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-  //         purchasePrice = salesList.toList();
-  //       }
-  //       else {
-  //         purchasePrice = salesList.toList();
-  //       }
-  //       purchasePrice = salesList.toList();
-  //     });
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print(e);
-  //     }
-  //     final snackBar = SnackBar(
-  //       duration: const Duration(seconds: 2),
-  //       content: Text('Error: $e'),
-  //     );
-  //     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  //   }
-  // }
 
   Future<void> _loadInventory(String UserName, String UserLevel) async {
     int index = 0;
@@ -1012,6 +930,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1090,6 +1009,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -1193,6 +1113,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -2566,6 +2487,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2644,6 +2566,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -2656,72 +2579,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       return (await getApplicationDocumentsDirectory()).path;
     }
   }
-
-  // Future<void> _loadMonthlySalesBarChartData() async {
-  //
-  //   double avgAccountsReceivable = 0;
-  //   double netCreditSales = 0;
-  //   double daySalesOutstanding = 0;
-  //
-  //   List<MonthlyAnalysisCashFlowData> soDataList = [];
-  //
-  //   double lastMonthBalance = 0;
-  //   double currentMonthBalance = 0;
-  //   double currentMonthRowTotal = 0;
-  //
-  //   List<SalesList> currentMonthSalesList = [];
-  //   List<DebtorsAgingList> lastMonthCollectionList = [];
-  //   List<DebtorsAgingList> currentMonthCollectionList = [];
-  //
-  //   currentMonthSalesList = sales.where((target) {
-  //       DateTime postingDate =
-  //       DateFormat('dd/MM/yyyy').parse(target.invoiceDate);
-  //       return postingDate.isAtLeast(lastMonthFromDate!) &&
-  //           postingDate.isAtMost(lastMonthFromDate!);
-  //     }).toList();
-  //
-  //   lastMonthCollectionList = target.where((target) {
-  //       DateTime postingDate =
-  //       DateFormat('dd/MM/yyyy').parse(target.postingDate);
-  //       return postingDate.isAtLeast(lastMonthFromDate!) &&
-  //           postingDate.isAtMost(lastMonthFromDate!);
-  //     }).toList();
-  //
-  //   currentMonthCollectionList = target.where((target) {
-  //       DateTime postingDate =
-  //       DateFormat('dd/MM/yyyy').parse(target.postingDate);
-  //       return postingDate.isAtLeast(currentMonthFromDate!) &&
-  //           postingDate.isAtMost(currentMonthToDate!);
-  //     }).toList();
-  //
-  //   for(var target in lastMonthCollectionList) {
-  //       double balance = double.parse(target.balance);
-  //       lastMonthBalance += balance;
-  //     }
-  //
-  //   for (var target in currentMonthCollectionList) {
-  //       double credit = double.tryParse(target.balance) ?? 0;
-  //       currentMonthBalance += credit;
-  //     }
-  //
-  //   for (var target in currentMonthSalesList) {
-  //       double credit = double.tryParse(target.rowTotal) ?? 0;
-  //       currentMonthRowTotal += credit;
-  //     }
-  //
-  //   avgAccountsReceivable = (lastMonthBalance + currentMonthBalance) / 2;
-  //
-  //   netCreditSales = currentMonthRowTotal;
-  //
-  //   DateTime now = new DateTime.now();
-  //   DateTime lastDayOfMonth = new DateTime(now.year, now.month+1, 0);
-  //   print("N days: ${lastDayOfMonth.day}");
-  //
-  //   double noOfDays = lastDayOfMonth.day.toDouble();
-  //
-  //   daySalesOutstanding = (avgAccountsReceivable / netCreditSales) * noOfDays;
-  //
-  // }
 
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
@@ -2776,7 +2633,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     setState(() {
       chartDataLoadedCCC = false;
       loadData("");
-      // selectedCheckbox = index;
     });
   }
 
@@ -2901,6 +2757,11 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     }
     toDateFilter = currentDate;
     fromDateFilter = fiscalYearStartDate;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override

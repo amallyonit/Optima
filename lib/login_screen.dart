@@ -49,6 +49,7 @@ class LoginScreenState extends State<LoginScreen> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -98,6 +99,7 @@ class LoginScreenState extends State<LoginScreen> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
     if (validToken) {
@@ -151,6 +153,7 @@ class LoginScreenState extends State<LoginScreen> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -206,14 +209,17 @@ class LoginScreenState extends State<LoginScreen> {
         } else {
           await prefs.setBool('isUserLoggedIn', false);
           const snackBar = SnackBar(content: Text('Login failed'));
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } else {
         const snackBar = SnackBar(content: Text('Login failed'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       const snackBar = SnackBar(content: Text('Login failed.'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -339,6 +345,7 @@ class LoginScreenState extends State<LoginScreen> {
             'Failed to fetch SAP Token. Status code: ${response.statusCode}',
           ),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
@@ -346,6 +353,7 @@ class LoginScreenState extends State<LoginScreen> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

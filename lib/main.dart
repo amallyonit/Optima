@@ -42,22 +42,37 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
 }
 
 void main() async {
-  HttpOverrides.global = MyHttpOverrides();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor:
-          Colors.transparent, // Set the status bar to be transparent
-    ),
-  );
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  if (!kIsWeb) {
-    await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
-    FlutterDownloader.registerCallback(downloadCallback);
-  }
+      HttpOverrides.global = MyHttpOverrides();
 
-  runApp(
-    MultiProvider(providers: AppProviders.providers, child: const MyApp()),
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+      );
+
+      if (!kIsWeb) {
+        await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
+        FlutterDownloader.registerCallback(downloadCallback);
+      }
+
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        debugPrint("FLUTTER ERROR:");
+        debugPrint(details.exceptionAsString());
+        debugPrint(details.stack.toString());
+      };
+
+      runApp(
+        MultiProvider(providers: AppProviders.providers, child: const MyApp()),
+      );
+    },
+    (error, stack) {
+      debugPrint("ZONE ERROR:");
+      debugPrint(error.toString());
+      debugPrint(stack.toString());
+    },
   );
 }
 
@@ -215,6 +230,7 @@ class _VersionCheckPageState extends State<VersionCheckPage> {
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('$e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

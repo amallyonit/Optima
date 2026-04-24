@@ -505,6 +505,7 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }

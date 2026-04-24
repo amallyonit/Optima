@@ -455,6 +455,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       _loadOtherIncomeMonthWiseAnalysisRevenue(),
       _loadForeignNameMonthWiseAnalysisRevenue(),
     ]);
+    if (!mounted) return;
     setState(() {
       chartDataLoadedMonthlyPl = true;
     });
@@ -611,6 +612,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -694,6 +696,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -801,6 +804,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         content: Text('Error: $e'),
       );
       if (mounted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -899,6 +903,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -965,12 +970,14 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           } else {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
@@ -978,12 +985,14 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         const snackBar = SnackBar(
           content: Text('Sales target details not found.'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       const snackBar = SnackBar(
         content: Text('SAP Server down, Please try again after some time.'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -3220,6 +3229,11 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       fileName: 'monthly_COGS.pdf',
       amountColumns: [2, 3],
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override

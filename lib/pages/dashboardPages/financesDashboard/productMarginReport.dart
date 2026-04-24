@@ -1,13 +1,9 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
-import 'package:excel/excel.dart' as xl;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,9 +13,9 @@ import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
-import 'package:path_provider/path_provider.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+final reportService = ReportService();
 
 class ProductMarginReport extends StatefulWidget {
   const ProductMarginReport({super.key});
@@ -30,13 +26,7 @@ class ProductMarginReport extends StatefulWidget {
 
 late Future<void> loadDataFuture;
 List<Users> usersList = [];
-List<Users> childUsers = [];
-List<Map<String, dynamic>> userList = [];
-bool noUserList = false;
 String UserLevel = "0";
-List<CollectionList> collection = [];
-List<DebtorsAgingList> target = [];
-
 List<SubGroupMarginTotal> itemSubGroupGraph = [];
 SubGroupMarginTotalList itemSubGroupGraphList = SubGroupMarginTotalList(
   data: [],
@@ -89,35 +79,6 @@ RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
   rsmwiseData: [],
 );
 
-double Collections = 0;
-String CollectionsStr = "";
-String CollectionsGoalStr = "";
-int CollectionPercentage = 0;
-String CollectionPercentageStr = "";
-String CurrentMonthCollectionsStr = "";
-double CurrentMonthCollections = 0;
-double CollectionGoal = 0;
-double LastMonthCollections = 0;
-String LastMonthCollectionsStr = "";
-double LastMonthTarget = 0;
-String LastMonthTargetStr = "";
-int LastMonthPercentage = 0;
-double CurrentQtrCollections = 0;
-String CurrentQtrCollectionsStr = "";
-double CurrentQtrTarget = 0;
-String CurrentQtrTargetStr = "";
-int CurrentQtrPercentage = 0;
-double YtdCollections = 0;
-String YtdCollectionsStr = "";
-double YtdTarget = 0;
-String YtdTargetStr = "";
-int YtdPercentage = 0;
-double CurrentMonthCollectionsPercentage = 0;
-String CurrentMonthCollectionsPercentageStr = "";
-String LastMonthPercentageStr = "";
-String CurrentQtrPercentageStr = "";
-String YtdPercentageStr = "";
-
 DateTime? currentDate;
 DateTime? currentMonthFromDate;
 DateTime? currentMonthToDate;
@@ -133,55 +94,17 @@ DateTime? prevFiscalYearEndDate;
 String financialYear = "";
 String prevFinancialYear = "";
 int currentQuarter = 0;
-
-double receivablesAmount = 0;
-String receivablesAmountStr = "";
-double overDue = 0;
-String overDueStr = "";
-double due = 0;
-String dueStr = '';
-double advance = 0;
-String advanceStr = '';
-double netReceivables = 0;
-String netReceivablesStr = "";
-double grossReceivables = 0;
-String grossReceivablesStr = "";
-int receivablePercentage = 0;
-int netReceivablePercentage = 0;
-String notDueStr = "";
-double notDue = 0.0;
-
-double otherPercent = 0.0;
-double distributorPercent = 0.0;
-double hospitalPercent = 0.0;
 bool chartDataLoadedProductMargin = false;
 
 String touchedGroup = "";
 String touchedItem = "";
 double selectedChart = 0;
 
-bool showingAllData = true;
-bool showingNHData = true;
-bool showingSalesData = true;
-bool showingOfficeData = true;
-
 int selectedCheckbox = 1;
 
 List<String> selectedSalesData = [];
 
 final List<String> categories = ['Dates'];
-
-List<List<String>> filterOptions = [[]];
-
-List<List<bool>> selectedFinanceReceivablesOptions = [];
-
-List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
-
-List<List<bool>> savedFinanceReceivablesOptions = filterOptions
-    .map((options) => List<bool>.filled(options.length, false))
-    .toList();
-
-List<DebtorsAgingList> targetListTemp = target;
 
 List<String> listOfRSM = [];
 List<String> listOfASM = [];
@@ -190,8 +113,6 @@ List<String> listOfTSM = [];
 double sumOfCustomerCategoryWise = 0;
 
 Map<String, Map<String, bool>> allCategoriesState = {};
-
-int selectedCategoryIndex = 0;
 
 bool fromFilter = false;
 
@@ -216,7 +137,6 @@ class ProductWiseMarginItemCostProvider with ChangeNotifier {
 List<SalesList> sales = [];
 List<SalesList> salesTemp = [];
 List<ItemCostList> itemCostList = [];
-List<ItemCostList> tempCostList = [];
 YTDSalesList ytdSalesList = YTDSalesList(ytdData: []);
 ProductMarginList productMarginList = ProductMarginList(productMarginData: []);
 ProductMarginList productMarginListGraph = ProductMarginList(
@@ -227,24 +147,6 @@ bool YtdSalesBarChartData = false;
 DateTime? fromDateFilter;
 DateTime? toDateFilter;
 bool dateFilterFlag = false;
-
-// class ProductWiseMarginProviderTemp with ChangeNotifier {
-//   List<SalesList> _salesList = [];
-//   List<SalesList> get salesList => _salesList;
-//   void updateSalesList(List<SalesList> newSalesList) {
-//     _salesList = newSalesList;
-//     notifyListeners();
-//   }
-// }
-//
-// class ProductWiseMarginItemCostProviderTemp with ChangeNotifier {
-//   List<ItemCostList> _itemCostList = [];
-//   List<ItemCostList> get itemCostList => _itemCostList;
-//   void updateItemCostList(List<ItemCostList> newCostList) {
-//     _itemCostList = newCostList;
-//     notifyListeners();
-//   }
-// }
 
 class _ProductMarginReportState extends State<ProductMarginReport> {
   bool showDrillDownChart = false;
@@ -506,106 +408,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
-  Future<void> _loadUserList(
-    String userId,
-    String userJwtToken,
-    String userMailID,
-    int userLevel,
-  ) async {
-    final body = {
-      'UserJwtToken': userJwtToken,
-      'UsermailID': userMailID,
-      'UserId': userId,
-    };
-    const apiUrl = '${ApiHelper.baseUrl}getuserlist';
-    var headers = {HttpHeaders.contentTypeHeader: 'application/json'};
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        body: jsonEncode(body),
-        headers: headers,
-      );
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        bool status = responseJson["Status"];
-        if (status && responseJson["Data"].toString().isNotEmpty) {
-          List<dynamic> data = responseJson['Data'];
-          List<Map<String, dynamic>> newUserList = [];
-          if (data.isNotEmpty) {
-            setState(() {
-              usersList = (data).map((item) => Users.fromJson(item)).toList();
-              childUsers = usersList
-                  .where((element) => element.parentMenuId != 0)
-                  .toList();
-            });
-          }
-          for (var parent in usersList.where(
-            (element) =>
-                element.parentMenuId == 0 &&
-                (element.userLevel == (userLevel > 3 ? 3 : 2)),
-          )) {
-            final rsm = {
-              "MenuId": parent.menuId,
-              "MenuName": parent.menuName,
-              "SubMenuId": parent.subMenuId,
-              "ParentMenuId": parent.parentMenuId,
-              "UserLevel": parent.userLevel,
-            };
-            newUserList.add(rsm);
-            for (var child in childUsers.where(
-              (element) =>
-                  element.parentMenuId == parent.menuId &&
-                  (element.userLevel == (userLevel > 3 ? 2 : 1)),
-            )) {
-              final asm = {
-                "MenuId": child.menuId,
-                "MenuName": child.menuName,
-                "SubMenuId": child.subMenuId,
-                "ParentMenuId": child.parentMenuId,
-                "UserLevel": child.userLevel,
-              };
-              newUserList.add(asm);
-              for (var subChild in childUsers.where(
-                (element) => element.parentMenuId == child.menuId,
-              )) {
-                final tsm = {
-                  "MenuId": subChild.menuId,
-                  "MenuName": subChild.menuName,
-                  "SubMenuId": subChild.subMenuId,
-                  "ParentMenuId": subChild.parentMenuId,
-                  "UserLevel": subChild.userLevel,
-                };
-                newUserList.add(tsm);
-              }
-            }
-          }
-          setState(() {
-            userList = newUserList;
-            noUserList = true;
-          });
-        } else {
-          if (responseJson.containsKey("Error") &&
-              responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
-        }
-      } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
   Future<void> _loadUserListForFilter(
     String userId,
     String userJwtToken,
@@ -647,32 +449,26 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
           }
         }
       } else {
         const snackBar = SnackBar(content: Text('User list not found.'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
     }
   }
 
   Future<void> _loadSales(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000;
+    int limit = 5000;
     int fetchedCount = 0;
     List<SalesList> salesList = [];
     int monthIndex = currentDate!.month;
@@ -690,21 +486,18 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         const apiUrl = '${ApiHelper.baseUrl}Crm_SalesList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<SalesList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => SalesList.fromJson(item))
-                    .toList();
+          final data = responseJson['responseData'] as List?;
+
+          if (data != null && data.isNotEmpty) {
+            List<SalesList> newSalesList = data
+                .map((item) => SalesList.fromJson(item))
+                .toList();
 
             salesList.addAll(newSalesList);
             fetchedCount = newSalesList.length;
@@ -717,39 +510,21 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         }
       } while (fetchedCount == limit);
 
+      final filteredSales = salesList
+          .where((test) => test.invoiceType == "Sales")
+          .toList();
+      if (!mounted) return;
       setState(() {
         context.read<ProductWiseMarginProvider>().updateSalesList(salesList);
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        salesTemp = salesList
-            .where((test) => test.invoiceType == "Sales")
-            .toList();
-        if (int.parse(UserLevel) == 5) {
-          sales = salesList
-              .where((test) => test.invoiceType == "Sales")
-              .toList();
-        } else if (int.parse(UserLevel) == 4) {
-          sales = salesList
-              .where((test) => test.invoiceType == "Sales")
-              .toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          sales = salesList
-              .where((test) => test.invoiceType == "Sales")
-              .toList();
-        } else {
-          sales = salesList
-              .where((test) => test.invoiceType == "Sales")
-              .toList();
-        }
+        sales = filteredSales;
+        salesTemp = filteredSales;
       });
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -758,31 +533,28 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
-    List<ItemCostList> salesList = [];
+    List<ItemCostList> tmpItemList = [];
     try {
       do {
         var body = {"Index": index.toString(), "Limit": limit.toString()};
         const apiUrl = '${ApiHelper.baseUrl}BicxoItemCostList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<ItemCostList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => ItemCostList.fromJson(item))
-                    .toList();
+          final data = responseJson['responseData'] as List?;
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
+          if (data != null && data.isNotEmpty) {
+            List<ItemCostList> newItemCostList = data
+                .map((item) => ItemCostList.fromJson(item))
+                .toList();
+
+            tmpItemList.addAll(newItemCostList);
+            fetchedCount = newItemCostList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -792,26 +564,13 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         }
       } while (fetchedCount == limit);
 
+      if (!mounted) return;
+
       setState(() {
         context.read<ProductWiseMarginItemCostProvider>().updateItemCostList(
-          salesList,
+          tmpItemList,
         );
-
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          itemCostList = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          itemCostList = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          itemCostList = salesList.toList();
-        } else {
-          itemCostList = salesList.toList();
-        }
+        itemCostList = tmpItemList.toList();
       });
     } catch (e) {
       if (mounted) {
@@ -819,6 +578,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -834,23 +594,19 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
-    await _loadUserList(
-      userId,
-      userJwtToken,
-      userMailID,
-      int.tryParse(userLevel) ?? 0,
-    );
     await _loadUserListForFilter(
       userId,
       userJwtToken,
       userMailID,
       int.tryParse(userLevel) ?? 0,
     );
-
     await _loadSales(userName, userLevel);
     await _loadItemCost(userName, userLevel);
     await _loadYtdSalesBarChartData("", "");
-    chartDataLoadedProductMargin = true;
+    if (!mounted) return;
+    setState(() {
+      chartDataLoadedProductMargin = true;
+    });
   }
 
   void clearVariables() {
@@ -872,7 +628,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     setState(() {
       chartDataLoadedProductMargin = false;
       receivablesFinanceList = ReceivablesFinanceList(agingData: []);
-      // allReceivablesFinanceList = AllReceivablesFinanceList(agingData: []);
       advanceCustomerList = AdvanceFromCustomersList(agingData: []);
       customerAnalysisFinanceList = CustomerAnalysisFinanceList(
         customerData: [],
@@ -880,21 +635,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       tsmwiseCollectionList = TsmwiseCollectionList(tsmwiseData: []);
       asmwiseCollectionList = AsmwiseCollectionList(asmwiseData: []);
       rsmwiseCollectionList = RsmwiseCollectionList(rsmwiseData: []);
-    });
-  }
-
-  void toggleCheckbox() {
-    setState(() {
-      receivablesAmount = 0;
-      overDue = 0;
-      notDue = 0;
-      netReceivables = 0;
-      advance = 0;
-      grossReceivables = 0;
-      chartDataLoadedProductMargin = false;
-      receivablesAmountStr = "";
-      loadData("");
-      // selectedCheckbox = index;
     });
   }
 
@@ -924,8 +664,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       chartDataLoadedProductMargin = false;
       clearVariables();
       LoadDates();
-      receivablesAmountStr = "";
-      receivablesAmount = 0;
       allCategoriesState.forEach((category, options) {
         options.updateAll((key, value) => false);
       });
@@ -1035,20 +773,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         .toList();
   }
 
-  Widget buildCheckbox(int index) {
-    return GestureDetector(
-      onTap: () => toggleCheckbox(),
-      child: Checkbox(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2.0)),
-        side: WidgetStateBorderSide.resolveWith(
-          (states) => const BorderSide(width: 1.0, color: Color(0xFF8F8F8F)),
-        ),
-        value: selectedCheckbox == index,
-        onChanged: (_) => toggleCheckbox(),
-      ),
-    );
-  }
-
   String getSelectedFiltersText(
     Map<String, Map<String, bool>> allCategoriesState,
   ) {
@@ -1065,260 +789,81 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     return selectedFilters.join(', ');
   }
 
-  //   Future<void> _loadYtdSalesBarChartData(String? itemGroup) async {
-  //     Map<String, List<SalesList>> salesByCustomer = {};
-  //     Map<String, List<SalesList>> salesByItem = {};
-  //     String bomCost = '';
-  //     List<ProductMarginData> ytdSalesDataList = [];
-  //     var tmpSales = sales.toList();
-  //
-  //     for (var sale in tmpSales) {
-  //       salesByCustomer.putIfAbsent(sale.code, () => []).add(sale);
-  //     }
-  //
-  //     for (var customerCode in salesByCustomer.keys) {
-  //       var customerSales = salesByCustomer[customerCode]!;
-  //
-  //       //only invoice
-  //
-  //       salesByItem.clear();
-  //       for (var sale in customerSales) {
-  //         salesByItem.putIfAbsent(sale.code, () => []).add(sale);
-  //       }
-  //
-  //       for (var itemCode in salesByItem.keys) {
-  //         var itemSales = salesByItem[itemCode]!;
-  //         var firstItemSale = itemSales.first;
-  //
-  //         var matchingItems =
-  //             itemCostList.where((test) => firstItemSale.code == test.itemCode);
-  //
-  //         bomCost = matchingItems.isNotEmpty ? matchingItems.first.itemCost : "0";
-  //
-  //         List<double> monthlyQty = List.filled(12, 0.0);
-  //         List<double> monthlyValue = List.filled(12, 0.0);
-  //
-  //         for (int i = 0; i < 12; i++) {
-  //           DateTime startDate = addMonth(fiscalYearStartDate!, i);
-  //           DateTime endDate =
-  //               addMonth(startDate, 1).add(const Duration(days: -1));
-  //
-  //           for (var sale in itemSales) {
-  //             DateTime invoiceDate =
-  //                 DateFormat('dd/MM/yyyy').parse(sale.invoiceDate);
-  //             if (invoiceDate.isAtLeast(startDate) &&
-  //                 invoiceDate.isAtMost(endDate)) {
-  //               double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
-  //               double quantity = double.tryParse(sale.quantity) ?? 0.0;
-  //               if (sale.invoiceType == "Sales Return") {
-  //                 rowTotal *= -1;
-  //                 quantity *= -1;
-  //               }
-  //               monthlyValue[i] += rowTotal;
-  //               monthlyQty[i] += quantity;
-  //             }
-  //           }
-  //         }
-  //
-  //         if (monthlyValue.reduce((a, b) => a + b) != 0) {
-  //           ytdSalesDataList.add(ProductMarginData(
-  //             itemNo: firstItemSale.code,
-  //             itemDescription: firstItemSale.description,
-  //             itemSubGroup: firstItemSale.itemSubGroup,
-  //             quantity: monthlyQty.reduce((a, b) => a + b).toStringAsFixed(2),
-  //             saleAmt: monthlyValue.reduce((a, b) => a + b).toStringAsFixed(2),
-  //             avgSellingPrice: (monthlyValue.reduce((a, b) => a + b) /
-  //                     monthlyQty.reduce((a, b) => a + b))
-  //                 .toStringAsFixed(2),
-  //             bomCost: double.parse(bomCost).toStringAsFixed(2),
-  //             perUnitMarginAmount: ((monthlyValue.reduce((a, b) => a + b) /
-  //                         monthlyQty.reduce((a, b) => a + b)) -
-  //                     double.parse(bomCost))
-  //                 .toStringAsFixed(2),
-  //             totalMarginAmount: (((monthlyValue.reduce((a, b) => a + b) /
-  //                             monthlyQty.reduce((a, b) => a + b)) -
-  //                         double.parse(bomCost)) *
-  //                     monthlyQty.reduce((a, b) => a + b))
-  //                 .toStringAsFixed(2),
-  //             marginPercent: (((monthlyValue.reduce((a, b) => a + b) /
-  //                         monthlyQty.reduce((a, b) => a + b)) -
-  //                     double.parse(bomCost)) /
-  //                 (monthlyValue.reduce((a, b) => a + b) /
-  //                     monthlyQty.reduce((a, b) => a + b)) *
-  //                 100),
-  //             // mayQty: monthlyQty[1],
-  //             // mayValue: monthlyValue[1],
-  //             // junQty: monthlyQty[2],
-  //             // junValue: monthlyValue[2],
-  //             // julQty: monthlyQty[3],
-  //             // julValue: monthlyQty[3],
-  //             // augQty: monthlyQty[4],
-  //             // augValue: monthlyValue[4],
-  //             // sepQty: monthlyQty[5],
-  //             // sepValue: monthlyValue[5],
-  //             // octQty: monthlyQty[6],
-  //             // octValue: monthlyValue[6],
-  //             // novQty: monthlyQty[7],
-  //             // novValue: monthlyValue[7],
-  //             // decQty: monthlyQty[8],
-  //             // decValue: monthlyValue[8],
-  //             // janQty: monthlyQty[9],
-  //             // janValue: monthlyValue[9],
-  //             // febQty: monthlyQty[10],
-  //             // febValue: monthlyValue[10],
-  //             // marQty: monthlyQty[11],
-  //             // marValue: monthlyValue[11],
-  //             // ytdTotalValue: monthlyValue.reduce((a, b) => a + b),
-  //             // ytdTotalQty: monthlyQty.reduce((a, b) => a + b),
-  //           ));
-  //         }
-  //         customerSales.clear();
-  //       }
-  //     }
-  //
-  //     setState(() {
-  //       ytdSalesDataList.sort((a, b) => a.itemNo.compareTo(b.itemNo));
-  //
-  //       ytdSalesDataList.removeWhere(
-  //           (item) => item.itemSubGroup == "" || item.itemSubGroup.isEmpty);
-  //
-  //       var filteredList = ytdSalesDataList
-  //           .where(
-  //               (item) => item.itemSubGroup != "" && item.itemSubGroup.isNotEmpty)
-  //           .toList();
-  //
-  //       productMarginList = ProductMarginList(productMarginData: filteredList);
-  //
-  //       filteredList.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
-  //       productMarginListGraph =
-  //           ProductMarginList(productMarginData: filteredList);
-  //
-  //       YtdSalesBarChartData = true;
-  //     });
-  //
-  //     List<ProductMarginData> data = productMarginList.productMarginData;
-  //
-  //     double overallTotal = data.fold(0.0, (sum, item) {
-  //       return sum + (double.tryParse(item.totalMarginAmount) ?? 0.0);
-  //     });
-  //
-  //     Map<String, double> subgroupSums = {};
-  //     for (var item in data) {
-  //       final margin = double.tryParse(item.totalMarginAmount) ?? 0.0;
-  //       subgroupSums.update(
-  //         item.itemSubGroup,
-  //         (existing) => existing + margin,
-  //         ifAbsent: () => margin,
-  //       );
-  //     }
-  //
-  //     itemSubGroupGraph = subgroupSums.entries.map((e) {
-  //       final pct = overallTotal > 0 ? (e.value / overallTotal) * 100 : 0.0;
-  //       return SubGroupMarginTotal(
-  //         itemSubGroup: e.key,
-  //         totalMarginAmount: e.value,
-  //         marginPercent: pct,
-  //       );
-  //     }).toList();
-  //
-  //     itemSubGroupGraph.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
-  //     itemSubGroupGraphList = SubGroupMarginTotalList(data: itemSubGroupGraph);
-  //
-  // // Helper class to store the result
-  //   }
-
   Future<void> _loadYtdSalesBarChartData(
     String? itemGroup,
     String? item,
   ) async {
-    Map<String, List<SalesList>> salesByCustomer = {};
     List<ProductMarginData> ytdSalesDataList = [];
 
-    var tmpSales = sales.toList();
-    for (var sale in tmpSales) {
-      salesByCustomer.putIfAbsent(sale.code, () => []).add(sale);
+    // 1. Convert itemCostList to Map (O(1) lookup instead of O(n))
+    final Map<String, double> itemCostMap = {
+      for (var c in itemCostList)
+        c.itemCode: double.tryParse(c.itemCost) ?? 0.0,
+    };
+
+    // 2. Group sales by item
+    final Map<String, List<SalesList>> salesByItem = {};
+    for (var sale in sales) {
+      salesByItem.putIfAbsent(sale.code, () => []).add(sale);
     }
 
-    for (var customerCode in salesByCustomer.keys) {
-      var customerSales = salesByCustomer[customerCode]!;
+    // 3. Process each item
+    for (var entry in salesByItem.entries) {
+      final itemCode = entry.key;
+      final itemSales = entry.value;
+      final firstItemSale = itemSales.first;
 
-      Map<String, List<SalesList>> salesByItem = {};
-      for (var sale in customerSales) {
-        salesByItem.putIfAbsent(sale.code, () => []).add(sale);
+      final double bomCost = itemCostMap[itemCode] ?? 0.0;
+
+      double totalQty = 0.0;
+      double totalValue = 0.0;
+
+      // 4. Single loop instead of 12-month nested loop
+      for (var sale in itemSales) {
+        double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
+        double quantity = double.tryParse(sale.quantity) ?? 0.0;
+
+        if (sale.invoiceType == "Sales Return") {
+          rowTotal *= -1;
+          quantity *= -1;
+        }
+
+        totalValue += rowTotal;
+        totalQty += quantity;
       }
 
-      for (var itemCode in salesByItem.keys) {
-        var itemSales = salesByItem[itemCode]!;
-        var firstItemSale = itemSales.first;
-
-        var matchingItems = itemCostList.where(
-          (c) => firstItemSale.code == c.itemCode,
-        );
-        final double bomCost = matchingItems.isNotEmpty
-            ? double.tryParse(matchingItems.first.itemCost) ?? 0.0
+      if (totalValue != 0 && totalQty != 0) {
+        final avgSellingPrice = totalValue / totalQty;
+        final perUnitMargin = avgSellingPrice - bomCost;
+        final totalMargin = perUnitMargin * totalQty;
+        final marginPct = (avgSellingPrice > 0)
+            ? (perUnitMargin / avgSellingPrice) * 100
             : 0.0;
 
-        List<double> monthlyQty = List.filled(12, 0.0);
-        List<double> monthlyValue = List.filled(12, 0.0);
-
-        for (int i = 0; i < 12; i++) {
-          DateTime startDate = addMonth(fiscalYearStartDate!, i);
-          DateTime endDate = addMonth(
-            startDate,
-            1,
-          ).subtract(const Duration(days: 1));
-
-          for (var sale in itemSales) {
-            DateTime invoiceDate = sale.invoiceDate;
-            if (invoiceDate.isAtLeast(startDate) &&
-                invoiceDate.isAtMost(endDate)) {
-              double rowTotal = double.tryParse(sale.rowTotal) ?? 0.0;
-              double quantity = double.tryParse(sale.quantity) ?? 0.0;
-              if (sale.invoiceType == "Sales Return") {
-                rowTotal *= -1;
-                quantity *= -1;
-              }
-              monthlyValue[i] += rowTotal;
-              monthlyQty[i] += quantity;
-            }
-          }
-        }
-
-        final totalQty = monthlyQty.reduce((a, b) => a + b);
-        final totalValue = monthlyValue.reduce((a, b) => a + b);
-        if (totalValue != 0 && totalQty != 0) {
-          final avgSellingPrice = totalValue / totalQty;
-          final perUnitMargin = avgSellingPrice - bomCost;
-          final totalMargin = perUnitMargin * totalQty;
-          final marginPct = (avgSellingPrice > 0)
-              ? (perUnitMargin / avgSellingPrice) * 100
-              : 0.0;
-
-          ytdSalesDataList.add(
-            ProductMarginData(
-              itemNo: firstItemSale.code,
-              itemDescription: firstItemSale.description,
-              itemSubGroup: firstItemSale.itemSubGroup,
-              quantity: totalQty.toStringAsFixed(2),
-              saleAmt: totalValue.toStringAsFixed(2),
-              avgSellingPrice: avgSellingPrice.toStringAsFixed(2),
-              bomCost: bomCost.toStringAsFixed(2),
-              perUnitMarginAmount: perUnitMargin.toStringAsFixed(2),
-              totalMarginAmount: totalMargin.toStringAsFixed(2),
-              marginPercent: marginPct,
-            ),
-          );
-        }
+        ytdSalesDataList.add(
+          ProductMarginData(
+            itemNo: firstItemSale.code,
+            itemDescription: firstItemSale.description,
+            itemSubGroup: firstItemSale.itemSubGroup,
+            quantity: totalQty.toStringAsFixed(2),
+            saleAmt: totalValue.toStringAsFixed(2),
+            avgSellingPrice: avgSellingPrice.toStringAsFixed(2),
+            bomCost: bomCost.toStringAsFixed(2),
+            perUnitMarginAmount: perUnitMargin.toStringAsFixed(2),
+            totalMarginAmount: totalMargin.toStringAsFixed(2),
+            marginPercent: marginPct,
+          ),
+        );
       }
     }
 
-    ytdSalesDataList.sort((a, b) => a.itemNo.compareTo(b.itemNo));
+    // 5. Clean + filter
     ytdSalesDataList.removeWhere((d) => d.itemSubGroup.isEmpty);
-    var productList = ytdSalesDataList;
 
-    List<ProductMarginData> filteredData = productList;
+    List<ProductMarginData> filteredData = ytdSalesDataList;
+
     if (itemGroup != null && itemGroup.isNotEmpty) {
-      filteredData = productList
+      filteredData = filteredData
           .where((d) => d.itemSubGroup == itemGroup)
           .toList();
     }
@@ -1329,51 +874,51 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
           .toList();
     }
 
+    // 6. Sort once
+    filteredData.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
+
+    // 7. Pre-calc subgroup totals (single pass)
+    double overallTotal = 0.0;
+    final Map<String, double> subgroupSums = {};
+
+    for (var d in filteredData) {
+      final m = double.tryParse(d.totalMarginAmount) ?? 0.0;
+      overallTotal += m;
+      subgroupSums.update(d.itemSubGroup, (ex) => ex + m, ifAbsent: () => m);
+    }
+
+    final subgroupList = subgroupSums.entries.map((e) {
+      final pct = overallTotal > 0 ? (e.value / overallTotal) * 100 : 0.0;
+      return SubGroupMarginTotal(
+        itemSubGroup: e.key,
+        totalMarginAmount: e.value,
+        marginPercent: pct,
+      );
+    }).toList()..sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
+
+    // 8. Final UI update
+    if (!mounted) return;
+
     setState(() {
       productMarginList = ProductMarginList(productMarginData: filteredData);
-
-      filteredData.sort((a, b) => b.marginPercent.compareTo(a.marginPercent));
       productMarginListGraph = ProductMarginList(
         productMarginData: filteredData,
       );
 
-      double overallTotal = filteredData.fold(0.0, (sum, item) {
-        return sum + (double.tryParse(item.totalMarginAmount) ?? 0.0);
-      });
-
-      Map<String, double> subgroupSums = {};
-      for (var item in filteredData) {
-        final m = double.tryParse(item.totalMarginAmount) ?? 0.0;
-        subgroupSums.update(
-          item.itemSubGroup,
-          (ex) => ex + m,
-          ifAbsent: () => m,
-        );
-      }
-
-      itemSubGroupGraph = subgroupSums.entries.map((e) {
-        final pct = overallTotal > 0 ? (e.value / overallTotal) * 100 : 0.0;
-        return SubGroupMarginTotal(
-          itemSubGroup: e.key,
-          totalMarginAmount: e.value,
-          marginPercent: pct,
-        );
-      }).toList();
-      itemSubGroupGraph.sort(
-        (a, b) => b.marginPercent.compareTo(a.marginPercent),
-      );
-      itemSubGroupGraphList = SubGroupMarginTotalList(data: itemSubGroupGraph);
+      itemSubGroupGraph = subgroupList;
+      itemSubGroupGraphList = SubGroupMarginTotalList(data: subgroupList);
 
       YtdSalesBarChartData = true;
     });
   }
 
   Future<void> generateSalesAnalysisYTDExcel() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
+    productMarginList.productMarginData.removeWhere(
+      (item) => double.parse(item.quantity) < 0,
+    );
+    await reportService.generateExcel(
+      sheetName: 'ProductMarginSales',
+      headers: [
         'Item No.',
         'Item Description',
         'Item Sub Group',
@@ -1384,222 +929,55 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         'Per Unit Margin Amount',
         'Total Margin Amount',
         'Margin %',
-      ]),
+      ],
+      rows: productMarginList.productMarginData
+          .map(
+            (e) => [
+              e.itemNo,
+              e.itemDescription,
+              e.itemSubGroup,
+              e.quantity,
+              e.saleAmt,
+              e.avgSellingPrice,
+              e.bomCost,
+              e.perUnitMarginAmount,
+              e.totalMarginAmount,
+              e.marginPercent.toStringAsFixed(0),
+            ],
+          )
+          .toList(),
+      fileName: 'product_margin_sales_analysis.xlsx',
+      amountColumns: [4, 5, 6, 7, 8, 9],
+      addTotalRow: true,
+      reportTitle: 'Finance - Product Margin Sales Analysis',
     );
-
-    for (int column = 0; column < 11; column++) {
-      var cell = sheet.cell(
-        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-      );
-      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
-
-      // sheet.setColAutoFit(column);
-    }
-
-    productMarginList.productMarginData.removeWhere(
-      (item) => double.parse(item.quantity) < 0,
-    );
-
-    for (var ytdData in productMarginList.productMarginData) {
-      sheet.appendRow(
-        toCellRow([
-          ytdData.itemNo,
-          ytdData.itemDescription,
-          ytdData.itemSubGroup,
-          ytdData.quantity,
-          ytdData.saleAmt,
-          ytdData.avgSellingPrice,
-          ytdData.bomCost,
-          ytdData.perUnitMarginAmount,
-          ytdData.totalMarginAmount,
-          ytdData.marginPercent.toStringAsFixed(0),
-        ]),
-      );
-    }
-
-    xl.CellStyle centerCellStyle = xl.CellStyle(
-      verticalAlign: xl.VerticalAlign.Center,
-      horizontalAlign: xl.HorizontalAlign.Center,
-    );
-
-    int numberOfRows = productMarginList.productMarginData.length;
-
-    for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-      for (int colIndex = 0; colIndex < 10; colIndex++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex,
-            rowIndex: rowIndex,
-          ),
-        );
-        if (rowIndex != 0) {
-          cell.cellStyle = centerCellStyle;
-        }
-      }
-    }
-
     setState(() {
       YtdSalesBarChartData = true;
     });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('productMarginReport.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/productMarginReport.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
   }
 
   Future<void> generateItemGroupWise() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow(['Name', 'Margin Percentage', 'Total Margin Amount']),
+    await reportService.generateExcel(
+      sheetName: 'ProductMarginItemGroup',
+      headers: ['Name', 'Margin Percentage', 'Total Margin Amount'],
+      rows: itemSubGroupGraphList.data
+          .map(
+            (e) => [
+              e.itemSubGroup,
+              e.totalMarginAmount,
+              e.marginPercent.toStringAsFixed(0),
+            ],
+          )
+          .toList(),
+      fileName: 'product_margin_itemgroup_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Product Margin Item Group Analysis',
     );
-
-    for (int column = 0; column < 11; column++) {
-      var cell = sheet.cell(
-        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-      );
-      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
-
-      // sheet.setColAutoFit(column);
-    }
-
-    for (var ytdData in itemSubGroupGraphList.data) {
-      sheet.appendRow(
-        toCellRow([
-          ytdData.itemSubGroup,
-          ytdData.totalMarginAmount,
-          ytdData.marginPercent.toStringAsFixed(0),
-        ]),
-      );
-    }
-
-    xl.CellStyle centerCellStyle = xl.CellStyle(
-      verticalAlign: xl.VerticalAlign.Center,
-      horizontalAlign: xl.HorizontalAlign.Center,
-    );
-
-    int numberOfRows = productMarginList.productMarginData.length;
-
-    for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-      for (int colIndex = 0; colIndex < 10; colIndex++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex,
-            rowIndex: rowIndex,
-          ),
-        );
-        if (rowIndex != 0) {
-          cell.cellStyle = centerCellStyle;
-        }
-      }
-    }
 
     setState(() {
       YtdSalesBarChartData = true;
     });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('productMarginReport.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/productMarginReport.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  Future<void> generatePendingOrderExcel() async {
-    // await _loadYtdSalesBarChartData();
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Item No.',
-          'Item Description',
-          'Item Sub Group',
-          'Quantity',
-          'Sales Amt',
-          'Avg Selling Price',
-          'BOMCost',
-          'Per Unit Margin Amount',
-          'Total Margin Amount',
-          'Margin %',
-        ]),
-      );
-      for (var element in productMarginList.productMarginData) {
-        sheet.appendRow(
-          toCellRow([
-            element.itemNo,
-            element.itemDescription,
-            element.itemSubGroup,
-            element.quantity,
-            element.saleAmt,
-            element.avgSellingPrice,
-            element.bomCost,
-            element.perUnitMarginAmount,
-            element.totalMarginAmount,
-            element.marginPercent,
-          ]),
-        );
-        // totalOrderedQty += dailyData.orderedQty;
-        // totalDispatchedQty += dailyData.dispatchedQty;
-        // totalPendingQty += dailyData.pendingQty;
-      }
-      // sheet.appendRow(toCellRow(
-      //     ["Total", totalOrderedQty, totalDispatchedQty, totalPendingQty]);
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('pendingOrders.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/pendingOrders.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
   }
 
   String formatDateString(DateTime date) {
@@ -1625,29 +1003,17 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       loadDataFuture = loadData("");
     }
 
-    filterOptions = [
-      ['OFFICE - Drs.', 'NH GROUP. - Drs.', 'Sales Team'],
-      ['Hospital', 'Distributor', 'Other'],
-      ['Credit Note', 'Invoice', 'Journal', 'Receipt'],
-      listOfRSM,
-      listOfASM,
-      listOfTSM,
-      ['Not Dues', 'Overdue'],
-      ['Advance', 'Receivables'],
-    ];
-
-    selectedFinanceReceivablesOptions = filterOptions
-        .map((options) => List<bool>.filled(options.length, false))
-        .toList();
-
-    selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     toDateFilter = currentDate;
     fromDateFilter = fiscalYearStartDate;
   }
 
   @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoadedProductMargin == true
         ? SingleChildScrollView(
             child: Column(
@@ -1667,16 +1033,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                               ),
                       ],
                     ),
-                    // Row(
-                    //   children: [
-                    //     // IconButton(
-                    //     //   onPressed: () {
-                    //     //     showFilterBottomSheet(context);
-                    //     //   },
-                    //     //   icon: const Icon(Icons.filter_alt_outlined),
-                    //     // ),
-                    //   ],
-                    // ),
                   ],
                 ),
                 Padding(
@@ -2060,274 +1416,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
           ),
         ),
       ),
-    );
-  }
-
-  void showFilterBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
-      ),
-      builder: (context) {
-        int selectedCategoryIndex = 0;
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Filter Options',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const Divider(),
-                  // Filter UI
-                  Expanded(
-                    child: Row(
-                      children: [
-                        // Left side: Categories
-                        SizedBox(
-                          width: 150,
-                          child: ListView.builder(
-                            itemCount: categories.length,
-                            itemBuilder: (context, index) {
-                              return ListTile(
-                                title: Text(categories[index]),
-                                selected: selectedCategoryIndex == index,
-                                onTap: () {
-                                  setState(() {
-                                    selectedCategoryIndex = index;
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                        const VerticalDivider(width: 1),
-                        // Right side: Filter options as checkboxes
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child:
-                                    selectedCategoryIndex ==
-                                        categories.length -
-                                            1 // "Date" index
-                                    ? Column(
-                                        children: [
-                                          ListTile(
-                                            title: const Text("From Date"),
-                                            subtitle: Text(
-                                              fromDateFilter != null
-                                                  ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
-                                                  : formatDateString(
-                                                      fiscalYearStartDate!,
-                                                    ),
-                                            ),
-                                            trailing: const Icon(
-                                              Icons.calendar_today,
-                                            ),
-                                            onTap: () async {
-                                              final picked =
-                                                  await showDatePicker(
-                                                    context: context,
-                                                    initialDate:
-                                                        fromDateFilter ??
-                                                        DateTime.now(),
-                                                    firstDate:
-                                                        fiscalYearStartDate!,
-                                                    lastDate: currentDate!,
-                                                  );
-                                              if (picked != null) {
-                                                setState(() {
-                                                  fromDateFilter = picked;
-                                                  dateFilterFlag = true;
-                                                });
-                                              }
-                                            },
-                                          ),
-                                          ListTile(
-                                            title: const Text("To Date"),
-                                            subtitle: Text(
-                                              toDateFilter != null
-                                                  ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
-                                                  : formatDateString(
-                                                      currentDate!,
-                                                    ),
-                                            ),
-                                            trailing: const Icon(
-                                              Icons.calendar_today,
-                                            ),
-                                            onTap: () async {
-                                              final picked =
-                                                  await showDatePicker(
-                                                    context: context,
-                                                    initialDate:
-                                                        toDateFilter ??
-                                                        DateTime.now(),
-                                                    firstDate:
-                                                        fiscalYearStartDate!,
-                                                    lastDate: currentDate!,
-                                                  );
-                                              if (picked != null) {
-                                                setState(() {
-                                                  toDateFilter = picked;
-                                                  dateFilterFlag = true;
-                                                });
-                                              }
-                                            },
-                                          ),
-                                        ],
-                                      )
-                                    : ListView.builder(
-                                        itemCount:
-                                            filterOptions[selectedCategoryIndex]
-                                                .length,
-                                        itemBuilder: (context, index) {
-                                          return CheckboxListTile(
-                                            title: Text(
-                                              filterOptions[selectedCategoryIndex][index],
-                                            ),
-                                            value:
-                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
-                                            onChanged: (bool? value) {
-                                              // your checkbox logic
-                                            },
-                                          );
-                                        },
-                                      ),
-                              ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xff2ca9df),
-                                      minimumSize: const Size(10, 10),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                    onPressed: () {
-                                      List<String> selectedFilterOptions = [];
-                                      for (
-                                        int i = 0;
-                                        i <
-                                            filterOptions[selectedCategoryIndex]
-                                                .length;
-                                        i++
-                                      ) {
-                                        if (selectedFinanceReceivablesOptions[selectedCategoryIndex][i]) {
-                                          selectedFilterOptions.add(
-                                            filterOptions[selectedCategoryIndex][i],
-                                          );
-                                        }
-                                      }
-
-                                      for (
-                                        int catIndex = 0;
-                                        catIndex < categories.length;
-                                        catIndex++
-                                      ) {
-                                        String categoryName =
-                                            categories[catIndex];
-                                        Map<String, bool> optionsState = {};
-
-                                        // Ensure the lengths match for your filterOptions and selectedFinanceReceivablesOptions lists
-                                        for (
-                                          int optionIndex = 0;
-                                          optionIndex <
-                                              filterOptions[catIndex].length;
-                                          optionIndex++
-                                        ) {
-                                          optionsState[filterOptions[catIndex][optionIndex]] =
-                                              selectedFinanceReceivablesOptions[catIndex][optionIndex];
-                                        }
-
-                                        allCategoriesState[categoryName] =
-                                            optionsState;
-                                      }
-
-                                      Navigator.pop(context);
-
-                                      selectedSalesData = selectedFilterOptions;
-
-                                      savedFinanceReceivablesOptionsTemp =
-                                          savedFinanceReceivablesOptions;
-
-                                      fromFilter = false;
-
-                                      // toggleCheckbox();
-                                      filterDateFunction();
-                                      setState(() {});
-                                    },
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        'Apply Filter',
-                                        style: TextStyle(color: Colors.white),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 15),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      minimumSize: const Size(10, 10),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                    onPressed: () {
-                                      chartDataLoadedProductMargin = false;
-                                      fromFilter = false;
-                                      savedFinanceReceivablesOptionsTemp
-                                          .clear();
-                                      setState(() {
-                                        chartDataLoadedProductMargin = false;
-                                        loadDataFuture = removeFilter();
-                                        Navigator.pop(context);
-                                        chartDataLoadedProductMargin = true;
-                                      });
-                                    },
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        'Clear Filter',
-                                        style: TextStyle(
-                                          color: Color(0xff2ca9df),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }

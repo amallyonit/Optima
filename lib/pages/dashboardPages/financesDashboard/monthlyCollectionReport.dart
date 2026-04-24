@@ -377,6 +377,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
         );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     }
@@ -459,6 +460,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
@@ -1040,35 +1042,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   }
 
   @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return chartDataLoadedMonthlyCollection == true
         ? SingleChildScrollView(
             child: Column(
               children: [
                 const SizedBox(height: 10),
-                //   Center(
-                //   child: ElevatedButton
-                //     (
-                //     style: ElevatedButton.styleFrom(
-                //       backgroundColor: const Color(0xff2ca9df),
-                //       shape: RoundedRectangleBorder(
-                //         borderRadius: BorderRadius.circular(5.0),
-                //       ),
-                //     ),
-                //     onPressed: () {
-                //       generateSalesAnalysisYTDExcel();
-                //     },
-                //     child: const SizedBox(
-                //       width: 400,
-                //       child: Center(
-                //         child: Text(
-                //           "Download Reports",
-                //           style: TextStyle(fontSize: 14, color: Colors.white),
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-                // ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

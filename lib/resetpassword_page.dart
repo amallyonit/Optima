@@ -52,15 +52,18 @@ class ResetpasswordScreenstate extends State<ResetpasswordScreen> {
             final snackBar = SnackBar(
               content: Text(responseJson["Error"].toString()),
             );
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       } catch (e) {
         final snackBar = SnackBar(content: Text('Error: $e'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } else {
       const snackBar = SnackBar(content: Text('Password mismatch'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
