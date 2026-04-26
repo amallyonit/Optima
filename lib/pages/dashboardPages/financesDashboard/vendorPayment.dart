@@ -44,6 +44,13 @@ class Distributor {
   Distributor({required this.customerCode, required this.customerName});
 }
 
+class InvoiceWrapper {
+  PayablesList invoice;
+  bool isChecked;
+
+  InvoiceWrapper({required this.invoice, required this.isChecked});
+}
+
 ReceivablesAgingList receivablesAgingList = ReceivablesAgingList(agingData: []);
 
 String deviceOrientation = "";
@@ -68,6 +75,7 @@ List<InvoiceCustomers> customers = [];
 List<UsersForSearch> asmList = [];
 List<Map<String, dynamic>> userList = [];
 List<MyNode> nodes = [];
+double remainingCommitment = 0;
 
 class VendorPayment extends StatefulWidget {
   const VendorPayment({super.key});
@@ -297,7 +305,7 @@ class _VendorPaymentState extends State<VendorPayment> {
 
   Future<List<InvoiceCustomers>> getDistributor(String search) async {
     final seen = <String>{};
-    List<InvoiceCustomers> filteredList = invoiceList
+    List<InvoiceCustomers> filteredList = invoiceListTemp
         .where(
           (element) =>
               element.vendorName.toLowerCase().startsWith(search.toLowerCase()),
@@ -342,6 +350,140 @@ class _VendorPaymentState extends State<VendorPayment> {
         .toList();
 
     return filteredList;
+  }
+
+  double _invoiceBalance(PayablesList invoice) {
+    return double.tryParse(invoice.balance)?.abs() ?? 0;
+  }
+
+  void sortInvoicesByDate({bool checkAllOnLengthMismatch = false}) {
+    final DateFormat formatter = DateFormat('dd/MM/yyyy');
+    final hasMatchingCheckState =
+        collectionCheckList.length == invoiceList.length;
+
+    final combinedList = List.generate(
+      invoiceList.length,
+      (i) => InvoiceWrapper(
+        invoice: invoiceList[i],
+        isChecked: hasMatchingCheckState
+            ? collectionCheckList[i]
+            : checkAllOnLengthMismatch,
+      ),
+    );
+
+    combinedList.sort((a, b) {
+      final dateA = formatter.parse(a.invoice.dueon);
+      final dateB = formatter.parse(b.invoice.dueon);
+      return dateA.compareTo(dateB);
+    });
+
+    invoiceList = combinedList.map((e) => e.invoice).toList();
+    collectionCheckList = combinedList.map((e) => e.isChecked).toList();
+    _refreshSelectedInvoiceTotal();
+  }
+
+  void _selectAllVisibleInvoices() {
+    double total = 0;
+
+    collectionCheckList = List<bool>.filled(invoiceList.length, true);
+    selectedInvoiceList = List.from(invoiceList);
+
+    for (final invoice in invoiceList) {
+      total += _invoiceBalance(invoice);
+    }
+
+    totalValue = total;
+    valueController.text = total.toStringAsFixed(0);
+    remainingCommitment = 0;
+  }
+
+  void _refreshSelectedInvoiceTotal() {
+    double total = 0;
+    selectedInvoiceList.clear();
+
+    for (var i = 0; i < invoiceList.length; i++) {
+      if (!collectionCheckList[i]) continue;
+
+      total += _invoiceBalance(invoiceList[i]);
+      selectedInvoiceList.add(invoiceList[i]);
+    }
+
+    totalValue = total;
+    valueController.text = total.toStringAsFixed(0);
+  }
+
+  void _clearVendorFilter() {
+    selectedDistributorId = "";
+    selectedDistributorName = "";
+    customerController.clear();
+    customerController.value = TextEditingValue.empty;
+    _applyInvoiceFilters();
+  }
+
+  Future<void> _runFilterWithLoader(VoidCallback updateFilter) async {
+    if (!mounted) return;
+    setState(() {
+      chartDataLoaded = false;
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
+    setState(() {
+      updateFilter();
+      chartDataLoaded = true;
+    });
+  }
+
+  void _applyInvoiceFilters() {
+    final selectedVendor = customerController.text.toLowerCase().trim();
+
+    invoiceList = invoiceListTemp.where((invoice) {
+      return selectedVendor.isEmpty
+          ? true
+          : invoice.vendorName.toLowerCase() == selectedVendor;
+    }).toList();
+
+    sortInvoicesByDate(checkAllOnLengthMismatch: true);
+    _selectAllVisibleInvoices();
+  }
+
+  void _applyCommitmentDistribution() {
+    double remaining = double.tryParse(commitmentController.text) ?? 0;
+
+    sortInvoicesByDate(checkAllOnLengthMismatch: true);
+
+    for (final item in invoiceList) {
+      item.commitment = "0";
+    }
+
+    if (remaining <= 0) {
+      remainingCommitment = 0;
+      return;
+    }
+
+    for (var i = 0; i < invoiceList.length; i++) {
+      if (!collectionCheckList[i]) continue;
+
+      final balance = _invoiceBalance(invoiceList[i]);
+      if (remaining <= 0) break;
+
+      if (remaining >= balance) {
+        invoiceList[i].commitment = balance.toStringAsFixed(2);
+        remaining -= balance;
+      } else {
+        invoiceList[i].commitment = remaining.toStringAsFixed(2);
+        remaining = 0;
+      }
+    }
+
+    remainingCommitment = remaining;
+  }
+
+  void applyCommitmentDistribution() {
+    setState(() {
+      _applyCommitmentDistribution();
+    });
   }
 
   void navigateToLoginScreen() async {
@@ -531,7 +673,7 @@ class _VendorPaymentState extends State<VendorPayment> {
     await _loadVendorPaymentProjection();
     collectionAchieved = 0;
     for (var i = 0; i < collectionCheckList.length; i++) {
-      collectionAchieved += double.parse(invoiceList[i].balance).abs();
+      collectionAchieved += _invoiceBalance(invoiceList[i]);
     }
     chartDataLoaded = true;
   }
@@ -823,14 +965,9 @@ class _VendorPaymentState extends State<VendorPayment> {
         collectionAchievedStr = sum.toString();
 
         invoiceList = invoiceListLocal;
-        invoiceList.sort((a, b) {
-          final dateFormat = DateFormat('dd/MM/yyyy');
-          return dateFormat
-              .parse(a.postingDate)
-              .compareTo(dateFormat.parse(b.postingDate));
-        });
-        resetSelection();
-        invoiceListTemp = invoiceList;
+        invoiceListTemp = List.from(invoiceListLocal);
+        sortInvoicesByDate(checkAllOnLengthMismatch: true);
+        _selectAllVisibleInvoices();
 
         customers = customerSet.toList();
         asmList = asmList.toSet().toList();
@@ -899,7 +1036,7 @@ class _VendorPaymentState extends State<VendorPayment> {
 
       if (!mounted) return;
 
-      // ✅ Minimal UI update only
+      // Minimal UI update only
       setState(() {
         context.read<VendorPayableProvider>().updateTargetList(salesList);
 
@@ -948,11 +1085,12 @@ class _VendorPaymentState extends State<VendorPayment> {
     },
   );
 
-  Future<void> submitLeads() async {
+  Future<bool> submitCommitments() async {
     String date = _dateController.text;
 
     selectedInvoices = selectedInvoiceList
         .whereType<PayablesList>()
+        .where((item) => (double.tryParse(item.commitment.toString()) ?? 0) > 0)
         .map(
           (PayablesList item) => {
             'InvoiceNo': item.documentNumber,
@@ -960,7 +1098,7 @@ class _VendorPaymentState extends State<VendorPayment> {
             'InvoiceExpPayDate': date,
             'InvoiceExpPayRemarks': paymentRemarksController.text,
             'InvoiceOtherRemarks': remarksController.text,
-            'InvoiceCommitments': commitmentController.text,
+            'InvoiceCommitments': item.commitment,
           },
         )
         .toList();
@@ -989,22 +1127,25 @@ class _VendorPaymentState extends State<VendorPayment> {
             style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         );
-        if (!mounted) return;
+        if (!mounted) return false;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return true;
       } else {
         const snackBar = SnackBar(
           content: Text('Payment comments updation failed'),
         );
-        if (!mounted) return;
+        if (!mounted) return false;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return false;
       }
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      return false;
     }
   }
 
@@ -1055,67 +1196,27 @@ class _VendorPaymentState extends State<VendorPayment> {
     selectedInvoiceList.clear();
     totalValue = 0;
     valueController.text = "0.00";
+    remainingCommitment = 0;
   }
 
   void _toggleSelectAll(bool? selectAll) {
     if (selectAll == null) return;
 
     setState(() {
-      double total = 0.0;
-
-      selectedInvoiceList.clear();
-
       for (var i = 0; i < collectionCheckList.length; i++) {
         collectionCheckList[i] = selectAll;
-
-        if (selectAll == true) {
-          total += double.parse(invoiceList[i].balance).abs();
+        if (!selectAll) {
+          invoiceList[i].commitment = "0";
         }
       }
 
-      if (selectAll == true) {
-        selectedInvoiceList.addAll(invoiceList);
-      }
-      if (selectAll) {
-        valueController.text = total.toStringAsFixed(0);
-      } else {
-        valueController.text = '0';
-      }
+      _refreshSelectedInvoiceTotal();
+      _applyCommitmentDistribution();
     });
   }
 
   void distributeCommitment() {
-    double commitment = double.tryParse(commitmentController.text) ?? 0;
-
-    if (commitment <= 0) return;
-
-    double remaining = commitment;
-
-    List<bool> newChecklist = List.filled(invoiceList.length, false);
-    List<PayablesList> newSelectedList = [];
-
-    for (int i = 0; i < invoiceList.length; i++) {
-      double balance = double.tryParse(invoiceList[i].balance)?.abs() ?? 0;
-
-      if (remaining <= 0) break;
-
-      if (remaining >= balance) {
-        newChecklist[i] = true;
-        newSelectedList.add(invoiceList[i]);
-        remaining -= balance;
-      } else {
-        newChecklist[i] = true;
-        newSelectedList.add(invoiceList[i]);
-        remaining = 0;
-      }
-    }
-
-    setState(() {
-      collectionCheckList = newChecklist;
-      selectedInvoiceList = newSelectedList;
-      totalValue = commitment - remaining;
-      valueController.text = totalValue.toStringAsFixed(0);
-    });
+    applyCommitmentDistribution();
   }
 
   Future<void> _loadVendorPaymentProjection() async {
@@ -1248,14 +1349,17 @@ class _VendorPaymentState extends State<VendorPayment> {
     allCategoriesState.forEach((category, options) {
       options.updateAll((key, value) => false);
     });
-    loadData("");
-    chartDataLoaded = true;
+    await loadData("");
   }
 
-  void toggleCheckbox() {
+  Future<void> toggleCheckbox() async {
     setState(() {
       chartDataLoaded = false;
-      loadData("");
+    });
+    await loadData("");
+    if (!mounted) return;
+    setState(() {
+      chartDataLoaded = true;
     });
   }
 
@@ -1362,12 +1466,8 @@ class _VendorPaymentState extends State<VendorPayment> {
                                           )
                                         : const Icon(Icons.clear),
                                     onPressed: () {
-                                      setState(() {
-                                        selectedDistributorId = "";
-                                        selectedDistributorName = "";
-                                        invoiceList = invoiceListTemp;
-                                        resetSelection();
-                                        customerController.clear();
+                                      _runFilterWithLoader(() {
+                                        _clearVendorFilter();
                                       });
                                     },
                                   ),
@@ -1376,16 +1476,10 @@ class _VendorPaymentState extends State<VendorPayment> {
                             },
                         onSelected: (InvoiceCustomers value) {
                           customerController.text = value.customerName;
-                          setState(() {
-                            customerController.text = value.customerName;
+                          _runFilterWithLoader(() {
                             selectedDistributorName = value.customerName;
-                            invoiceList = invoiceList
-                                .where(
-                                  (invoice) =>
-                                      invoice.vendorName == value.customerName,
-                                )
-                                .toList();
-                            resetSelection();
+                            selectedDistributorId = value.customerCode;
+                            _applyInvoiceFilters();
                           });
                         },
                         optionsViewBuilder:
@@ -1478,21 +1572,14 @@ class _VendorPaymentState extends State<VendorPayment> {
                                   inputKey: distributorKey,
                                   onTapItem:
                                       (InvoiceCustomers distributor) async {
-                                        setState(() {
+                                        await _runFilterWithLoader(() {
                                           customerController.text =
                                               distributor.customerName;
                                           selectedDistributorId =
                                               distributor.customerCode;
                                           selectedDistributorName =
                                               distributor.customerName;
-                                          invoiceList = invoiceList
-                                              .where(
-                                                (invoice) =>
-                                                    invoice.vendorName ==
-                                                    distributor.customerName,
-                                              )
-                                              .toList();
-                                          resetSelection();
+                                          _applyInvoiceFilters();
                                         });
                                       },
                                   suggestionBuilder: (data) =>
@@ -1509,12 +1596,8 @@ class _VendorPaymentState extends State<VendorPayment> {
                                   child: SizedBox(
                                     child: GestureDetector(
                                       onTap: () {
-                                        setState(() {
-                                          selectedDistributorId = "";
-                                          selectedDistributorName = "";
-                                          customerController.clear();
-                                          invoiceList = invoiceListTemp;
-                                          resetSelection();
+                                        _runFilterWithLoader(() {
+                                          _clearVendorFilter();
                                         });
                                       },
                                       child: customerController.text == ""
@@ -1613,119 +1696,183 @@ class _VendorPaymentState extends State<VendorPayment> {
                                 children: [
                                   TableRow(
                                     children: [
-                                      Row(
-                                        children: [
-                                          Transform.scale(
-                                            scale: .7,
-                                            child: Checkbox(
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(2.0),
-                                              ),
-                                              side:
-                                                  WidgetStateBorderSide.resolveWith(
-                                                    (states) =>
-                                                        const BorderSide(
-                                                          width: 1.0,
-                                                          color: Color(
-                                                            0xFF8F8F8F,
+                                      Container(
+                                        height: 50,
+                                        alignment: Alignment.centerLeft,
+                                        child: Row(
+                                          children: [
+                                            Transform.scale(
+                                              scale: .7,
+                                              child: Checkbox(
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        2.0,
+                                                      ),
+                                                ),
+                                                side:
+                                                    WidgetStateBorderSide.resolveWith(
+                                                      (states) =>
+                                                          const BorderSide(
+                                                            width: 1.0,
+                                                            color: Color(
+                                                              0xFF8F8F8F,
+                                                            ),
                                                           ),
-                                                        ),
-                                                  ),
-                                              value: _allSelected,
-                                              onChanged: _toggleSelectAll,
+                                                    ),
+                                                value: _allSelected,
+                                                onChanged: _toggleSelectAll,
+                                              ),
                                             ),
-                                          ),
-                                          const Text(
-                                            'Invoice No/Date',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                            const Text(
+                                              'Invoice No/Date',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                      const Column(
-                                        children: [
-                                          Text(
-                                            'Vendor Name',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                      const TableCell(
+                                        verticalAlignment:
+                                            TableCellVerticalAlignment.middle,
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: Center(
+                                            child: Text(
+                                              'Vendor Name',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                      const Column(
-                                        children: [
-                                          Text(
-                                            'Value',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                      const TableCell(
+                                        verticalAlignment:
+                                            TableCellVerticalAlignment.middle,
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: Center(
+                                            child: Text(
+                                              'Value',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                      const Column(
-                                        children: [
-                                          Text(
-                                            'Status',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                      const TableCell(
+                                        verticalAlignment:
+                                            TableCellVerticalAlignment.middle,
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: Center(
+                                            child: Text(
+                                              'Status',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                      const Column(
-                                        children: [
-                                          Text(
-                                            'Payment Issues',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                      const TableCell(
+                                        verticalAlignment:
+                                            TableCellVerticalAlignment.middle,
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: Center(
+                                            child: Text(
+                                              'Payment Issues',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                      const Column(
-                                        children: [
-                                          Text(
-                                            'Commitment',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                      const TableCell(
+                                        verticalAlignment:
+                                            TableCellVerticalAlignment.middle,
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: Center(
+                                            child: Text(
+                                              'Commitment',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                      const Column(
-                                        children: [
-                                          Text(
-                                            'Payment Date',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                      const TableCell(
+                                        verticalAlignment:
+                                            TableCellVerticalAlignment.middle,
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: Center(
+                                            child: Text(
+                                              'Payment Date',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                      const Column(
-                                        children: [
-                                          Text(
-                                            'Payment Remarks',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
+                                      const TableCell(
+                                        verticalAlignment:
+                                            TableCellVerticalAlignment.middle,
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: Center(
+                                            child: Text(
+                                              'Payment Remarks',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),
-                                  for (var i = 0; i < invoiceList.length; i++)
-                                    TableRow(
+                                  ...List.generate(invoiceList.length, (i) {
+                                    final balance =
+                                        double.tryParse(
+                                          invoiceList[i].balance,
+                                        )?.abs() ??
+                                        0;
+                                    final commitment =
+                                        double.tryParse(
+                                          invoiceList[i].commitment,
+                                        ) ??
+                                        0;
+                                    final isPartial =
+                                        commitment > 0 && commitment < balance;
+                                    final isFull =
+                                        commitment >= balance && balance > 0;
+
+                                    return TableRow(
+                                      decoration: BoxDecoration(
+                                        color: isFull
+                                            ? const Color(0xFFD4EDDA)
+                                            : isPartial
+                                            ? const Color(0xFFFFF3CD)
+                                            : null,
+                                      ),
                                       children: [
                                         Column(
                                           children: [
@@ -1753,47 +1900,18 @@ class _VendorPaymentState extends State<VendorPayment> {
                                                     value:
                                                         collectionCheckList[i],
                                                     onChanged: (bool? value) {
-                                                      if (commitmentController
-                                                          .text
-                                                          .isNotEmpty) {
-                                                        return;
-                                                      }
                                                       setState(() {
                                                         collectionCheckList[i] =
                                                             value ?? false;
-                                                        if (collectionCheckList[i] ==
-                                                            true) {
-                                                          totalValue +=
-                                                              double.parse(
-                                                                invoiceList[i]
-                                                                    .balance,
-                                                              ).abs();
-                                                          valueController.text =
-                                                              totalValue
-                                                                  .toString();
-                                                          selectedInvoiceList
-                                                              .add(
-                                                                invoiceList[i],
-                                                              );
+
+                                                        if (!collectionCheckList[i]) {
+                                                          invoiceList[i]
+                                                                  .commitment =
+                                                              "0";
                                                         }
-                                                        if (collectionCheckList[i] ==
-                                                            false) {
-                                                          if (totalValue != 0) {
-                                                            totalValue -=
-                                                                double.parse(
-                                                                  invoiceList[i]
-                                                                      .balance,
-                                                                ).abs();
-                                                            valueController
-                                                                    .text =
-                                                                totalValue
-                                                                    .toString();
-                                                            selectedInvoiceList
-                                                                .remove(
-                                                                  invoiceList[i],
-                                                                );
-                                                          }
-                                                        }
+
+                                                        _refreshSelectedInvoiceTotal();
+                                                        _applyCommitmentDistribution();
                                                       });
                                                     },
                                                   ),
@@ -1829,9 +1947,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                                             child: Align(
                                               alignment: Alignment.centerRight,
                                               child: Text(
-                                                double.parse(
-                                                  invoiceList[i].balance,
-                                                ).abs().toStringAsFixed(2),
+                                                balance.toStringAsFixed(2),
                                               ),
                                             ),
                                           ),
@@ -1862,18 +1978,48 @@ class _VendorPaymentState extends State<VendorPayment> {
                                           verticalAlignment:
                                               TableCellVerticalAlignment.middle,
                                           child: Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 70.0,
-                                            ),
+                                            padding: const EdgeInsets.all(8.0),
                                             child: Align(
                                               alignment: Alignment.centerRight,
-                                              child: Text(
-                                                invoiceList[i].commitment != ""
-                                                    ? double.parse(
-                                                        invoiceList[i]
-                                                            .commitment,
-                                                      ).toStringAsFixed(2)
-                                                    : invoiceList[i].commitment,
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  8.0,
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.end,
+                                                  children: [
+                                                    Text(
+                                                      commitment
+                                                          .toStringAsFixed(2),
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    LinearProgressIndicator(
+                                                      value: balance == 0
+                                                          ? 0
+                                                          : (commitment /
+                                                                    balance)
+                                                                .clamp(0, 1),
+                                                      minHeight: 5,
+                                                      backgroundColor:
+                                                          Colors.grey.shade300,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(
+                                                            isFull
+                                                                ? Colors.green
+                                                                : isPartial
+                                                                ? Colors.orange
+                                                                : Colors.grey,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -1904,7 +2050,8 @@ class _VendorPaymentState extends State<VendorPayment> {
                                           ),
                                         ),
                                       ],
-                                    ),
+                                    );
+                                  }),
                                 ],
                               ),
                             ),
@@ -2076,31 +2223,51 @@ class _VendorPaymentState extends State<VendorPayment> {
                         flex: 1,
                         child: Padding(
                           padding: const EdgeInsets.only(top: 0),
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xFF8F8F8F),
-                            ),
-                            controller: commitmentController,
-                            onEditingComplete: () {
-                              distributeCommitment();
-                            },
-                            onChanged: (value) {
-                              setState(() {
-                                resetSelection();
-                              });
-                            },
-                            decoration: const InputDecoration(
-                              border: UnderlineInputBorder(),
-                              hintText: 'Commitment',
-                              hintStyle: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF8F8F8F),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextField(
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF8F8F8F),
+                                ),
+                                controller: commitmentController,
+                                decoration: const InputDecoration(
+                                  border: UnderlineInputBorder(),
+                                  hintText: 'Commitment',
+                                  hintStyle: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF8F8F8F),
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: ElevatedButton(
+                                  onPressed: applyCommitmentDistribution,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xff2ca9df),
+                                  ),
+                                  child: const Text("Apply"),
+                                ),
+                              ),
+                              if (remainingCommitment > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    "Remaining not allocated: ${remainingCommitment.toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -2178,7 +2345,8 @@ class _VendorPaymentState extends State<VendorPayment> {
                         ),
                       ),
                       onPressed: () async {
-                        await submitLeads();
+                        final saved = await submitCommitments();
+                        if (!saved || !mounted) return;
                         showAlertDialog(context);
                         setState(() {
                           resetSelection();
@@ -2820,7 +2988,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                                       minimumSize: const Size(10, 10),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    onPressed: () {
+                                    onPressed: () async {
                                       List<String> selectedFilterOptions = [];
                                       for (
                                         int i = 0;
@@ -2869,9 +3037,7 @@ class _VendorPaymentState extends State<VendorPayment> {
 
                                       fromFilter = false;
 
-                                      toggleCheckbox();
-
-                                      setState(() {});
+                                      await toggleCheckbox();
                                     },
                                     child: const Padding(
                                       padding: EdgeInsets.all(8.0),
@@ -2888,15 +3054,18 @@ class _VendorPaymentState extends State<VendorPayment> {
                                       minimumSize: const Size(10, 10),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    onPressed: () {
-                                      chartDataLoaded = false;
+                                    onPressed: () async {
                                       fromFilter = false;
                                       savedFinanceReceivablesOptionsTemp
                                           .clear();
                                       setState(() {
                                         chartDataLoaded = false;
-                                        loadDataFuture = removeFilter();
-                                        Navigator.pop(context);
+                                      });
+                                      Navigator.pop(context);
+                                      loadDataFuture = removeFilter();
+                                      await loadDataFuture;
+                                      if (!mounted) return;
+                                      setState(() {
                                         chartDataLoaded = true;
                                       });
                                     },

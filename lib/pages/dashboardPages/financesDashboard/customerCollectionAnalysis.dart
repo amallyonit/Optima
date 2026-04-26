@@ -302,6 +302,41 @@ class _CustomerCollectionAnalysisState
   }
 
   Future<List<InvoiceCustomers>> getCustomer(String search) async {
+    final searchText = search.toLowerCase().trim();
+    final asmFilter = asmController.text.toLowerCase().trim();
+    final rsmFilter = rsmController.text.toLowerCase().trim();
+
+    // Always start from the MASTER list (very important)
+    final List<InvoiceCustomers> baseList = customersTemp;
+
+    // If no filters at all → return full list immediately
+    if (searchText.isEmpty && asmFilter.isEmpty && rsmFilter.isEmpty) {
+      return baseList;
+    }
+
+    // Apply filters safely without mutating global state
+    final filteredList = baseList.where((c) {
+      final customerName = c.customerName.toLowerCase();
+
+      final matchesSearch = searchText.isEmpty
+          ? true
+          : customerName.contains(searchText);
+
+      final matchesAsm = asmFilter.isEmpty
+          ? true
+          : (c.salesManager ?? "").toLowerCase() == asmFilter;
+
+      final matchesRsm = rsmFilter.isEmpty
+          ? true
+          : (c.regionalManager ?? "").toLowerCase() == rsmFilter;
+
+      return matchesSearch && matchesAsm && matchesRsm;
+    }).toList();
+
+    return filteredList;
+  }
+
+  Future<List<InvoiceCustomers>> getCustomerOld(String search) async {
     setState(() {});
 
     final searchText = search.toLowerCase();
@@ -367,14 +402,18 @@ class _CustomerCollectionAnalysisState
     return filteredList;
   }
 
-  void sortInvoicesByDate() {
+  void sortInvoicesByDate({bool checkAllOnLengthMismatch = false}) {
     final DateFormat formatter = DateFormat('dd/MM/yyyy');
+    final hasMatchingCheckState =
+        collectionCheckList.length == invoiceList.length;
 
     List<InvoiceWrapper> combinedList = List.generate(
       invoiceList.length,
       (i) => InvoiceWrapper(
         invoice: invoiceList[i],
-        isChecked: collectionCheckList[i],
+        isChecked: hasMatchingCheckState
+            ? collectionCheckList[i]
+            : checkAllOnLengthMismatch,
       ),
     );
 
@@ -577,10 +616,10 @@ class _CustomerCollectionAnalysisState
           "",
       "",
     );
-    collectionCheckList = List<bool>.filled(invoiceList.length, true);
-    selectedInvoiceList = List.from(invoiceList);
+    _selectAllVisibleInvoices();
+    totalOutstanding = 0;
     for (var i = 0; i < collectionCheckList.length; i++) {
-      totalOutstanding += double.parse(invoiceList[i].balance).abs();
+      totalOutstanding += _invoiceBalance(invoiceList[i]);
     }
     if (!mounted) return;
     setState(() {
@@ -899,11 +938,10 @@ class _CustomerCollectionAnalysisState
         collectionAchievedStr = sum.toString();
 
         invoiceList = invoices;
-        invoiceListTemp = invoices;
+        invoiceListTemp = List.from(invoices);
 
-        sortInvoicesByDate();
-        collectionCheckList = List<bool>.filled(invoiceList.length, true);
-        selectedInvoiceList = List.from(invoiceList);
+        sortInvoicesByDate(checkAllOnLengthMismatch: true);
+        _selectAllVisibleInvoices();
 
         customers = customerSet.toList();
         customersTemp = customerSet.toList();
@@ -932,47 +970,163 @@ class _CustomerCollectionAnalysisState
       sum += balance;
     }
     collectionAchieved = sum;
-    valueController.text = collectionAchieved.toStringAsFixed(0);
+  }
+
+  double _invoiceBalance(DebtorsAgingList invoice) {
+    return double.tryParse(invoice.balance)?.abs() ?? 0;
+  }
+
+  void _selectAllVisibleInvoices() {
+    double total = 0;
+
+    collectionCheckList = List<bool>.filled(invoiceList.length, true);
+    selectedInvoiceList = List.from(invoiceList);
+
+    for (final invoice in invoiceList) {
+      total += _invoiceBalance(invoice);
+    }
+
+    totalValue = total;
+    valueController.text = total.toStringAsFixed(0);
+    remainingCommitment = 0;
+  }
+
+  void _refreshSelectedInvoiceTotal() {
+    double total = 0;
+    selectedInvoiceList.clear();
+
+    for (var i = 0; i < invoiceList.length; i++) {
+      if (!collectionCheckList[i]) continue;
+
+      total += _invoiceBalance(invoiceList[i]);
+      selectedInvoiceList.add(invoiceList[i]);
+    }
+
+    totalValue = total;
+    valueController.text = total.toStringAsFixed(0);
+  }
+
+  void _clearCustomerFilter() {
+    selectedDistributorId = "";
+    selectedDistributorName = "";
+    customerController.clear();
+    customerController.value = TextEditingValue.empty;
+    _applyInvoiceFilters();
+  }
+
+  Future<void> _runFilterWithLoader(VoidCallback updateFilter) async {
+    if (!mounted) return;
+    setState(() {
+      chartDataLoadedCustomerCollection = false;
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
+    setState(() {
+      updateFilter();
+      chartDataLoadedCustomerCollection = true;
+    });
+  }
+
+  void _refreshFilterListsFromVisibleInvoices() {
+    asmList = invoiceList
+        .map(
+          (item) => UsersForSearch(
+            menuName: item.salesManager,
+            menuId: item.salesManager,
+          ),
+        )
+        .toSet()
+        .toList();
+
+    rsmList = invoiceList
+        .map(
+          (item) => UsersForSearch(
+            menuName: item.regionalManager,
+            menuId: item.regionalManager,
+          ),
+        )
+        .toSet()
+        .toList();
+
+    customers = invoiceList
+        .map(
+          (item) => InvoiceCustomers(
+            customerName: item.customerName,
+            customerCode: item.customerCode,
+            salesManager: item.salesManager,
+            regionalManager: item.regionalManager,
+          ),
+        )
+        .toSet()
+        .toList();
+  }
+
+  void _applyInvoiceFilters({bool refreshOptions = true}) {
+    final selectedRsm = rsmController.text.toLowerCase().trim();
+    final selectedAsm = asmController.text.toLowerCase().trim();
+    final selectedCustomer = customerController.text.toLowerCase().trim();
+
+    invoiceList = invoiceListTemp.where((invoice) {
+      final matchesRsm = selectedRsm.isEmpty
+          ? true
+          : invoice.regionalManager.toLowerCase() == selectedRsm;
+      final matchesAsm = selectedAsm.isEmpty
+          ? true
+          : invoice.salesManager.toLowerCase() == selectedAsm;
+      final matchesCustomer = selectedCustomer.isEmpty
+          ? true
+          : invoice.customerName.toLowerCase() == selectedCustomer;
+
+      return matchesRsm && matchesAsm && matchesCustomer;
+    }).toList();
+
+    sortInvoicesByDate(checkAllOnLengthMismatch: true);
+    if (refreshOptions) {
+      _refreshFilterListsFromVisibleInvoices();
+    }
+    _findCollectionTarget();
+    _selectAllVisibleInvoices();
+  }
+
+  void _applyCommitmentDistribution() {
+    double remaining = double.tryParse(commitmentController.text) ?? 0;
+
+    sortInvoicesByDate();
+
+    // 1. Reset all commitments
+    for (var item in invoiceList) {
+      item.commitment = "0";
+    }
+
+    if (remaining <= 0) {
+      remainingCommitment = 0;
+      return;
+    }
+
+    // 2. Distribute only to checked rows
+    for (var i = 0; i < invoiceList.length; i++) {
+      if (!collectionCheckList[i]) continue;
+
+      final balance = _invoiceBalance(invoiceList[i]);
+
+      if (remaining <= 0) break;
+
+      if (remaining >= balance) {
+        invoiceList[i].commitment = balance.toStringAsFixed(2);
+        remaining -= balance;
+      } else {
+        invoiceList[i].commitment = remaining.toStringAsFixed(2);
+        remaining = 0;
+      }
+    }
+    remainingCommitment = remaining;
   }
 
   void applyCommitmentDistribution() {
-    double remaining = double.tryParse(commitmentController.text) ?? 0;
-
-    if (remaining <= 0) return;
-
-    sortInvoicesByDate();
     setState(() {
-      // 1. Reset all commitments
-      for (var item in invoiceList) {
-        item.commitment = "0";
-      }
-
-      // 2. Sort invoices by due date (recommended)
-      final indexedList = List.generate(invoiceList.length, (i) => i);
-
-      indexedList.sort((a, b) {
-        final dateA = DateFormat('dd/MM/yyyy').parse(invoiceList[a].dueon);
-        final dateB = DateFormat('dd/MM/yyyy').parse(invoiceList[b].dueon);
-        return dateA.compareTo(dateB); // oldest first
-      });
-
-      // 3. Distribute only to checked rows
-      for (final i in indexedList) {
-        if (!collectionCheckList[i]) continue;
-
-        double balance = double.tryParse(invoiceList[i].balance)?.abs() ?? 0;
-
-        if (remaining <= 0) break;
-
-        if (remaining >= balance) {
-          invoiceList[i].commitment = balance.toStringAsFixed(2);
-          remaining -= balance;
-        } else {
-          invoiceList[i].commitment = remaining.toStringAsFixed(2);
-          remaining = 0;
-        }
-      }
-      remainingCommitment = remaining;
+      _applyCommitmentDistribution();
     });
   }
 
@@ -1008,11 +1162,12 @@ class _CustomerCollectionAnalysisState
     },
   );
 
-  Future<void> submitLeads() async {
+  Future<bool> submitCommitments() async {
     String date = _dateController.text;
 
     selectedInvoices = selectedInvoiceList
         .whereType<DebtorsAgingList>()
+        .where((item) => (double.tryParse(item.commitment.toString()) ?? 0) > 0)
         .map(
           (DebtorsAgingList item) => {
             'InvoiceNo': item.documentNumber,
@@ -1020,7 +1175,7 @@ class _CustomerCollectionAnalysisState
             'InvoiceExpPayDate': date,
             'InvoiceExpPayRemarks': paymentRemarksController.text,
             'InvoiceOtherRemarks': remarksController.text,
-            'InvoiceCommitments': commitmentController.text,
+            'InvoiceCommitments': item.commitment,
           },
         )
         .toList();
@@ -1049,22 +1204,25 @@ class _CustomerCollectionAnalysisState
             style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         );
-        if (!mounted) return;
+        if (!mounted) return false;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return true;
       } else {
         const snackBar = SnackBar(
           content: Text('Collection comment updation failed'),
         );
-        if (!mounted) return;
+        if (!mounted) return false;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        return false;
       }
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
         content: Text('Error: $e'),
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      return false;
     }
   }
 
@@ -1129,11 +1287,12 @@ class _CustomerCollectionAnalysisState
         collectionCheckList[i] = selectAll;
 
         if (selectAll) {
-          total += double.parse(invoiceList[i].balance).abs();
+          total += _invoiceBalance(invoiceList[i]);
           selectedInvoiceList.add(invoiceList[i]);
         }
       }
 
+      totalValue = total;
       valueController.text = selectAll ? total.toStringAsFixed(0) : '0';
     });
   }
@@ -1240,22 +1399,13 @@ class _CustomerCollectionAnalysisState
                                           )
                                         : const Icon(Icons.clear),
                                     onPressed: () {
-                                      setState(() {
+                                      _runFilterWithLoader(() {
                                         selectedDistributorId = "";
                                         selectedDistributorName = "";
                                         rsmController.clear();
                                         asmController.clear();
                                         customerController.clear();
-                                        invoiceList = invoiceListTemp;
-                                        sortInvoicesByDate();
-                                        collectionCheckList = List<bool>.filled(
-                                          invoiceList.length,
-                                          true,
-                                        );
-                                        selectedInvoiceList = List.from(
-                                          invoiceList,
-                                        );
-                                        _findCollectionTarget();
+                                        _applyInvoiceFilters();
                                       });
                                     },
                                   ),
@@ -1263,42 +1413,9 @@ class _CustomerCollectionAnalysisState
                               );
                             },
                         onSelected: (UsersForSearch value) {
-                          setState(() {
+                          _runFilterWithLoader(() {
                             rsmController.text = value.menuName;
-                            invoiceList = invoiceListTemp
-                                .where(
-                                  (invoice) =>
-                                      invoice.regionalManager == value.menuName,
-                                )
-                                .toList();
-                            sortInvoicesByDate();
-                            asmList = invoiceList
-                                .map(
-                                  (item) => UsersForSearch(
-                                    menuName: item.salesManager,
-                                    menuId: item.salesManager,
-                                  ),
-                                )
-                                .toList();
-                            customers = invoiceList
-                                .map(
-                                  (item) => InvoiceCustomers(
-                                    customerName: item.customerName,
-                                    customerCode: item.customerCode,
-                                    salesManager: item.salesManager,
-                                    regionalManager: item.regionalManager,
-                                  ),
-                                )
-                                .toList();
-
-                            customers = customers.toSet().toList();
-                            asmList = asmList.toSet().toList();
-                            _findCollectionTarget();
-                            collectionCheckList = List<bool>.filled(
-                              invoiceList.length,
-                              true,
-                            );
-                            selectedInvoiceList = List.from(invoiceList);
+                            _applyInvoiceFilters();
                           });
                         },
                         optionsViewBuilder:
@@ -1390,46 +1507,9 @@ class _CustomerCollectionAnalysisState
                                   controller: rsmController,
                                   inputKey: rsmKey,
                                   onTapItem: (UsersForSearch users) async {
-                                    setState(() {
+                                    await _runFilterWithLoader(() {
                                       rsmController.text = users.menuName;
-                                      invoiceList = invoiceList
-                                          .where(
-                                            (invoice) =>
-                                                invoice.regionalManager ==
-                                                users.menuName,
-                                          )
-                                          .toList();
-                                      _findCollectionTarget();
-                                      asmList = invoiceList
-                                          .map(
-                                            (item) => UsersForSearch(
-                                              menuName: item.salesManager,
-                                              menuId: item.salesManager,
-                                            ),
-                                          )
-                                          .toList();
-                                      customers = invoiceList
-                                          .map(
-                                            (item) => InvoiceCustomers(
-                                              customerName: item.customerName,
-                                              customerCode: item.customerCode,
-                                              salesManager: item.salesManager,
-                                              regionalManager:
-                                                  item.regionalManager,
-                                            ),
-                                          )
-                                          .toList();
-
-                                      customers = customers.toSet().toList();
-                                      asmList = asmList.toSet().toList();
-
-                                      collectionCheckList = List<bool>.filled(
-                                        invoiceList.length,
-                                        true,
-                                      );
-                                      selectedInvoiceList = List.from(
-                                        invoiceList,
-                                      );
+                                      _applyInvoiceFilters();
                                     });
                                   },
                                   suggestionBuilder: (data) =>
@@ -1446,23 +1526,13 @@ class _CustomerCollectionAnalysisState
                                   child: SizedBox(
                                     child: GestureDetector(
                                       onTap: () {
-                                        setState(() {
+                                        _runFilterWithLoader(() {
                                           selectedDistributorId = "";
                                           selectedDistributorName = "";
-                                          invoiceList = invoiceListTemp;
-                                          sortInvoicesByDate();
                                           rsmController.clear();
                                           asmController.clear();
                                           customerController.clear();
-                                          collectionCheckList =
-                                              List<bool>.filled(
-                                                invoiceList.length,
-                                                true,
-                                              );
-                                          selectedInvoiceList = List.from(
-                                            invoiceList,
-                                          );
-                                          _findCollectionTarget();
+                                          _applyInvoiceFilters();
                                         });
                                       },
                                       child: rsmController.text == ""
@@ -1543,23 +1613,12 @@ class _CustomerCollectionAnalysisState
                                           )
                                         : const Icon(Icons.clear),
                                     onPressed: () {
-                                      setState(() {
+                                      _runFilterWithLoader(() {
                                         selectedDistributorId = "";
                                         selectedDistributorName = "";
                                         asmController.clear();
                                         customerController.clear();
-                                        _findCollectionTarget();
-                                        invoiceList = invoiceListTemp;
-                                        sortInvoicesByDate();
-                                        collectionCheckList = List<bool>.filled(
-                                          invoiceList.length,
-                                          true,
-                                        );
-                                        selectedInvoiceList = List.from(
-                                          invoiceList,
-                                        );
-                                        getCustomer("");
-                                        getASM("");
+                                        _applyInvoiceFilters();
                                       });
                                     },
                                   ),
@@ -1567,35 +1626,9 @@ class _CustomerCollectionAnalysisState
                               );
                             },
                         onSelected: (UsersForSearch value) {
-                          setState(() {
+                          _runFilterWithLoader(() {
                             asmController.text = value.menuName;
-                            invoiceList = invoiceListTemp
-                                .where(
-                                  (invoice) =>
-                                      invoice.salesManager == value.menuName,
-                                )
-                                .toList();
-                            sortInvoicesByDate();
-                            customers = invoiceList
-                                .map(
-                                  (item) => InvoiceCustomers(
-                                    customerName: item.customerName,
-                                    customerCode: item.customerCode,
-                                    salesManager: item.salesManager,
-                                    regionalManager: item.regionalManager,
-                                  ),
-                                )
-                                .toList();
-
-                            customers = customers.toSet().toList();
-
-                            _findCollectionTarget();
-
-                            collectionCheckList = List<bool>.filled(
-                              invoiceList.length,
-                              true,
-                            );
-                            selectedInvoiceList = List.from(invoiceList);
+                            _applyInvoiceFilters();
                           });
                         },
                         optionsViewBuilder:
@@ -1687,37 +1720,9 @@ class _CustomerCollectionAnalysisState
                                   controller: asmController,
                                   inputKey: asmKey,
                                   onTapItem: (UsersForSearch users) async {
-                                    setState(() {
+                                    await _runFilterWithLoader(() {
                                       asmController.text = users.menuName;
-                                      invoiceList = invoiceList
-                                          .where(
-                                            (invoice) =>
-                                                invoice.salesManager ==
-                                                users.menuName,
-                                          )
-                                          .toList();
-                                      _findCollectionTarget();
-                                      collectionCheckList = List<bool>.filled(
-                                        invoiceList.length,
-                                        true,
-                                      );
-                                      selectedInvoiceList = List.from(
-                                        invoiceList,
-                                      );
-
-                                      customers = invoiceList
-                                          .map(
-                                            (item) => InvoiceCustomers(
-                                              customerName: item.customerName,
-                                              customerCode: item.customerCode,
-                                              salesManager: item.salesManager,
-                                              regionalManager:
-                                                  item.regionalManager,
-                                            ),
-                                          )
-                                          .toList();
-
-                                      customers = customers.toSet().toList();
+                                      _applyInvoiceFilters();
                                     });
                                   },
                                   suggestionBuilder: (data) =>
@@ -1734,24 +1739,12 @@ class _CustomerCollectionAnalysisState
                                   child: SizedBox(
                                     child: GestureDetector(
                                       onTap: () {
-                                        setState(() {
+                                        _runFilterWithLoader(() {
                                           selectedDistributorId = "";
                                           selectedDistributorName = "";
-                                          invoiceList = invoiceListTemp;
-                                          sortInvoicesByDate();
                                           asmController.clear();
                                           customerController.clear();
-                                          collectionCheckList =
-                                              List<bool>.filled(
-                                                invoiceList.length,
-                                                true,
-                                              );
-                                          selectedInvoiceList = List.from(
-                                            invoiceList,
-                                          );
-                                          _findCollectionTarget();
-                                          getCustomer("");
-                                          getASM("");
+                                          _applyInvoiceFilters();
                                         });
                                       },
                                       child: asmController.text == ""
@@ -1833,24 +1826,8 @@ class _CustomerCollectionAnalysisState
                                           )
                                         : const Icon(Icons.clear),
                                     onPressed: () {
-                                      setState(() {
-                                        selectedDistributorId = "";
-                                        selectedDistributorName = "";
-                                        asmController.clear();
-                                        rsmController.clear();
-                                        customerController.clear();
-                                        invoiceList = invoiceListTemp;
-                                        sortInvoicesByDate();
-                                        _findCollectionTarget();
-                                        collectionCheckList = List<bool>.filled(
-                                          invoiceList.length,
-                                          true,
-                                        );
-                                        selectedInvoiceList = List.from(
-                                          invoiceList,
-                                        );
-                                        getCustomer("");
-                                        getASM("");
+                                      _runFilterWithLoader(() {
+                                        _clearCustomerFilter();
                                       });
                                     },
                                   ),
@@ -1859,21 +1836,10 @@ class _CustomerCollectionAnalysisState
                             },
                         onSelected: (InvoiceCustomers value) {
                           customerController.text = value.customerName;
-                          setState(() {
-                            customerController.text = value.customerName;
+                          _runFilterWithLoader(() {
                             selectedDistributorName = value.customerName;
-                            invoiceList = invoiceList
-                                .where(
-                                  (invoice) =>
-                                      invoice.customerName ==
-                                      value.customerName,
-                                )
-                                .toList();
-                            _findCollectionTarget();
-                            collectionCheckList = List<bool>.filled(
-                              invoiceList.length,
-                              false,
-                            );
+                            selectedDistributorId = value.customerCode;
+                            _applyInvoiceFilters();
                           });
                         },
                         optionsViewBuilder:
@@ -1966,26 +1932,14 @@ class _CustomerCollectionAnalysisState
                                   inputKey: distributorKey,
                                   onTapItem:
                                       (InvoiceCustomers distributor) async {
-                                        setState(() {
+                                        await _runFilterWithLoader(() {
                                           customerController.text =
                                               distributor.customerName;
                                           selectedDistributorId =
                                               distributor.customerCode;
                                           selectedDistributorName =
                                               distributor.customerName;
-                                          invoiceList = invoiceList
-                                              .where(
-                                                (invoice) =>
-                                                    invoice.customerName ==
-                                                    distributor.customerName,
-                                              )
-                                              .toList();
-                                          _findCollectionTarget();
-                                          collectionCheckList =
-                                              List<bool>.filled(
-                                                invoiceList.length,
-                                                true,
-                                              );
+                                          _applyInvoiceFilters();
                                         });
                                       },
                                   suggestionBuilder: (data) =>
@@ -2002,33 +1956,8 @@ class _CustomerCollectionAnalysisState
                                   child: SizedBox(
                                     child: GestureDetector(
                                       onTap: () {
-                                        setState(() {
-                                          chartDataLoadedCustomerCollection =
-                                              false;
-                                        });
-                                        setState(() {
-                                          selectedDistributorId = "";
-                                          selectedDistributorName = "";
-                                          asmController.clear();
-                                          rsmController.clear();
-                                          customerController.clear();
-                                          invoiceList = invoiceListTemp;
-                                          collectionCheckList =
-                                              List<bool>.filled(
-                                                invoiceList.length,
-                                                true,
-                                              );
-                                          selectedInvoiceList = List.from(
-                                            invoiceList,
-                                          );
-                                          sortInvoicesByDate();
-                                          _findCollectionTarget();
-                                          getCustomer("");
-                                          getASM("");
-                                        });
-                                        setState(() {
-                                          chartDataLoadedCustomerCollection =
-                                              true;
+                                        _runFilterWithLoader(() {
+                                          _clearCustomerFilter();
                                         });
                                       },
                                       child: customerController.text == ""
@@ -2070,6 +1999,7 @@ class _CustomerCollectionAnalysisState
                           ),
                         ),
                       ),
+
                 kIsWeb ? const SizedBox(height: 25) : const SizedBox(height: 0),
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -2300,37 +2230,17 @@ class _CustomerCollectionAnalysisState
                                                         collectionCheckList[i] =
                                                             value ?? false;
 
-                                                        final balance =
-                                                            double.parse(
-                                                              invoiceList[i]
-                                                                  .balance,
-                                                            ).abs();
-
-                                                        if (collectionCheckList[i]) {
-                                                          totalValue += balance;
-                                                          selectedInvoiceList
-                                                              .add(
-                                                                invoiceList[i],
-                                                              );
-                                                        } else {
-                                                          totalValue -= balance;
-                                                          selectedInvoiceList
-                                                              .remove(
-                                                                invoiceList[i],
-                                                              );
-
+                                                        if (!collectionCheckList[i]) {
                                                           // Reset commitment when unchecked
                                                           invoiceList[i]
                                                                   .commitment =
                                                               "0";
                                                         }
 
-                                                        valueController
-                                                            .text = totalValue
-                                                            .toStringAsFixed(0);
+                                                        _refreshSelectedInvoiceTotal();
 
                                                         // Recalculate distribution
-                                                        applyCommitmentDistribution();
+                                                        _applyCommitmentDistribution();
                                                       });
                                                     },
                                                   ),
@@ -2750,14 +2660,11 @@ class _CustomerCollectionAnalysisState
                           ),
                         ),
                         onPressed: () async {
-                          await submitLeads();
+                          final saved = await submitCommitments();
+                          if (!saved || !mounted) return;
                           setState(() {
                             disableSave = true;
                             showAlertDialog(context);
-                            collectionCheckList = List<bool>.filled(
-                              invoiceList.length,
-                              false,
-                            );
                           });
                         },
                         child: const SizedBox(

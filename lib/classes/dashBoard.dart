@@ -1665,7 +1665,7 @@ class PayablesList {
   final String a91to180Days;
   final String a181Days;
   final String bpSubGroup;
-  final String commitment;
+  late String commitment;
 
   late DateTime postingDateParsed;
   late int overDueDayAdvance;
