@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_async_autocomplete/flutter_async_autocomplete.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -1085,16 +1084,9 @@ class _CustomerCollectionAnalysisState
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
-  Future<void> generateReceivablesExcel(ReceivablesAgingList list) async {
+  Future<void> generateCustomerCollectionExcel(
+    ReceivablesAgingList list,
+  ) async {
     await reportService.generateExcel(
       sheetName: 'CustomerCollection',
       headers: ['Ageing Group', 'Ageing Group Total'],
@@ -1108,7 +1100,7 @@ class _CustomerCollectionAnalysisState
     );
   }
 
-  Future<void> generateReceivablesPDF(ReceivablesAgingList list) async {
+  Future<void> generateCustomerCollectionPDF(ReceivablesAgingList list) async {
     await reportService.generatePDF(
       title: 'Customer Collection',
       headers: ['Ageing Group', 'Ageing Group Total'],
@@ -3064,7 +3056,7 @@ class _CustomerCollectionAnalysisState
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  generateReceivablesExcel(
+                                  generateCustomerCollectionExcel(
                                     receivablesAgingList,
                                   );
                                 },
@@ -3072,7 +3064,9 @@ class _CustomerCollectionAnalysisState
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  generateReceivablesPDF(receivablesAgingList);
+                                  generateCustomerCollectionPDF(
+                                    receivablesAgingList,
+                                  );
                                 },
                                 child: const Text("Download PDF"),
                               ),

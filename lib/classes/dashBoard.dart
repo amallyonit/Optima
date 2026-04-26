@@ -5209,17 +5209,17 @@ class PendingOrderList {
 
 class MonthlyCollectionReportData {
   final String salesManager;
-  final double targetMonth;
-  final double weekOneCommitted;
-  final double weekOneReceived;
-  final double weekTwoCommitted;
-  final double weekTwoReceived;
-  final double weekThreeCommitted;
-  final double weekThreeReceived;
-  final double weekFourCommitted;
-  final double weekFourReceived;
-  final double weekFiveCommitted;
-  final double weekFiveReceived;
+  double targetMonth;
+  double weekOneCommitted;
+  double weekOneReceived;
+  double weekTwoCommitted;
+  double weekTwoReceived;
+  double weekThreeCommitted;
+  double weekThreeReceived;
+  double weekFourCommitted;
+  double weekFourReceived;
+  double weekFiveCommitted;
+  double weekFiveReceived;
   MonthlyCollectionReportData({
     required this.salesManager,
     required this.targetMonth,

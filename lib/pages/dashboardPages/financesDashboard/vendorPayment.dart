@@ -1,5 +1,4 @@
 // ignore_for_file: file_names, use_build_context_synchronously, non_constant_identifier_names, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
@@ -7,8 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_async_autocomplete/flutter_async_autocomplete.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -18,11 +15,10 @@ import 'package:optima/classes/leads.dart';
 import '../../../api_helper.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../login_screen.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+import '../ReportService.dart';
+
+final reportService = ReportService();
 
 class ReceivablesData {
   final double receivableAmount;
@@ -533,7 +529,7 @@ class _VendorPaymentState extends State<VendorPayment> {
       "",
     );
     await _loadVendorPaymentProjection();
-    collectionCheckList = List.generate(invoiceList.length, (index) => false);
+    collectionAchieved = 0;
     for (var i = 0; i < collectionCheckList.length; i++) {
       collectionAchieved += double.parse(invoiceList[i].balance).abs();
     }
@@ -631,87 +627,82 @@ class _VendorPaymentState extends State<VendorPayment> {
     String customerCode,
     String touchedAgingCategory,
   ) async {
-    List<ReceivablesAgingData> receivablesAgingDataList = [];
-    double agingGroup1Total = 0;
-    double agingGroup2Total = 0;
-    double agingGroup3Total = 0;
-    double agingGroup4Total = 0;
-    double totalDueAmount = 0;
+    final dateFormat = DateFormat('dd/MM/yyyy');
 
-    var collectionTargetList = target.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return dueon.isAtMost(currentMonthToDate!);
+    // Reset global before reuse (IMPORTANT)
+    collectionAgingGoal = 0;
+
+    // Filter
+    final collectionTargetList = target.where((t) {
+      final date = dateFormat.parse(t.dueon);
+      return date.isAtMost(currentMonthToDate!);
     });
 
-    AgingSummary summary = summarizeCollectionTargets(collectionTargetList);
-    agingGroup1Total = summary.a0to30DaysTotal;
-    agingGroup2Total = summary.a31to60DaysTotal;
-    agingGroup3Total = summary.a61to90DaysTotal;
-    agingGroup4Total = summary.a91to180DaysTotal + summary.a181DaysTotal;
-    totalDueAmount =
+    // Summary
+    final summary = summarizeCollectionTargets(collectionTargetList);
+
+    final agingGroup1Total = summary.a0to30DaysTotal;
+    final agingGroup2Total = summary.a31to60DaysTotal;
+    final agingGroup3Total = summary.a61to90DaysTotal;
+    final agingGroup4Total = summary.a91to180DaysTotal + summary.a181DaysTotal;
+
+    final totalDueAmount =
         agingGroup1Total +
         agingGroup2Total +
         agingGroup3Total +
         agingGroup4Total;
-    receivablesAgingDataList.add(
+
+    final receivablesAgingDataList = [
       ReceivablesAgingData(
         agingGroup: "0-30",
         agingGroupTotal: agingGroup1Total.abs(),
         agingPercentage: 0,
         agingTotal: totalDueAmount.abs(),
       ),
-    );
-    receivablesAgingDataList.add(
       ReceivablesAgingData(
         agingGroup: "31-60",
         agingGroupTotal: agingGroup2Total.abs(),
         agingPercentage: 0,
         agingTotal: totalDueAmount.abs(),
       ),
-    );
-    receivablesAgingDataList.add(
       ReceivablesAgingData(
         agingGroup: "61-90",
         agingGroupTotal: agingGroup3Total.abs(),
         agingPercentage: 0,
         agingTotal: totalDueAmount.abs(),
       ),
-    );
-    receivablesAgingDataList.add(
       ReceivablesAgingData(
         agingGroup: "90+",
         agingGroupTotal: agingGroup4Total.abs(),
         agingPercentage: 0,
         agingTotal: totalDueAmount.abs(),
       ),
-    );
+    ];
 
-    for (ReceivablesAgingData agingData in receivablesAgingDataList) {
-      agingData.agingPercentage =
-          double.tryParse(
-            ((agingData.agingGroupTotal / totalDueAmount) * 100)
-                .toStringAsFixed(2),
-          ) ??
-          0;
+    for (var agingData in receivablesAgingDataList) {
+      // Safe percentage
+      final percentage = totalDueAmount == 0
+          ? 0
+          : (agingData.agingGroupTotal / totalDueAmount) * 100;
 
-      agingData.agingGroupTotal =
-          double.tryParse((agingData.agingGroupTotal).toStringAsFixed(2)) ?? 0;
+      agingData.agingPercentage = double.parse(percentage.toStringAsFixed(2));
+
+      agingData.agingGroupTotal = double.parse(
+        agingData.agingGroupTotal.toStringAsFixed(2),
+      );
 
       collectionAgingGoal += agingData.agingGroupTotal;
     }
 
+    // Keep your original logic
     collectionAgingGoal += collectionAchieved;
     collectionAgingGoalStr = formatAmount(collectionAgingGoal);
 
-    if (collectionAgingGoal == 0) {
+    if (collectionAchieved == 0) {
       collectionPercentage = 0;
     } else {
       collectionPercentage =
-          double.tryParse(
-            ((collectionAgingGoal.abs() / collectionAchieved.abs()) * 100)
-                .toStringAsFixed(2),
-          )?.ceil() ??
-          0;
+          ((collectionAgingGoal.abs() / collectionAchieved.abs()) * 100).ceil();
     }
 
     receivablesAgingList = ReceivablesAgingList(
@@ -744,39 +735,42 @@ class _VendorPaymentState extends State<VendorPayment> {
     int limit = 10000;
     int fetchedCount = 0;
     List<PayablesList> targetList = [];
+
     try {
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
       do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
-          "Index": index.toString(),
-          "Limit": limit.toString(),
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index,
+          "Limit": limit,
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoCreditorsAgingList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<PayablesList> newTargetList =
-                (responseJson['responseData'] as List)
-                    .map((item) => PayablesList.fromJson(item))
-                    .toList();
-            targetList.addAll(newTargetList);
-            fetchedCount = newTargetList.length;
+          final responseJson = jsonDecode(response.body);
+          final data = responseJson['responseData'] as List?;
+
+          if (data != null && data.isNotEmpty) {
+            final newList = data.map((e) => PayablesList.fromJson(e)).toList();
+
+            targetList.addAll(newList);
+            fetchedCount = newList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -786,149 +780,139 @@ class _VendorPaymentState extends State<VendorPayment> {
         }
       } while (fetchedCount == limit);
 
-      setState(() {
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        context.read<VendorPaymentProvider>().updateTargetList(targetList);
-        if (int.parse(UserLevel) == 5) {
-          target = targetList;
-        } else if (int.parse(UserLevel) == 4) {
-          target = targetList;
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          target = targetList;
-        } else {
-          target = targetList;
-        }
-      });
+      if (!mounted) return;
 
+      // Single pass processing (IMPORTANT)
       double sum = 0;
-      var currentMonthTarget = target.where((target) {
-        DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.dueon);
-        return dueon.isAtMost(currentMonthToDate!);
-      });
-      for (var target in currentMonthTarget.toList()) {
-        double balance = double.tryParse(target.balance) ?? 0;
-        sum += balance;
-      }
+      List<PayablesList> invoiceListLocal = [];
+      Set<InvoiceCustomers> customerSet = {};
 
-      collectionAchieved = sum;
-      collectionAchievedStr = sum.toString();
+      final dateFormat = DateFormat('dd/MM/yyyy');
 
-      var tempList = target.where((test) {
-        return test.documentType == "Invoice";
-      });
+      for (var item in targetList) {
+        // Parse date ONCE
+        final dueDate = dateFormat.parse(item.dueon);
 
-      invoiceList = tempList.toList();
+        // Current month calculation
+        if (dueDate.isAtMost(currentMonthToDate!)) {
+          sum += double.tryParse(item.balance) ?? 0;
+        }
 
-      invoiceListTemp = invoiceList;
+        // Invoice filter
+        if (item.documentType == "Invoice") {
+          invoiceListLocal.add(item);
 
-      customers = invoiceList
-          .map(
-            (item) => InvoiceCustomers(
+          customerSet.add(
+            InvoiceCustomers(
               customerName: item.vendorName,
               customerCode: item.vendorCode,
               salesManager: "",
               regionalManager: "",
             ),
-          )
-          .toList();
-      customers = customers.toSet().toList();
-      asmList = asmList.toSet().toList();
+          );
+        }
+      }
+
+      // UI update (lightweight)
+      setState(() {
+        context.read<VendorPaymentProvider>().updateTargetList(targetList);
+
+        target = targetList;
+
+        collectionAchieved = sum;
+        collectionAchievedStr = sum.toString();
+
+        invoiceList = invoiceListLocal;
+        invoiceList.sort((a, b) {
+          final dateFormat = DateFormat('dd/MM/yyyy');
+          return dateFormat
+              .parse(a.postingDate)
+              .compareTo(dateFormat.parse(b.postingDate));
+        });
+        resetSelection();
+        invoiceListTemp = invoiceList;
+
+        customers = customerSet.toList();
+        asmList = asmList.toSet().toList();
+      });
     } catch (e) {
-      const snackBar = SnackBar(
-        duration: Duration(seconds: 2),
-        content: Text(''),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Future<void> _loadModeOfPayment(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000; // Maximum limit to fetch all data
+    int limit = 10000;
     int fetchedCount = 0;
+
     List<ModeOfPaymentList> salesList = [];
+
     try {
+      final fromDate = dateFilterFlag
+          ? formatTestDate(fromDateFilter!)
+          : formatTestDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatTestDate(toDateFilter!)
+          : formatTestDate(currentDate!);
+
       do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatTestDate(fromDateFilter!)
-              : formatTestDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatTestDate(toDateFilter!)
-              : formatTestDate(currentDate!),
-          "Index": index.toString(),
-          "Limit": limit.toString(),
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index,
+          "Limit": limit,
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoPaymentAnalysisList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<ModeOfPaymentList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => ModeOfPaymentList.fromJson(item))
-                    .toList();
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
+          final responseJson = jsonDecode(response.body);
+          final data = responseJson['responseData'] as List?;
+
+          if (data != null && data.isNotEmpty) {
+            final newList = data
+                .map((e) => ModeOfPaymentList.fromJson(e))
+                .toList();
+
+            salesList.addAll(newList);
+            fetchedCount = newList.length;
             index++;
           } else {
             fetchedCount = 0;
           }
-        }
-        //   else if (response.statusCode == 504) {
-        //     await _loadModeOfPayment(UserName, UserLevel);
-        //   } else if (response.statusCode == 502) {
-        // await _loadModeOfPayment(UserName, UserLevel);
-        // }
-        else {
+        } else {
           fetchedCount = 0;
         }
       } while (fetchedCount == limit);
 
+      if (!mounted) return;
+
+      // ✅ Minimal UI update only
       setState(() {
         context.read<VendorPayableProvider>().updateTargetList(salesList);
-        if (int.parse(UserLevel) == 5) {
-          if (modeOfPayment.isEmpty) {
-            modeOfPayment = salesList.toList();
-          }
-        } else if (int.parse(UserLevel) == 4) {
-          if (modeOfPayment.isEmpty) {
-            modeOfPayment = salesList.toList();
-          }
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          if (modeOfPayment.isEmpty) {
-            modeOfPayment = salesList.toList();
-          }
-        } else {
-          if (modeOfPayment.isEmpty) {
-            modeOfPayment = salesList.toList();
-          }
+
+        if (modeOfPayment.isEmpty) {
+          modeOfPayment = salesList; // no .toList()
         }
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -1029,142 +1013,35 @@ class _VendorPaymentState extends State<VendorPayment> {
       _dateController.clear();
       remarksController.clear();
       paymentRemarksController.clear();
-      collectionCheckList = List.generate(
-        collectionCheckList.length,
-        (_) => false,
-      );
-      selectedInvoiceList.clear();
-      valueController.clear();
+      resetSelection();
       customerController.clear();
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
+  Future<void> generateVendorPaymentExcel(ReceivablesAgingList list) async {
+    await reportService.generateExcel(
+      sheetName: 'VendorPayment',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
+          .toList(),
+      fileName: 'vendor_payment_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Vendor Payment Analysis',
+    );
   }
 
-  Future<void> generateReceivablesExcel(ReceivablesAgingList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Ageing Group', 'Ageing Group Total']));
-      for (var monthlyData in list.agingData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.agingGroup, monthlyData.agingGroupTotal]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('allReceivables.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/allReceivables.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateReceivablesPDF(ReceivablesAgingList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Receivables',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Ageing Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ageing Group Total',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in receivablesAgingList.agingData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.agingGroup,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.agingGroupTotal.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/allReceivables.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+  Future<void> generateVendorPaymentPDF(ReceivablesAgingList list) async {
+    await reportService.generatePDF(
+      title: 'Vendor Payment',
+      headers: ['Ageing Group', 'Ageing Group Total'],
+      rows: list.agingData
+          .map((e) => [e.agingGroup, e.agingGroupTotal])
+          .toList(),
+      fileName: 'vendor_payment_analysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   bool get _allSelected {
@@ -1173,22 +1050,32 @@ class _VendorPaymentState extends State<VendorPayment> {
         collectionCheckList.every((checked) => checked);
   }
 
+  void resetSelection() {
+    collectionCheckList = List.filled(invoiceList.length, false);
+    selectedInvoiceList.clear();
+    totalValue = 0;
+    valueController.text = "0.00";
+  }
+
   void _toggleSelectAll(bool? selectAll) {
     if (selectAll == null) return;
 
     setState(() {
       double total = 0.0;
 
+      selectedInvoiceList.clear();
+
       for (var i = 0; i < collectionCheckList.length; i++) {
         collectionCheckList[i] = selectAll;
 
-        // 2) only add when selected
-        if (selectAll) {
+        if (selectAll == true) {
           total += double.parse(invoiceList[i].balance).abs();
         }
-        selectedInvoiceList.add(invoiceList[i]);
       }
 
+      if (selectAll == true) {
+        selectedInvoiceList.addAll(invoiceList);
+      }
       if (selectAll) {
         valueController.text = total.toStringAsFixed(0);
       } else {
@@ -1197,100 +1084,125 @@ class _VendorPaymentState extends State<VendorPayment> {
     });
   }
 
-  Future<void> _loadVendorPaymentProjection() async {
-    List<VendorsPaymentProjectionData> vendorWiseData = [];
-    var customerTargetList = const Iterable.empty();
-    var currentMonthActualPayable = const Iterable.empty();
-    double balance = 0.0;
-    double commitment = 0.0;
-    var overDueDays = 0;
-    double a0to30 = 0.0;
-    double a31to60 = 0;
-    double a61to90 = 0;
-    double a90to180 = 0;
-    double a180above = 0;
-    String vendorCode = "";
-    String vendorName = "";
+  void distributeCommitment() {
+    double commitment = double.tryParse(commitmentController.text) ?? 0;
 
-    customerTargetList = target.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return dueon.isAtMost(currentMonthToDate!);
-    });
+    if (commitment <= 0) return;
 
-    currentMonthActualPayable = modeOfPayment.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return dueon.isAtLeast(currentMonthFromDate!) &&
-          dueon.isAtMost(currentMonthToDate!);
-    });
+    double remaining = commitment;
 
-    Set<String> processedVendorCodes = {};
-    for (var customer in customerTargetList.toList()) {
-      if (!processedVendorCodes.contains(customer.vendorCode)) {
-        vendorCode = customer.vendorCode;
-        vendorName = customer.vendorName;
-        for (var sales in customerTargetList.where(
-          (saleelement) => saleelement.vendorCode == vendorCode,
-        )) {
-          balance += double.tryParse(sales.balance) ?? 0;
-          commitment = double.tryParse(sales.commitment) ?? 0;
-          overDueDays =
-              int.tryParse(sales.dueDays.replaceAll(' Days', '')) ?? 0;
-          if (balance < 0) {}
-          if (overDueDays <= 30) {
-            a0to30 += double.tryParse(sales.a0to30Days)!;
-          } else if (overDueDays >= 31 && overDueDays <= 60) {
-            a31to60 += double.tryParse(sales.a31to60Days)!;
-          } else if (overDueDays >= 61 && overDueDays <= 90) {
-            a61to90 += double.tryParse(sales.a61to90Days)!;
-          } else if (overDueDays >= 91 && overDueDays <= 180) {
-            a90to180 += double.tryParse(sales.a91to180Days)!;
-          } else if (overDueDays >= 181) {
-            a180above += double.tryParse(sales.a181Days)!;
-          }
-        }
+    List<bool> newChecklist = List.filled(invoiceList.length, false);
+    List<PayablesList> newSelectedList = [];
 
-        double actualPayable = currentMonthActualPayable
-            .where((entry) => entry.vendorName == vendorName)
-            .fold(0.0, (sum, entry) => sum + double.parse(entry.total));
+    for (int i = 0; i < invoiceList.length; i++) {
+      double balance = double.tryParse(invoiceList[i].balance)?.abs() ?? 0;
 
-        vendorWiseData.add(
-          VendorsPaymentProjectionData(
-            vendorName: vendorName,
-            vendorCode: vendorCode,
-            balanceDue: balance,
-            a0to30: a0to30,
-            a31to60: a31to60,
-            a61to90: a61to90,
-            a90to180: a90to180,
-            a180above: a180above,
-            commitment: commitment,
-            actualPayable: actualPayable,
-          ),
-        );
-        processedVendorCodes.add(vendorCode);
+      if (remaining <= 0) break;
+
+      if (remaining >= balance) {
+        newChecklist[i] = true;
+        newSelectedList.add(invoiceList[i]);
+        remaining -= balance;
+      } else {
+        newChecklist[i] = true;
+        newSelectedList.add(invoiceList[i]);
+        remaining = 0;
       }
-      vendorCode = "";
-      vendorName = "";
-      balance = 0;
-      a0to30 = 0;
-      a31to60 = 0;
-      a61to90 = 0;
-      a90to180 = 0;
-      a180above = 0;
     }
 
-    vendorWiseData.sort((a, b) => a.vendorCode.compareTo(b.vendorCode));
+    setState(() {
+      collectionCheckList = newChecklist;
+      selectedInvoiceList = newSelectedList;
+      totalValue = commitment - remaining;
+      valueController.text = totalValue.toStringAsFixed(0);
+    });
+  }
+
+  Future<void> _loadVendorPaymentProjection() async {
+    final dateFormat = DateFormat('dd/MM/yyyy');
+
+    // Pre-filter once
+    final customerTargetList = target.where((t) {
+      final date = dateFormat.parse(t.postingDate);
+      return date.isAtMost(currentMonthToDate!);
+    });
+
+    final currentMonthActualPayable = modeOfPayment.where((t) {
+      final date = dateFormat.parse(t.postingDate);
+      return date.isAtLeast(currentMonthFromDate!) &&
+          date.isAtMost(currentMonthToDate!);
+    });
+
+    // Pre-group actual payable by vendor (O(n))
+    final Map<String, double> actualPayableMap = {};
+    for (var item in currentMonthActualPayable) {
+      actualPayableMap.update(
+        item.vendorName,
+        (val) => val + (double.tryParse(item.total) ?? 0),
+        ifAbsent: () => double.tryParse(item.total) ?? 0,
+      );
+    }
+
+    // Group target data by vendorCode
+    final Map<String, VendorsPaymentProjectionData> vendorMap = {};
+
+    for (var item in customerTargetList) {
+      final vendorCode = item.vendorCode;
+
+      final entry = vendorMap.putIfAbsent(
+        vendorCode,
+        () => VendorsPaymentProjectionData(
+          vendorName: item.vendorName,
+          vendorCode: vendorCode,
+          balanceDue: 0,
+          a0to30: 0,
+          a31to60: 0,
+          a61to90: 0,
+          a90to180: 0,
+          a180above: 0,
+          commitment: 0,
+          actualPayable: 0,
+        ),
+      );
+
+      final balance = double.tryParse(item.balance) ?? 0;
+      final commitment = double.tryParse(item.commitment) ?? 0;
+      final overDueDays =
+          int.tryParse(item.dueDays.replaceAll(' Days', '')) ?? 0;
+
+      entry.balanceDue += balance;
+      entry.commitment = commitment;
+
+      if (overDueDays <= 30) {
+        entry.a0to30 += double.tryParse(item.a0to30Days) ?? 0;
+      } else if (overDueDays <= 60) {
+        entry.a31to60 += double.tryParse(item.a31to60Days) ?? 0;
+      } else if (overDueDays <= 90) {
+        entry.a61to90 += double.tryParse(item.a61to90Days) ?? 0;
+      } else if (overDueDays <= 180) {
+        entry.a90to180 += double.tryParse(item.a91to180Days) ?? 0;
+      } else {
+        entry.a180above += double.tryParse(item.a181Days) ?? 0;
+      }
+    }
+
+    // Attach actual payable (O(n))
+    for (var entry in vendorMap.values) {
+      entry.actualPayable = actualPayableMap[entry.vendorName] ?? 0;
+    }
+
+    final vendorWiseData = vendorMap.values.toList()
+      ..sort((a, b) => a.vendorCode.compareTo(b.vendorCode));
+
     vendorProjectionList = VendorsPaymentProjectionList(
       vendorData: vendorWiseData,
     );
   }
 
-  Future<void> generateVendorPaymentProjectionReport() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
+  Future<void> generateVendorPaymentProjectionExcel() async {
+    await reportService.generateExcel(
+      sheetName: 'VendorPaymentProjection',
+      headers: [
         'Vendor Code',
         'Vendor Name',
         'Balance Due',
@@ -1301,54 +1213,28 @@ class _VendorPaymentState extends State<VendorPayment> {
         '180+',
         'Commitment',
         'Actual Paid',
-      ]),
+      ],
+      rows: vendorProjectionList.vendorData
+          .map(
+            (e) => [
+              e.vendorCode,
+              e.vendorName,
+              e.balanceDue,
+              e.a0to30,
+              e.a31to60,
+              e.a61to90,
+              e.a90to180,
+              e.a180above,
+              e.commitment,
+              e.actualPayable,
+            ],
+          )
+          .toList(),
+      fileName: 'vendor_payment_projection.xlsx',
+      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10],
+      addTotalRow: true,
+      reportTitle: 'Finance - Vendor Payment Projection',
     );
-
-    for (var vendorData in vendorProjectionList.vendorData) {
-      sheet.appendRow(
-        toCellRow([
-          vendorData.vendorCode,
-          vendorData.vendorName,
-          vendorData.balanceDue,
-          vendorData.a0to30,
-          vendorData.a31to60,
-          vendorData.a61to90,
-          vendorData.a90to180,
-          vendorData.a180above,
-          vendorData.commitment,
-          vendorData.actualPayable,
-        ]),
-      );
-    }
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('monthlyCollectionReport.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/vendorsPaymentProjection.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
   }
 
   String formatDateString(DateTime date) {
@@ -1480,10 +1366,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                                         selectedDistributorId = "";
                                         selectedDistributorName = "";
                                         invoiceList = invoiceListTemp;
-                                        collectionCheckList = List<bool>.filled(
-                                          invoiceList.length,
-                                          false,
-                                        );
+                                        resetSelection();
                                         customerController.clear();
                                       });
                                     },
@@ -1502,10 +1385,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                                       invoice.vendorName == value.customerName,
                                 )
                                 .toList();
-                            collectionCheckList = List<bool>.filled(
-                              invoiceList.length,
-                              false,
-                            );
+                            resetSelection();
                           });
                         },
                         optionsViewBuilder:
@@ -1612,11 +1492,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                                                     distributor.customerName,
                                               )
                                               .toList();
-                                          collectionCheckList =
-                                              List<bool>.filled(
-                                                invoiceList.length,
-                                                false,
-                                              );
+                                          resetSelection();
                                         });
                                       },
                                   suggestionBuilder: (data) =>
@@ -1638,17 +1514,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                                           selectedDistributorName = "";
                                           customerController.clear();
                                           invoiceList = invoiceListTemp;
-                                          // collectionCheckList = List<bool>.filled(invoiceListTemp.length, false);
-                                          collectionCheckList =
-                                              List<bool>.filled(
-                                                invoiceList.length,
-                                                false,
-                                              );
-                                          // invoiceList = invoiceListTemp
-                                          //     .where((invoice) =>
-                                          // invoice.vendorName ==
-                                          //     asmController.text)
-                                          //     .toList();
+                                          resetSelection();
                                         });
                                       },
                                       child: customerController.text == ""
@@ -1710,7 +1576,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generateVendorPaymentProjectionReport();
+                                    generateVendorPaymentProjectionExcel();
                                   });
                                 },
                                 child: const Text(
@@ -1887,6 +1753,11 @@ class _VendorPaymentState extends State<VendorPayment> {
                                                     value:
                                                         collectionCheckList[i],
                                                     onChanged: (bool? value) {
+                                                      if (commitmentController
+                                                          .text
+                                                          .isNotEmpty) {
+                                                        return;
+                                                      }
                                                       setState(() {
                                                         collectionCheckList[i] =
                                                             value ?? false;
@@ -2213,6 +2084,14 @@ class _VendorPaymentState extends State<VendorPayment> {
                               color: Color(0xFF8F8F8F),
                             ),
                             controller: commitmentController,
+                            onEditingComplete: () {
+                              distributeCommitment();
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                resetSelection();
+                              });
+                            },
                             decoration: const InputDecoration(
                               border: UnderlineInputBorder(),
                               hintText: 'Commitment',
@@ -2302,10 +2181,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                         await submitLeads();
                         showAlertDialog(context);
                         setState(() {
-                          collectionCheckList = List<bool>.filled(
-                            invoiceList.length,
-                            false,
-                          );
+                          resetSelection();
                         });
                       },
                       child: const SizedBox(
@@ -2600,7 +2476,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  generateReceivablesExcel(
+                                  generateVendorPaymentExcel(
                                     receivablesAgingList,
                                   );
                                 },
@@ -2608,7 +2484,9 @@ class _VendorPaymentState extends State<VendorPayment> {
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  generateReceivablesPDF(receivablesAgingList);
+                                  generateVendorPaymentPDF(
+                                    receivablesAgingList,
+                                  );
                                 },
                                 child: const Text("Download PDF"),
                               ),

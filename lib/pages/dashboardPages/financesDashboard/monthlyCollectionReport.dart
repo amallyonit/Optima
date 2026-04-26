@@ -1,15 +1,10 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:excel/excel.dart' as xl;
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
@@ -17,8 +12,9 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+final reportService = ReportService();
 
 class MonthlyCollectionReport extends StatefulWidget {
   const MonthlyCollectionReport({super.key});
@@ -282,15 +278,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     }
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
@@ -307,40 +294,47 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
+
     List<DebtorsAgingList> targetList = [];
+
     try {
+      // compute once
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
       do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
-          "Index": index.toString(),
-          "Limit": limit.toString(),
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index,
+          "Limit": limit,
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}Bicxo_DebtorsAgingList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<DebtorsAgingList> newTargetList =
-                (responseJson['responseData'] as List)
-                    .map((item) => DebtorsAgingList.fromJson(item))
-                    .toList();
-            targetList.addAll(newTargetList);
-            fetchedCount = newTargetList.length;
+          final responseJson = jsonDecode(response.body);
+          final data = responseJson['responseData'] as List?;
+
+          if (data != null && data.isNotEmpty) {
+            final newList = data
+                .map((e) => DebtorsAgingList.fromJson(e))
+                .toList();
+
+            targetList.addAll(newList);
+            fetchedCount = newList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -350,36 +344,26 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         }
       } while (fetchedCount == limit);
 
-      setState(() {
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
+      if (!mounted) return;
 
-        menuNames.insert(0, UserName);
+      // UI update only
+      setState(() {
         context.read<MonthlyDebtorAgingProvider>().updateMonthlyDebtorAgingList(
           targetList,
         );
-        debtorsListTemp = targetList.toList();
-        if (int.parse(UserLevel) == 5) {
-          debtorsList = targetList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          debtorsList = targetList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          debtorsList = targetList.toList();
-        } else {
-          debtorsList = targetList.toList();
-        }
+
+        debtorsListTemp = targetList;
+        debtorsList = targetList;
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+        ),
+      );
     }
   }
 
@@ -387,41 +371,47 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
+
     List<CollectionList> collectionList = [];
+
     try {
+      // compute once
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
       do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
-          "Index": index.toString(),
-          "Limit": limit.toString(),
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index,
+          "Limit": limit,
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}CRMCollectionAnalysisList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<CollectionList> newCollectionList =
-                (responseJson['responseData'] as List)
-                    .map((item) => CollectionList.fromJson(item))
-                    .toList();
+          final responseJson = jsonDecode(response.body);
+          final data = responseJson['responseData'] as List?;
 
-            collectionList.addAll(newCollectionList);
-            fetchedCount = newCollectionList.length;
+          if (data != null && data.isNotEmpty) {
+            final newList = data
+                .map((e) => CollectionList.fromJson(e))
+                .toList();
+
+            collectionList.addAll(newList);
+            fetchedCount = newList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -431,37 +421,25 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         }
       } while (fetchedCount == limit);
 
+      if (!mounted) return;
+
       setState(() {
         context
             .read<MonthlyCollectionListProvider>()
             .updateMonthlyDebtorAgingList(collectionList);
 
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          collection = collectionList.toList();
-          collectionTemp = collectionList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          collection = collectionList.toList();
-          collectionTemp = collectionList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          collection = collectionList.toList();
-          collectionTemp = collectionList.toList();
-        } else {
-          collection = collectionList.toList();
-          collectionTemp = collectionList.toList();
-        }
+        collection = collectionList;
+        collectionTemp = collectionList;
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
     }
   }
 
@@ -507,220 +485,111 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   }
 
   Future<void> _loadASMCollectionBarChartData() async {
-    List<MonthlyCollectionReportData> asmwiseDataList = [];
-    DateTime startDate;
-    DateTime endDate;
-    DateTime monthEndDate;
-    String asmName = "";
-    double salesAmount = 0.00;
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    final weeks = getWeeksOfCurrentMonth();
 
-    double weekOneTotal = 0.0;
-    double weekOneBalance = 0.0;
-    double weekTwoTotal = 0.0;
-    double weekTwoBalance = 0.0;
-    double weekThreeTotal = 0.0;
-    double weekThreeBalance = 0.0;
-    double weekFourTotal = 0.0;
-    double weekFourBalance = 0.0;
-    double weekFiveTotal = 0.0;
-    double weekFiveBalance = 0.0;
+    final Map<String, MonthlyCollectionReportData> asmMap = {};
 
-    List<DebtorsAgingList> asmCollectionList = [];
-    List<DebtorsAgingList> asmCollectionListTarget = [];
-    List<CollectionList> weekOneListCollection = [];
-    List<CollectionList> weekTwoListCollection = [];
-    List<CollectionList> weekThreeListCollection = [];
-    List<CollectionList> weekFourListCollection = [];
-    List<CollectionList> weekFiveListCollection = [];
+    // Process Debtors (commitment + balance)
+    for (var d in debtorsList) {
+      final date = dateFormat.parse(d.dueon);
+      final asm = d.salesManager;
 
-    List<DebtorsAgingList> weekOneDebtors = [];
-    List<DebtorsAgingList> weekTwoDebtors = [];
-    List<DebtorsAgingList> weekThreeDebtors = [];
-    List<DebtorsAgingList> weekFourDebtors = [];
-    List<DebtorsAgingList> weekFiveDebtors = [];
+      final entry = asmMap.putIfAbsent(
+        asm,
+        () => MonthlyCollectionReportData(
+          salesManager: asm,
+          targetMonth: 0,
+          weekOneCommitted: 0,
+          weekOneReceived: 0,
+          weekTwoCommitted: 0,
+          weekTwoReceived: 0,
+          weekThreeCommitted: 0,
+          weekThreeReceived: 0,
+          weekFourCommitted: 0,
+          weekFourReceived: 0,
+          weekFiveCommitted: 0,
+          weekFiveReceived: 0,
+        ),
+      );
 
-    List<Map<String, DateTime>> weeks = getWeeksOfCurrentMonth();
-
-    weekOneDebtors = debtorsList.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return postingDate.isAtLeast(weeks[0]['start']!) &&
-          postingDate.isAtMost(weeks[0]['end']!);
-    }).toList();
-
-    weekTwoDebtors = debtorsList.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return postingDate.isAtLeast(weeks[1]['start']!) &&
-          postingDate.isAtMost(weeks[1]['end']!);
-    }).toList();
-    weekThreeDebtors = debtorsList.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return postingDate.isAtLeast(weeks[2]['start']!) &&
-          postingDate.isAtMost(weeks[2]['end']!);
-    }).toList();
-    weekFourDebtors = debtorsList.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return postingDate.isAtLeast(weeks[3]['start']!) &&
-          postingDate.isAtMost(weeks[3]['end']!);
-    }).toList();
-    weekFourDebtors = debtorsList.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return postingDate.isAtLeast(weeks[4]['start']!) &&
-          postingDate.isAtMost(weeks[4]['end']!);
-    }).toList();
-
-    weekOneListCollection = collection.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return postingDate.isAtLeast(weeks[0]['start']!) &&
-          postingDate.isAtMost(weeks[0]['end']!);
-    }).toList();
-    weekTwoListCollection = collection.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return postingDate.isAtLeast(weeks[1]['start']!) &&
-          postingDate.isAtMost(weeks[1]['end']!);
-    }).toList();
-    weekThreeListCollection = collection.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return postingDate.isAtLeast(weeks[2]['start']!) &&
-          postingDate.isAtMost(weeks[2]['end']!);
-    }).toList();
-    weekFourListCollection = collection.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return postingDate.isAtLeast(weeks[3]['start']!) &&
-          postingDate.isAtMost(weeks[3]['end']!);
-    }).toList();
-    weekFiveListCollection = collection.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.postingDate);
-      return postingDate.isAtLeast(weeks[4]['start']!) &&
-          postingDate.isAtMost(weeks[4]['end']!);
-    }).toList();
-
-    startDate = currentMonthFromDate!;
-    endDate = currentDate!;
-    monthEndDate = currentMonthToDate!;
-
-    asmCollectionList = debtorsList.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return postingDate.isAtLeast(startDate) && postingDate.isAtMost(endDate);
-    }).toList();
-    asmCollectionListTarget = debtorsList.where((target) {
-      DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.dueon);
-      return postingDate.isAtMost(monthEndDate);
-    }).toList();
-
-    Set<String> processedAsmNames = {};
-    for (var tsm in asmCollectionList) {
-      if (!processedAsmNames.contains(tsm.salesManager)) {
-        asmName = tsm.salesManager;
-        for (var collection in asmCollectionList.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          salesAmount += double.tryParse(collection.commitment) ?? 0;
-        }
-
-        for (var collection in asmCollectionListTarget.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          salesAmount += double.tryParse(collection.balance) ?? 0;
-        }
-
-        for (var collection in weekOneListCollection.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekOneTotal += double.tryParse(collection.total) ?? 0;
-        }
-        for (var collection in weekOneDebtors.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekOneBalance += double.tryParse(collection.commitment) ?? 0;
-        }
-        for (var collection in weekTwoListCollection.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekTwoTotal += double.tryParse(collection.total) ?? 0;
-        }
-        for (var collection in weekTwoDebtors.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekTwoBalance += double.tryParse(collection.commitment) ?? 0;
-        }
-        for (var collection in weekThreeListCollection.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekThreeTotal += double.tryParse(collection.total) ?? 0;
-        }
-        for (var collection in weekThreeDebtors.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekThreeBalance += double.tryParse(collection.commitment) ?? 0;
-        }
-        for (var collection in weekFourListCollection.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekFourTotal += double.tryParse(collection.total) ?? 0;
-        }
-        for (var collection in weekFourDebtors.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekFourBalance += double.tryParse(collection.commitment) ?? 0;
-        }
-        for (var collection in weekFiveListCollection.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekFiveTotal += double.tryParse(collection.total) ?? 0;
-        }
-        for (var collection in weekFiveDebtors.where(
-          (tsmelement) => tsmelement.salesManager == asmName,
-        )) {
-          weekFiveBalance += double.tryParse(collection.commitment) ?? 0;
-        }
-
-        asmwiseDataList.add(
-          MonthlyCollectionReportData(
-            salesManager: asmName,
-            targetMonth:
-                salesAmount +
-                weekOneTotal +
-                weekTwoTotal +
-                weekThreeTotal +
-                weekFourTotal +
-                weekFiveTotal,
-            weekOneCommitted: weekOneBalance,
-            weekOneReceived: weekOneTotal,
-            weekTwoCommitted: weekTwoBalance,
-            weekTwoReceived: weekTwoTotal,
-            weekThreeCommitted: weekThreeBalance,
-            weekThreeReceived: weekThreeTotal,
-            weekFourCommitted: weekFourBalance,
-            weekFourReceived: weekFourTotal,
-            weekFiveCommitted: weekFiveBalance,
-            weekFiveReceived: weekFiveTotal,
-          ),
-        );
-        processedAsmNames.add(asmName);
+      // Target calculation
+      if (date.isAtMost(currentDate!)) {
+        entry.targetMonth += double.tryParse(d.commitment) ?? 0;
       }
-      salesAmount = 0;
-      asmName = "";
-      weekOneTotal = 0.0;
-      weekOneBalance = 0.0;
-      weekTwoTotal = 0.0;
-      weekTwoBalance = 0.0;
-      weekThreeTotal = 0.0;
-      weekThreeBalance = 0.0;
-      weekFourTotal = 0.0;
-      weekFourBalance = 0.0;
-      weekFiveTotal = 0.0;
-      weekFiveBalance = 0.0;
+      if (date.isAtMost(currentMonthToDate!)) {
+        entry.targetMonth += double.tryParse(d.balance) ?? 0;
+      }
+
+      // Weekly commitment
+      for (int i = 0; i < weeks.length; i++) {
+        if (date.isAtLeast(weeks[i]['start']!) &&
+            date.isAtMost(weeks[i]['end']!)) {
+          switch (i) {
+            case 0:
+              entry.weekOneCommitted += double.tryParse(d.commitment) ?? 0;
+              break;
+            case 1:
+              entry.weekTwoCommitted += double.tryParse(d.commitment) ?? 0;
+              break;
+            case 2:
+              entry.weekThreeCommitted += double.tryParse(d.commitment) ?? 0;
+              break;
+            case 3:
+              entry.weekFourCommitted += double.tryParse(d.commitment) ?? 0;
+              break;
+            case 4:
+              entry.weekFiveCommitted += double.tryParse(d.commitment) ?? 0;
+              break;
+          }
+        }
+      }
     }
+
+    // Process Collections (received)
+    for (var c in collection) {
+      final date = dateFormat.parse(c.postingDate);
+      final asm = c.salesManager;
+
+      final entry = asmMap[asm];
+      if (entry == null) continue;
+
+      for (int i = 0; i < weeks.length; i++) {
+        if (date.isAtLeast(weeks[i]['start']!) &&
+            date.isAtMost(weeks[i]['end']!)) {
+          final value = double.tryParse(c.total) ?? 0;
+
+          switch (i) {
+            case 0:
+              entry.weekOneReceived += value;
+              break;
+            case 1:
+              entry.weekTwoReceived += value;
+              break;
+            case 2:
+              entry.weekThreeReceived += value;
+              break;
+            case 3:
+              entry.weekFourReceived += value;
+              break;
+            case 4:
+              entry.weekFiveReceived += value;
+              break;
+          }
+        }
+      }
+    }
+
+    final asmwiseDataList = asmMap.values.toList()
+      ..sort((a, b) => a.salesManager.compareTo(b.salesManager));
 
     weeklyData = MonthlyCollectionReportList(weeklyData: asmwiseDataList);
   }
 
-  Future<void> generateSalesAnalysisYTDExcel() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
+  Future<void> generateMonthlyCollectionYTDExcel() async {
+    await reportService.generateExcel(
+      sheetName: 'MonthlyCollectionYTD',
+      headers: [
         'Sales Manager',
         'Month Target',
         'Total Committed',
@@ -740,71 +609,45 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         'Week Five Committed',
         'Week Five Received',
         'Week Five % Received',
-      ]),
+      ],
+      rows: weeklyData.weeklyData
+          .map(
+            (e) => [
+              e.salesManager,
+              e.targetMonth,
+              e.weekOneCommitted +
+                  e.weekTwoCommitted +
+                  e.weekThreeCommitted +
+                  e.weekFourCommitted +
+                  e.weekFiveCommitted,
+              e.weekOneReceived +
+                  e.weekTwoReceived +
+                  e.weekThreeReceived +
+                  e.weekFourReceived +
+                  e.weekFiveReceived,
+              e.weekOneCommitted,
+              e.weekOneReceived,
+              getPercentage(e.weekOneCommitted, e.weekOneReceived),
+              e.weekTwoCommitted,
+              e.weekTwoReceived,
+              getPercentage(e.weekTwoCommitted, e.weekTwoReceived),
+              e.weekThreeCommitted,
+              e.weekThreeReceived,
+              getPercentage(e.weekThreeCommitted, e.weekThreeReceived),
+              e.weekFourCommitted,
+              e.weekFourReceived,
+              getPercentage(e.weekFourCommitted, e.weekFourReceived),
+              e.weekFiveCommitted,
+              e.weekFiveReceived,
+              getPercentage(e.weekFiveCommitted, e.weekFiveReceived),
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_collection_YTD.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Finance - Monthly Collection YTD Analysis',
     );
-
-    for (var weekly in weeklyData.weeklyData) {
-      sheet.appendRow(
-        toCellRow([
-          weekly.salesManager,
-          weekly.targetMonth,
-          weekly.weekOneCommitted +
-              weekly.weekTwoCommitted +
-              weekly.weekThreeCommitted +
-              weekly.weekFourCommitted +
-              weekly.weekFiveCommitted,
-          weekly.weekOneReceived +
-              weekly.weekTwoReceived +
-              weekly.weekThreeReceived +
-              weekly.weekFourReceived +
-              weekly.weekFiveReceived,
-          weekly.weekOneCommitted,
-          weekly.weekOneReceived,
-          getPercentage(weekly.weekOneCommitted, weekly.weekOneReceived),
-          weekly.weekTwoCommitted,
-          weekly.weekTwoReceived,
-          getPercentage(weekly.weekTwoCommitted, weekly.weekTwoReceived),
-          weekly.weekThreeCommitted,
-          weekly.weekThreeReceived,
-          getPercentage(weekly.weekThreeCommitted, weekly.weekThreeReceived),
-          weekly.weekFourCommitted,
-          weekly.weekFourReceived,
-          getPercentage(weekly.weekFourCommitted, weekly.weekFourReceived),
-          weekly.weekFiveCommitted,
-          weekly.weekFiveReceived,
-          getPercentage(weekly.weekFiveCommitted, weekly.weekFiveReceived),
-        ]),
-      );
-    }
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('monthlyCollectionReport.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/monthlyCollectionReport.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
   }
 
   SideTitles get _leftTitles => SideTitles(
@@ -1082,7 +925,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  generateSalesAnalysisYTDExcel();
+                                  generateMonthlyCollectionYTDExcel();
                                   // generateVendorPaymentProjectionReport();
                                 },
                                 child: const Row(

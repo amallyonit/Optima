@@ -1,15 +1,10 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
-import 'package:excel/excel.dart' as xl;
-import 'package:pdf/widgets.dart' as pw;
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
@@ -18,9 +13,9 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:http/http.dart' as http;
 import 'package:optima/classes/leads.dart';
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-import 'package:excel/excel.dart' hide Border, BorderStyle, TextSpan;
+import '../ReportService.dart';
+
+final reportService = ReportService();
 
 late Future<void> loadDataFuture;
 
@@ -50,24 +45,15 @@ List<GRNList> purchasePrice = [];
 List<InventoryList> inventory = [];
 List<InventoryList> inventoryClosing = [];
 List<ModeOfPaymentList> modeOfPayment = [];
-List<GRNList> grnList = [];
 List<MonthlyInventoryData> monthWiseInventory = [];
 
 CashConversionGraphList monthlyAnalysisData = CashConversionGraphList(
-  monthData: [],
-);
-CashConversionGraphList cashConversionData = CashConversionGraphList(
   monthData: [],
 );
 DSOGraphList graphData = DSOGraphList(monthData: []);
 DailyAnalysisExpensesList purchaseMonthlyData = DailyAnalysisExpensesList(
   dailyData: [],
 );
-DailyAnalysisExpensesList inventoryMonthlyData = DailyAnalysisExpensesList(
-  dailyData: [],
-);
-DailyAnalysisExpensesList inventoryClosingMonthlyData =
-    DailyAnalysisExpensesList(dailyData: []);
 List<MonthlyCogsData> monthlyCogsList = [];
 
 bool chartDataLoadedCCC = false;
@@ -89,11 +75,7 @@ DateTime? fromDateFilter;
 DateTime? toDateFilter;
 bool dateFilterFlag = false;
 
-bool fromFilter = false;
-
 List<List<bool>> selectedFinanceReceivablesOptions = [];
-
-List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
 
 List<List<bool>> savedFinanceReceivablesOptions = filterOptions
     .map((options) => List<bool>.filled(options.length, false))
@@ -273,15 +255,19 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       case 1:
         currentQuarterFromDate = DateTime(now.year, 4, 1);
         currentQuarterToDate = DateTime(now.year, 6, 30);
+        break;
       case 2:
         currentQuarterFromDate = DateTime(now.year, 7, 1);
         currentQuarterToDate = DateTime(now.year, 9, 30);
+        break;
       case 3:
         currentQuarterFromDate = DateTime(now.year, 10, 1);
         currentQuarterToDate = DateTime(now.year, 12, 31);
+        break;
       case 4:
         currentQuarterFromDate = DateTime(now.year, 1, 1);
         currentQuarterToDate = DateTime(now.year, 3, 31);
+        break;
       default:
         throw Error();
     }
@@ -469,13 +455,12 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
   Future<void> _loadCollectionTarget(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
+    const int limit = 10000;
     List<DebtorsAgingList> targetList = [];
+
     try {
-      do {
-        var body = {
-          // "FromDate": formatDate(fiscalYearStartDate!),
+      while (true) {
+        final body = {
           "FromDate": dateFilterFlag
               ? formatDate(fromDateFilter!)
               : formatDate(fiscalYearStartDate!),
@@ -486,636 +471,553 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}Bicxo_DebtorsAgingList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<DebtorsAgingList> newTargetList =
-                (responseJson['responseData'] as List)
-                    .map((item) => DebtorsAgingList.fromJson(item))
-                    .toList();
-            targetList.addAll(newTargetList);
-            fetchedCount = newTargetList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+        if (response.statusCode != 200) break;
+
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => DebtorsAgingList.fromJson(item))
+            .toList();
+
+        targetList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
         context.read<CashConversionReceivablesProvider>().updateTargetList(
           targetList,
         );
 
-        if (int.parse(UserLevel) == 5) {
-          target = targetList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          target = targetList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          target = targetList.toList();
-        } else {
-          target = targetList.toList();
-        }
+        target = targetList;
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+        ),
+      );
     }
   }
 
   Future<void> _loadSales(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
+    const int limit = 10000;
+
     List<SalesList> salesList = [];
+
     try {
-      do {
-        var body = {
-          // "FromDate": formatDate(monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}Crm_SalesList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<SalesList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => SalesList.fromJson(item))
-                    .toList();
+        if (response.statusCode != 200) break;
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data.map((item) => SalesList.fromJson(item)).toList();
+
+        salesList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
         context.read<CashConversionSalesProvider>().updateSalesList(salesList);
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          sales = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          sales = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          sales = salesList.toList();
-        } else {
-          sales = salesList.toList();
-        }
+
+        sales = salesList;
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
     }
   }
 
   Future<void> _loadCollection(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
+    const int limit = 10000;
+
     List<CollectionList> collectionList = [];
+
     try {
-      do {
-        var body = {
-          // "FromDate": formatDate(monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}CRMCollectionAnalysisList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<CollectionList> newCollectionList =
-                (responseJson['responseData'] as List)
-                    .map((item) => CollectionList.fromJson(item))
-                    .toList();
+        if (response.statusCode != 200) break;
 
-            collectionList.addAll(newCollectionList);
-            fetchedCount = newCollectionList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => CollectionList.fromJson(item))
+            .toList();
+
+        collectionList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
         context.read<CashConversionCollectionProvider>().updateCollectionList(
           collectionList,
         );
 
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-
-        if (int.parse(UserLevel) == 5) {
-          collection = collectionList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          collection = collectionList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          collection = collectionList.toList();
-        } else {
-          collection = collectionList.toList();
-        }
+        collection = collectionList;
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
     }
   }
 
   Future<void> _loadPayables(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000; // Maximum limit to fetch all data
-    int fetchedCount = 0;
-    List<PaymentAnalysisList> salesList = [];
+    const int limit = 10000;
+
+    List<PaymentAnalysisList> payablesList = [];
+
     try {
-      do {
-        var body = {
-          // "FromDate": formatDate(monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-          // "ToDate": formatDate(currentDate!),
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoCreditorsAgingList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<PaymentAnalysisList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => PaymentAnalysisList.fromJson(item))
-                    .toList();
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+        if (response.statusCode != 200) break;
+
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => PaymentAnalysisList.fromJson(item))
+            .toList();
+
+        payablesList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
-        context.read<CashConversionPayableProvider>().updatePOList(salesList);
-        if (int.parse(UserLevel) == 5) {
-          payables = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          payables = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          payables = salesList.toList();
-        } else {
-          payables = salesList.toList();
-        }
+        context.read<CashConversionPayableProvider>().updatePOList(
+          payablesList,
+        );
+
+        payables = payablesList;
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
       );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
     }
   }
 
   Future<void> _loadModeOfPayment(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000; // Maximum limit to fetch all data
-    int fetchedCount = 0;
-    List<ModeOfPaymentList> salesList = [];
+    const int limit = 10000;
+
+    List<ModeOfPaymentList> modeOfPaymentList = [];
+
     try {
-      do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoPaymentAnalysisList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<ModeOfPaymentList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => ModeOfPaymentList.fromJson(item))
-                    .toList();
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+        if (response.statusCode != 200) break;
+
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => ModeOfPaymentList.fromJson(item))
+            // ✅ filter while mapping (single pass)
+            .where((e) => e.vendorGroup.isNotEmpty)
+            .toList();
+
+        modeOfPaymentList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
         context.read<CashConversionActualPayableProvider>().updateTargetList(
-          salesList,
+          modeOfPaymentList,
         );
-        if (int.parse(UserLevel) == 5) {
-          modeOfPayment = salesList
-              .where((element) => element.vendorGroup != "")
-              .toList();
-        } else if (int.parse(UserLevel) == 4) {
-          modeOfPayment = salesList
-              .where((element) => element.vendorGroup != "")
-              .toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          modeOfPayment = salesList
-              .where((element) => element.vendorGroup != "")
-              .toList();
-        } else {
-          modeOfPayment = salesList
-              .where((element) => element.vendorGroup != "")
-              .toList();
-        }
+
+        modeOfPayment = modeOfPaymentList;
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
       );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
     }
   }
 
   Future<void> _loadInventory(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
-    List<InventoryList> salesList = [];
+    const int limit = 10000;
+
+    List<InventoryList> inventoryList = [];
+
     try {
-      do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => InventoryList.fromJson(item))
-                    .toList();
+        if (response.statusCode != 200) break;
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => InventoryList.fromJson(item))
+            .toList();
+
+        inventoryList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
         context.read<InventoryCashConversionProvider>().updateInventoryList(
-          salesList,
+          inventoryList,
         );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          inventory = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          inventory = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          inventory = salesList.toList();
-        } else {
-          inventory = salesList.toList();
-        }
+
+        inventory = inventoryList;
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+        ),
+      );
     }
   }
 
   Future<void> _loadInventoryClosing(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
-    List<InventoryList> salesList = [];
+    const int limit = 10000;
+
+    List<InventoryList> inventoryList = [];
+
     try {
-      do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => InventoryList.fromJson(item))
-                    .toList();
+        if (response.statusCode != 200) break;
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => InventoryList.fromJson(item))
+            .toList();
+
+        inventoryList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
         context
             .read<InventoryClosingCashConversionProvider>()
-            .updateInventoryList(salesList);
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          inventoryClosing = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          inventoryClosing = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          inventoryClosing = salesList.toList();
-        } else {
-          inventoryClosing = salesList.toList();
-        }
+            .updateInventoryList(inventoryList);
+
+        inventoryClosing = inventoryList;
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 2),
           content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+        ),
+      );
     }
   }
 
   Future<void> _loadGRN(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
-    List<GRNList> salesList = [];
-    final prefs = await SharedPreferences.getInstance();
-    String selectedUser = '';
-    final userName = selectedUser == ""
-        ? prefs.getString('userName') ?? ''
-        : selectedUser;
+    const int limit = 10000;
+
+    List<GRNList> grnList = [];
 
     try {
-      do {
-        var body = {
-          "FromDate": dateFilterFlag
-              ? formatDate(fromDateFilter!)
-              : formatDate(fiscalYearStartDate!),
-          "ToDate": dateFilterFlag
-              ? formatDate(toDateFilter!)
-              : formatDate(currentDate!),
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      int retryCount = 0;
+      const maxRetry = 2;
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoGoodsReceiptNoteList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<GRNList> newSalesList = (responseJson['responseData'] as List)
-                .map((item) => GRNList.fromJson(item))
-                .toList();
-
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else if (response.statusCode == 504) {
-          await _loadGRN(userName, userLevel);
-        } else if (response.statusCode == 504) {
-          await _loadGRN(userName, userLevel);
-        } else {
-          fetchedCount = 0;
+        if (response.statusCode == 504 && retryCount < maxRetry) {
+          retryCount++;
+          await Future.delayed(const Duration(seconds: 1));
+          continue; // retry same page
         }
-      } while (fetchedCount == limit);
+
+        if (response.statusCode != 200) break;
+
+        retryCount = 0;
+
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data.map((item) => GRNList.fromJson(item)).toList();
+
+        grnList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
 
       setState(() {
-        if (purchasePrice.isEmpty) {
-          purchasePrice = salesList.toList();
-        }
-        context.read<GRNCashConversionProvider>().updatePurchaseList(salesList);
+        context.read<GRNCashConversionProvider>().updatePurchaseList(grnList);
 
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          if (purchasePrice.isEmpty) {
-            purchasePrice = salesList.toList();
-          }
-        } else if (int.parse(UserLevel) == 4) {
-          if (purchasePrice.isEmpty) {
-            purchasePrice = salesList.toList();
-          }
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          if (purchasePrice.isEmpty) {
-            purchasePrice = salesList.toList();
-          }
-        } else {
-          if (purchasePrice.isEmpty) {
-            purchasePrice = salesList.toList();
-          }
-        }
-        if (purchasePrice.isEmpty) {
-          purchasePrice = salesList.toList();
-        }
+        purchasePrice = grnList;
       });
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
       );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
     }
   }
 
@@ -1126,47 +1028,62 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     return nextMonth.subtract(const Duration(days: 1)).day;
   }
 
-  Future<List<InventoryList>> _fetchInventoryForDate(
-    DateTime toDate,
-    String userName,
-    String userLevel,
-  ) async {
-    int index = 0, limit = 10000, fetchedCount = 0;
+  Future<List<InventoryList>> _fetchInventoryForDate(DateTime toDate) async {
+    int index = 0;
+    const int limit = 10000;
+
     List<InventoryList> allItems = [];
 
     final formattedToDate = DateFormat('yyyyMMdd').format(toDate);
 
-    do {
+    int retryCount = 0;
+    const maxRetry = 2;
+
+    while (true) {
       final body = {
         "ToDate": formattedToDate,
         "Index": index.toString(),
         "Limit": limit.toString(),
         "sapToken": DataManager.readSapToken(),
       };
+
       const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
+
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {HttpHeaders.contentTypeHeader: 'application/json'},
         body: jsonEncode(body),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)['responseData'] as List?;
-        final items = data != null
-            ? data.map((e) => InventoryList.fromJson(e)).toList()
-            : <InventoryList>[];
-        allItems.addAll(items);
-        fetchedCount = items.length;
-        index++;
-      } else {
-        fetchedCount = 0;
+      // 🔁 retry logic (safe)
+      if (response.statusCode == 504 && retryCount < maxRetry) {
+        retryCount++;
+        await Future.delayed(const Duration(seconds: 1));
+        continue;
       }
-    } while (fetchedCount == limit);
+
+      if (response.statusCode != 200) break;
+
+      retryCount = 0;
+
+      final responseJson = jsonDecode(response.body);
+      final data = responseJson['responseData'] as List?;
+
+      if (data == null || data.isEmpty) break;
+
+      final items = data.map((e) => InventoryList.fromJson(e)).toList();
+
+      allItems.addAll(items);
+
+      if (items.length < limit) break;
+
+      index++;
+    }
 
     return allItems;
   }
 
-  Future<List<MonthlyInventoryData>> loadMonthlyInventory(
+  Future<List<MonthlyInventoryData>> _loadMonthlyInventory(
     String userName,
     String userLevel,
   ) async {
@@ -1183,11 +1100,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     DateTime cursor = marchDate;
 
     while (!cursor.isAfter(endDate)) {
-      final monthData = await _fetchInventoryForDate(
-        cursor,
-        userName,
-        userLevel,
-      );
+      final monthData = await _fetchInventoryForDate(cursor);
       final label = DateFormat('MMM yyyy').format(cursor);
       result.add(MonthlyInventoryData(monthYear: label, inventory: monthData));
 
@@ -1204,46 +1117,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     return result;
   }
 
-  Map<String, DateTime> getLastMonthStartEndDates(
-    String monthName, {
-    int? year,
-  }) {
-    year ??= DateTime.now().year;
-    // Define the list of month names.
-    List<String> monthNames = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    // Find the current month index (1-based).
-    int currentMonthIndex = monthNames.indexOf(monthName) + 1;
-
-    // Determine last month's index and adjust the year if necessary.
-    int lastMonthIndex = currentMonthIndex - 1;
-    int lastMonthYear = year;
-    if (lastMonthIndex < 1) {
-      lastMonthIndex = 12;
-      lastMonthYear -= 1;
-    }
-
-    // Calculate the start and end dates of last month.
-    DateTime lastMonthStart = DateTime(lastMonthYear, lastMonthIndex, 1);
-    // Using day 0 of the next month gives the last day of the last month.
-    DateTime lastMonthEnd = DateTime(lastMonthYear, lastMonthIndex + 1, 0);
-
-    return {'start': lastMonthStart, 'end': lastMonthEnd};
-  }
-
   Future<void> _loadMonthlySalesBarCashConversionChartData(
     String? touchedMonth,
   ) async {
@@ -1253,79 +1126,51 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     final now = DateTime.now();
     final int fiscalIndex = (now.month < 4) ? now.month + 12 : now.month;
 
-    double avgAccountsReceivableNH = 0;
-    double netCreditSalesNH = 0;
-    double daySalesOutstandingNH = 0;
+    final dateFormat = DateFormat('dd/MM/yyyy');
 
-    double avgAccountsReceivableSales = 0;
-    double daySalesOutstandingSales = 0;
+    DateTime parseDate(String d) => dateFormat.parse(d);
 
-    double avgAccountsReceivableOffice = 0;
-    double daySalesOutstandingOffice = 0;
+    /// 🔹 STEP 1: Pre-group (NO repeated where)
+    final salesMap = {
+      "NH": <SalesList>[],
+      "OFFICE": <SalesList>[],
+      "SALES": <SalesList>[],
+    };
 
-    double allReceivableOutstandingDays = 0;
+    for (var s in sales) {
+      if (s.salesManager == "NH GROUP. - Drs.") {
+        salesMap["NH"]!.add(s);
+      } else if (s.salesManager == "OFFICE - Drs.") {
+        salesMap["OFFICE"]!.add(s);
+      } else {
+        salesMap["SALES"]!.add(s);
+      }
+    }
 
-    double payableOutstandingDays = 0;
+    List filterByManager(List list, String key) {
+      return list.where((e) {
+        if (key == "NH") return e.salesManager == "NH GROUP. - Drs.";
+        if (key == "OFFICE") return e.salesManager == "OFFICE - Drs.";
+        return e.salesManager != "NH GROUP. - Drs." &&
+            e.salesManager != "OFFICE - Drs.";
+      }).toList();
+    }
 
-    double inventoryOutstandingDays = 0;
+    final receivablesMap = {
+      "NH": filterByManager(target, "NH"),
+      "OFFICE": filterByManager(target, "OFFICE"),
+      "SALES": filterByManager(target, "SALES"),
+    };
 
-    // int currentYear = DateTime.now().month < 4
-    //     ? DateTime.now().year - 1
-    //     : DateTime.now().year;
+    final collectionMap = {
+      "NH": filterByManager(collection, "NH"),
+      "OFFICE": filterByManager(collection, "OFFICE"),
+      "SALES": filterByManager(collection, "SALES"),
+    };
 
-    DateTime startDate;
-    DateTime endDate;
-
-    double lastMonthBalanceNH = 0;
-    double currentMonthBalanceNH = 0;
-    double currentMonthRowTotalNH = 0;
-
-    double lastMonthBalanceSales = 0;
-    double currentMonthBalanceSales = 0;
-
-    double lastMonthBalanceOffice = 0;
-    double currentMonthBalanceOffice = 0;
-
-    double lastMonthBalancePayable = 0;
-    double currentMonthBalancePayable = 0;
-    double avgPayables = 0;
-    double costOfGoodsSold = 0;
-
-    double totalSalesNetCrediSales = 0;
-
-    double netCreditSales = 0;
-    double netCreditNH = 0;
-    double netCreditOffice = 0;
-
-    double salesDebtLastMonth = 0;
-    double salesDebtThisMonth = 0;
-    double salesCollectionThisMonth = 0;
-    double salesCollectionLastMonth = 0;
-
-    double officeDebtLastMonth = 0;
-    double officeDebtThisMonth = 0;
-    double officeCollectionThisMonth = 0;
-    double officeCollectionLastMonth = 0;
-
-    double nhDebtLastMonth = 0;
-    double nhDebtThisMonth = 0;
-    double nhCollectionThisMonth = 0;
-    double nhCollectionLastMonth = 0;
-
+    /// 🔹 STEP 2: Month Loop
     for (int i = 4; i <= 15; i++) {
-      final String monthName = getMonthName(i);
-
-      final int cogsIndex = i - 4;
-      final MonthlyCogsData cogsData =
-          (cogsIndex >= 0 && cogsIndex < monthlyCogsList.length)
-          ? monthlyCogsList[cogsIndex]
-          : MonthlyCogsData(
-              monthYear: monthName,
-              openingStock: 0,
-              purchases: 0,
-              closingStock: 0,
-              cogs: 0,
-            );
+      final monthName = getMonthName(i);
 
       if (i > fiscalIndex) {
         soDataList.add(
@@ -1341,677 +1186,129 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         );
         continue;
       }
-      List<SalesList> currentMonthSalesListNH = [];
-      List<DebtorsAgingList> monthlyCollectionListNH = [];
-      List<DebtorsAgingList> lastMonthlyCollectionListNH = [];
-      List<CollectionList> collectionCurrentMonthNH = [];
-      List<CollectionList> collectionLastMonthNH = [];
 
-      List<SalesList> currentMonthSalesListSales = [];
-      List<DebtorsAgingList> monthlyCollectionListSales = [];
-      List<DebtorsAgingList> lastMonthlyCollectionListSales = [];
-      List<CollectionList> collectionCurrentMonthSales = [];
-      List<CollectionList> collectionLastMonthSales = [];
+      final dates = getMonthStartEndDates(i);
+      final start = dates['start']!;
+      final end = dates['end']!;
 
-      List<SalesList> currentMonthSalesListOffice = [];
-      List<DebtorsAgingList> monthlyCollectionListOffice = [];
-      List<DebtorsAgingList> lastMonthlyCollectionListOffice = [];
-      List<CollectionList> collectionCurrentMonthOffice = [];
-      List<CollectionList> collectionLastMonthOffice = [];
+      double calcDSO(
+        List<SalesList> salesList,
+        List receivableList,
+        List collectionList,
+      ) {
+        double salesTotal = 0;
+        double receivableTotal = 0;
+        double collectionTotal = 0;
 
-      List<SalesList> totalSales = [];
-      List<DebtorsAgingList> totalTargetLastMonth = [];
+        /// SALES
+        for (var s in salesList) {
+          if (s.invoiceDate.isAtLeast(start) && s.invoiceDate.isAtMost(end)) {
+            salesTotal += double.tryParse(s.rowTotal) ?? 0;
+          }
+        }
 
-      List<PaymentAnalysisList> lastMonthPayables = [];
-      List<PaymentAnalysisList> currentMonthPayables = [];
+        /// RECEIVABLE
+        for (var r in receivableList) {
+          final d = parseDate(r.postingDate);
+          if (d.isAtMost(end)) {
+            receivableTotal += (double.tryParse(r.balance) ?? 0).abs();
+          }
+        }
 
-      List<ModeOfPaymentList> lastMonthTotalPayables = [];
-      List<ModeOfPaymentList> currentMonthTotalPayables = [];
+        /// COLLECTION
+        for (var c in collectionList) {
+          final d = parseDate(c.postingDate);
+          if (d.isAtLeast(start) && d.isAtMost(end)) {
+            collectionTotal += double.tryParse(c.total) ?? 0;
+          }
+        }
 
-      List<SalesList> salesNHList = sales.where((person) {
-        return person.salesManager == "NH GROUP. - Drs.";
-      }).toList();
-      List<DebtorsAgingList> receivablesNHList = target.where((person) {
-        return person.salesManager == "NH GROUP. - Drs.";
-      }).toList();
-      List<CollectionList> collectionNHList = collection.where((person) {
-        return person.salesManager == "NH GROUP. - Drs.";
-      }).toList();
+        final avg = (receivableTotal + collectionTotal) / 2;
+        final days = getCompletedDaysInMonth(DateTime.now().year, i);
 
-      List<SalesList> salesSalesTeamList = sales.where((person) {
-        return person.salesManager != "NH GROUP. - Drs." &&
-            person.salesManager != "OFFICE - Drs.";
-      }).toList();
-      List<DebtorsAgingList> receivablesSalesTeamList = target.where((person) {
-        return person.salesManager != "NH GROUP. - Drs." &&
-            person.salesManager != "OFFICE - Drs.";
-      }).toList();
-      List<CollectionList> collectionSalesList = collection.where((person) {
-        return person.salesManager != "NH GROUP. - Drs." &&
-            person.salesManager != "OFFICE - Drs.";
-      }).toList();
-
-      List<SalesList> salesOfficeList = sales.where((person) {
-        return person.salesManager == "OFFICE - Drs.";
-      }).toList();
-      List<DebtorsAgingList> receivablesOfficeList = target.where((person) {
-        return person.salesManager == "OFFICE - Drs.";
-      }).toList();
-      List<CollectionList> collectionOfficeList = collection.where((person) {
-        return person.salesManager == "OFFICE - Drs.";
-      }).toList();
-
-      if (i >= 4 && i <= 12) {
-        Map<String, DateTime> monthDates = getMonthStartEndDates(i);
-        Map<String, DateTime> lastMonthDates = getLastMonthStartEndDates(
-          monthName,
-          year: DateTime.now().year,
-        );
-
-        currentMonthSalesListNH = salesNHList.where((target) {
-          DateTime postingDate = target.invoiceDate;
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        monthlyCollectionListNH = receivablesNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(monthDates['start']!) &&*/ postingDate
-              .isAtMost(monthDates['end']!);
-        }).toList();
-        lastMonthlyCollectionListNH = receivablesNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /* postingDate.isAtLeast(lastMonthDates['start']!) &&
-                */ postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-        collectionCurrentMonthNH = collectionNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        collectionLastMonthNH = collectionNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-
-        currentMonthSalesListSales = salesSalesTeamList.where((target) {
-          DateTime postingDate = target.invoiceDate;
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        monthlyCollectionListSales = receivablesSalesTeamList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(monthDates['start']!) &&*/ postingDate
-              .isAtMost(monthDates['end']!);
-        }).toList();
-        lastMonthlyCollectionListSales = receivablesSalesTeamList.where((
-          target,
-        ) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /* postingDate.isAtLeast(lastMonthDates['start']!) &&
-                */ postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-        collectionCurrentMonthSales = collectionSalesList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        collectionLastMonthSales = collectionSalesList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-
-        currentMonthSalesListOffice = salesOfficeList.where((target) {
-          DateTime postingDate = target.invoiceDate;
-
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        monthlyCollectionListOffice = receivablesOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(monthDates['start']!) &&
-                */ postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        lastMonthlyCollectionListOffice = receivablesOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(lastMonthDates['start']!) &&
-                */ postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-        collectionCurrentMonthOffice = collectionOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        collectionLastMonthOffice = collectionOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-
-        totalSales = sales.where((target) {
-          DateTime postingDate = target.invoiceDate;
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-
-        totalTargetLastMonth = target.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-
-        lastMonthPayables = payables.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(monthDates['start']!) && */ postingDate
-              .isAtMost(lastMonthDates['end']!);
-        }).toList();
-
-        currentMonthPayables = payables.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /* postingDate.isAtLeast(lastMonthDates['start']!) &&
-                */ postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-
-        currentMonthTotalPayables = modeOfPayment.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        }).toList();
-        lastMonthTotalPayables = modeOfPayment.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-      } else {
-        int currentYear = DateTime.now().month < 4
-            ? DateTime.now().year
-            : DateTime.now().year + 1;
-        startDate = DateTime(currentYear, (i - 12), 1);
-        endDate = DateTime(currentYear, (i - 12) + 1, 0);
-        Map<String, DateTime> lastMonthDates = getLastMonthStartEndDates(
-          monthName,
-          year: DateTime.now().year + 1,
-        );
-
-        currentMonthSalesListNH = salesNHList.where((target) {
-          DateTime postingDate = target.invoiceDate;
-
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-        monthlyCollectionListNH = receivablesNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(startDate) &&
-                */ postingDate.isAtMost(endDate);
-        }).toList();
-        lastMonthlyCollectionListNH = receivablesNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /* postingDate.isAtLeast(lastMonthDates['start']!) &&
-                */ postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-        collectionCurrentMonthNH = collectionNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-        collectionLastMonthNH = collectionNHList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-
-        currentMonthSalesListSales = salesSalesTeamList.where((target) {
-          DateTime postingDate = target.invoiceDate;
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-        monthlyCollectionListSales = receivablesSalesTeamList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(startDate) &&
-                */ postingDate.isAtMost(endDate);
-        }).toList();
-        lastMonthlyCollectionListSales = receivablesSalesTeamList.where((
-          target,
-        ) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(lastMonthDates['start']!) &&
-                */ postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-        collectionCurrentMonthSales = collectionSalesList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-        collectionLastMonthSales = collectionSalesList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-
-        currentMonthSalesListOffice = salesOfficeList.where((target) {
-          DateTime postingDate = target.invoiceDate;
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-        monthlyCollectionListOffice = receivablesOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(startDate) &&
-                */ postingDate.isAtMost(endDate);
-        }).toList();
-        lastMonthlyCollectionListOffice = receivablesOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /* postingDate.isAtLeast(lastMonthDates['start']!) &&
-               */ postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-        collectionCurrentMonthOffice = collectionOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-        collectionLastMonthOffice = collectionOfficeList.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
-
-        totalSales = sales.where((target) {
-          DateTime postingDate = target.invoiceDate;
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-
-        totalTargetLastMonth = target.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-
-        lastMonthPayables = payables.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /* postingDate.isAtLeast(startDate) &&*/ postingDate.isAtMost(
-            lastMonthDates['end']!,
-          );
-        }).toList();
-
-        currentMonthPayables = payables.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return /*postingDate.isAtLeast(lastMonthDates['start']!) &&*/ postingDate
-              .isAtMost(endDate);
-        }).toList();
-
-        currentMonthTotalPayables = modeOfPayment.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        }).toList();
-        lastMonthTotalPayables = modeOfPayment.where((target) {
-          DateTime postingDate = DateFormat(
-            'dd/MM/yyyy',
-          ).parse(target.postingDate);
-          return postingDate.isAtLeast(lastMonthDates['start']!) &&
-              postingDate.isAtMost(lastMonthDates['end']!);
-        }).toList();
+        return salesTotal != 0 ? (avg / salesTotal) * days : 0;
       }
 
-      for (var target in lastMonthPayables) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        if (credit < 0) {
-          lastMonthBalancePayable += credit;
+      /// STEP 3: Calculate DSO
+      final dsoNH = calcDSO(
+        salesMap["NH"]!,
+        receivablesMap["NH"]!,
+        collectionMap["NH"]!,
+      );
+
+      final dsoOffice = calcDSO(
+        salesMap["OFFICE"]!,
+        receivablesMap["OFFICE"]!,
+        collectionMap["OFFICE"]!,
+      );
+
+      final dsoSales = calcDSO(
+        salesMap["SALES"]!,
+        receivablesMap["SALES"]!,
+        collectionMap["SALES"]!,
+      );
+
+      /// STEP 4: Payables
+      double payable = 0;
+      for (var p in payables) {
+        final d = parseDate(p.postingDate);
+        if (d.isAtMost(end)) {
+          payable += double.tryParse(p.balance) ?? 0;
         }
       }
 
-      for (var target in currentMonthPayables) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        if (credit < 0) {
-          currentMonthBalancePayable += credit;
-        }
-      }
+      /// STEP 5: Inventory
+      final cogsIndex = i - 4;
 
-      for (var target in currentMonthTotalPayables) {
-        double credit = double.tryParse(target.total) ?? 0;
-        lastMonthBalancePayable += credit;
-      }
-      for (var target in lastMonthTotalPayables) {
-        double credit = double.tryParse(target.total) ?? 0;
-        currentMonthBalancePayable += credit;
-      }
-
-      for (var target in monthlyCollectionListNH) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        currentMonthBalanceNH += credit.abs();
-      }
-      for (var target in lastMonthlyCollectionListNH) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        lastMonthBalanceNH += credit.abs();
-        nhDebtLastMonth += credit;
-      }
-      for (var target in currentMonthSalesListNH) {
-        double credit = double.tryParse(target.rowTotal) ?? 0;
-        currentMonthRowTotalNH += credit /*.abs()*/;
-        netCreditNH += credit;
-        nhDebtThisMonth += credit;
-      }
-      for (var target in collectionCurrentMonthNH) {
-        double credit = double.tryParse(target.total) ?? 0;
-        currentMonthBalanceNH += credit.abs();
-        nhCollectionThisMonth += credit;
-      }
-      for (var target in collectionLastMonthNH) {
-        double credit = double.tryParse(target.total) ?? 0;
-        lastMonthBalanceNH += credit.abs();
-        nhCollectionLastMonth += credit;
-      }
-
-      for (var target in currentMonthSalesListSales) {
-        double credit = double.tryParse(target.rowTotal) ?? 0;
-        currentMonthBalanceSales += credit;
-        netCreditSales += credit;
-      }
-      for (var target in monthlyCollectionListSales) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        lastMonthBalanceSales += credit;
-        salesDebtThisMonth += credit;
-      }
-      for (var target in lastMonthlyCollectionListSales) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        salesDebtLastMonth += credit;
-      }
-      for (var target in collectionCurrentMonthSales) {
-        double credit = double.tryParse(target.total) ?? 0;
-        currentMonthBalanceSales += credit;
-        salesCollectionThisMonth += credit;
-      }
-      for (var target in collectionLastMonthSales) {
-        double credit = double.tryParse(target.total) ?? 0;
-        lastMonthBalanceSales += credit.abs();
-        salesCollectionLastMonth += credit;
-      }
-
-      for (var target in currentMonthSalesListOffice) {
-        double credit = double.tryParse(target.rowTotal) ?? 0;
-        currentMonthBalanceOffice += credit.abs();
-        netCreditOffice += credit;
-      }
-      for (var target in monthlyCollectionListOffice) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        lastMonthBalanceOffice += credit.abs();
-        officeDebtThisMonth += credit;
-      }
-      for (var target in lastMonthlyCollectionListOffice) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        officeDebtLastMonth += credit;
-      }
-      for (var target in collectionCurrentMonthOffice) {
-        double credit = double.tryParse(target.total) ?? 0;
-        currentMonthBalanceOffice += credit.abs();
-        officeCollectionThisMonth += credit;
-      }
-      for (var target in collectionLastMonthOffice) {
-        double credit = double.tryParse(target.total) ?? 0;
-        lastMonthBalanceOffice += credit.abs();
-        officeCollectionLastMonth += credit;
-      }
-
-      for (var target in totalSales) {
-        double credit = double.tryParse(target.rowTotal) ?? 0;
-        totalSalesNetCrediSales += credit;
-      }
-
-      for (var target in totalTargetLastMonth) {
-        double credit = double.tryParse(target.balance) ?? 0;
-        totalSalesNetCrediSales += credit;
-      }
-
-      avgAccountsReceivableNH =
-          (lastMonthBalanceNH + currentMonthBalanceNH) / 2;
-      avgAccountsReceivableSales =
-          (lastMonthBalanceSales + currentMonthBalanceSales) / 2;
-      avgAccountsReceivableOffice =
-          (lastMonthBalanceOffice + currentMonthBalanceOffice) / 2;
-
-      avgPayables =
-          (currentMonthBalancePayable.abs() + lastMonthBalancePayable.abs()) /
-          2;
-      netCreditSalesNH = currentMonthRowTotalNH;
-
-      // costOfGoodsSold = (inventoryClosingMonthlyData.dailyData.first.balance +
-      //         purchaseMonthlyData.dailyData[i - 4].balance) -
-      //     inventoryMonthlyData.dailyData.first.balance;
+      final cogsData = (cogsIndex >= 0 && cogsIndex < monthlyCogsList.length)
+          ? monthlyCogsList[cogsIndex]
+          : MonthlyCogsData(
+              monthYear: monthName,
+              openingStock: 0,
+              purchases: 0,
+              closingStock: 0,
+              cogs: 0,
+            );
 
       double avgInventory = (cogsData.openingStock + cogsData.closingStock) / 2;
-      costOfGoodsSold = cogsData.cogs;
 
-      int currentYear = DateTime.now().month < 4
-          ? DateTime.now().year
-          : DateTime.now().year - 1;
-      int monthNumber = i > 12 ? i - 12 : i;
-
-      double noOfDays = DateTime(
-        currentYear,
-        monthNumber + 1,
-        0,
-      ).day.toDouble();
-
-      noOfDays = getCompletedDaysInMonth(currentYear, i);
-      double days = getCompletedDaysInMonth(DateTime.now().year, i);
-
-      // double avgInventory = (inventoryMonthlyData.dailyData.first.balance +
-      //         inventoryClosingMonthlyData.dailyData.first.balance) /
-      //     2;
-
-      double avgSales =
-          ((salesCollectionLastMonth + salesDebtLastMonth) +
-              (salesCollectionThisMonth + salesDebtThisMonth)) /
-          2;
-      double avgOffice =
-          ((officeCollectionLastMonth + officeDebtLastMonth) +
-              (officeCollectionThisMonth + officeDebtThisMonth)) /
-          2;
-      double avgNH =
-          ((nhCollectionLastMonth + nhDebtLastMonth) +
-              (nhCollectionThisMonth + nhDebtThisMonth)) /
-          2;
-
-      allReceivableOutstandingDays = (netCreditSalesNH != 0)
-          ? ((avgAccountsReceivableOffice +
-                        avgAccountsReceivableNH +
-                        avgAccountsReceivableSales) /
-                    (totalSalesNetCrediSales)) *
-                noOfDays
+      double inventoryDays = cogsData.cogs != 0
+          ? (avgInventory / cogsData.cogs) *
+                getCompletedDaysInMonth(DateTime.now().year, i)
           : 0;
 
-      payableOutstandingDays = (costOfGoodsSold != 0)
-          ? (avgPayables / costOfGoodsSold) * days
-          : 0;
-
-      inventoryOutstandingDays = (costOfGoodsSold != 0)
-          ? (avgInventory / costOfGoodsSold) * days
-          : 0;
-
-      daySalesOutstandingNH = (netCreditNH != 0)
-          ? ((avgNH) / netCreditNH) * days
-          : 0;
-
-      daySalesOutstandingSales = (netCreditSales != 0)
-          ? (avgSales / netCreditSales) * days
-          : 0;
-
-      daySalesOutstandingOffice = (netCreditOffice != 0)
-          ? ((avgOffice) / netCreditOffice) * days
-          : 0;
-
-      allReceivableOutstandingDays = allReceivableOutstandingDays.isFinite
-          ? double.parse(allReceivableOutstandingDays.toStringAsFixed(0))
-          : 0;
-      payableOutstandingDays = payableOutstandingDays.isFinite
-          ? double.parse(payableOutstandingDays.toStringAsFixed(0))
-          : 0;
-      daySalesOutstandingNH = daySalesOutstandingNH.isFinite
-          ? double.parse(daySalesOutstandingNH.toStringAsFixed(0))
-          : 0;
-      daySalesOutstandingSales = daySalesOutstandingSales.isFinite
-          ? double.parse(daySalesOutstandingSales.toStringAsFixed(0))
-          : 0;
-      daySalesOutstandingOffice = daySalesOutstandingOffice.isFinite
-          ? double.parse(daySalesOutstandingOffice.toStringAsFixed(0))
-          : 0;
+      final totalDSO = dsoNH + dsoSales + dsoOffice;
 
       soDataList.add(
         CashConversionGraphData(
           monthName: monthName,
-          dsoDaysSales: daySalesOutstandingSales,
-          dsoDaysNH: daySalesOutstandingNH,
-          dsoDaysOffice: daySalesOutstandingOffice,
-          dsoAllDays: allReceivableOutstandingDays,
-          payableDays: payableOutstandingDays,
-          inventoryDays: inventoryOutstandingDays,
+          dsoDaysSales: dsoSales.roundToDouble(),
+          dsoDaysNH: dsoNH.roundToDouble(),
+          dsoDaysOffice: dsoOffice.roundToDouble(),
+          dsoAllDays: totalDSO.roundToDouble(),
+          payableDays: payable.abs().roundToDouble(),
+          inventoryDays: inventoryDays.roundToDouble(),
         ),
       );
-
-      daySalesOutstandingNH = 0;
-      avgAccountsReceivableNH = 0;
-      netCreditSalesNH = 0;
-      noOfDays = 0;
-      lastMonthBalanceNH = 0;
-      currentMonthBalanceNH = 0;
-      currentMonthRowTotalNH = 0;
-      avgAccountsReceivableNH = 0;
-      netCreditSalesNH = 0;
-      daySalesOutstandingNH = 0;
-      avgAccountsReceivableSales = 0;
-      daySalesOutstandingSales = 0;
-      avgAccountsReceivableOffice = 0;
-      daySalesOutstandingOffice = 0;
-      lastMonthBalanceNH = 0;
-      currentMonthBalanceNH = 0;
-      currentMonthRowTotalNH = 0;
-      lastMonthBalanceSales = 0;
-      currentMonthBalanceSales = 0;
-      lastMonthBalanceOffice = 0;
-      currentMonthBalanceOffice = 0;
-      inventoryOutstandingDays = 0;
-      allReceivableOutstandingDays = 0;
-      payableOutstandingDays = 0;
-      costOfGoodsSold = 0;
-      avgPayables = 0;
-      lastMonthBalancePayable = 0;
-      netCreditSales = 0;
-      netCreditNH = 0;
-      netCreditOffice = 0;
-      currentMonthBalancePayable = 0;
-      totalSalesNetCrediSales = 0;
-      salesDebtThisMonth = 0;
-      salesDebtLastMonth = 0;
-      salesCollectionLastMonth = 0;
-      salesCollectionThisMonth = 0;
-      officeDebtLastMonth = 0;
-      officeDebtThisMonth = 0;
-      officeCollectionThisMonth = 0;
-      officeCollectionLastMonth = 0;
-      nhDebtLastMonth = 0;
-      nhDebtThisMonth = 0;
-      nhCollectionThisMonth = 0;
-      nhCollectionLastMonth = 0;
-      currentMonthSalesListNH = [];
-      monthlyCollectionListNH = [];
-      lastMonthlyCollectionListNH = [];
-      currentMonthSalesListSales = [];
-      monthlyCollectionListSales = [];
-      lastMonthlyCollectionListSales = [];
-      currentMonthSalesListOffice = [];
-      monthlyCollectionListOffice = [];
-      lastMonthlyCollectionListOffice = [];
-      lastMonthPayables = [];
-      currentMonthPayables = [];
-      collectionCurrentMonthNH = [];
-      collectionLastMonthNH = [];
-      collectionLastMonthSales = [];
-      collectionCurrentMonthSales = [];
-      collectionCurrentMonthOffice = [];
-      collectionLastMonthOffice = [];
     }
+
+    /// STEP 6: Graph Selection (UNCHANGED LOGIC)
     monthlyAnalysisData = CashConversionGraphList(monthData: soDataList);
 
     int displayIndex;
+
     if (touchedMonth != null) {
       displayIndex = soDataList.indexWhere((e) => e.monthName == touchedMonth);
+
       if (displayIndex == -1) {
-        // touchedMonth not found in the current fiscal year; fall back
         displayIndex = DateTime.now().month - 4;
       }
     } else {
       displayIndex = DateTime.now().month - 4;
     }
+
     displayIndex = displayIndex.clamp(0, soDataList.length - 1);
 
-    // Now add DSO bars for either touchedMonth or current month
     dataList.add(
       DSOGraphData(
         name: "Receivables Days Outstanding",
@@ -2019,6 +1316,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         achievement: soDataList[displayIndex].dsoAllDays,
       ),
     );
+
     dataList.add(
       DSOGraphData(
         name: "Inventory Days Outstanding",
@@ -2026,6 +1324,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         achievement: soDataList[displayIndex].inventoryDays,
       ),
     );
+
     dataList.add(
       DSOGraphData(
         name: "Payable Days Outstanding",
@@ -2035,6 +1334,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     );
 
     graphData = DSOGraphList(monthData: dataList);
+
     setState(() {
       chartDataLoadedCCC = true;
     });
@@ -2059,20 +1359,25 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     required List<MonthlyInventoryData> inventoryList,
     required List<DailyAnalysisExpensesData> purchaseMonthlyData,
   }) {
-    List<MonthlyCogsData> cogsList = [];
+    final List<MonthlyCogsData> cogsList = [];
+
+    if (inventoryList.length < 2) return cogsList;
+
+    double sumInventory(List inventory) {
+      return inventory.fold<double>(
+        0.0,
+        (sum, item) => sum + (double.tryParse(item.totalValue) ?? 0.0),
+      );
+    }
 
     for (int i = 1; i < inventoryList.length; i++) {
-      final String monthYear = inventoryList[i].monthYear;
+      final current = inventoryList[i];
+      final previous = inventoryList[i - 1];
 
-      final double openingStock = inventoryList[i - 1].inventory.fold(
-        0.0,
-        (sum, item) => sum + (double.parse(item.totalValue)),
-      );
+      final String monthYear = current.monthYear;
 
-      final double closingStock = inventoryList[i].inventory.fold(
-        0.0,
-        (sum, item) => sum + (double.parse(item.totalValue)),
-      );
+      final double openingStock = sumInventory(previous.inventory);
+      final double closingStock = sumInventory(current.inventory);
 
       double purchases = 0.0;
       if (i - 1 < purchaseMonthlyData.length) {
@@ -2096,111 +1401,64 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   }
 
   Future<void> _loadMonthlyAnalysisPurchase() async {
-    List<DailyAnalysisExpensesData> groupWiseDataList = [];
+    final List<DailyAnalysisExpensesData> groupWiseDataList = [];
 
-    List<GRNList> purchaseRecords =
-        purchasePrice /*.where((test) => test. == "Item Purchase").toList()*/;
+    final records = purchasePrice;
 
-    // Filter records based on the invoice date falling within the specified fiscal year.
-    List<GRNList> filteredRecords = purchaseRecords.where((record) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(record.grnDate);
-      return invoiceDate.isAtLeast(
-            dateFilterFlag ? fromDateFilter! : fiscalYearStartDate!,
-          ) &&
-          invoiceDate.isAtMost(dateFilterFlag ? toDateFilter! : currentDate!);
-    }).toList();
+    final startDate = dateFilterFlag ? fromDateFilter! : fiscalYearStartDate!;
+    final endDate = dateFilterFlag ? toDateFilter! : currentDate!;
 
-    // Create a Map to group balances by month-year.
-    // Key: month-year string (e.g. "08/2024")
-    // Value: accumulated balance for that month.
-    Map<String, double> monthlyBalanceMap = {};
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    final monthFormat = DateFormat('MM/yyyy');
 
-    // Iterate over the filtered records to group and sum balances.
-    for (var record in filteredRecords) {
-      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(record.grnDate);
-      String monthYearKey = DateFormat('MM/yyyy').format(invoiceDate);
+    /// Single pass: filter + group
+    final Map<String, double> monthlyBalanceMap = {};
 
-      double balance = double.tryParse(record.rowTotal) ?? 0.0;
-      // Sum the absolute value of balances.
-      monthlyBalanceMap[monthYearKey] =
-          (monthlyBalanceMap[monthYearKey] ?? 0.0) + balance.abs();
+    for (var record in records) {
+      final invoiceDate = dateFormat.parse(record.grnDate);
+
+      if (!invoiceDate.isAtLeast(startDate) || !invoiceDate.isAtMost(endDate)) {
+        continue;
+      }
+
+      final key = monthFormat.format(invoiceDate);
+
+      final balance = double.tryParse(record.rowTotal) ?? 0.0;
+
+      monthlyBalanceMap[key] = (monthlyBalanceMap[key] ?? 0.0) + balance.abs();
     }
 
-    // Convert each group into DailyAnalysisExpensesData.
-    monthlyBalanceMap.forEach((monthYear, totalBalance) {
-      groupWiseDataList.add(
-        DailyAnalysisExpensesData(balance: totalBalance, date: monthYear),
-      );
-    });
+    /// Ensure chronological order (important)
+    final sortedKeys = monthlyBalanceMap.keys.toList()
+      ..sort((a, b) {
+        final d1 = DateFormat('MM/yyyy').parse(a);
+        final d2 = DateFormat('MM/yyyy').parse(b);
+        return d1.compareTo(d2);
+      });
 
-    // Assign the calculated data to the revenueMonthlyData.
+    for (var key in sortedKeys) {
+      groupWiseDataList.add(
+        DailyAnalysisExpensesData(balance: monthlyBalanceMap[key]!, date: key),
+      );
+    }
+
+    /// Assign results (same as your logic)
     purchaseMonthlyData = DailyAnalysisExpensesList(
       dailyData: groupWiseDataList,
     );
+
     monthlyCogsList = calculateMonthlyCogs(
       inventoryList: monthWiseInventory,
       purchaseMonthlyData: purchaseMonthlyData.dailyData,
     );
   }
 
-  Future<void> _loadMonthlyAnalysisInventory() async {
-    List<DailyAnalysisExpensesData> groupWiseDataList = [];
-
-    // Filter records based on the invoice date falling within the specified fiscal year.
-    List<InventoryList> filteredRecords = inventory;
-
-    double balance = 0;
-
-    // Iterate over the filtered records to group and sum balances.
-    for (var record in filteredRecords) {
-      balance += double.tryParse(record.totalValue) ?? 0.0;
-      // Sum the absolute value of balances.
-    }
-
-    // Convert each group into DailyAnalysisExpensesData.
-    groupWiseDataList.add(
-      DailyAnalysisExpensesData(balance: balance, date: "May"),
-    );
-
-    // Assign the calculated data to the revenueMonthlyData.
-    inventoryMonthlyData = DailyAnalysisExpensesList(
-      dailyData: groupWiseDataList,
-    );
-  }
-
-  Future<void> _loadMonthlyAnalysisInventoryClosing() async {
-    List<DailyAnalysisExpensesData> groupWiseDataList = [];
-
-    // Filter records based on the invoice date falling within the specified fiscal year.
-    List<InventoryList> filteredRecords = inventoryClosing;
-
-    double balance = 0;
-
-    // Iterate over the filtered records to group and sum balances.
-    for (var record in filteredRecords) {
-      balance += double.tryParse(record.totalValue) ?? 0.0;
-      // Sum the absolute value of balances.
-    }
-
-    // Convert each group into DailyAnalysisExpensesData.
-    groupWiseDataList.add(
-      DailyAnalysisExpensesData(balance: balance, date: "May"),
-    );
-
-    // Assign the calculated data to the revenueMonthlyData.
-    inventoryClosingMonthlyData = DailyAnalysisExpensesList(
-      dailyData: groupWiseDataList,
-    );
-  }
-
   Future<void> generateCashConversionExcel() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
+    await reportService.generateExcel(
+      sheetName: 'CashConversion',
+      headers: [
         'Cash Conversion Cycle',
-        "Target",
+        'Target',
         'April',
         'May',
         'Jun',
@@ -2213,371 +1471,105 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         'Jan',
         'Feb',
         'Mar',
-      ]),
-    );
-
-    sheet.appendRow(
-      toCellRow([
-        "Receivable Days Outstanding Sales Team",
-        "",
-        monthlyAnalysisData.monthData[0].dsoDaysSales,
-        monthlyAnalysisData.monthData[1].dsoDaysSales,
-        monthlyAnalysisData.monthData[2].dsoDaysSales,
-        monthlyAnalysisData.monthData[3].dsoDaysSales,
-        monthlyAnalysisData.monthData[4].dsoDaysSales,
-        monthlyAnalysisData.monthData[5].dsoDaysSales,
-        monthlyAnalysisData.monthData[6].dsoDaysSales,
-        monthlyAnalysisData.monthData[7].dsoDaysSales,
-        monthlyAnalysisData.monthData[8].dsoDaysSales,
-        monthlyAnalysisData.monthData[9].dsoDaysSales,
-        monthlyAnalysisData.monthData[10].dsoDaysSales,
-        monthlyAnalysisData.monthData[11].dsoDaysSales,
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "Receivable Days Outstanding NH",
-        "",
-        monthlyAnalysisData.monthData[0].dsoDaysNH,
-        monthlyAnalysisData.monthData[1].dsoDaysNH,
-        monthlyAnalysisData.monthData[2].dsoDaysNH,
-        monthlyAnalysisData.monthData[3].dsoDaysNH,
-        monthlyAnalysisData.monthData[4].dsoDaysNH,
-        monthlyAnalysisData.monthData[5].dsoDaysNH,
-        monthlyAnalysisData.monthData[6].dsoDaysNH,
-        monthlyAnalysisData.monthData[7].dsoDaysNH,
-        monthlyAnalysisData.monthData[8].dsoDaysNH,
-        monthlyAnalysisData.monthData[9].dsoDaysNH,
-        monthlyAnalysisData.monthData[10].dsoDaysNH,
-        monthlyAnalysisData.monthData[11].dsoDaysNH,
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "Receivable Days Outstanding Office",
-        "",
-        monthlyAnalysisData.monthData[0].dsoDaysOffice,
-        monthlyAnalysisData.monthData[1].dsoDaysOffice,
-        monthlyAnalysisData.monthData[2].dsoDaysOffice,
-        monthlyAnalysisData.monthData[3].dsoDaysOffice,
-        monthlyAnalysisData.monthData[4].dsoDaysOffice,
-        monthlyAnalysisData.monthData[5].dsoDaysOffice,
-        monthlyAnalysisData.monthData[6].dsoDaysOffice,
-        monthlyAnalysisData.monthData[7].dsoDaysOffice,
-        monthlyAnalysisData.monthData[8].dsoDaysOffice,
-        monthlyAnalysisData.monthData[9].dsoDaysOffice,
-        monthlyAnalysisData.monthData[10].dsoDaysOffice,
-        monthlyAnalysisData.monthData[11].dsoDaysOffice,
-      ]),
-    );
-    sheet.appendRow(toCellRow([""]));
-    sheet.appendRow(
-      toCellRow([
-        "Receivable Outstanding Days",
-        60,
-        monthlyAnalysisData.monthData[0].dsoAllDays,
-        monthlyAnalysisData.monthData[1].dsoAllDays,
-        monthlyAnalysisData.monthData[2].dsoAllDays,
-        monthlyAnalysisData.monthData[3].dsoAllDays,
-        monthlyAnalysisData.monthData[4].dsoAllDays,
-        monthlyAnalysisData.monthData[5].dsoAllDays,
-        monthlyAnalysisData.monthData[6].dsoAllDays,
-        monthlyAnalysisData.monthData[7].dsoAllDays,
-        monthlyAnalysisData.monthData[8].dsoAllDays,
-        monthlyAnalysisData.monthData[9].dsoAllDays,
-        monthlyAnalysisData.monthData[10].dsoAllDays,
-        monthlyAnalysisData.monthData[11].dsoAllDays,
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "Add: Inventory Days Outstanding",
-        60,
-        double.parse(
-          monthlyAnalysisData.monthData[0].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[1].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[2].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[3].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[4].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[5].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[6].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[7].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[8].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[9].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[10].inventoryDays.toStringAsFixed(0),
-        ),
-        double.parse(
-          monthlyAnalysisData.monthData[11].inventoryDays.toStringAsFixed(0),
-        ),
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "Less: Payable Days Outstanding",
-        75,
-        monthlyAnalysisData.monthData[0].payableDays,
-        monthlyAnalysisData.monthData[1].payableDays,
-        monthlyAnalysisData.monthData[2].payableDays,
-        monthlyAnalysisData.monthData[3].payableDays,
-        monthlyAnalysisData.monthData[4].payableDays,
-        monthlyAnalysisData.monthData[5].payableDays,
-        monthlyAnalysisData.monthData[6].payableDays,
-        monthlyAnalysisData.monthData[7].payableDays,
-        monthlyAnalysisData.monthData[8].payableDays,
-        monthlyAnalysisData.monthData[9].payableDays,
-        monthlyAnalysisData.monthData[10].payableDays,
-        monthlyAnalysisData.monthData[11].payableDays,
-      ]),
-    );
-    sheet.appendRow(
-      toCellRow([
-        "",
-        45,
-        double.parse(
-          ((monthlyAnalysisData.monthData[0].dsoAllDays +
-                      monthlyAnalysisData.monthData[0].inventoryDays) -
-                  monthlyAnalysisData.monthData[0].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[1].dsoAllDays +
-                      monthlyAnalysisData.monthData[1].inventoryDays) -
-                  monthlyAnalysisData.monthData[1].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[2].dsoAllDays +
-                      monthlyAnalysisData.monthData[2].inventoryDays) -
-                  monthlyAnalysisData.monthData[2].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[3].dsoAllDays +
-                      monthlyAnalysisData.monthData[3].inventoryDays) -
-                  monthlyAnalysisData.monthData[3].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[4].dsoAllDays +
-                      monthlyAnalysisData.monthData[4].inventoryDays) -
-                  monthlyAnalysisData.monthData[4].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[5].dsoAllDays +
-                      monthlyAnalysisData.monthData[5].inventoryDays) -
-                  monthlyAnalysisData.monthData[5].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[6].dsoAllDays +
-                      monthlyAnalysisData.monthData[6].inventoryDays) -
-                  monthlyAnalysisData.monthData[6].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[7].dsoAllDays +
-                      monthlyAnalysisData.monthData[7].inventoryDays) -
-                  monthlyAnalysisData.monthData[7].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[8].dsoAllDays +
-                      monthlyAnalysisData.monthData[8].inventoryDays) -
-                  monthlyAnalysisData.monthData[8].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[9].dsoAllDays +
-                      monthlyAnalysisData.monthData[9].inventoryDays) -
-                  monthlyAnalysisData.monthData[9].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[10].dsoAllDays +
-                      monthlyAnalysisData.monthData[10].inventoryDays) -
-                  monthlyAnalysisData.monthData[10].payableDays)
-              .toStringAsFixed(0),
-        ),
-        double.parse(
-          ((monthlyAnalysisData.monthData[11].dsoAllDays +
-                      monthlyAnalysisData.monthData[11].inventoryDays) -
-                  monthlyAnalysisData.monthData[11].payableDays)
-              .toStringAsFixed(0),
-        ),
-      ]),
-    );
-
-    setState(() {
-      // YtdSalesBarChartData = true;
-    });
-
-    if (kIsWeb) {
-      // var fileBytes = excel.save(fileName: 'sales_analysis_ytd_report.xlsx');
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('cashConversionCycle.xlsx', excelBytes);
-
-      // var fileBytes = excel.encode();
-      //
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'monthly_sales_report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/cashConversionCycle.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
-  }
-
-  Future<void> generateDaysOutstandingExcel(DSOGraphList list) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      // sheet.appendRow([
-      //   'Month',
-      //   'Expenditure',
-      // ]);
-      for (var data in list.monthData) {
-        sheet.appendRow([
-          TextCellValue(data.name),
-          DoubleCellValue(
-            double.tryParse(data.achievement.toStringAsFixed(2)) ?? 0,
+      ],
+      rows: [
+        [
+          "Receivable Days Outstanding Sales Team",
+          "",
+          monthlyAnalysisData.monthData[0].dsoDaysSales,
+          monthlyAnalysisData.monthData[1].dsoDaysSales,
+          monthlyAnalysisData.monthData[2].dsoDaysSales,
+          monthlyAnalysisData.monthData[3].dsoDaysSales,
+          monthlyAnalysisData.monthData[4].dsoDaysSales,
+          monthlyAnalysisData.monthData[5].dsoDaysSales,
+          monthlyAnalysisData.monthData[6].dsoDaysSales,
+          monthlyAnalysisData.monthData[7].dsoDaysSales,
+          monthlyAnalysisData.monthData[8].dsoDaysSales,
+          monthlyAnalysisData.monthData[9].dsoDaysSales,
+          monthlyAnalysisData.monthData[10].dsoDaysSales,
+          monthlyAnalysisData.monthData[11].dsoDaysSales,
+        ],
+        [
+          "Receivable Days Outstanding NH",
+          "",
+          ...monthlyAnalysisData.monthData.map((e) => e.dsoDaysNH),
+        ],
+        [
+          "Receivable Days Outstanding Office",
+          "",
+          ...monthlyAnalysisData.monthData.map((e) => e.dsoDaysOffice),
+        ],
+        [""], // spacer row
+        [
+          "Receivable Outstanding Days",
+          60,
+          ...monthlyAnalysisData.monthData.map((e) => e.dsoAllDays),
+        ],
+        [
+          "Add: Inventory Days Outstanding",
+          60,
+          ...monthlyAnalysisData.monthData.map(
+            (e) => double.parse(e.inventoryDays.toStringAsFixed(0)),
           ),
-          DoubleCellValue(data.target),
-        ]);
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('daysOutstandingExcel.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthlyExpenditure.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+        ],
+        [
+          "Less: Payable Days Outstanding",
+          75,
+          ...monthlyAnalysisData.monthData.map((e) => e.payableDays),
+        ],
+        [
+          "",
+          45,
+          ...monthlyAnalysisData.monthData.map(
+            (e) => double.parse(
+              ((e.dsoAllDays + e.inventoryDays) - e.payableDays)
+                  .toStringAsFixed(0),
+            ),
+          ),
+        ],
+      ],
+      fileName: 'cashConversionCycle.xlsx',
+      reportTitle: 'Cash Conversion Cycle',
+      addTotalRow: false,
+    );
   }
 
-  Future<void> generateDaysOutstandingPDF(DSOGraphList list) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Days Outstanding',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                for (var data in graphData.monthData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.name,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.achievement.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.target.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
-        // Generate bytes
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daysOutstanding.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+  Future<void> generateMonthlyCCExcel(DSOGraphList list) async {
+    await reportService.generateExcel(
+      sheetName: 'CashConversionMonthlyAnalysis',
+      headers: ['Month', 'Achievement', 'Target'],
+      rows: list.monthData
+          .map(
+            (data) => [
+              data.name,
+              double.tryParse(data.achievement.toStringAsFixed(2)) ?? 0.0,
+              double.tryParse(data.target.toStringAsFixed(2)) ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'cash_conversion_monthly_analysis.xlsx',
+      amountColumns: [2, 3], // Achievement & Target columns
+      addTotalRow: true,
+      reportTitle: 'Cash Conversion Monthly Analysis',
+    );
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
+  Future<void> generateMonthlyCCPDF(DSOGraphList list) async {
+    await reportService.generatePDF(
+      title: 'Cash Conversion Monthly Analysis',
+      headers: ['Month', 'Achievement', 'Target'],
+      rows: list.monthData
+          .map(
+            (data) => [
+              data.name,
+              double.tryParse(data.achievement.toStringAsFixed(2)) ?? 0.0,
+              double.tryParse(data.target.toStringAsFixed(2)) ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'cash_conversion_monthly_analysis.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> loadData(String selectedUser) async {
@@ -2594,10 +1586,8 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     await _loadGRN(userName, userLevel);
     await _loadInventory(userName, userLevel);
     await _loadInventoryClosing(userName, userLevel);
-    await loadMonthlyInventory(userName, userLevel);
+    await _loadMonthlyInventory(userName, userLevel);
     await _loadMonthlyAnalysisPurchase();
-    await _loadMonthlyAnalysisInventory();
-    await _loadMonthlyAnalysisInventoryClosing();
     await _loadMonthlySalesBarCashConversionChartData("");
     chartDataLoadedCCC = true;
   }
@@ -2621,19 +1611,16 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     setState(() {
       chartDataLoadedCCC = false;
       monthlyAnalysisData = CashConversionGraphList(monthData: []);
-      cashConversionData = CashConversionGraphList(monthData: []);
       graphData = DSOGraphList(monthData: []);
       purchaseMonthlyData = DailyAnalysisExpensesList(dailyData: []);
-      inventoryMonthlyData = DailyAnalysisExpensesList(dailyData: []);
-      inventoryClosingMonthlyData = DailyAnalysisExpensesList(dailyData: []);
     });
   }
 
-  void toggleCheckbox() {
+  void toggleCheckbox() async {
     setState(() {
       chartDataLoadedCCC = false;
-      loadData("");
     });
+    await loadData("");
   }
 
   Future<void> _dateFilterTarget() async {
@@ -2701,8 +1688,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   Future<void> filterDateFunction() async {
     _dateFilterTarget();
     await _loadMonthlyAnalysisPurchase();
-    await _loadMonthlyAnalysisInventory();
-    await _loadMonthlyAnalysisInventoryClosing();
     await _loadMonthlySalesBarCashConversionChartData("");
     setState(() {});
     chartDataLoadedCCC = true;
@@ -2864,7 +1849,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generateDaysOutstandingExcel(graphData);
+                                    generateMonthlyCCExcel(graphData);
                                   });
                                 },
                                 child: const Text("Download Excel"),
@@ -2872,7 +1857,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generateDaysOutstandingPDF(graphData);
+                                    generateMonthlyCCPDF(graphData);
                                   });
                                 },
                                 child: const Text("Download PDF"),
@@ -3407,11 +2392,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
                                       selectedSalesData = selectedFilterOptions;
 
-                                      savedFinanceReceivablesOptionsTemp =
-                                          savedFinanceReceivablesOptions;
-
-                                      fromFilter = false;
-
                                       // toggleCheckbox();
                                       filterDateFunction();
                                       setState(() {});
@@ -3433,9 +2413,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                                     ),
                                     onPressed: () {
                                       chartDataLoadedCCC = false;
-                                      fromFilter = false;
-                                      savedFinanceReceivablesOptionsTemp
-                                          .clear();
                                       setState(() {
                                         chartDataLoadedCCC = false;
                                         loadDataFuture = removeFilter();
