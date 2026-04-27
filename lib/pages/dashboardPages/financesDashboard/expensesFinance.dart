@@ -56,12 +56,17 @@ GroupWiseAnalysisExpensesList groupList = GroupWiseAnalysisExpensesList(
 );
 SubGroupWiseAnalysisExpensesList subGroupList =
     SubGroupWiseAnalysisExpensesList(subGroupData: []);
+
+SubSubGroupWiseAnalysisExpensesList subSubGroupList =
+    SubSubGroupWiseAnalysisExpensesList(subSubGroupData: []);
+
 DailyAnalysisExpensesList dailyData = DailyAnalysisExpensesList(dailyData: []);
 
+String touchedSubSubGroup = "";
 String touchedSubGroup = "";
 String touchedGroup = "";
-
 String touchedMonth = "";
+
 int touchedMonthIndex = 0;
 double selectedChart = 0;
 
@@ -381,6 +386,29 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
     },
   );
 
+  SideTitles get _bottomTitlesSubSubGroupWiseAnalysis => SideTitles(
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<SubSubGroupWiseAnalysisExpensesData> mData =
+          subSubGroupList.subSubGroupData;
+      text = mData.elementAt(value.toInt()).subSubGroupName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
+      );
+    },
+  );
+
   SideTitles get _bottomTitlesDailyAnalysis => SideTitles(
     reservedSize: 30,
     showTitles: true,
@@ -406,78 +434,125 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
   List<BarChartGroupData> _groupWiseAnalysisChartData(
     List<GroupWiseAnalysisExpensesData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                color: const Color(0xFFFF9F47),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.balance,
-                width: 20,
-              ),
-            ],
-          ),
-        )
-        .toList();
+    List<BarChartGroupData> result = [];
+
+    for (int i = 0; i < data.length; i++) {
+      final chartData = data[i];
+
+      result.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              color: const Color(0xFFFF9F47),
+              borderRadius: BorderRadius.zero,
+              toY: chartData.balance,
+              width: 20,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return result;
   }
 
   List<BarChartGroupData> _subGroupWiseAnalysisChartData(
     List<SubGroupWiseAnalysisExpensesData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                color: const Color(0xFFFF9F47),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.balance,
-                width: 20,
-              ),
-            ],
-          ),
-        )
-        .toList();
+    List<BarChartGroupData> result = [];
+
+    for (int i = 0; i < data.length; i++) {
+      final chartData = data[i];
+
+      result.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              color: const Color(0xFFFF9F47),
+              borderRadius: BorderRadius.zero,
+              toY: chartData.balance,
+              width: 20,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return result;
+  }
+
+  List<BarChartGroupData> _subSubGroupWiseAnalysisChartData(
+    List<SubSubGroupWiseAnalysisExpensesData> data,
+  ) {
+    List<BarChartGroupData> result = [];
+
+    for (int i = 0; i < data.length; i++) {
+      final chartData = data[i];
+
+      result.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              color: const Color(0xFFFF9F47),
+              borderRadius: BorderRadius.zero,
+              toY: chartData.balance,
+              width: 20,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return result;
   }
 
   List<BarChartGroupData> _monthlyAnalysisChartData(
     List<DailyAnalysisExpensesData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                color: const Color(0xFFFF9F47),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.balance,
-                width: 20,
-              ),
-            ],
-          ),
-        )
-        .toList();
+    List<BarChartGroupData> result = [];
+
+    for (int i = 0; i < data.length; i++) {
+      final chartData = data[i];
+
+      result.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              color: const Color(0xFFFF9F47),
+              borderRadius: BorderRadius.zero,
+              toY: chartData.balance,
+              width: 20,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return result;
   }
 
-  Future<void> _loadExpenses(String userName, String userLevel) async {
-    int index = 0;
-    int limit = 10000;
-    int fetchedCount = 0;
-    List<ExpensesList> tmpTrialBalanceList = [];
-    try {
-      do {
+  Future<List<ExpensesList>> _loadExpenses(
+    String userName,
+    String userLevel,
+  ) async {
+    int retry = 0;
+
+    while (retry < 3) {
+      try {
         var body = {
           "FromDate": formatDate(currentDate!),
           "ToDate": formatDate(currentDate!),
-          "Index": index.toString(),
-          "Limit": limit.toString(),
+          "Index": "0",
+          "Limit": "10000",
           "sapToken": DataManager.readSapToken(),
         };
+
         const apiUrl = '${ApiHelper.baseUrl}BicxoTrialBalanceList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
@@ -485,253 +560,204 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<ExpensesList> newTrialBalanceList =
-                (responseJson['responseData'] as List)
-                    .map((item) => ExpensesList.fromJson(item))
-                    .toList();
-            tmpTrialBalanceList.addAll(newTrialBalanceList);
-            fetchedCount = newTrialBalanceList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
-        } else if (response.statusCode == 504) {
-          await _loadExpenses(userName, userLevel);
-        } else if (response.statusCode == 502) {
-          await _loadExpenses(userName, userLevel);
-        } else {
-          fetchedCount = 0;
-        }
-      } while (fetchedCount == limit);
+          final data = jsonDecode(response.body)['responseData'] as List;
 
-      setState(() {
-        final fromYM =
-            fiscalYearStartDate!.year * 100 + fiscalYearStartDate!.month;
-        final toYM = currentDate!.year * 100 + currentDate!.month;
-        tmpTrialBalanceList = tmpTrialBalanceList.where((target) {
-          final parts = target.monthYear.split('/');
-          final month = int.parse(parts[0]);
-          final year = int.parse(parts[1]);
-          final targetYM = year * 100 + month;
-          return targetYM >= fromYM && targetYM <= toYM;
-        }).toList();
-        context.read<FinanceExpensesBIProvider>().updateCollectionList(
-          tmpTrialBalanceList,
-        );
-        if (expensesList.isEmpty) {
-          expensesList = tmpTrialBalanceList.toList();
-          expensesListTemp = tmpTrialBalanceList.toList();
+          return data.map((e) => ExpensesList.fromJson(e)).toList();
         }
-      });
-    } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+        retry++;
+      } catch (e) {
+        retry++;
+        if (retry == 3) rethrow;
+      }
     }
+
+    return [];
   }
 
   Future<void> _loadGroupWiseAnalysis(
     int monthIndex,
     String? group,
     String? subGroup,
+    String? subSubGroup,
   ) async {
-    List<GroupWiseAnalysisExpensesData> groupWiseDataList = [];
-    var customerTargetList = const Iterable.empty();
-    double balance = 0.0;
-    String groupName = "";
-    Set<String> processedGroupCodes = {};
+    final from = fromDateFilter ?? fiscalYearStartDate!;
+    final to = toDateFilter ?? DateTime.now();
 
-    // Use fallback if fromDateFilter or toDateFilter is null
-    final from = fromDateFilter ?? fiscalYearStartDate;
-    final to = toDateFilter ?? DateTime.now(); // Optional fallback
+    final fromYM = from.year * 100 + from.month;
+    final toYM = to.year * 100 + to.month;
 
-    var fromYM = from!.year * 100 + from.month;
-    var toYM = to.year * 100 + to.month;
+    // Step 1: Filter once
+    List<ExpensesList> filtered = expensesList.where((item) {
+      final parts = item.monthYear.split('/');
+      final month = int.parse(parts[0]);
+      final year = int.parse(parts[1]);
+      final ym = year * 100 + month;
 
-    if (monthIndex == 0) {
-      customerTargetList = expensesList.where((target) {
-        final parts = target.monthYear.split('/');
-        final month = int.parse(parts[0]);
-        final year = int.parse(parts[1]);
-        final targetYM = year * 100 + month;
+      final inDate = ym >= fromYM && ym <= toYM;
+      final inGroup = group == null || group.isEmpty || item.category == group;
+      final inSubGroup =
+          subGroup == null || subGroup.isEmpty || item.subGroup == subGroup;
+      final inSubSubGroup =
+          subSubGroup == null ||
+          subSubGroup.isEmpty ||
+          item.foreignName == subSubGroup;
+      return inDate && inGroup && inSubGroup && inSubSubGroup;
+    }).toList();
 
-        return targetYM >= fromYM && targetYM <= toYM;
-      }).toList();
+    // Step 2: Grouping (O(n))
+    Map<String, double> groupMap = {};
 
-      customerTargetList = filterExpensesList(
-        customerTargetList.cast<ExpensesList>().toList(),
-        group: group,
-        subGroup: subGroup,
+    for (var item in filtered) {
+      if (item.group != "Expenditure") continue;
+      if (item.category == "") continue;
+      double value = double.tryParse(item.balance) ?? 0;
+
+      groupMap.update(
+        item.category,
+        (existing) => existing + value,
+        ifAbsent: () => value,
       );
-
-      for (var customer
-          in customerTargetList
-              .where((customer) => customer.group == "Expenditure")
-              .toList()) {
-        if (!processedGroupCodes.contains(customer.group)) {
-          groupName = customer.group;
-          for (var sales in customerTargetList.where(
-            (saleelement) => saleelement.group == groupName,
-          )) {
-            balance += double.tryParse(sales.balance) ?? 0;
-          }
-
-          groupWiseDataList.add(
-            GroupWiseAnalysisExpensesData(
-              groupName: groupName,
-              balance: balance.abs(),
-            ),
-          );
-          balance = 0;
-          processedGroupCodes.add(groupName);
-        }
-      }
-    } else {
-      Map<String, DateTime> monthDates = getMonthStartEndDates(monthIndex);
-      fromYM = currentDate!.year * 100 + monthDates['end']!.month;
-      toYM = currentDate!.year * 100 + monthDates['end']!.month;
-      customerTargetList = expensesList.where((target) {
-        final parts = target.monthYear.split('/');
-        final month = int.parse(parts[0]);
-        final year = int.parse(parts[1]);
-        final targetYM = year * 100 + month;
-
-        return targetYM >= fromYM && targetYM <= toYM;
-      }).toList();
-
-      customerTargetList = filterExpensesList(
-        customerTargetList.cast<ExpensesList>().toList(),
-        group: group,
-        subGroup: subGroup,
-      );
-
-      for (var customer
-          in customerTargetList
-              .where((customer) => customer.group == "Expenditure")
-              .toList()) {
-        if (!processedGroupCodes.contains(customer.group)) {
-          groupName = customer.group;
-          for (var sales in customerTargetList.where(
-            (saleelement) => saleelement.group == groupName,
-          )) {
-            balance += double.tryParse(sales.balance) ?? 0;
-          }
-
-          groupWiseDataList.add(
-            GroupWiseAnalysisExpensesData(
-              groupName: groupName,
-              balance: balance.abs(),
-            ),
-          );
-          balance = 0;
-          processedGroupCodes.add(groupName);
-        }
-      }
     }
 
-    groupWiseDataList.sort(
-      (a, b) => b.balance.abs().compareTo(a.balance.abs()),
-    );
-    groupList = GroupWiseAnalysisExpensesList(groupData: groupWiseDataList);
+    // Step 3: Convert to list
+    List<GroupWiseAnalysisExpensesData> result = groupMap.entries.map((e) {
+      return GroupWiseAnalysisExpensesData(
+        groupName: e.key,
+        balance: e.value.abs(),
+      );
+    }).toList();
+
+    // Step 4: Sort
+    result.sort((a, b) => b.balance.compareTo(a.balance));
+
+    groupList = GroupWiseAnalysisExpensesList(groupData: result);
   }
 
   Future<void> _loadSubGroupWiseAnalysis(
-    String? touchedMonth,
     int monthIndex,
     String? group,
     String? subGroup,
+    String? subSubGroup,
   ) async {
-    List<SubGroupWiseAnalysisExpensesData> subGroupWiseDataList = [];
-    Iterable<ExpensesList> customerTargetList = const Iterable.empty();
-    double balance = 0.0;
-    String subGroupName = "";
-
-    // Use fallback if from/to filters are null
-    final from = fromDateFilter ?? fiscalYearStartDate;
+    final from = fromDateFilter ?? fiscalYearStartDate!;
     final to = toDateFilter ?? DateTime.now();
 
-    // Parse touchedMonth if provided (expects "MM/YYYY")
-    if (touchedMonth != null && touchedMonth.isNotEmpty) {
-      final parts = touchedMonth.split('/');
-      final month = int.parse(parts[0]);
-      final year = int.parse(parts[1]);
+    final fromYM = from.year * 100 + from.month;
+    final toYM = to.year * 100 + to.month;
 
-      customerTargetList = expensesList.where((target) {
-        final p = target.monthYear.split('/');
-        final m = int.parse(p[0]);
-        final y = int.parse(p[1]);
-        return y == year && m == month;
-      }).cast<ExpensesList>();
-    } else if (monthIndex == 0) {
-      // full range between from and to
-      final fromYM = from!.year * 100 + from.month;
-      final toYM = to.year * 100 + to.month;
+    List<ExpensesList> filtered = expensesList.where((item) {
+      final parts = item.monthYear.split('/');
+      final m = int.parse(parts[0]);
+      final y = int.parse(parts[1]);
+      final ym = y * 100 + m;
 
-      customerTargetList = expensesList.where((target) {
-        final parts = target.monthYear.split('/');
-        final m = int.parse(parts[0]);
-        final y = int.parse(parts[1]);
-        final targetYM = y * 100 + m;
-        return targetYM >= fromYM && targetYM <= toYM;
-      }).cast<ExpensesList>();
-    } else {
-      // single selected month via monthIndex
-      final monthDates = getMonthStartEndDates(monthIndex);
-      final targetMonth = monthDates['end']!;
-      final YM = targetMonth.year * 100 + targetMonth.month;
+      final inDate = ym >= fromYM && ym <= toYM;
+      final inGroup = group == null || group.isEmpty || item.category == group;
+      final inSubGroup =
+          subGroup == null || subGroup.isEmpty || item.subGroup == subGroup;
+      final inSubSubGroup =
+          subSubGroup == null ||
+          subSubGroup.isEmpty ||
+          item.foreignName == subSubGroup;
+      return inDate && inGroup && inSubGroup && inSubSubGroup;
+    }).toList();
 
-      customerTargetList = expensesList.where((target) {
-        final parts = target.monthYear.split('/');
-        final m = int.parse(parts[0]);
-        final y = int.parse(parts[1]);
-        final targetYM = y * 100 + m;
-        return targetYM == YM;
-      }).cast<ExpensesList>();
+    Map<String, double> subGroupMap = {};
+
+    for (var item in filtered) {
+      if (item.group != "Expenditure") continue;
+      if (item.category == "") continue;
+
+      double value = double.tryParse(item.balance) ?? 0;
+
+      subGroupMap.update(
+        item.subGroup,
+        (existing) => existing + value,
+        ifAbsent: () => value,
+      );
     }
 
-    // apply group/subGroup filters
-    final filtered = filterExpensesList(
-      customerTargetList.toList(),
-      group: group,
-      subGroup: subGroup,
-    );
+    List<SubGroupWiseAnalysisExpensesData> result = subGroupMap.entries.map((
+      e,
+    ) {
+      return SubGroupWiseAnalysisExpensesData(
+        subGroupName: e.key,
+        balance: e.value,
+      );
+    }).toList();
 
-    // aggregate by subGroup
-    final processed = <String>{};
-    for (var item in filtered.where((e) => e.group == "Expenditure")) {
-      if (!processed.contains(item.subGroup)) {
-        subGroupName = item.subGroup;
-        balance = filtered
-            .where((e) => e.subGroup == subGroupName)
-            .fold<double>(
-              0.0,
-              (sum, e) => sum + (double.tryParse(e.balance) ?? 0.0),
-            );
-        subGroupWiseDataList.add(
-          SubGroupWiseAnalysisExpensesData(
-            subGroupName: subGroupName,
-            balance: balance,
-          ),
-        );
-        processed.add(subGroupName);
-      }
+    result.sort((a, b) => b.balance.compareTo(a.balance));
+
+    subGroupList = SubGroupWiseAnalysisExpensesList(subGroupData: result);
+  }
+
+  Future<void> _loadSubSubGroupWiseAnalysis(
+    int monthIndex,
+    String? group,
+    String? subGroup,
+    String? subSubGroup,
+  ) async {
+    final from = fromDateFilter ?? fiscalYearStartDate!;
+    final to = toDateFilter ?? DateTime.now();
+
+    final fromYM = from.year * 100 + from.month;
+    final toYM = to.year * 100 + to.month;
+
+    List<ExpensesList> filtered = expensesList.where((item) {
+      final parts = item.monthYear.split('/');
+      final m = int.parse(parts[0]);
+      final y = int.parse(parts[1]);
+      final ym = y * 100 + m;
+
+      final inDate = ym >= fromYM && ym <= toYM;
+      final inGroup = group == null || group.isEmpty || item.category == group;
+      final inSubGroup =
+          subGroup == null || subGroup.isEmpty || item.subGroup == subGroup;
+      final inSubSubGroup =
+          subSubGroup == null ||
+          subSubGroup.isEmpty ||
+          item.foreignName == subSubGroup;
+
+      return inDate && inGroup && inSubGroup && inSubSubGroup;
+    }).toList();
+
+    Map<String, double> subSubGroupMap = {};
+
+    for (var item in filtered) {
+      if (item.group != "Expenditure") continue;
+      if (item.category == "") continue;
+      if (item.foreignName == "") continue;
+
+      double value = double.tryParse(item.balance) ?? 0;
+
+      subSubGroupMap.update(
+        item.foreignName,
+        (existing) => existing + value,
+        ifAbsent: () => value,
+      );
     }
 
-    // sort and assign
-    subGroupWiseDataList.sort(
-      (a, b) => b.balance.abs().compareTo(a.balance.abs()),
-    );
-    subGroupList = SubGroupWiseAnalysisExpensesList(
-      subGroupData: subGroupWiseDataList,
+    List<SubSubGroupWiseAnalysisExpensesData> result = subSubGroupMap.entries
+        .map((e) {
+          return SubSubGroupWiseAnalysisExpensesData(
+            subSubGroupName: e.key,
+            balance: e.value,
+          );
+        })
+        .toList();
+
+    result.sort((a, b) => b.balance.compareTo(a.balance));
+
+    subSubGroupList = SubSubGroupWiseAnalysisExpensesList(
+      subSubGroupData: result,
     );
   }
 
-  Future<void> _loadMonthlyAnalysis(String? subgroup) async {
+  Future<void> _loadMonthlyAnalysis(
+    String? subgroup,
+    String? subSubGroup,
+  ) async {
     List<DailyAnalysisExpensesData> groupWiseDataList = [];
 
     final from = fromDateFilter ?? fiscalYearStartDate;
@@ -748,40 +774,57 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
       final inDateRange = targetYM >= fromYM && targetYM <= toYM;
       final inSubgroup =
           subgroup == null || subgroup.isEmpty || target.subGroup == subgroup;
+      final inSubSubGroup =
+          subSubGroup == null ||
+          subSubGroup.isEmpty ||
+          target.subSubGroup == subSubGroup;
 
-      return inDateRange && inSubgroup;
+      return inDateRange && inSubgroup && inSubSubGroup;
     }).toList();
 
-    final seen = <String>{};
-    for (var entry in filtered) {
-      final ym = entry.monthYear;
-      if (seen.add(ym)) {
-        final sumForMonth = filtered
-            .where((e) => e.monthYear == ym)
-            .map((e) => double.tryParse(e.balance) ?? 0)
-            .fold<double>(0, (prev, b) => prev + b.abs());
+    final Map<String, double> monthSumMap = {};
 
-        groupWiseDataList.add(
-          DailyAnalysisExpensesData(balance: sumForMonth, date: ym),
-        );
-      }
+    for (var entry in filtered) {
+      if (entry.group != "Expenditure") continue;
+
+      final ym = entry.monthYear;
+      final value = double.tryParse(entry.balance) ?? 0;
+
+      monthSumMap.update(
+        ym,
+        (existing) => existing + value,
+        ifAbsent: () => value,
+      );
     }
+
+    groupWiseDataList = monthSumMap.entries.map((e) {
+      return DailyAnalysisExpensesData(balance: e.value, date: e.key);
+    }).toList();
 
     dailyData = DailyAnalysisExpensesList(dailyData: groupWiseDataList);
   }
 
   Future<void> loadData(String selectedUser) async {
+    setState(() => chartDataLoadedExpenses = false);
+
     final prefs = await SharedPreferences.getInstance();
-    final userName = selectedUser == ""
+    final userName = selectedUser.isEmpty
         ? prefs.getString('userName') ?? ''
         : selectedUser;
+
     final userLevel = prefs.getString('userLevel') ?? '';
-    UserLevel = userLevel;
-    await _loadExpenses(userName, userLevel);
-    await _loadGroupWiseAnalysis(0, "", "");
-    await _loadSubGroupWiseAnalysis("", 0, "", "");
-    await _loadMonthlyAnalysis("");
-    chartDataLoadedExpenses = true;
+
+    final data = await _loadExpenses(userName, userLevel);
+
+    expensesList = data;
+    expensesListTemp = List.from(data);
+
+    await _loadGroupWiseAnalysis(0, "", "", "");
+    await _loadSubGroupWiseAnalysis(0, "", "", "");
+    await _loadSubSubGroupWiseAnalysis(0, "", "", "");
+    await _loadMonthlyAnalysis("", "");
+
+    setState(() => chartDataLoadedExpenses = true);
   }
 
   int filterFunction() {
@@ -806,16 +849,22 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
   }
 
   Future<void> loadDataWithFilter(
-    String? touchedMonth,
     int monthIndex,
     String? group,
     String? subGroup,
+    String? subSubGroup,
   ) async {
     clearVariablesForFilter();
     LoadDates();
-    await _loadGroupWiseAnalysis(monthIndex, group, subGroup);
-    await _loadSubGroupWiseAnalysis(touchedMonth, monthIndex, group, subGroup);
-    _loadMonthlyAnalysis(subGroup);
+    await _loadGroupWiseAnalysis(monthIndex, group, subGroup, subSubGroup);
+    await _loadSubGroupWiseAnalysis(monthIndex, group, subGroup, subSubGroup);
+    await _loadSubSubGroupWiseAnalysis(
+      monthIndex,
+      group,
+      subGroup,
+      subSubGroup,
+    );
+    _loadMonthlyAnalysis(subGroup, subSubGroup);
 
     chartDataLoadedExpenses = true;
   }
@@ -823,10 +872,10 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
   Future<void> removeFilter() async {
     clearVariables();
     LoadDates();
-    await _loadGroupWiseAnalysis(0, "", "");
-
-    await _loadSubGroupWiseAnalysis("", 0, "", "");
-    await _loadMonthlyAnalysis("");
+    await _loadGroupWiseAnalysis(0, "", "", "");
+    await _loadSubGroupWiseAnalysis(0, "", "", "");
+    await _loadSubSubGroupWiseAnalysis(0, "", "", "");
+    await _loadMonthlyAnalysis("", "");
 
     chartDataLoadedExpenses = true;
   }
@@ -838,8 +887,8 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
       subGroupList = SubGroupWiseAnalysisExpensesList(subGroupData: []);
       dailyData = DailyAnalysisExpensesList(dailyData: []);
       touchedSubGroup = "";
+      touchedSubSubGroup = "";
       touchedGroup = "";
-      // touchedMonth = "";
       fromDateForFilter = '';
       toDateForFilter = '';
       fromDateFilter = null;
@@ -904,12 +953,40 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
     );
   }
 
+  Future<void> generateSubSubGroupWiseExcel(
+    SubSubGroupWiseAnalysisExpensesList list,
+  ) async {
+    await reportService.generateExcel(
+      sheetName: 'SubSubGroupWiseAnalysis',
+      headers: ['Subgroup Name', 'Total Amount'],
+      rows: list.subSubGroupData
+          .map((e) => [e.subSubGroupName, e.balance])
+          .toList(),
+      fileName: 'SubSubGroupWiseAnalysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Expenses - Sub Sub Group Wise Analysis',
+    );
+  }
+
   Future<void> generateSubGroupWisePDF() async {
     await reportService.generatePDF(
       title: 'Sub Group Wise Analysis',
       headers: ['Group Name', 'Total Amount'],
       rows: subGroupList.subGroupData
           .map((e) => [e.subGroupName, e.balance])
+          .toList(),
+      fileName: 'Subgroupwise_analysis.pdf',
+      amountColumns: [2],
+    );
+  }
+
+  Future<void> generateSubSubGroupWisePDF() async {
+    await reportService.generatePDF(
+      title: 'Sub Sub Group Wise Analysis',
+      headers: ['Sub Sub Group Name', 'Total Amount'],
+      rows: subSubGroupList.subSubGroupData
+          .map((e) => [e.subSubGroupName, e.balance])
           .toList(),
       fileName: 'Subgroupwise_analysis.pdf',
       amountColumns: [2],
@@ -975,9 +1052,10 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
     chartDataLoadedExpenses = false;
 
     _dateFilterTarget();
-    await _loadGroupWiseAnalysis(0, "", "");
-    await _loadSubGroupWiseAnalysis("", 0, "", "");
-    await _loadMonthlyAnalysis("");
+    await _loadGroupWiseAnalysis(0, "", "", "");
+    await _loadSubGroupWiseAnalysis(0, "", "", "");
+    await _loadSubSubGroupWiseAnalysis(0, "", "", "");
+    await _loadMonthlyAnalysis("", "");
     setState(() {
       chartDataLoadedExpenses = true;
 
@@ -1068,17 +1146,13 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateGroupWiseExcel(groupList);
-                                  });
+                                  generateGroupWiseExcel(groupList);
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateGroupWisePDF();
-                                  });
+                                  generateGroupWisePDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -1093,6 +1167,7 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _groupWiseAnalysis(),
                 ),
+
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
@@ -1119,17 +1194,13 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateSubGroupWiseExcel(subGroupList);
-                                  });
+                                  generateSubGroupWiseExcel(subGroupList);
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateSubGroupWisePDF();
-                                  });
+                                  generateSubGroupWisePDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -1144,10 +1215,60 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _subGroupAnalysis(),
                 ),
+
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
                 ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 15),
+                        Text(
+                          "Sub-Sub Group Wise Analysis",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        PopupMenuButton(
+                          onSelected: (value) {},
+                          itemBuilder: (BuildContext bc) {
+                            return [
+                              PopupMenuItem(
+                                onTap: () {
+                                  generateSubSubGroupWiseExcel(subSubGroupList);
+                                },
+                                child: const Text("Download Excel"),
+                              ),
+                              PopupMenuItem(
+                                onTap: () {
+                                  generateSubSubGroupWisePDF();
+                                },
+                                child: const Text("Download PDF"),
+                              ),
+                            ];
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: _subSubGroupAnalysis(),
+                ),
+
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Divider(thickness: 2),
+                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1169,17 +1290,13 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateMonthlyAnalysisExcel(dailyData);
-                                  });
+                                  generateMonthlyAnalysisExcel(dailyData);
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateMonthlyAnalysisPDF();
-                                  });
+                                  generateMonthlyAnalysisPDF();
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -1283,10 +1400,10 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
                       loadDataWithFilter(
-                        touchedMonth,
                         touchedMonthIndex,
                         touchedGroup,
                         touchedSubGroup,
+                        touchedSubSubGroup,
                       );
                     }
                   });
@@ -1428,10 +1545,10 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
                       loadDataWithFilter(
-                        touchedMonth,
                         touchedMonthIndex,
                         touchedGroup,
                         touchedSubGroup,
+                        touchedSubSubGroup,
                       );
                     }
                   });
@@ -1456,6 +1573,151 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                       TextSpan(
                         text: formatAmount(
                           subGroupList.subGroupData[grpIndex].balance,
+                        ),
+                        style: const TextStyle(
+                          color: Colors.black, //widget.touchedBarColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    textAlign: TextAlign.start,
+                  );
+                },
+                getTooltipColor: (group) => Colors.white,
+                fitInsideVertically: true,
+                fitInsideHorizontally: true,
+              ),
+              handleBuiltInTouches: true,
+              touchExtraThreshold: const EdgeInsets.all(10),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _subSubGroupAnalysis() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double chartWidth = 0.0;
+    int len = subSubGroupList.subSubGroupData.length;
+    if (subSubGroupList.subSubGroupData.length > 5) {
+      chartWidth = screenWidth + (35 * len);
+    } else {
+      chartWidth = screenWidth;
+    }
+
+    final amounts = subSubGroupList.subSubGroupData
+        .map((e) => e.balance)
+        .whereType<double>()
+        .toList();
+
+    final hasPositive = amounts.any((a) => a > 0);
+    final hasNegative = amounts.any((a) => a < 0);
+
+    double chartMinY = 0;
+    double chartMaxY = 0;
+
+    if (hasPositive && hasNegative) {
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
+      chartMaxY = roundUpTo50Lakhs(maxPositive);
+      chartMinY = roundDownTo50Lakhs(maxNegative);
+    } else if (hasPositive) {
+      double maxPositive = amounts.reduce((a, b) => a > b ? a : b);
+      chartMaxY = roundUpTo50Lakhs(maxPositive);
+      chartMinY = 0;
+    } else if (hasNegative) {
+      double maxNegative = amounts.reduce((a, b) => a < b ? a : b);
+      chartMaxY = 0;
+      chartMinY = roundDownTo50Lakhs(maxNegative);
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        height: 350,
+        width: chartWidth,
+        child: BarChart(
+          BarChartData(
+            maxY: chartMaxY,
+            minY: chartMinY,
+            titlesData: FlTitlesData(
+              show: true,
+              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+              bottomTitles: AxisTitles(
+                sideTitles: _bottomTitlesSubSubGroupWiseAnalysis,
+                axisNameSize: 20,
+              ),
+            ),
+            gridData: FlGridData(
+              show: true,
+              checkToShowHorizontalLine: (value) => value % 10 == 0,
+              getDrawingHorizontalLine: (value) =>
+                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+              drawVerticalLine: false,
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              ),
+            ),
+            barGroups: _subSubGroupWiseAnalysisChartData(
+              subSubGroupList.subSubGroupData,
+            ),
+            barTouchData: BarTouchData(
+              allowTouchBarBackDraw: true,
+              touchCallback: (flTouchEvent, barTouchResponse) async {
+                if (barTouchResponse != null && barTouchResponse.spot != null) {
+                  setState(() {
+                    if (flTouchEvent is FlTapUpEvent) {
+                      touchedSubGroup = touchedSubSubGroup == ""
+                          ? subSubGroupList
+                                .subSubGroupData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .subSubGroupName
+                          : "";
+                      selectedChart = barTouchResponse.spot!.spot.x;
+                      showDrillDownChart = true;
+                      loadDataWithFilter(
+                        touchedMonthIndex,
+                        touchedGroup,
+                        touchedSubGroup,
+                        touchedSubSubGroup,
+                      );
+                    }
+                  });
+                }
+              },
+              touchTooltipData: BarTouchTooltipData(
+                maxContentWidth: 200,
+                tooltipBorder: const BorderSide(
+                  width: 2.0,
+                  color: Colors.black12,
+                  style: BorderStyle.none,
+                ),
+                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                  return BarTooltipItem(
+                    "${subSubGroupList.subSubGroupData[grpIndex].subSubGroupName}\n",
+                    const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: formatAmount(
+                          subSubGroupList.subSubGroupData[grpIndex].balance,
                         ),
                         style: const TextStyle(
                           color: Colors.black, //widget.touchedBarColor,
@@ -1562,10 +1824,10 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
                       loadDataWithFilter(
-                        touchedMonth,
                         touchedMonthIndex,
                         touchedGroup,
                         touchedSubGroup,
+                        touchedSubSubGroup,
                       );
                     }
                   });

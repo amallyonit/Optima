@@ -1334,7 +1334,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     );
 
     graphData = DSOGraphList(monthData: dataList);
-
+    if (!mounted) return;
     setState(() {
       chartDataLoadedCCC = true;
     });
@@ -1573,7 +1573,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   }
 
   Future<void> loadData(String selectedUser) async {
+    if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final userName = selectedUser == ""
         ? prefs.getString('userName') ?? ''
         : selectedUser;

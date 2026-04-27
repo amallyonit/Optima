@@ -750,11 +750,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         const apiUrl = '${ApiHelper.baseUrl}Crm_SalesList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -779,24 +775,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
       setState(() {
         context.read<SalesMonthlyPLProvider>().updateSalesList(salesList);
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          salesTemp = salesList.toList();
-          sales = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          salesTemp = salesList.toList();
-          sales = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          salesTemp = salesList.toList();
-          sales = salesList.toList();
-        } else {
-          salesTemp = salesList.toList();
-          sales = salesList.toList();
-        }
+        salesTemp = salesList.toList();
+        sales = salesList.toList();
       });
     } catch (e) {
       final snackBar = SnackBar(
@@ -1023,24 +1003,33 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       }
 
       // 4. Now fetch & sum your actual sales for this month
+      // Helper: convert DateTime to milliseconds for fast comparisons
+      int curFrom = 0;
+      int curTo = 0;
       DateTime startDate, endDate;
       if (i <= 12) {
         var md = getMonthStartEndDates(i);
         startDate = md['start']!;
         endDate = md['end']!;
+
+        curFrom = startDate.millisecondsSinceEpoch;
+        curTo = endDate.millisecondsSinceEpoch;
       } else {
         startDate = DateTime(currentYear + 1, i - 12, 1);
         endDate = DateTime(currentYear + 1, i - 12 + 1, 0);
+
+        curFrom = startDate.millisecondsSinceEpoch;
+        curTo = endDate.millisecondsSinceEpoch;
       }
 
       var monthSalesRows = sales.where((row) {
-        final dt = row.invoiceDate;
-        return dt.isAtLeast(startDate) && dt.isAtMost(endDate);
+        final ms = row.invoiceDate.millisecondsSinceEpoch;
+        return ms >= curFrom && ms <= curTo;
       });
 
       for (var row in monthSalesRows) {
         var amt = double.tryParse(row.rowTotal) ?? 0.0;
-        monthlySales += (row.invoiceType != "Sales Return") ? amt : -amt;
+        monthlySales += amt;
       }
 
       // 5. Add to your chart list
@@ -1766,14 +1755,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         )) {
           balance = double.tryParse(sales.balance) ?? 0;
           balanceAmount += balance.abs();
-
-          // if (balanceAmount.toString().contains('e')) {
-          //   print("Exponential detected: $balanceAmount");
-          //   balanceAmount = double.parse(balanceAmount.toStringAsFixed(2));
-          //   print("Converted to fixed-point: $balanceAmount");
-          // }
-
-          // balanceAmount = double.parse(balanceAmount.toStringAsFixed(1));
         }
         groupWiseDataList.add(
           DailyAnalysisExpensesData(balance: balanceAmount, date: monthYear),

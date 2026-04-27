@@ -1460,7 +1460,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
     final fromDate = dateFilterFlag
         ? formatDate(fromDateFilter!)
-        : formatDate(fiscalYearStartDate!);
+        : formatDate(addMonth(fiscalYearStartDate!, -4));
 
     final toDate = dateFilterFlag
         ? formatDate(toDateFilter!)

@@ -475,20 +475,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     });
   }
 
-  bool isScheduleEntryAllowedOld(DateTime scheduleDate) {
-    final firstDayOfMonth = DateTime(scheduleDate.year, scheduleDate.month, 1);
-    final lastDayOfPreviousMonth = firstDayOfMonth.subtract(
-      const Duration(days: 1),
-    );
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day); // ignore time part
-
-    // Allowed only if today is on or before last day of previous month
-    return today.isBefore(lastDayOfPreviousMonth) ||
-        today.isAtSameMomentAs(lastDayOfPreviousMonth);
-  }
-
   bool isScheduleEntryAllowed(DateTime scheduleDate) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day); // ignore time part
@@ -597,7 +583,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
           : 'O',
       scheduleRemarks: remarksController.text,
       schedulePriority: _selectedPriority.toString(),
-      scheduleStatus: 'Pending', // Default status
+      scheduleStatus: 'P',
       participantList: selectedMonthlyParticipantList,
     );
 

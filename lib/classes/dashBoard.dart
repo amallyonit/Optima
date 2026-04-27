@@ -1622,6 +1622,20 @@ class SubGroupWiseAnalysisExpensesData {
   });
 }
 
+class SubSubGroupWiseAnalysisExpensesList {
+  final List<SubSubGroupWiseAnalysisExpensesData> subSubGroupData;
+  SubSubGroupWiseAnalysisExpensesList({required this.subSubGroupData});
+}
+
+class SubSubGroupWiseAnalysisExpensesData {
+  final String subSubGroupName;
+  double balance;
+  SubSubGroupWiseAnalysisExpensesData({
+    required this.subSubGroupName,
+    required this.balance,
+  });
+}
+
 class DailyAnalysisExpensesList {
   final List<DailyAnalysisExpensesData> dailyData;
   DailyAnalysisExpensesList({required this.dailyData});
