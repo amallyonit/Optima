@@ -20,6 +20,8 @@ import 'package:http/http.dart' as http;
 import 'package:optima/pages/monthlyScheduler/monthlyCalender.dart';
 import '../../classes/dataManager.dart';
 import 'package:optima/classes/scheduler.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart';
 
 class Hospital {
   String CustomerName;
@@ -44,7 +46,6 @@ bool editingAllowed = false;
 int _selectedPriority = 3;
 String saveStatus = "";
 final _calendarKey = GlobalKey<MonthlyCalendarState>();
-// GlobalKey<FormFieldState> _multiSelectKey = GlobalKey<FormFieldState>();
 
 class MonthlyScheduler extends StatefulWidget {
   const MonthlyScheduler({super.key});
@@ -89,6 +90,169 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   var monthlyDistributorKey = GlobalKey();
   List<Map<String, dynamic>> distributorList = [];
   String userId = "";
+
+  Future<void> pickAndUploadExcel() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+
+    Uint8List? bytes;
+
+    // Fix: handle both cases
+    if (file.bytes != null) {
+      bytes = file.bytes;
+    } else if (file.path != null) {
+      final fileData = File(file.path!);
+      bytes = await fileData.readAsBytes();
+    }
+
+    if (bytes == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to read file.")));
+      return;
+    }
+
+    processExcel(bytes);
+  }
+
+  void processExcel(Uint8List bytes) {
+    final excel = Excel.decodeBytes(bytes);
+
+    final sheet = excel.tables['RootMapEntry'];
+
+    if (sheet == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Invalid excel format. 'RootMapEntry' sheet not found.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    for (int i = 1; i < sheet.rows.length; i++) {
+      final row = sheet.rows[i];
+
+      final date = row[0]?.value.toString();
+      final type = row[1]?.value.toString();
+      final customerName = row[2]?.value.toString();
+      final customerCode = row[3]?.value.toString();
+      final participants = row[4]?.value.toString();
+      final remarks = row[5]?.value.toString();
+      final priority = row[6]?.value.toString();
+      final status = row[8]?.value.toString(); // Status column
+
+      handleRow(
+        date,
+        type,
+        customerName,
+        customerCode,
+        participants,
+        remarks,
+        priority,
+        status,
+      );
+    }
+  }
+
+  void handleRow(
+    String? date,
+    String? type,
+    String? customerName,
+    String? customerCode,
+    String? participants,
+    String? remarks,
+    String? priority,
+    String? status,
+  ) {
+    if (status != "OK") return;
+    DateTime tmpDate = date != null
+        ? DateFormat('dd/MM/yyyy').parse(date)
+        : DateTime.now();
+    // Restriction check
+    if (!isScheduleEntryAllowed(tmpDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Cannot create schedule for ${DateFormat('MMMM yyyy').format(tmpDate)}. "
+            "It must be entered on or before ${DateFormat('dd MMM yyyy').format(DateTime(tmpDate.year, tmpDate.month, 1).subtract(const Duration(days: 1)))}.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    final participantList = getParticipants(participants ?? '');
+
+    final schedule = MonthlySchedule(
+      scheduledUser: "",
+      scheduleID: scheduleID,
+      scheduleUserId: int.tryParse(userId) ?? 0,
+      scheduleDate: convertDate(date),
+      scheduleCustomerCode: customerCode ?? '',
+      scheduleCustomerName: customerName ?? '',
+      scheduleCustomerType: type ?? '',
+      scheduleRemarks: remarks ?? '',
+      schedulePriority: priority ?? '',
+      scheduleStatus: "H",
+      participantList: participantList,
+    );
+
+    addRowToUI(schedule);
+  }
+
+  String convertDate(String? date) {
+    try {
+      final parsed = DateFormat('dd/MM/yyyy').parse(date ?? '');
+      return DateFormat('yyyy/MM/dd').format(parsed);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  void addRowToUI(MonthlySchedule data) {
+    setState(() {
+      monthlyScheduleList.add(data);
+
+      monthlyScheduleList.sort((a, b) {
+        DateTime dateA = DateFormat('yyyy/MM/dd').parse(a.scheduleDate);
+        DateTime dateB = DateFormat('yyyy/MM/dd').parse(b.scheduleDate);
+        return dateB.compareTo(dateA);
+      });
+    });
+  }
+
+  // Below code need to be change after testing with actual participant data from API. Currently it is hardcoded for testing purpose.
+  Map<String, ScheduleParticipant> participantMap = {
+    "VENKATESH": ScheduleParticipant(
+      scheduleParticipantId: 0,
+      scheduleParticipantMasterId: 0,
+      scheduleParticipantUserId: 14,
+      scheduleParticipantUserName: "VENKATESH",
+    ),
+    "RANJITH S": ScheduleParticipant(
+      scheduleParticipantId: 0,
+      scheduleParticipantMasterId: 0,
+      scheduleParticipantUserId: 13,
+      scheduleParticipantUserName: "RANJITH S",
+    ),
+  };
+
+  List<ScheduleParticipant> getParticipants(String participants) {
+    return participants
+        .split(',')
+        .map((e) => e.trim().toUpperCase())
+        .where((name) => participantMap.containsKey(name))
+        .map((name) => participantMap[name]!)
+        .toList();
+  }
 
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
@@ -465,11 +629,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       _selectedPriority = 3;
       monthlyScheduleList = tmpScheduleList;
       scheduleID = 0;
-      // DateTime parsedDate = DateFormat('yyyy/MM/dd').parse(
-      //   DateFormat('yyyy/MM/dd').format(DateTime.now()),
-      // );
-      // DataManager.saveSelectedDateCalendar(parsedDate);
-      // selectedDate = parsedDate;
       saveStatus = "";
       dateSetFunction();
     });
@@ -837,9 +996,15 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
               child: Column(
                 children: [
                   SizedBox(
-                    height: 160,
+                    height: 140,
                     child: MonthlyCalendar(key: _calendarKey),
                   ),
+                  ElevatedButton.icon(
+                    onPressed: pickAndUploadExcel,
+                    icon: Icon(Icons.upload_file),
+                    label: Text("Upload Monthly Plan"),
+                  ),
+                  SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.only(left: 8.0, right: 8.0),
                     child: Container(
@@ -1486,11 +1651,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                                   fontSize: 14,
                                 ),
                               ),
-                              // onConfirm: (results) {
-                              //   setState(() {
-                              //     selectedMonthlyParticipantList = results;
-                              //   });
-                              // },
                               onConfirm: (results) {
                                 setState(() {
                                   selectedMonthlyParticipantList =

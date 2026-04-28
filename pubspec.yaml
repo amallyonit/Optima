@@ -58,6 +58,7 @@ dependencies:
   open_file: ^3.3.2
   path_provider: ^2.1.4
   syncfusion_flutter_xlsio: ^24.1.41
+  file_picker: ^8.0.0
 
   # Speech / Web
   speech_to_text: ^7.3.0
