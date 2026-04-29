@@ -1,15 +1,11 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, deprecated_member_use
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_async_autocomplete/flutter_async_autocomplete.dart';
 import 'package:intl/intl.dart';
-import 'package:multi_select_flutter/chip_display/multi_select_chip_display.dart';
-import 'package:multi_select_flutter/dialog/multi_select_dialog_field.dart';
-import 'package:multi_select_flutter/util/multi_select_item.dart';
-import 'package:multi_select_flutter/util/multi_select_list_type.dart';
 import 'package:optima/sidemenu/sidemenu.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,11 +13,18 @@ import 'package:optima/api_helper.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/login_screen.dart';
 import 'package:http/http.dart' as http;
-import 'package:optima/pages/monthlyScheduler/monthlyCalender.dart';
 import '../../classes/dataManager.dart';
 import 'package:optima/classes/scheduler.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:excel/excel.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:translator/translator.dart';
+
+class CustomerCommon {
+  final String name;
+  final String code;
+  final String type; // H / D
+
+  CustomerCommon({required this.name, required this.code, required this.type});
+}
 
 class Hospital {
   String CustomerName;
@@ -43,9 +46,7 @@ String deviceOrientation = "";
 bool chartDataLoaded = false;
 bool scheduleCompleted = false;
 bool editingAllowed = false;
-int _selectedPriority = 3;
 String saveStatus = "";
-final _calendarKey = GlobalKey<MonthlyCalendarState>();
 
 class MonthlyScheduler extends StatefulWidget {
   const MonthlyScheduler({super.key});
@@ -64,6 +65,7 @@ class MonthlySchedulerProvider with ChangeNotifier {
 }
 
 class _MonthlySchedulerState extends State<MonthlyScheduler> {
+  int? editingIndex;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   List<ScheduleParticipant> monthlyParticipantList = [];
   List<ScheduleParticipant> selectedMonthlyParticipantList = [];
@@ -77,7 +79,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   final TextEditingController othersController = TextEditingController();
   final TextEditingController remarksController = TextEditingController();
   late Future<void> loadDataFuture;
-  int _selectedIndex = 0;
   int scheduleID = 0;
   late FocusNode _focus;
   String selectedOption = '';
@@ -90,167 +91,55 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   var monthlyDistributorKey = GlobalKey();
   List<Map<String, dynamic>> distributorList = [];
   String userId = "";
+  String userName = "";
+  String userJwtToken = "";
+  String userMailID = "";
+  bool isMonthLoading = false;
+  stt.SpeechToText? _speech;
+  bool _isListening = false;
+  Map<int, TextEditingController> remarksControllers = {};
+  Timer? _silenceTimer;
+  bool _isProcessing = false;
+  String selectedLocaleId = "en_IN"; // default mixed language
+  bool showLanguageSelector = false;
 
-  Future<void> pickAndUploadExcel() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['xlsx'],
-    );
+  List<CustomerCommon> getCombinedCustomerList() {
+    List<CustomerCommon> list = [];
 
-    if (result == null || result.files.isEmpty) return;
-
-    final file = result.files.first;
-
-    Uint8List? bytes;
-
-    // Fix: handle both cases
-    if (file.bytes != null) {
-      bytes = file.bytes;
-    } else if (file.path != null) {
-      final fileData = File(file.path!);
-      bytes = await fileData.readAsBytes();
-    }
-
-    if (bytes == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to read file.")));
-      return;
-    }
-
-    processExcel(bytes);
-  }
-
-  void processExcel(Uint8List bytes) {
-    final excel = Excel.decodeBytes(bytes);
-
-    final sheet = excel.tables['RootMapEntry'];
-
-    if (sheet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Invalid excel format. 'RootMapEntry' sheet not found.",
-          ),
+    // Hospitals
+    for (var item in customerList) {
+      list.add(
+        CustomerCommon(
+          name: item["CustomerName"],
+          code: item["CustomerCode"],
+          type: "H",
         ),
       );
-      return;
     }
 
-    for (int i = 1; i < sheet.rows.length; i++) {
-      final row = sheet.rows[i];
-
-      final date = row[0]?.value.toString();
-      final type = row[1]?.value.toString();
-      final customerName = row[2]?.value.toString();
-      final customerCode = row[3]?.value.toString();
-      final participants = row[4]?.value.toString();
-      final remarks = row[5]?.value.toString();
-      final priority = row[6]?.value.toString();
-      final status = row[8]?.value.toString(); // Status column
-
-      handleRow(
-        date,
-        type,
-        customerName,
-        customerCode,
-        participants,
-        remarks,
-        priority,
-        status,
-      );
-    }
-  }
-
-  void handleRow(
-    String? date,
-    String? type,
-    String? customerName,
-    String? customerCode,
-    String? participants,
-    String? remarks,
-    String? priority,
-    String? status,
-  ) {
-    if (status != "OK") return;
-    DateTime tmpDate = date != null
-        ? DateFormat('dd/MM/yyyy').parse(date)
-        : DateTime.now();
-    // Restriction check
-    if (!isScheduleEntryAllowed(tmpDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Cannot create schedule for ${DateFormat('MMMM yyyy').format(tmpDate)}. "
-            "It must be entered on or before ${DateFormat('dd MMM yyyy').format(DateTime(tmpDate.year, tmpDate.month, 1).subtract(const Duration(days: 1)))}.",
-          ),
+    // Distributors
+    for (var item in distributorList) {
+      list.add(
+        CustomerCommon(
+          name: item["CustomerName"],
+          code: item["CustomerCode"],
+          type: "D",
         ),
       );
-      return;
     }
 
-    final participantList = getParticipants(participants ?? '');
-
-    final schedule = MonthlySchedule(
-      scheduledUser: "",
-      scheduleID: scheduleID,
-      scheduleUserId: int.tryParse(userId) ?? 0,
-      scheduleDate: convertDate(date),
-      scheduleCustomerCode: customerCode ?? '',
-      scheduleCustomerName: customerName ?? '',
-      scheduleCustomerType: type ?? '',
-      scheduleRemarks: remarks ?? '',
-      schedulePriority: priority ?? '',
-      scheduleStatus: "H",
-      participantList: participantList,
-    );
-
-    addRowToUI(schedule);
+    return list;
   }
 
-  String convertDate(String? date) {
-    try {
-      final parsed = DateFormat('dd/MM/yyyy').parse(date ?? '');
-      return DateFormat('yyyy/MM/dd').format(parsed);
-    } catch (e) {
-      return '';
-    }
-  }
+  Future<List<CustomerCommon>> searchCustomer(String search) async {
+    final list = getCombinedCustomerList();
 
-  void addRowToUI(MonthlySchedule data) {
-    setState(() {
-      monthlyScheduleList.add(data);
-
-      monthlyScheduleList.sort((a, b) {
-        DateTime dateA = DateFormat('yyyy/MM/dd').parse(a.scheduleDate);
-        DateTime dateB = DateFormat('yyyy/MM/dd').parse(b.scheduleDate);
-        return dateB.compareTo(dateA);
-      });
-    });
-  }
-
-  // Below code need to be change after testing with actual participant data from API. Currently it is hardcoded for testing purpose.
-  Map<String, ScheduleParticipant> participantMap = {
-    "VENKATESH": ScheduleParticipant(
-      scheduleParticipantId: 0,
-      scheduleParticipantMasterId: 0,
-      scheduleParticipantUserId: 14,
-      scheduleParticipantUserName: "VENKATESH",
-    ),
-    "RANJITH S": ScheduleParticipant(
-      scheduleParticipantId: 0,
-      scheduleParticipantMasterId: 0,
-      scheduleParticipantUserId: 13,
-      scheduleParticipantUserName: "RANJITH S",
-    ),
-  };
-
-  List<ScheduleParticipant> getParticipants(String participants) {
-    return participants
-        .split(',')
-        .map((e) => e.trim().toUpperCase())
-        .where((name) => participantMap.containsKey(name))
-        .map((name) => participantMap[name]!)
+    return list
+        .where(
+          (c) =>
+              c.name.toLowerCase().contains(search.toLowerCase()) ||
+              c.code.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
   }
 
@@ -287,18 +176,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }).toList();
   }
 
-  Future<List<Hospital>> getCustomer(String search) async {
-    List<Hospital> hospitalList = convertList(customerList);
-    List<Hospital> filteredHospitals = hospitalList
-        .where(
-          (element) =>
-              element.CustomerName.toLowerCase().contains(search.toLowerCase()),
-        )
-        .toList();
-
-    return filteredHospitals;
-  }
-
   Future<void> _loadCustomer(
     String userId,
     String userJwtToken,
@@ -327,6 +204,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
             final cust = {
               "CustomerCode": item["CustomerCode"],
               "CustomerName": item["CustomerName"],
+              "Type": "H",
             };
             newCustomerList.add(cust);
           }
@@ -369,7 +247,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }
   }
 
-  Future<void> _loaddistributor(
+  Future<void> _loadDistributor(
     String userId,
     String userJwtToken,
     String userMailID,
@@ -398,6 +276,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
             final dist = {
               "CustomerCode": item["CustomerCode"],
               "CustomerName": item["CustomerName"],
+              "Type": "D",
             };
             newDistributorList.add(dist);
           }
@@ -440,7 +319,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }
   }
 
-  Future<void> _loadparticipant(
+  Future<void> _loadParticipant(
     String userId,
     String userJwtToken,
     String userMailID,
@@ -511,16 +390,21 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   Future<void> loadData() async {
     final prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('userId') ?? '';
-    final userJwtToken = prefs.getString('userJwtToken') ?? '';
-    final userMailID = prefs.getString('userMailID') ?? '';
-    await _loadmonthlyscheduler(userId, userJwtToken, userMailID);
+    userName = prefs.getString('userName') ?? '';
+    userJwtToken = prefs.getString('userJwtToken') ?? '';
+    userMailID = prefs.getString('userMailID') ?? '';
+    await _loadMonthlyScheduler(userId, userJwtToken, userMailID);
     await _loadCustomer(userId, userJwtToken, userMailID);
-    await _loaddistributor(userId, userJwtToken, userMailID);
-    await _loadparticipant(userId, userJwtToken, userMailID);
+    await _loadDistributor(userId, userJwtToken, userMailID);
+    await _loadParticipant(userId, userJwtToken, userMailID);
+
+    selectedDate = DataManager.readSelectedDateCalendar() ?? DateTime.now();
+    if (monthlyScheduleList.isEmpty) {
+      autoFillMonth();
+    }
+    await setDefaultParticipant();
     setState(() {
-      scheduleCompleted = isMonthlyScheduleComplete(
-        DataManager.readSelectedDateCalendar() ?? DateTime.now(),
-      );
+      scheduleCompleted = isMonthlyScheduleComplete(selectedDate);
       chartDataLoaded = true;
     });
   }
@@ -547,7 +431,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         final Map<String, dynamic> responseJson = jsonDecode(response.body);
         bool status = responseJson["Status"];
 
-        if (status) {
+        if (status && item.scheduleStatus != "P") {
           const snackBar = SnackBar(
             duration: Duration(seconds: 1),
             content: Text(
@@ -555,6 +439,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           );
+
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
@@ -626,11 +511,9 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       selectedMonthlyParticipantList = [];
       monthlyParticipantList = [];
       monthlyParticipantList = convertToList(participantList);
-      _selectedPriority = 3;
       monthlyScheduleList = tmpScheduleList;
       scheduleID = 0;
       saveStatus = "";
-      dateSetFunction();
     });
   }
 
@@ -649,155 +532,79 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     return scheduleDate.isAfter(lastDayOfCurrentMonth);
   }
 
-  void addDataToList() async {
-    selectedDate = DataManager.readSelectedDateCalendar()!;
+  Future<void> addData(MonthlySchedule newSchedule) async {
     // Restriction check
     if (!isScheduleEntryAllowed(selectedDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Cannot create schedule for ${DateFormat('MMMM yyyy').format(selectedDate)}. "
-            "It must be entered on or before ${DateFormat('dd MMM yyyy').format(DateTime(selectedDate.year, selectedDate.month, 1).subtract(const Duration(days: 1)))}.",
-          ),
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
+        builder: (context) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// Drag handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+
+                /// Icon
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.red,
+                  size: 32,
+                ),
+
+                const SizedBox(height: 10),
+
+                /// Message
+                Text(
+                  "Cannot create schedule for ${DateFormat('MMMM yyyy').format(selectedDate)}.\n\n"
+                  "It must be entered on or before "
+                  "${DateFormat('dd MMM yyyy').format(DateTime(selectedDate.year, selectedDate.month, 1).subtract(const Duration(days: 1)))}.",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14),
+                ),
+
+                const SizedBox(height: 15),
+
+                /// OK Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("OK"),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       );
+
       return;
     }
 
-    final hospitalName = hospitalController.text;
-    final distributorName = distributorController.text;
-    final othersPlaceOfVisit = othersController.text;
-
-    final newSchedule = MonthlySchedule(
-      scheduledUser: "",
-      scheduleID: scheduleID,
-      scheduleUserId: int.tryParse(userId) ?? 0,
-      scheduleDate: DateFormat('yyyy/MM/dd').format(selectedDate),
-      scheduleCustomerCode: _selectedIndex == 0
-          ? selectedHospitalId
-          : _selectedIndex == 1
-          ? selectedDistributorId
-          : '',
-      scheduleCustomerName: _selectedIndex == 0
-          ? hospitalName
-          : _selectedIndex == 1
-          ? distributorName
-          : othersPlaceOfVisit,
-      scheduleCustomerType: _selectedIndex == 0
-          ? 'H'
-          : _selectedIndex == 1
-          ? 'D'
-          : 'O',
-      scheduleRemarks: remarksController.text,
-      schedulePriority: _selectedPriority.toString(),
-      scheduleStatus: 'H', // Default status - Holding
-      participantList: selectedMonthlyParticipantList,
-    );
-
-    setState(() {
-      monthlyScheduleList.add(newSchedule);
-      monthlyScheduleList.sort((a, b) {
-        DateTime dateA = DateFormat('dd/MM/yyyy').parse(a.scheduleDate);
-        DateTime dateB = DateFormat('dd/MM/yyyy').parse(b.scheduleDate);
-        return dateB.compareTo(dateA); // DESC
-      });
-    });
     try {
       await addSchedule(newSchedule);
       setState(() {
-        scheduleCompleted = isMonthlyScheduleComplete(
-          DataManager.readSelectedDateCalendar() ?? DateTime.now(),
-        );
+        scheduleCompleted = isMonthlyScheduleComplete(selectedDate);
       });
     } catch (e) {
       // print('Error: $error');
     }
   }
 
-  void addDataToListWhenClear() async {
-    final hospitalName = hospitalController.text;
-    final distributorName = distributorController.text;
-    final othersPlaceOfVisit = othersController.text;
-
-    selectedDate = DataManager.readSelectedDateCalendar()!;
-    final newSchedule = MonthlySchedule(
-      scheduledUser: "",
-      scheduleID: scheduleID,
-      scheduleUserId: int.tryParse(userId) ?? 0,
-      scheduleDate: DateFormat('yyyy/MM/dd').format(selectedDate),
-      scheduleCustomerCode: _selectedIndex == 0
-          ? selectedHospitalId
-          : _selectedIndex == 1
-          ? selectedDistributorId
-          : '',
-      scheduleCustomerName: _selectedIndex == 0
-          ? hospitalName
-          : _selectedIndex == 1
-          ? distributorName
-          : othersPlaceOfVisit,
-      scheduleCustomerType: _selectedIndex == 0
-          ? 'H'
-          : _selectedIndex == 1
-          ? 'D'
-          : 'O',
-      scheduleRemarks: remarksController.text,
-      schedulePriority: _selectedPriority.toString(),
-      scheduleStatus: 'P',
-      participantList: selectedMonthlyParticipantList,
-    );
-
-    setState(() {
-      monthlyScheduleList.add(newSchedule);
-      monthlyScheduleList.sort((a, b) {
-        DateTime dateA = DateFormat('dd/MM/yyyy').parse(a.scheduleDate);
-        DateTime dateB = DateFormat('dd/MM/yyyy').parse(b.scheduleDate);
-        return dateB.compareTo(dateA); // DESC
-      });
-    });
-  }
-
-  void loadContactDetails(MonthlySchedule item) {
-    final DateTime tmpDate = DateFormat('yyyy/MM/dd').parse(item.scheduleDate);
-
-    if (!isScheduleEntryAllowed(tmpDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Editing not allowed. The schedule for ${DateFormat('MMMM yyyy').format(tmpDate)} "
-            "must have been finalized before ${DateFormat('dd MMM yyyy').format(DateTime(tmpDate.year, tmpDate.month, 1).subtract(const Duration(days: 1)))}.",
-          ),
-        ),
-      );
-      return;
-    }
-    setState(() {
-      editingAllowed = true;
-      scheduleID = item.scheduleID;
-      if (item.scheduleCustomerType == "H") {
-        _selectedIndex = 0;
-        selectedHospitalId = item.scheduleCustomerCode;
-        hospitalController.text = item.scheduleCustomerName;
-      } else if (item.scheduleCustomerType == "D") {
-        _selectedIndex = 1;
-        selectedDistributorId = item.scheduleCustomerCode;
-        distributorController.text = item.scheduleCustomerName;
-      } else {
-        _selectedIndex = 2;
-        othersController.text = item.scheduleCustomerName;
-      }
-      remarksController.text = item.scheduleRemarks;
-      selectedMonthlyParticipantList = item.participantList;
-      _selectedPriority = int.tryParse(item.schedulePriority) ?? 3;
-      DataManager.saveSelectedDateCalendar(
-        DateFormat('yyyy/MM/dd').parse(item.scheduleDate),
-      );
-      selectedDate = DateFormat('yyyy/MM/dd').parse(item.scheduleDate);
-
-      dateSetFunction();
-    });
-  }
-
-  Future<void> _loadmonthlyscheduler(
+  Future<void> _loadMonthlyScheduler(
     String userId,
     String userJwtToken,
     String userMailID,
@@ -806,9 +613,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       'UserID': userId,
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      'GivenDate': (DataManager.readSelectedDateCalendar() ?? DateTime.now())
-          .toString()
-          .split(' ')[0],
+      'GivenDate': selectedDate.toString().split(' ')[0],
       'ScheduleStatus': 'H', // Default status - Holding
     };
     const apiUrl = '${ApiHelper.baseUrl}loadmonthlyscheduler';
@@ -876,6 +681,28 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }
   }
 
+  Future<void> setDefaultParticipant() async {
+    final defaultUser = monthlyParticipantList.firstWhere(
+      (p) => p.scheduleParticipantUserName == userName,
+      orElse: () => ScheduleParticipant(
+        scheduleParticipantId: 0,
+        scheduleParticipantMasterId: 0,
+        scheduleParticipantUserId: userId.isNotEmpty
+            ? int.tryParse(userId) ?? 0
+            : 0,
+        scheduleParticipantUserName: userName,
+      ),
+    );
+
+    for (var item in monthlyScheduleList) {
+      if (item.participantList.isEmpty) {
+        item.participantList = [defaultUser];
+      }
+    }
+
+    setState(() {});
+  }
+
   bool isMonthlyScheduleComplete(DateTime selectedDate) {
     final year = selectedDate.year;
     final month = selectedDate.month;
@@ -900,17 +727,21 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     return true;
   }
 
-  void dateSetFunction() {
-    _calendarKey.currentState?.reload();
-  }
-
   void saveMonthlyScheduler() async {
     try {
-      for (var schedule in monthlyScheduleList) {
-        schedule.scheduleStatus = 'P'; // Pending status
-        await addSchedule(schedule); // Save schedule
-      }
+      bool lastRow = false;
+      for (int i = 0; i < monthlyScheduleList.length; i++) {
+        var schedule = monthlyScheduleList[i];
 
+        lastRow = i == monthlyScheduleList.length - 1;
+
+        schedule.scheduleStatus = 'P';
+
+        await addSchedule(schedule);
+      }
+      if (lastRow) {
+        saveStatus = "Monthly schedule saved successfully!";
+      }
       if (saveStatus != "") {
         final snackBar = SnackBar(
           duration: const Duration(seconds: 1),
@@ -924,9 +755,8 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
         // Call setState after all addSchedule calls are complete
         setState(() {
-          scheduleCompleted = isMonthlyScheduleComplete(
-            DataManager.readSelectedDateCalendar() ?? DateTime.now(),
-          );
+          saveStatus = "";
+          scheduleCompleted = isMonthlyScheduleComplete(selectedDate);
           monthlyScheduleList = [];
         });
       }
@@ -935,1048 +765,1123 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }
   }
 
-  @override
-  void initState() {
-    _focus = FocusNode();
-    super.initState();
-    monthlyParticipantList = [];
-    if (isUserLoggedIn) {
-      loadDataFuture = loadData();
-    }
-    selectedDate = DataManager.readSelectedDateCalendar() ?? DateTime.now();
+  bool isPureEnglish(String text) {
+    return RegExp(r'^[a-zA-Z0-9\s.,]+$').hasMatch(text);
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.of(context).orientation == Orientation.portrait) {
-      deviceOrientation = "Portrait";
-    } else {
-      deviceOrientation = "Landscape";
+  void initState() {
+    super.initState();
+
+    _focus = FocusNode();
+
+    _speech = stt.SpeechToText();
+    monthlyParticipantList = [];
+    monthlyScheduleList = [];
+    _speech!.initialize(
+      onStatus: (status) {
+        if (status == "done" || status == "notListening") {
+          if (mounted) {
+            setState(() {
+              _isListening = false;
+            });
+          }
+        }
+      },
+      onError: (error) {
+        if (mounted) {
+          setState(() {
+            _isListening = false;
+          });
+        }
+      },
+    );
+
+    if (isUserLoggedIn) {
+      loadDataFuture = loadData();
     }
-    final screenHeight = MediaQuery.of(context).size.height;
-    double containerDropDownHeight = 0;
-    double containerHeight = 0;
-    if (deviceOrientation == "Portrait") {
-      containerDropDownHeight = screenHeight * 0.06;
-      containerHeight = screenHeight * 0.08;
-    } else {
-      containerDropDownHeight = screenHeight * 0.12;
+  }
+
+  Future<void> startListening(MonthlySchedule item, int index) async {
+    if (!(_speech?.isAvailable ?? false)) return;
+
+    setState(() => _isListening = true);
+
+    _speech!.listen(
+      localeId: selectedLocaleId,
+      listenMode: stt.ListenMode.dictation,
+      pauseFor: const Duration(seconds: 3), // keep this
+
+      onResult: (result) {
+        final text = result.recognizedWords;
+
+        if (text.isNotEmpty) {
+          setState(() {
+            remarksControllers[index]?.text = text;
+            item.scheduleRemarks = text;
+          });
+
+          // Reset silence timer every time user speaks
+          _silenceTimer?.cancel();
+          _silenceTimer = Timer(const Duration(seconds: 2), () {
+            setState(() {
+              _isListening = false;
+              _isProcessing = true; // show Processing...
+            });
+            stopListening(); // force stop after silence
+          });
+        }
+      },
+    );
+  }
+
+  void stopListening() {
+    _silenceTimer?.cancel();
+    _speech?.stop();
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _isListening = false;
+          _isProcessing = false; // hide Processing
+        });
+      }
+    });
+  }
+
+  Future<void> initSpeech() async {
+    _speech ??= stt.SpeechToText();
+  }
+
+  void autoFillMonth() {
+    DateTime baseDate = selectedDate;
+
+    int year = baseDate.year;
+    int month = baseDate.month;
+
+    int lastDay = DateTime(year, month + 1, 0).day;
+
+    /// Collect existing dates
+    Set<String> existingDates = monthlyScheduleList
+        .map((e) => e.scheduleDate)
+        .toSet();
+
+    List<MonthlySchedule> newRows = [];
+
+    for (int day = 1; day <= lastDay; day++) {
+      DateTime currentDate = DateTime(year, month, day);
+
+      // Skip Sundays
+      if (currentDate.weekday == DateTime.sunday) continue;
+
+      String formatted = DateFormat('yyyy/MM/dd').format(currentDate);
+
+      /// Skip if already exists
+      if (existingDates.contains(formatted)) continue;
+
+      newRows.add(
+        MonthlySchedule(
+          scheduledUser: "",
+          scheduleID: 0,
+          scheduleUserId: int.tryParse(userId) ?? 0,
+          scheduleDate: formatted,
+          scheduleCustomerCode: "",
+          scheduleCustomerName: "",
+          scheduleCustomerType: "H",
+          scheduleRemarks: "",
+          schedulePriority: "3",
+          scheduleStatus: "H",
+          participantList: [],
+        ),
+      );
     }
-    final participant = monthlyParticipantList
-        .map(
-          (participant) => MultiSelectItem<ScheduleParticipant>(
-            participant,
-            participant.scheduleParticipantUserName,
-          ),
-        )
-        .toList();
-    return chartDataLoaded == true
-        ? Scaffold(
-            key: _scaffoldKey,
-            drawer: const SideMenu(),
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "Monthly Scheduler",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: SingleChildScrollView(
-              keyboardDismissBehavior: kIsWeb
-                  ? ScrollViewKeyboardDismissBehavior.manual
-                  : ScrollViewKeyboardDismissBehavior.onDrag,
+
+    setState(() {
+      monthlyScheduleList.addAll(newRows);
+
+      /// Sort ASC
+      monthlyScheduleList.sort((a, b) {
+        DateTime dateA = DateFormat('yyyy/MM/dd').parse(a.scheduleDate);
+        DateTime dateB = DateFormat('yyyy/MM/dd').parse(b.scheduleDate);
+        return dateA.compareTo(dateB);
+      });
+    });
+
+    if (mounted && newRows.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("${newRows.length} missing days added"),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  bool isRowValid(MonthlySchedule item) {
+    return item.scheduleDate.isNotEmpty &&
+        item.scheduleCustomerName.isNotEmpty &&
+        item.scheduleCustomerCode.isNotEmpty &&
+        item.schedulePriority.isNotEmpty &&
+        item.participantList.isNotEmpty;
+  }
+
+  bool get isSaveEnabled {
+    int totalDays = DateUtils.getDaysInMonth(
+      selectedDate.year,
+      selectedDate.month,
+    );
+
+    int uniqueDays = monthlyScheduleList
+        .map((e) => e.scheduleDate)
+        .toSet()
+        .length;
+
+    return uniqueDays >= totalDays &&
+        monthlyScheduleList.every((e) => isRowValid(e));
+  }
+
+  Map<String, List<MonthlySchedule>> groupByDate() {
+    Map<String, List<MonthlySchedule>> grouped = {};
+
+    for (var item in monthlyScheduleList) {
+      if (!grouped.containsKey(item.scheduleDate)) {
+        grouped[item.scheduleDate] = [];
+      }
+      grouped[item.scheduleDate]!.add(item);
+    }
+
+    return grouped;
+  }
+
+  void addVisitForDate(String date) {
+    final defaultUser = ScheduleParticipant(
+      scheduleParticipantId: 0,
+      scheduleParticipantMasterId: 0,
+      scheduleParticipantUserId: userId.isNotEmpty
+          ? int.tryParse(userId) ?? 0
+          : 0,
+      scheduleParticipantUserName: userName,
+    );
+
+    setState(() {
+      monthlyScheduleList.add(
+        MonthlySchedule(
+          scheduledUser: "",
+          scheduleID: 0,
+          scheduleUserId: int.tryParse(userId) ?? 0,
+          scheduleDate: date, // same date
+          scheduleCustomerCode: "",
+          scheduleCustomerName: "",
+          scheduleCustomerType: "H", // default Hospital
+          scheduleRemarks: "",
+          schedulePriority: "3",
+          scheduleStatus: "H",
+          participantList: [defaultUser],
+        ),
+      );
+    });
+  }
+
+  Future<void> openMonthPicker() async {
+    int year = selectedDate.year;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: SizedBox(
+            width: 320,
+            height: 320,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  SizedBox(
-                    height: 140,
-                    child: MonthlyCalendar(key: _calendarKey),
+                  /// Title
+                  const Text(
+                    "Select Month",
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: pickAndUploadExcel,
-                    icon: Icon(Icons.upload_file),
-                    label: Text("Upload Monthly Plan"),
-                  ),
-                  SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0, right: 8.0),
-                    child: Container(
-                      color: Colors.transparent,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Expanded(child: buildSelectableText(0, 'Hospital')),
-                          Expanded(
-                            child: buildSelectableText(1, 'Distributor'),
-                          ),
-                          Expanded(child: buildSelectableText(2, 'Other')),
-                        ],
-                      ),
-                    ),
-                  ),
+
                   const SizedBox(height: 10),
-                  Visibility(
-                    visible: _selectedIndex == 1,
-                    child: Column(
-                      children: [
-                        kIsWeb
-                            ? RawAutocomplete<Distributor>(
-                                textEditingController: distributorController,
-                                focusNode: _focus,
-                                optionsBuilder: (TextEditingValue val) {
-                                  if (val.text == '') {
-                                    clearVariables();
-                                    return const Iterable<Distributor>.empty();
-                                  }
-                                  return distListWeb.where((
-                                    Distributor option,
-                                  ) {
-                                    return option.CustomerName.toLowerCase()
-                                        .contains(val.text.toLowerCase());
-                                  });
-                                },
-                                displayStringForOption: (Distributor option) =>
-                                    option.CustomerName,
-                                fieldViewBuilder:
-                                    (
-                                      context,
-                                      textEditingController,
-                                      focusNode,
-                                      onFieldSubmitted,
-                                    ) {
-                                      return TextField(
-                                        controller: textEditingController,
-                                        focusNode: focusNode,
-                                        onSubmitted: (value) {
-                                          distributorController.text = value;
-                                          setState(() {
-                                            selectedOption2 = value;
-                                            distributorController.text = value;
-                                            selectedDistributorName = value;
-                                          });
-                                        },
-                                        decoration: InputDecoration(
-                                          labelText: 'Distributor Name',
-                                          labelStyle: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w400,
-                                            color: Color(0xFF8F8F8F),
-                                          ),
-                                          suffixIcon: IconButton(
-                                            icon:
-                                                distributorController.text == ""
-                                                ? const Icon(
-                                                    Icons.search,
-                                                    color: Color(0xff2ca9df),
-                                                  )
-                                                : const Icon(Icons.clear),
-                                            onPressed: () {
-                                              addDataToListWhenClear();
-                                              selectedOption2 = '';
-                                              selectedDistributorId = "";
-                                              selectedDistributorName = "";
-                                              distributorController.clear();
-                                              clearVariables();
-                                            },
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                onSelected: (Distributor value) {
-                                  distributorController.text =
-                                      value.CustomerName;
-                                  setState(() {
-                                    selectedOption2 = value.CustomerName;
-                                    distributorController.text =
-                                        value.CustomerName;
-                                    var customer = distributorList.firstWhere(
-                                      (map) =>
-                                          map['CustomerName'] ==
-                                          value.CustomerName,
-                                      // orElse: () =>
-                                      //     <String, dynamic>{'CustomerCode': null},
-                                    );
-                                    selectedDistributorId =
-                                        customer['CustomerCode'].toString();
-                                    selectedDistributorName =
-                                        value.CustomerName;
-                                  });
-                                },
-                                optionsViewBuilder:
-                                    (
-                                      BuildContext context,
-                                      void Function(Distributor) onSelected,
-                                      Iterable<Distributor> options,
-                                    ) {
-                                      return Material(
-                                        elevation: 4.0,
-                                        child: Container(
-                                          constraints: const BoxConstraints(
-                                            maxHeight: 200,
-                                          ),
-                                          child: ListView.builder(
-                                            padding: EdgeInsets.zero,
-                                            physics:
-                                                const ClampingScrollPhysics(),
-                                            shrinkWrap: true,
-                                            itemCount: options.length,
-                                            itemBuilder:
-                                                (
-                                                  BuildContext context,
-                                                  int index,
-                                                ) {
-                                                  final Distributor option =
-                                                      options.elementAt(index);
-                                                  return GestureDetector(
-                                                    onTap: () {
-                                                      onSelected(option);
-                                                    },
-                                                    child: ListTile(
-                                                      title: Text(
-                                                        option.CustomerName,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                          ),
-                                        ),
-                                      );
-                                    },
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 12.0,
-                                  right: 12.0,
-                                ),
-                                child: SizedBox(
-                                  height: deviceOrientation == "Portrait"
-                                      ? containerHeight
-                                      : containerDropDownHeight / 1.5,
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: AsyncAutocomplete<Distributor>(
-                                          onChanged: (s) {
-                                            setState(() {
-                                              distributorController.text == s;
-                                            });
-                                          },
-                                          onSaved: (s) {
-                                            setState(() {
-                                              distributorController.text == s;
-                                            });
-                                          },
-                                          maxListHeight:
-                                              deviceOrientation == "Portrait"
-                                              ? 370
-                                              : 220,
-                                          decoration: InputDecoration(
-                                            contentPadding:
-                                                const EdgeInsets.only(
-                                                  left: 0,
-                                                  right: 30,
-                                                  top: 0,
-                                                  bottom: 0,
-                                                ),
-                                            border: UnderlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(5),
-                                            ),
-                                            hintText: 'Distributor Name',
-                                            hintStyle: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w400,
-                                              color: Color(0xFF8F8F8F),
-                                            ),
-                                            focusedBorder: UnderlineInputBorder(
-                                              borderSide: const BorderSide(
-                                                color: Colors
-                                                    .blue, // Set your desired focus color
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(6.0),
-                                            ),
-                                          ),
-                                          controller: distributorController,
-                                          inputKey: monthlyDistributorKey,
-                                          onTapItem: (Distributor distributor) async {
-                                            setState(() {
-                                              selectedOption2 =
-                                                  distributor.CustomerName;
-                                              distributorController.text =
-                                                  distributor.CustomerName;
-                                              var customer = distributorList
-                                                  .firstWhere(
-                                                    (map) =>
-                                                        map['CustomerName'] ==
-                                                        distributor
-                                                            .CustomerName,
-                                                    // orElse: () =>
-                                                    //     <String, dynamic>{'CustomerCode': null},
-                                                  );
-                                              selectedDistributorId =
-                                                  customer['CustomerCode']
-                                                      .toString();
-                                              selectedDistributorName =
-                                                  distributor.CustomerName;
-                                            });
-                                          },
-                                          suggestionBuilder: (data) => ListTile(
-                                            title: Text(data.CustomerName),
-                                          ),
-                                          asyncSuggestions: (searchValue) =>
-                                              getDistributor(searchValue),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 0,
-                                        right: -1,
-                                        child: Visibility(
-                                          child: SizedBox(
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  addDataToListWhenClear();
-                                                  selectedOption2 = '';
-                                                  selectedDistributorId = "";
-                                                  selectedDistributorName = "";
-                                                  distributorController.clear();
-                                                  clearVariables();
-                                                });
-                                              },
-                                              child:
-                                                  distributorController.text ==
-                                                      ""
-                                                  ? Container(
-                                                      decoration:
-                                                          const BoxDecoration(
-                                                            color: Colors
-                                                                .transparent,
-                                                          ),
-                                                      child: const Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                              top: 14,
-                                                              right: 2,
-                                                            ),
-                                                        child: Icon(
-                                                          Icons.search,
-                                                          color: Color(
-                                                            0xff2ca9df,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : Container(
-                                                      decoration:
-                                                          const BoxDecoration(
-                                                            color: Colors
-                                                                .transparent,
-                                                          ),
-                                                      child: const Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                              top: 14,
-                                                              right: 2,
-                                                            ),
-                                                        child: Icon(
-                                                          Icons.cancel_outlined,
-                                                          color: Color(
-                                                            0xff2ca9df,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
+
+                  /// Year dropdown
+                  DropdownButton<int>(
+                    value: year,
+                    isExpanded: true,
+                    items: List.generate(5, (i) {
+                      int y = DateTime.now().year - 2 + i;
+                      return DropdownMenuItem(
+                        value: y,
+                        child: Text(y.toString()),
+                      );
+                    }),
+                    onChanged: (val) {
+                      setState(() {
+                        year = val!;
+                      });
+                    },
                   ),
-                  Visibility(
-                    visible: _selectedIndex == 0,
-                    child: Column(
-                      children: [
-                        kIsWeb
-                            ? RawAutocomplete<Hospital>(
-                                textEditingController: hospitalController,
-                                focusNode: _focus,
-                                optionsBuilder: (TextEditingValue val) {
-                                  if (val.text == '') {
-                                    clearVariables();
-                                    return const Iterable<Hospital>.empty();
-                                  }
-                                  return hspList.where((Hospital option) {
-                                    return option.CustomerName.toLowerCase()
-                                        .contains(val.text.toLowerCase());
-                                  });
-                                },
-                                displayStringForOption: (Hospital option) =>
-                                    option.CustomerName,
-                                fieldViewBuilder:
-                                    (
-                                      context,
-                                      textEditingController,
-                                      focusNode,
-                                      onFieldSubmitted,
-                                    ) {
-                                      return TextField(
-                                        controller: textEditingController,
-                                        focusNode: focusNode,
-                                        onSubmitted: (value) =>
-                                            onFieldSubmitted(),
-                                        decoration: InputDecoration(
-                                          labelText: 'Hospital Name',
-                                          labelStyle: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w400,
-                                            color: Color(0xFF8F8F8F),
-                                          ),
-                                          suffixIcon: IconButton(
-                                            icon: hospitalController.text == ""
-                                                ? const Icon(
-                                                    Icons.search,
-                                                    color: Color(0xff2ca9df),
-                                                  )
-                                                : const Icon(Icons.clear),
-                                            onPressed: () {
-                                              addDataToListWhenClear();
-                                              selectedOption = '';
-                                              selectedHospitalId = "";
-                                              hospitalController.clear();
-                                              clearVariables();
-                                            },
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                onSelected: (Hospital value) {
-                                  hospitalController.text = value.CustomerName;
-                                  setState(() {
-                                    selectedOption = value.CustomerName;
-                                    hospitalController.text =
-                                        value.CustomerName;
-                                    var customer = customerList.firstWhere(
-                                      (map) =>
-                                          map['CustomerName'] ==
-                                          value.CustomerName,
-                                    );
-                                    selectedHospitalId =
-                                        customer['CustomerCode'].toString();
-                                    selectedHospitalName = value.CustomerName;
-                                  });
-                                },
-                                optionsViewBuilder:
-                                    (
-                                      BuildContext context,
-                                      void Function(Hospital) onSelected,
-                                      Iterable<Hospital> options,
-                                    ) {
-                                      return Material(
-                                        elevation: 4.0,
-                                        child: Container(
-                                          constraints: const BoxConstraints(
-                                            maxHeight: 200,
-                                          ),
-                                          child: ListView.builder(
-                                            padding: EdgeInsets.zero,
-                                            physics:
-                                                const ClampingScrollPhysics(),
-                                            shrinkWrap: true,
-                                            itemCount: options.length,
-                                            itemBuilder:
-                                                (
-                                                  BuildContext context,
-                                                  int index,
-                                                ) {
-                                                  final Hospital option =
-                                                      options.elementAt(index);
-                                                  return GestureDetector(
-                                                    onTap: () {
-                                                      onSelected(option);
-                                                    },
-                                                    child: ListTile(
-                                                      title: Text(
-                                                        option.CustomerName,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                          ),
-                                        ),
-                                      );
-                                    },
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 12.0,
-                                  right: 12.0,
-                                ),
-                                child: SizedBox(
-                                  height: deviceOrientation == "Portrait"
-                                      ? containerHeight
-                                      : containerDropDownHeight / 1.5,
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: AsyncAutocomplete<Hospital>(
-                                          onChanged: (s) {
-                                            setState(() {
-                                              hospitalController.text == s;
-                                            });
-                                          },
-                                          onSaved: (s) {
-                                            setState(() {
-                                              hospitalController.text == s;
-                                            });
-                                          },
-                                          focusNode: _focus,
-                                          maxListHeight:
-                                              deviceOrientation == "Portrait"
-                                              ? 370
-                                              : 220,
-                                          decoration: InputDecoration(
-                                            border: UnderlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(5),
-                                            ),
-                                            floatingLabelBehavior:
-                                                FloatingLabelBehavior.never,
-                                            labelText: 'Hospital Name',
-                                            labelStyle: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w400,
-                                              color: Color(0xFF8F8F8F),
-                                            ),
-                                            focusedBorder: UnderlineInputBorder(
-                                              borderSide: const BorderSide(
-                                                color: Colors
-                                                    .blue, // Set your desired focus color
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(6.0),
-                                            ),
-                                            contentPadding:
-                                                const EdgeInsets.only(
-                                                  left: 0,
-                                                  right: 30,
-                                                  top: 0,
-                                                  bottom: 0,
-                                                ),
-                                          ),
-                                          controller: hospitalController,
-                                          inputKey: monthlyHospitalKey,
-                                          onTapItem: (Hospital hospital) async {
-                                            setState(() {
-                                              selectedOption =
-                                                  hospital.CustomerName;
-                                              hospitalController.text =
-                                                  hospital.CustomerName;
-                                              var customer = customerList
-                                                  .firstWhere(
-                                                    (map) =>
-                                                        map['CustomerName'] ==
-                                                        hospital.CustomerName,
-                                                  );
-                                              selectedHospitalId =
-                                                  customer['CustomerCode']
-                                                      .toString();
-                                              selectedHospitalName =
-                                                  hospital.CustomerName;
-                                            });
-                                          },
-                                          suggestionBuilder: (data) => ListTile(
-                                            title: Text(
-                                              data.CustomerName,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                          asyncSuggestions: (searchValue) =>
-                                              getCustomer(searchValue),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 0,
-                                        right: -1,
-                                        child: Visibility(
-                                          child: SizedBox(
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  addDataToListWhenClear();
-                                                  selectedOption = '';
-                                                  selectedHospitalId = "";
-                                                  hospitalController.clear();
-                                                  clearVariables();
-                                                });
-                                                // loadContacs();
-                                              },
-                                              child:
-                                                  hospitalController.text == ""
-                                                  ? Container(
-                                                      decoration:
-                                                          const BoxDecoration(
-                                                            color: Colors
-                                                                .transparent,
-                                                          ),
-                                                      child: const Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                              top: 14,
-                                                              right: 2,
-                                                            ),
-                                                        child: Icon(
-                                                          Icons.search,
-                                                          color: Color(
-                                                            0xff2ca9df,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : Container(
-                                                      decoration:
-                                                          const BoxDecoration(
-                                                            color: Colors
-                                                                .transparent,
-                                                          ),
-                                                      child: const Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                              top: 14,
-                                                              right: 2,
-                                                            ),
-                                                        child: Icon(
-                                                          Icons.close_rounded,
-                                                          size: 20,
-                                                          color: Colors.grey,
-                                                        ),
-                                                      ),
-                                                    ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
-                  ),
-                  Visibility(
-                    visible: _selectedIndex == 2,
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        left: 12.0,
-                        right: 12.0,
-                        bottom: 0,
-                      ),
-                      child: TextField(
-                        controller: othersController,
-                        decoration: const InputDecoration(
-                          hintText: "Place of Visit",
-                          hintStyle: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF8F8F8F),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+
                   const SizedBox(height: 10),
-                  SizedBox(
-                    height: 150,
-                    width: 373,
-                    child: SingleChildScrollView(
-                      child: Container(
-                        color: const Color.fromARGB(255, 242, 240, 240),
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.only(
-                          top: 20,
-                          left: 10,
-                          right: 10,
-                        ),
-                        child: Column(
-                          children: <Widget>[
-                            MultiSelectDialogField(
-                              // key: _multiSelectKey,
-                              checkColor: Colors.white,
-                              chipDisplay:
-                                  MultiSelectChipDisplay<ScheduleParticipant>(
-                                    chipColor: const Color(0xff2ca9df),
-                                    textStyle: const TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                    onTap: (selected) {
-                                      setState(() {
-                                        selectedMonthlyParticipantList.remove(
-                                          selected,
-                                        );
-                                      });
-                                    },
-                                  ),
-                              searchable: true,
-                              listType: MultiSelectListType.LIST,
-                              initialValue: selectedMonthlyParticipantList,
-                              separateSelectedItems: false,
-                              items: participant,
-                              title: const Text("Participants"),
-                              selectedColor: const Color(0xff2ca9df),
-                              buttonIcon: const Icon(
-                                Icons.search,
-                                color: Color(0xff2ca9df),
-                              ),
-                              buttonText: const Text(
-                                "Participants",
-                                style: TextStyle(
-                                  color: Color(0xFF454545),
-                                  fontFamily: "Poppins",
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              onConfirm: (results) {
+
+                  /// Month grid
+                  Expanded(
+                    child: GridView.builder(
+                      itemCount: 12,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 2.5,
+                          ),
+                      itemBuilder: (context, index) {
+                        final m = index + 1;
+
+                        return GestureDetector(
+                          onTap: () async {
+                            Navigator.pop(context);
+                            setState(() {
+                              isMonthLoading = true;
+                              selectedDate = DateTime(year, m);
+                              monthlyScheduleList = [];
+                            });
+
+                            try {
+                              await _loadMonthlyScheduler(
+                                userId,
+                                userJwtToken,
+                                userMailID,
+                              );
+
+                              autoFillMonth();
+                              setDefaultParticipant();
+                            } catch (e) {
+                              // optional error handling
+                            } finally {
+                              if (mounted) {
                                 setState(() {
-                                  selectedMonthlyParticipantList =
-                                      List<ScheduleParticipant>.from(results);
+                                  isMonthLoading = false;
                                 });
-                              },
-                              selectedItemsTextStyle: const TextStyle(
-                                color: Colors.black,
+                              }
+                            }
+                          },
+                          child: Card(
+                            color: selectedDate.month == m
+                                ? Colors.blue.shade100
+                                : null,
+                            child: Center(
+                              child: Text(
+                                DateFormat.MMM().format(DateTime(0, m)),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12.0, right: 12.0),
-                    child: TextField(
-                      controller: remarksController,
-                      keyboardType: TextInputType.multiline,
-                      maxLines: 4,
-                      maxLength: 500,
-                      decoration: InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        labelText: "Remarks",
-                        labelStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF8F8F8F),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderSide: BorderSide(width: 1, color: Colors.grey),
-                        ),
-                        contentPadding: const EdgeInsets.only(
-                          left: 15,
-                          right: 0,
-                          top: 15,
-                          bottom: 0,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Priority:"),
-                      Radio<int>(
-                        value: 1,
-                        groupValue: _selectedPriority,
-                        activeColor: Colors.red,
-                        onChanged: (int? value) {
-                          setState(() {
-                            _selectedPriority = value!;
-                          });
-                        },
-                      ),
-                      const Text('High'),
-                      Radio<int>(
-                        value: 2,
-                        groupValue: _selectedPriority,
-                        activeColor: Colors.orange,
-                        onChanged: (int? value) {
-                          setState(() {
-                            _selectedPriority = value!;
-                          });
-                        },
-                      ),
-                      const Text('Medium'),
-                      Radio<int>(
-                        value: 3,
-                        groupValue: _selectedPriority,
-                        activeColor: Colors.green,
-                        onChanged: (int? value) {
-                          setState(() {
-                            _selectedPriority = value!;
-                          });
-                        },
-                      ),
-                      const Text('Normal'),
-                    ],
-                  ),
-                  Center(
-                    child: SizedBox(
-                      width: 125,
-                      child: InkWell(
-                        onTap: () {
-                          if (hospitalController.text.trim().isEmpty &&
-                              distributorController.text.trim().isEmpty &&
-                              othersController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Account Name cannot be empty'),
-                                backgroundColor: Colors.red,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            return;
-                          }
-                          addDataToList();
-                          clearVariables();
-                        },
-                        child: Container(
-                          width: 0,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2CA9DF),
-                            borderRadius: BorderRadius.circular(0.0),
                           ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text(
-                                  'Add',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(
-                                Icons.add_circle_outline,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      physics: const ClampingScrollPhysics(),
-                      itemCount: monthlyScheduleList.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final participants =
-                            monthlyScheduleList[index].participantList;
-                        final inputFormat = DateFormat('yyyy/MM/dd');
-                        final outputFormat = DateFormat('dd/MM/yyyy');
-
-                        DateTime dateTime = inputFormat.parse(
-                          monthlyScheduleList[index].scheduleDate,
-                        );
-
-                        String filterDate = outputFormat.format(dateTime);
-                        return Column(
-                          children: <Widget>[
-                            SizedBox(
-                              width: 375,
-                              child: Container(
-                                color: const Color(0xFFefefef),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [SizedBox(height: 20)],
-                                    ),
-                                    Expanded(
-                                      child: ListTile(
-                                        title: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Center(
-                                              child: Text(
-                                                filterDate,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              onTap: () {
-                                                loadContactDetails(
-                                                  monthlyScheduleList[index],
-                                                );
-                                                setState(() {
-                                                  if (editingAllowed) {
-                                                    monthlyScheduleList.remove(
-                                                      monthlyScheduleList[index],
-                                                    );
-                                                  }
-                                                });
-                                              },
-                                              child: const Icon(
-                                                Icons.edit,
-                                                size: 16.0,
-                                                color: Color(0xff454545),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        subtitle: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.start,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      monthlyScheduleList[index]
-                                                          .scheduleCustomerName,
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: Color(
-                                                          0xff454545,
-                                                        ),
-                                                        fontFamily: "Poppins",
-                                                      ),
-                                                    ),
-                                                    for (var p in participants)
-                                                      Text(
-                                                        p.scheduleParticipantUserName,
-                                                        textAlign:
-                                                            TextAlign.left,
-                                                        style: const TextStyle(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.w300,
-                                                          color: Color(
-                                                            0xff454545,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                          ],
                         );
                       },
-                    ),
-                  ),
-                  Center(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xff2ca9df),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
-                      ),
-                      onPressed: scheduleCompleted
-                          ? () {
-                              saveMonthlyScheduler();
-                            }
-                          : null, // Disabled if not complete
-                      child: const SizedBox(
-                        width: 400,
-                        child: Center(
-                          child: Text(
-                            "Save",
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          )
-        : const Scaffold(
-            body: Center(child: CircularProgressIndicator(color: Colors.blue)),
-          );
+          ),
+        );
+      },
+    );
   }
 
-  Widget buildSelectableText(int index, String text) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(3.0),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          color: _selectedIndex == index
-              ? const Color(0xff2ca9df)
-              : const Color(0xFFCFCFCF),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontFamily: "Poppins",
-              color: _selectedIndex == index
-                  ? Colors.white
-                  : const Color(0xFF8F8F8F),
-              fontWeight: FontWeight.w400,
-            ),
-          ),
+  Future<void> translateRemarks(MonthlySchedule item, int index) async {
+    final text = item.scheduleRemarks;
+
+    if (text.trim().isEmpty) return;
+
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final translator = GoogleTranslator();
+
+      final translation = await translator.translate(text, to: 'en');
+
+      setState(() {
+        item.scheduleRemarks = translation.text;
+        remarksControllers[index]?.text = translation.text;
+      });
+    } catch (e) {
+      // optional: error handling
+    } finally {
+      setState(() {
+        _isProcessing = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: const SideMenu(),
+      appBar: AppBar(title: const Text("Monthly Plan")),
+      body: FutureBuilder(
+        future: loadDataFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 10),
+                  Text("Loading monthly plan..."),
+                ],
+              ),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text("Error loading data"));
+          }
+
+          return Stack(
+            children: [
+              /// Main UI
+              Column(
+                children: [
+                  buildMonthHeader(),
+                  buildHeaderBanner(),
+
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        final grouped = groupByDate();
+
+                        final sortedDates = grouped.keys.toList()
+                          ..sort((a, b) {
+                            DateTime dateA = DateFormat('yyyy/MM/dd').parse(a);
+                            DateTime dateB = DateFormat('yyyy/MM/dd').parse(b);
+                            return dateA.compareTo(dateB);
+                          });
+
+                        return ListView.builder(
+                          itemCount: sortedDates.length,
+                          itemBuilder: (context, index) {
+                            String date = sortedDates[index];
+                            List<MonthlySchedule> items = grouped[date]!;
+
+                            return buildDateGroup(date, items);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              /// Loader overlay
+              if (isMonthLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildPriorityTag(String priority) {
+    Color color;
+    String text;
+
+    switch (priority) {
+      case "1":
+        color = Colors.red;
+        text = "Priority: HIGH";
+        break;
+      case "2":
+        color = Colors.orange;
+        text = "Priority: MEDIUM";
+        break;
+      default:
+        color = Colors.green;
+        text = "Priority: LOW";
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
+  }
+
+  Widget buildCustomerTag(String scheduleCustomerType) {
+    Color tagColor;
+    String tagText;
+
+    switch (scheduleCustomerType) {
+      case "H":
+        tagColor = Colors.blue;
+        tagText = "HOSPITAL";
+        break;
+      case "D":
+        tagColor = Colors.green;
+        tagText = "DISTRIBUTOR";
+        break;
+      default:
+        tagColor = Colors.orange;
+        tagText = "OTHER";
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: tagColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        tagText,
+        style: TextStyle(color: tagColor, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget buildDateGroup(String date, List<MonthlySchedule> items) {
+    DateTime parsed = DateFormat('yyyy/MM/dd').parse(date);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        /// Date Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            DateFormat('dd MMM yyyy').format(parsed),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+        ),
+
+        /// Cards for that date
+        ...items.map((item) {
+          int index = monthlyScheduleList.indexOf(item);
+          return buildScheduleCard(item, index);
+        }),
+
+        /// + Add Visit button
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: TextButton.icon(
+            onPressed: () => addVisitForDate(date),
+            icon: const Icon(Icons.add),
+            label: const Text("Add another visit for the day"),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Widget buildHeaderBanner() {
+    int totalDays = DateUtils.getDaysInMonth(
+      selectedDate.year,
+      selectedDate.month,
+    );
+
+    int filledDays = monthlyScheduleList
+        .map((e) => e.scheduleDate)
+        .toSet()
+        .length;
+
+    bool isComplete = filledDays >= totalDays;
+
+    return Container(
+      margin: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: Colors.blue),
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Text(
+              "Add all your plan entries for the month. Save will be enabled once all dates have entries.",
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          ElevatedButton.icon(
+            onPressed: isSaveEnabled ? saveMonthlyScheduler : null,
+            icon: const Icon(Icons.save),
+            label: Text("Save ($filledDays/$totalDays)"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isComplete ? Colors.green : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildMonthHeader() {
+    return Container(
+      margin: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.calendar_month, color: Colors.blue),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: openMonthPicker,
+                child: Text(
+                  DateFormat('MMMM yyyy').format(selectedDate),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.edit_calendar),
+            onPressed: openMonthPicker,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildScheduleCard(MonthlySchedule item, int index) {
+    final isEditing = editingIndex == index;
+    final controller = remarksControllers[index] ??= TextEditingController();
+    if (controller.text != item.scheduleRemarks) {
+      controller.text = item.scheduleRemarks;
+    }
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            /// HEADER
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                /// LEFT → Tags
+                Row(
+                  children: [
+                    buildCustomerTag(item.scheduleCustomerType),
+                    const SizedBox(width: 6),
+                    buildPriorityTag(item.schedulePriority),
+                  ],
+                ),
+
+                /// RIGHT → Actions
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        isEditing ? Icons.check : Icons.edit,
+                        color: Colors.blue,
+                      ),
+                      onPressed: () async {
+                        if (isEditing) {
+                          try {
+                            await addData(item); // API CALL
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Updated successfully"),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Error: $e")),
+                            );
+                          }
+
+                          setState(() {
+                            editingIndex = null;
+                          });
+                        } else {
+                          setState(() {
+                            editingIndex = index;
+                          });
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          monthlyScheduleList.removeAt(index);
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            /// CUSTOMER
+            isEditing
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      /// Row → Autocomplete + Tag
+                      Row(
+                        children: [
+                          Expanded(child: buildCustomerField(item)),
+                          const SizedBox(width: 6),
+                        ],
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      /// Other input (ONLY when type = O)
+                      if (item.scheduleCustomerType == "O")
+                        TextFormField(
+                          initialValue: item.scheduleCustomerName,
+                          decoration: const InputDecoration(
+                            labelText: "Other (if not found)",
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (val) {
+                            setState(() {
+                              item.scheduleCustomerName = val;
+                              item.scheduleCustomerCode = "";
+                              item.scheduleCustomerType = "O";
+                            });
+                          },
+                        ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(child: Text(item.scheduleCustomerName)),
+                      const SizedBox(width: 6),
+                    ],
+                  ),
+
+            const SizedBox(height: 8),
+
+            /// PARTICIPANTS
+            isEditing
+                ? buildParticipantsField(item)
+                : SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.start, // important
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: item.participantList.map((p) {
+                        return Chip(
+                          label: Text(
+                            p.scheduleParticipantUserName,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+            const SizedBox(height: 8),
+
+            /// REMARKS
+            isEditing
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: controller,
+                          decoration: const InputDecoration(
+                            labelText: "Remarks",
+                          ),
+                          onChanged: (val) {
+                            item.scheduleRemarks = val;
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(width: 6),
+
+                      /// Listening indicator
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: VoiceIndicator(
+                          isListening: _isListening,
+                          isProcessing: _isProcessing,
+                        ),
+                      ),
+
+                      if (showLanguageSelector)
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.language, size: 18),
+                          onSelected: (val) {
+                            setState(() => selectedLocaleId = val);
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: "en_IN",
+                              child: Text("English"),
+                            ),
+                            PopupMenuItem(value: "hi_IN", child: Text("Hindi")),
+                            PopupMenuItem(value: "ta_IN", child: Text("Tamil")),
+                            PopupMenuItem(
+                              value: "kn_IN",
+                              child: Text("Kannada"),
+                            ),
+                            PopupMenuItem(
+                              value: "te_IN",
+                              child: Text("Telugu"),
+                            ),
+                            PopupMenuItem(
+                              value: "ml_IN",
+                              child: Text("Malayalam"),
+                            ),
+                          ],
+                        ),
+
+                      /// Mic button
+                      IconButton(
+                        icon: Icon(
+                          _isListening ? Icons.mic : Icons.mic_none,
+                          color: _isListening ? Colors.red : Colors.blue,
+                        ),
+                        onPressed: () async {
+                          if (_isListening) {
+                            stopListening();
+                          } else {
+                            await initSpeech();
+                            startListening(item, index);
+                          }
+                        },
+                      ),
+                      Text(
+                        selectedLocaleId.split("_")[0].toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      /// Remarks text
+                      Expanded(
+                        child: Text(
+                          item.scheduleRemarks,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+
+                      const SizedBox(width: 6),
+
+                      ///  Translate button (ONLY in view mode)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.translate,
+                          size: 18,
+                          color: Colors.green,
+                        ),
+                        tooltip: "Translate to English",
+                        // onPressed: isPureEnglish(item.scheduleRemarks)
+                        //     ? () => translateRemarks(item, index)
+                        //     : null,
+                        onPressed: () => translateRemarks(item, index),
+                      ),
+                    ],
+                  ),
+
+            const SizedBox(height: 8),
+
+            /// PRIORITY
+            isEditing ? buildPriorityDropdown(item) : SizedBox(height: 0),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildCustomerField(MonthlySchedule item) {
+    final controller = TextEditingController();
+    controller.text = item.scheduleCustomerName;
+
+    return AsyncAutocomplete<CustomerCommon>(
+      controller: controller,
+
+      asyncSuggestions: (searchValue) async {
+        final results = await searchCustomer(searchValue);
+
+        if (results.isEmpty && searchValue.isNotEmpty) {
+          return [CustomerCommon(name: searchValue, code: "", type: "O")];
+        }
+
+        return results;
+      },
+
+      suggestionBuilder: (customer) {
+        return ListTile(
+          title: Text(customer.name),
+          subtitle: Text(
+            "${customer.code} • ${customer.type == "H" ? "🏥 Hospital" : "🏢 Distributor"}",
+          ),
+        );
+      },
+
+      onTapItem: (CustomerCommon customer) {
+        setState(() {
+          item.scheduleCustomerName = customer.name;
+          item.scheduleCustomerCode = customer.code;
+          item.scheduleCustomerType = customer.type;
+        });
+
+        controller.text = customer.name; //  THIS FIXES UI
+      },
+    );
+  }
+
+  Widget buildParticipantsField(MonthlySchedule item) {
+    final TextEditingController controller = TextEditingController();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        /// Chips display
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: item.participantList.map((p) {
+            return Chip(
+              label: Text(p.scheduleParticipantUserName),
+              deleteIcon: const Icon(Icons.close, size: 18),
+              onDeleted: () {
+                setState(() {
+                  item.participantList.remove(p);
+                });
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 6),
+
+        /// Search + Add
+        AsyncAutocomplete<ScheduleParticipant>(
+          controller: controller,
+
+          asyncSuggestions: (search) async {
+            return monthlyParticipantList
+                .where(
+                  (p) =>
+                      p.scheduleParticipantUserName.toLowerCase().contains(
+                        search.toLowerCase(),
+                      ) &&
+                      !item.participantList.contains(p),
+                )
+                .toList();
+          },
+
+          suggestionBuilder: (p) =>
+              ListTile(title: Text(p.scheduleParticipantUserName)),
+
+          onTapItem: (ScheduleParticipant selected) {
+            setState(() {
+              if (!item.participantList.contains(selected)) {
+                item.participantList.add(selected);
+              }
+            });
+
+            controller.clear(); // important UX
+          },
+
+          decoration: const InputDecoration(
+            hintText: "Add participant",
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildPriorityDropdown(MonthlySchedule item) {
+    return DropdownButtonFormField<int>(
+      value: int.tryParse(item.schedulePriority) ?? 3,
+      decoration: const InputDecoration(
+        labelText: "Priority",
+        border: OutlineInputBorder(),
+      ),
+      items: const [
+        DropdownMenuItem(value: 1, child: Text("High")),
+        DropdownMenuItem(value: 2, child: Text("Medium")),
+        DropdownMenuItem(value: 3, child: Text("Low")),
+      ],
+      onChanged: (val) {
+        setState(() {
+          item.schedulePriority = val.toString();
+        });
+      },
+    );
+  }
+
+  Widget buildAddButton() {
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: OutlinedButton.icon(
+        onPressed: () {
+          clearVariables(); // your existing method
+        },
+        icon: const Icon(Icons.add),
+        label: const Text("Add New"),
+      ),
+    );
+  }
+
+  Widget buildSaveButton() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      child: ElevatedButton(
+        onPressed: scheduleCompleted ? saveMonthlyScheduler : null,
+        child: const Text("Save Monthly Plan"),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    hospitalController.dispose();
+    distributorController.dispose();
+    othersController.dispose();
+    remarksController.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+}
+
+class VoiceIndicator extends StatefulWidget {
+  final bool isListening;
+  final bool isProcessing;
+
+  const VoiceIndicator({
+    super.key,
+    required this.isListening,
+    required this.isProcessing,
+  });
+
+  @override
+  State<VoiceIndicator> createState() => _VoiceIndicatorState();
+}
+
+class _VoiceIndicatorState extends State<VoiceIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant VoiceIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.isListening) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget buildWaveBar(double heightFactor) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, _) {
+        return Container(
+          width: 3,
+          height: 10 + (_controller.value * heightFactor),
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isListening) {
+      return Row(
+        key: const ValueKey("listening"),
+        children: [
+          const SizedBox(width: 4),
+
+          /// Wave animation
+          Row(
+            children: [
+              buildWaveBar(10),
+              buildWaveBar(14),
+              buildWaveBar(8),
+              buildWaveBar(16),
+            ],
+          ),
+        ],
+      );
+    }
+
+    if (widget.isProcessing) {
+      return const Row(
+        key: ValueKey("processing"),
+        children: [
+          SizedBox(width: 6),
+          Text(
+            "Processing...",
+            style: TextStyle(color: Colors.orange, fontSize: 12),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox(key: ValueKey("empty"));
   }
 }

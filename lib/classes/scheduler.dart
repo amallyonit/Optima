@@ -1,15 +1,15 @@
 class MonthlySchedule {
-  final int scheduleID;
-  final String scheduledUser;
-  final int scheduleUserId;
-  final String scheduleDate;
-  final String scheduleCustomerCode;
-  final String scheduleCustomerName;
-  final String scheduleCustomerType;
-  final String scheduleRemarks;
-  final String schedulePriority;
+  int scheduleID;
+  String scheduledUser;
+  int scheduleUserId;
+  String scheduleDate;
+  String scheduleCustomerCode;
+  String scheduleCustomerName;
+  String scheduleCustomerType;
+  String scheduleRemarks;
+  String schedulePriority;
   String scheduleStatus;
-  final List<ScheduleParticipant> participantList;
+  List<ScheduleParticipant> participantList;
 
   static String formatDate(String dateString) {
     try {
@@ -20,18 +20,19 @@ class MonthlySchedule {
     }
   }
 
-  MonthlySchedule(
-      {required this.scheduleID,
-      required this.scheduleUserId,
-      required this.scheduleDate,
-      required this.scheduledUser,
-      required this.scheduleCustomerCode,
-      required this.scheduleCustomerName,
-      required this.scheduleCustomerType,
-      required this.scheduleRemarks,
-      required this.schedulePriority,
-      required this.scheduleStatus,
-      required this.participantList});
+  MonthlySchedule({
+    required this.scheduleID,
+    required this.scheduleUserId,
+    required this.scheduleDate,
+    required this.scheduledUser,
+    required this.scheduleCustomerCode,
+    required this.scheduleCustomerName,
+    required this.scheduleCustomerType,
+    required this.scheduleRemarks,
+    required this.schedulePriority,
+    required this.scheduleStatus,
+    required this.participantList,
+  });
 
   factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
     return MonthlySchedule(
@@ -49,7 +50,8 @@ class MonthlySchedule {
       scheduleRemarks: json['ScheduleRemarks'] ?? '',
       schedulePriority: json['SchedulePriority'] ?? '',
       scheduleStatus: json['ScheduleStatus'] ?? '',
-      participantList: (json['participantList'] as List<dynamic>?)
+      participantList:
+          (json['participantList'] as List<dynamic>?)
               ?.map((e) => ScheduleParticipant.fromJson(e))
               .toList() ??
           [],
@@ -79,11 +81,12 @@ class ScheduleParticipant {
   final int scheduleParticipantUserId;
   final String scheduleParticipantUserName;
 
-  ScheduleParticipant(
-      {required this.scheduleParticipantId,
-      required this.scheduleParticipantMasterId,
-      required this.scheduleParticipantUserId,
-      required this.scheduleParticipantUserName});
+  ScheduleParticipant({
+    required this.scheduleParticipantId,
+    required this.scheduleParticipantMasterId,
+    required this.scheduleParticipantUserId,
+    required this.scheduleParticipantUserName,
+  });
 
   factory ScheduleParticipant.fromJson(Map<String, dynamic> json) {
     return ScheduleParticipant(
@@ -93,12 +96,13 @@ class ScheduleParticipant {
       scheduleParticipantMasterId: json['ScheduleParticipantMasterId'] is int
           ? json['ScheduleParticipantMasterId']
           : int.tryParse(
-                  json['ScheduleParticipantMasterId']?.toString() ?? '') ??
-              0,
+                  json['ScheduleParticipantMasterId']?.toString() ?? '',
+                ) ??
+                0,
       scheduleParticipantUserId: json['ScheduleParticipantUserId'] is int
           ? json['ScheduleParticipantUserId']
           : int.tryParse(json['ScheduleParticipantUserId']?.toString() ?? '') ??
-              0,
+                0,
       scheduleParticipantUserName: json['ScheduleParticipantUserName'] ?? '',
     );
   }
