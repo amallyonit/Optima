@@ -74,9 +74,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   List<MonthlySchedule> tmpScheduleList = [];
   List<MonthlySchedule> monthlyScheduleList = [];
   DateTime selectedDate = DateTime.now();
-  final TextEditingController hospitalController = TextEditingController();
-  final TextEditingController distributorController = TextEditingController();
-  final TextEditingController othersController = TextEditingController();
   final TextEditingController remarksController = TextEditingController();
   late Future<void> loadDataFuture;
   int scheduleID = 0;
@@ -98,10 +95,12 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   stt.SpeechToText? _speech;
   bool _isListening = false;
   Map<int, TextEditingController> remarksControllers = {};
+  Map<int, TextEditingController> customerControllers = {};
   Timer? _silenceTimer;
   bool _isProcessing = false;
   String selectedLocaleId = "en_IN"; // default mixed language
   bool showLanguageSelector = false;
+  bool _isSaving = false;
 
   List<CustomerCommon> getCombinedCustomerList() {
     List<CustomerCommon> list = [];
@@ -455,12 +454,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
       }
@@ -502,11 +495,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
   void clearVariables() async {
     setState(() {
-      hospitalController.clear();
-      distributorController.clear();
-      othersController.clear();
       remarksController.clear();
-      othersController.text = "";
       remarksController.text = "";
       selectedMonthlyParticipantList = [];
       monthlyParticipantList = [];
@@ -614,7 +603,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
       'GivenDate': selectedDate.toString().split(' ')[0],
-      'ScheduleStatus': 'H', // Default status - Holding
+      'ScheduleStatus': '', // Default status - Holding
     };
     const apiUrl = '${ApiHelper.baseUrl}loadmonthlyscheduler';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
@@ -712,9 +701,9 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       final currentDate = DateTime(year, month, day);
 
       // Skip Sundays
-      if (currentDate.weekday == DateTime.sunday) continue;
+      //if (currentDate.weekday == DateTime.sunday) continue;
 
-      final formattedDate = DateFormat('dd/MM/yyyy').format(currentDate);
+      final formattedDate = DateFormat('yyyy/MM/dd').format(currentDate);
 
       final exists = monthlyScheduleList.any(
         (schedule) => schedule.scheduleDate == formattedDate,
@@ -727,7 +716,10 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     return true;
   }
 
-  void saveMonthlyScheduler() async {
+  Future saveMonthlyScheduler() async {
+    setState(() {
+      _isSaving = true;
+    });
     try {
       bool lastRow = false;
       for (int i = 0; i < monthlyScheduleList.length; i++) {
@@ -757,11 +749,19 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         setState(() {
           saveStatus = "";
           scheduleCompleted = isMonthlyScheduleComplete(selectedDate);
-          monthlyScheduleList = [];
+          // monthlyScheduleList = [];
         });
       }
     } catch (e) {
-      // Handle the error if needed
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -872,7 +872,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       DateTime currentDate = DateTime(year, month, day);
 
       // Skip Sundays
-      if (currentDate.weekday == DateTime.sunday) continue;
+      // if (currentDate.weekday == DateTime.sunday) continue;
 
       String formatted = DateFormat('yyyy/MM/dd').format(currentDate);
 
@@ -887,8 +887,12 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
           scheduleDate: formatted,
           scheduleCustomerCode: "",
           scheduleCustomerName: "",
-          scheduleCustomerType: "H",
-          scheduleRemarks: "",
+          scheduleCustomerType: currentDate.weekday == DateTime.sunday
+              ? "S"
+              : "H",
+          scheduleRemarks: currentDate.weekday == DateTime.sunday
+              ? "Sunday"
+              : "",
           schedulePriority: "3",
           scheduleStatus: "H",
           participantList: [],
@@ -926,18 +930,31 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   }
 
   bool get isSaveEnabled {
-    int totalDays = DateUtils.getDaysInMonth(
-      selectedDate.year,
-      selectedDate.month,
-    );
+    int year = selectedDate.year;
+    int month = selectedDate.month;
 
-    int uniqueDays = monthlyScheduleList
+    int totalWorkingDays = 0;
+
+    for (int day = 1; day <= DateUtils.getDaysInMonth(year, month); day++) {
+      final date = DateTime(year, month, day);
+      if (date.weekday != DateTime.sunday) {
+        totalWorkingDays++;
+      }
+    }
+
+    /// Only count NON-SUNDAY dates
+    int uniqueWorkingDays = monthlyScheduleList
+        .where((e) => e.scheduleCustomerType != "S")
         .map((e) => e.scheduleDate)
         .toSet()
         .length;
 
-    return uniqueDays >= totalDays &&
-        monthlyScheduleList.every((e) => isRowValid(e));
+    /// Validate only NON-SUNDAY rows
+    bool allValid = monthlyScheduleList
+        .where((e) => e.scheduleCustomerType != "S")
+        .every((e) => isRowValid(e));
+
+    return uniqueWorkingDays >= totalWorkingDays && allValid;
   }
 
   Map<String, List<MonthlySchedule>> groupByDate() {
@@ -1114,6 +1131,41 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }
   }
 
+  Future<void> deleteSchedule(MonthlySchedule item) async {
+    final body = {
+      "UserID": userId,
+      "UserJwtToken": userJwtToken,
+      "UsermailID": userMailID,
+      "ScheduleID": item.scheduleID,
+    };
+
+    const apiUrl = '${ApiHelper.baseUrl}deletemonthlyschedule';
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: jsonEncode(body),
+        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+      );
+
+      final res = jsonDecode(response.body);
+
+      if (res["Status"] == true) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Deleted successfully")));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res["Error"] ?? "Delete failed")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1279,7 +1331,9 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: TextButton.icon(
-            onPressed: () => addVisitForDate(date),
+            onPressed: parsed.weekday == DateTime.sunday
+                ? null
+                : () => addVisitForDate(date),
             icon: const Icon(Icons.add),
             label: const Text("Add another visit for the day"),
           ),
@@ -1291,12 +1345,17 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   }
 
   Widget buildHeaderBanner() {
-    int totalDays = DateUtils.getDaysInMonth(
-      selectedDate.year,
-      selectedDate.month,
-    );
+    int totalDays = List.generate(
+      DateUtils.getDaysInMonth(selectedDate.year, selectedDate.month),
+      (i) => DateTime(selectedDate.year, selectedDate.month, i + 1),
+    ).where((d) => d.weekday != DateTime.sunday).length;
 
     int filledDays = monthlyScheduleList
+        .where(
+          (e) =>
+              e.scheduleCustomerType != "S" && // exclude Sunday
+              isRowValid(e),
+        ) // only valid rows
         .map((e) => e.scheduleDate)
         .toSet()
         .length;
@@ -1324,13 +1383,25 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
           const SizedBox(width: 10),
 
-          ElevatedButton.icon(
-            onPressed: isSaveEnabled ? saveMonthlyScheduler : null,
-            icon: const Icon(Icons.save),
-            label: Text("Save ($filledDays/$totalDays)"),
+          ElevatedButton(
+            onPressed: (_isSaving || !isComplete) ? null : saveMonthlyScheduler,
             style: ElevatedButton.styleFrom(
-              backgroundColor: isComplete ? Colors.green : null,
+              backgroundColor: isComplete
+                  ? Colors.green
+                  : Colors.grey, //disabled color
+
+              foregroundColor: Colors.white,
             ),
+            child: _isSaving
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text("Save ($filledDays/$totalDays)"),
           ),
         ],
       ),
@@ -1377,10 +1448,12 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   Widget buildScheduleCard(MonthlySchedule item, int index) {
     final isEditing = editingIndex == index;
     final controller = remarksControllers[index] ??= TextEditingController();
+    bool isSunday = item.scheduleCustomerType == "S";
     if (controller.text != item.scheduleRemarks) {
       controller.text = item.scheduleRemarks;
     }
     return Card(
+      color: isSunday ? Colors.grey.shade200 : null,
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -1402,45 +1475,74 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                 /// RIGHT → Actions
                 Row(
                   children: [
-                    IconButton(
-                      icon: Icon(
-                        isEditing ? Icons.check : Icons.edit,
-                        color: Colors.blue,
-                      ),
-                      onPressed: () async {
-                        if (isEditing) {
-                          try {
-                            await addData(item); // API CALL
+                    if (!isSunday) ...[
+                      IconButton(
+                        icon: Icon(
+                          isEditing ? Icons.check : Icons.edit,
+                          color: Colors.blue,
+                        ),
+                        onPressed: () async {
+                          if (isEditing) {
+                            try {
+                              await addData(item); // API CALL
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Updated successfully"),
-                              ),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Error: $e")),
-                            );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Updated successfully"),
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Error: $e")),
+                              );
+                            }
+
+                            setState(() {
+                              editingIndex = null;
+                            });
+                          } else {
+                            setState(() {
+                              editingIndex = index;
+                            });
                           }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          final confirm = await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Delete"),
+                              content: const Text(
+                                "Are you sure you want to delete this schedule?",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text("No"),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text("Yes"),
+                                ),
+                              ],
+                            ),
+                          );
 
-                          setState(() {
-                            editingIndex = null;
-                          });
-                        } else {
-                          setState(() {
-                            editingIndex = index;
-                          });
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          monthlyScheduleList.removeAt(index);
-                        });
-                      },
-                    ),
+                          if (confirm == true) {
+                            if (item.scheduleID != 0) {
+                              await deleteSchedule(item);
+                            }
+
+                            setState(() {
+                              monthlyScheduleList.removeAt(index);
+                            });
+                          }
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -1595,28 +1697,41 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       /// Remarks text
-                      Expanded(
-                        child: Text(
-                          item.scheduleRemarks,
-                          style: const TextStyle(fontSize: 14),
+                      if (isSunday)
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "Sunday",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: Text(
+                            item.scheduleRemarks,
+                            style: const TextStyle(fontSize: 14),
+                          ),
                         ),
-                      ),
 
                       const SizedBox(width: 6),
 
                       ///  Translate button (ONLY in view mode)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.translate,
-                          size: 18,
-                          color: Colors.green,
+                      if (showLanguageSelector)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.translate,
+                            size: 18,
+                            color: Colors.green,
+                          ),
+                          tooltip: "Translate to English",
+                          // onPressed: isPureEnglish(item.scheduleRemarks)
+                          //     ? () => translateRemarks(item, index)
+                          //     : null,
+                          onPressed: () => translateRemarks(item, index),
                         ),
-                        tooltip: "Translate to English",
-                        // onPressed: isPureEnglish(item.scheduleRemarks)
-                        //     ? () => translateRemarks(item, index)
-                        //     : null,
-                        onPressed: () => translateRemarks(item, index),
-                      ),
                     ],
                   ),
 
@@ -1636,7 +1751,10 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
     return AsyncAutocomplete<CustomerCommon>(
       controller: controller,
-
+      decoration: const InputDecoration(
+        labelText: "Customer",
+        hintText: "Search Hospital / Distributor", // ✅ THIS IS PLACEHOLDER
+      ),
       asyncSuggestions: (searchValue) async {
         final results = await searchCustomer(searchValue);
 
@@ -1751,36 +1869,14 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     );
   }
 
-  Widget buildAddButton() {
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: OutlinedButton.icon(
-        onPressed: () {
-          clearVariables(); // your existing method
-        },
-        icon: const Icon(Icons.add),
-        label: const Text("Add New"),
-      ),
-    );
-  }
-
-  Widget buildSaveButton() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      child: ElevatedButton(
-        onPressed: scheduleCompleted ? saveMonthlyScheduler : null,
-        child: const Text("Save Monthly Plan"),
-      ),
-    );
-  }
-
   @override
   void dispose() {
-    hospitalController.dispose();
-    distributorController.dispose();
-    othersController.dispose();
-    remarksController.dispose();
+    for (var c in remarksControllers.values) {
+      c.dispose();
+    }
+    for (var c in customerControllers.values) {
+      c.dispose();
+    }
     _focus.dispose();
     super.dispose();
   }
