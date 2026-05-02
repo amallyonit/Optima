@@ -24,6 +24,13 @@ class CustomerCommon {
   final String type; // H / D
 
   CustomerCommon({required this.name, required this.code, required this.type});
+  factory CustomerCommon.fromJson(Map<String, dynamic> json) {
+    return CustomerCommon(
+      name: json['CustomerName'] ?? '',
+      code: json['CustomerCode'] ?? '',
+      type: json['CustomerType'] ?? '',
+    );
+  }
 }
 
 class Hospital {
@@ -64,6 +71,14 @@ class MonthlySchedulerProvider with ChangeNotifier {
   }
 }
 
+class _CustomerIndex {
+  final CustomerCommon customer;
+  final String normalized;
+  final List<String> tokens;
+
+  _CustomerIndex(this.customer, this.normalized, this.tokens);
+}
+
 class _MonthlySchedulerState extends State<MonthlyScheduler> {
   int? editingIndex;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -94,13 +109,34 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   bool isMonthLoading = false;
   stt.SpeechToText? _speech;
   bool _isListening = false;
+  bool _isCustomerListening = false;
   Map<int, TextEditingController> remarksControllers = {};
   Map<int, TextEditingController> customerControllers = {};
+  Map<int, TextEditingController> participantControllers = {};
   Timer? _silenceTimer;
-  bool _isProcessing = false;
   String selectedLocaleId = "en_IN"; // default mixed language
   bool showLanguageSelector = false;
   bool _isSaving = false;
+  bool _isRowSaving = false;
+
+  late List<_CustomerIndex> indexedCustomers;
+
+  void buildCustomerIndex(List<Map<String, dynamic>> rawList) {
+    indexedCustomers = rawList.map((c) {
+      final name = c['CustomerName'] ?? '';
+      final normalized = normalize(name);
+
+      return _CustomerIndex(
+        CustomerCommon(
+          name: name,
+          code: c['CustomerCode'] ?? '',
+          type: c['CustomerType'] ?? '',
+        ),
+        normalized,
+        normalized.split(' '),
+      );
+    }).toList();
+  }
 
   List<CustomerCommon> getCombinedCustomerList() {
     List<CustomerCommon> list = [];
@@ -396,11 +432,9 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     await _loadCustomer(userId, userJwtToken, userMailID);
     await _loadDistributor(userId, userJwtToken, userMailID);
     await _loadParticipant(userId, userJwtToken, userMailID);
-
+    buildCustomerIndex(customerList);
     selectedDate = DataManager.readSelectedDateCalendar() ?? DateTime.now();
-    if (monthlyScheduleList.isEmpty) {
-      autoFillMonth();
-    }
+    autoFillMonth();
     await setDefaultParticipant();
     setState(() {
       scheduleCompleted = isMonthlyScheduleComplete(selectedDate);
@@ -431,16 +465,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         bool status = responseJson["Status"];
 
         if (status && item.scheduleStatus != "P") {
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(
-              'Added Successfully...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          );
-
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
@@ -523,74 +547,68 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
   Future<void> addData(MonthlySchedule newSchedule) async {
     // Restriction check
-    if (!isScheduleEntryAllowed(selectedDate)) {
-      showModalBottomSheet(
-        context: context,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        builder: (context) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                /// Drag handle
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
 
-                /// Icon
-                const Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.red,
-                  size: 32,
-                ),
+    // if (!isScheduleEntryAllowed(selectedDate)) {
+    //   showModalBottomSheet(
+    //     context: context,
+    //     shape: const RoundedRectangleBorder(
+    //       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    //     ),
+    //     builder: (context) {
+    //       return Padding(
+    //         padding: const EdgeInsets.all(16),
+    //         child: Column(
+    //           mainAxisSize: MainAxisSize.min,
+    //           children: [
+    //             /// Drag handle
+    //             Container(
+    //               width: 40,
+    //               height: 4,
+    //               margin: const EdgeInsets.only(bottom: 10),
+    //               decoration: BoxDecoration(
+    //                 color: Colors.grey.shade400,
+    //                 borderRadius: BorderRadius.circular(10),
+    //               ),
+    //             ),
 
-                const SizedBox(height: 10),
+    //             /// Icon
+    //             const Icon(
+    //               Icons.warning_amber_rounded,
+    //               color: Colors.red,
+    //               size: 32,
+    //             ),
 
-                /// Message
-                Text(
-                  "Cannot create schedule for ${DateFormat('MMMM yyyy').format(selectedDate)}.\n\n"
-                  "It must be entered on or before "
-                  "${DateFormat('dd MMM yyyy').format(DateTime(selectedDate.year, selectedDate.month, 1).subtract(const Duration(days: 1)))}.",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14),
-                ),
+    //             const SizedBox(height: 10),
 
-                const SizedBox(height: 15),
+    //             /// Message
+    //             Text(
+    //               "Cannot create schedule for ${DateFormat('MMMM yyyy').format(selectedDate)}.\n\n"
+    //               "It must be entered on or before "
+    //               "${DateFormat('dd MMM yyyy').format(DateTime(selectedDate.year, selectedDate.month, 1).subtract(const Duration(days: 1)))}.",
+    //               textAlign: TextAlign.center,
+    //               style: const TextStyle(fontSize: 14),
+    //             ),
 
-                /// OK Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("OK"),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
+    //             const SizedBox(height: 15),
 
-      return;
-    }
+    //             /// OK Button
+    //             SizedBox(
+    //               width: double.infinity,
+    //               child: ElevatedButton(
+    //                 onPressed: () => Navigator.pop(context),
+    //                 child: const Text("OK"),
+    //               ),
+    //             ),
+    //           ],
+    //         ),
+    //       );
+    //     },
+    //   );
 
-    try {
-      await addSchedule(newSchedule);
-      setState(() {
-        scheduleCompleted = isMonthlyScheduleComplete(selectedDate);
-      });
-    } catch (e) {
-      // print('Error: $error');
-    }
+    //   return;
+    // }
+
+    await addSchedule(newSchedule);
   }
 
   Future<void> _loadMonthlyScheduler(
@@ -802,6 +820,80 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }
   }
 
+  String normalize(String text) {
+    return text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9 ]'), '').trim();
+  }
+
+  int similarityScore(String a, String b) {
+    int score = 0;
+
+    for (var word in a.split(" ")) {
+      if (b.contains(word)) score++;
+    }
+
+    return score;
+  }
+
+  CustomerCommon? findBestMatchOld(
+    String spoken,
+    List<Map<String, dynamic>> customers,
+  ) {
+    String input = normalize(spoken);
+
+    CustomerCommon? best;
+    int maxScore = 0;
+
+    for (var c in customers) {
+      String name = normalize(c['CustomerName'] ?? '');
+      int score = similarityScore(input, name);
+
+      if (score > maxScore) {
+        maxScore = score;
+        best = CustomerCommon.fromJson(c);
+      }
+    }
+
+    return maxScore >= 2 ? best : null; // threshold
+  }
+
+  CustomerCommon? findBestMatch(String spoken) {
+    final input = normalize(spoken);
+    final words = input.split(' ');
+
+    CustomerCommon? best;
+    int maxScore = 0;
+
+    for (final c in indexedCustomers) {
+      int score = 0;
+
+      // strong match
+      if (c.normalized.contains(input)) {
+        return c.customer;
+      }
+
+      // word scoring
+      for (final w in words) {
+        if (c.tokens.contains(w)) {
+          score += 3;
+        } else {
+          for (final t in c.tokens) {
+            if (t.startsWith(w)) {
+              score += 1;
+              break;
+            }
+          }
+        }
+      }
+
+      if (score > maxScore) {
+        maxScore = score;
+        best = c.customer;
+      }
+    }
+
+    return maxScore >= 2 ? best : null;
+  }
+
   Future<void> startListening(MonthlySchedule item, int index) async {
     if (!(_speech?.isAvailable ?? false)) return;
 
@@ -826,7 +918,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
           _silenceTimer = Timer(const Duration(seconds: 2), () {
             setState(() {
               _isListening = false;
-              _isProcessing = true; // show Processing...
             });
             stopListening(); // force stop after silence
           });
@@ -843,7 +934,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       if (mounted) {
         setState(() {
           _isListening = false;
-          _isProcessing = false; // hide Processing
         });
       }
     });
@@ -870,9 +960,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
     for (int day = 1; day <= lastDay; day++) {
       DateTime currentDate = DateTime(year, month, day);
-
-      // Skip Sundays
-      // if (currentDate.weekday == DateTime.sunday) continue;
 
       String formatted = DateFormat('yyyy/MM/dd').format(currentDate);
 
@@ -910,15 +997,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         return dateA.compareTo(dateB);
       });
     });
-
-    if (mounted && newRows.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${newRows.length} missing days added"),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-    }
   }
 
   bool isRowValid(MonthlySchedule item) {
@@ -1109,10 +1187,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
     if (text.trim().isEmpty) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
-
     try {
       final translator = GoogleTranslator();
 
@@ -1125,9 +1199,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     } catch (e) {
       // optional: error handling
     } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+      setState(() {});
     }
   }
 
@@ -1166,9 +1238,48 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     }
   }
 
+  Future<void> startVoiceInput(
+    TextEditingController controller,
+    MonthlySchedule item,
+  ) async {
+    if (!(_speech?.isAvailable ?? false)) return;
+
+    _speech!.listen(
+      listenMode: stt.ListenMode.dictation,
+      localeId: "en_IN", // mix works better
+      onResult: (result) {
+        if (result.finalResult) {
+          String spokenText = result.recognizedWords;
+          var match = findBestMatch(spokenText);
+          setState(() {
+            if (match != null) {
+              controller.text = match.name;
+              item.scheduleCustomerName = match.name;
+              item.scheduleCustomerCode = match.code;
+              item.scheduleCustomerType = match.type;
+            } else {
+              controller.text = spokenText;
+              item.scheduleCustomerName = spokenText;
+              item.scheduleCustomerCode = "";
+              item.scheduleCustomerType = "O"; // Other
+            }
+
+            _isCustomerListening = false;
+          });
+          FocusScope.of(context).requestFocus(FocusNode());
+        }
+      },
+    );
+  }
+
+  void stopVoiceInput() {
+    _speech!.stop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       key: _scaffoldKey,
       drawer: const SideMenu(),
       appBar: AppBar(title: const Text("Monthly Plan")),
@@ -1199,10 +1310,13 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                 children: [
                   buildMonthHeader(),
                   buildHeaderBanner(),
-
                   Expanded(
-                    child: Builder(
-                      builder: (context) {
+                    child: ListView.builder(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom,
+                      ),
+                      itemCount: groupByDate().keys.length,
+                      itemBuilder: (context, index) {
                         final grouped = groupByDate();
 
                         final sortedDates = grouped.keys.toList()
@@ -1212,26 +1326,23 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                             return dateA.compareTo(dateB);
                           });
 
-                        return ListView.builder(
-                          itemCount: sortedDates.length,
-                          itemBuilder: (context, index) {
-                            String date = sortedDates[index];
-                            List<MonthlySchedule> items = grouped[date]!;
+                        String date = sortedDates[index];
+                        List<MonthlySchedule> items = grouped[date]!;
 
-                            return buildDateGroup(date, items);
-                          },
-                        );
+                        return buildDateGroup(date, items);
                       },
                     ),
                   ),
                 ],
               ),
 
-              /// Loader overlay
-              if (isMonthLoading)
-                Container(
-                  color: Colors.black.withOpacity(0.3),
-                  child: const Center(child: CircularProgressIndicator()),
+              /// Loader overlay (month OR row save)
+              if (isMonthLoading || _isRowSaving)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.25),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
                 ),
             ],
           );
@@ -1447,7 +1558,8 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
 
   Widget buildScheduleCard(MonthlySchedule item, int index) {
     final isEditing = editingIndex == index;
-    final controller = remarksControllers[index] ??= TextEditingController();
+    final controller = remarksControllers[item.hashCode] ??=
+        TextEditingController(text: item.scheduleRemarks);
     bool isSunday = item.scheduleCustomerType == "S";
     if (controller.text != item.scheduleRemarks) {
       controller.text = item.scheduleRemarks;
@@ -1484,24 +1596,31 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                         onPressed: () async {
                           if (isEditing) {
                             try {
+                              if (_isRowSaving) return;
+                              setState(() {
+                                _isRowSaving = true;
+                              });
                               await addData(item); // API CALL
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Updated successfully"),
-                                ),
-                              );
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text("Error: $e")),
                               );
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isRowSaving = false;
+                                  scheduleCompleted = isMonthlyScheduleComplete(
+                                    selectedDate,
+                                  );
+                                  editingIndex = null;
+                                });
+                              }
                             }
-
-                            setState(() {
-                              editingIndex = null;
-                            });
                           } else {
                             setState(() {
+                              selectedDate = DateFormat(
+                                'yyyy/MM/dd',
+                              ).parse(item.scheduleDate);
                               editingIndex = index;
                             });
                           }
@@ -1548,7 +1667,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
               ],
             ),
 
-            const SizedBox(height: 10),
+            isEditing ? const SizedBox(height: 10) : const SizedBox(height: 0),
 
             /// CUSTOMER
             isEditing
@@ -1558,29 +1677,41 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                       /// Row → Autocomplete + Tag
                       Row(
                         children: [
-                          Expanded(child: buildCustomerField(item)),
-                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Builder(
+                              builder: (fieldContext) {
+                                return Focus(
+                                  onFocusChange: (hasFocus) {
+                                    if (hasFocus) {
+                                      WidgetsBinding.instance.addPostFrameCallback((
+                                        _,
+                                      ) {
+                                        Future.delayed(
+                                          const Duration(milliseconds: 200),
+                                          () {
+                                            if (!mounted) return;
+
+                                            Scrollable.ensureVisible(
+                                              fieldContext,
+                                              duration: const Duration(
+                                                milliseconds: 350,
+                                              ),
+                                              alignment:
+                                                  0.2, // slightly higher than before
+                                              curve: Curves.easeInOut,
+                                            );
+                                          },
+                                        );
+                                      });
+                                    }
+                                  },
+                                  child: buildCustomerField(item),
+                                );
+                              },
+                            ),
+                          ),
                         ],
                       ),
-
-                      const SizedBox(height: 6),
-
-                      /// Other input (ONLY when type = O)
-                      if (item.scheduleCustomerType == "O")
-                        TextFormField(
-                          initialValue: item.scheduleCustomerName,
-                          decoration: const InputDecoration(
-                            labelText: "Other (if not found)",
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              item.scheduleCustomerName = val;
-                              item.scheduleCustomerCode = "";
-                              item.scheduleCustomerType = "O";
-                            });
-                          },
-                        ),
                     ],
                   )
                 : Row(
@@ -1590,15 +1721,43 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                     ],
                   ),
 
-            const SizedBox(height: 8),
+            isEditing ? const SizedBox(height: 8) : const SizedBox(height: 0),
 
             /// PARTICIPANTS
             isEditing
-                ? buildParticipantsField(item)
+                ? SizedBox(
+                    width: double.infinity,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Builder(
+                        builder: (fieldContext) {
+                          return Focus(
+                            onFocusChange: (hasFocus) {
+                              if (hasFocus) {
+                                Future.delayed(
+                                  const Duration(milliseconds: 300),
+                                  () {
+                                    Scrollable.ensureVisible(
+                                      fieldContext, // ✅ FIX
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      alignment: 0.3,
+                                    );
+                                  },
+                                );
+                              }
+                            },
+                            child: buildParticipantsField(item),
+                          );
+                        },
+                      ),
+                    ),
+                  )
                 : SizedBox(
                     width: double.infinity,
                     child: Wrap(
-                      alignment: WrapAlignment.start, // important
+                      alignment: WrapAlignment.start,
                       spacing: 6,
                       runSpacing: 4,
                       children: item.participantList.map((p) {
@@ -1612,86 +1771,125 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                     ),
                   ),
 
-            const SizedBox(height: 8),
+            isEditing ? const SizedBox(height: 8) : const SizedBox(height: 0),
 
             /// REMARKS
             isEditing
-                ? Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: controller,
-                          decoration: const InputDecoration(
-                            labelText: "Remarks",
+                ? Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center, // FIXED
+                      children: [
+                        /// TEXT FIELD
+                        Expanded(
+                          child: TextFormField(
+                            controller: controller,
+                            maxLines: null,
+                            minLines: 1,
+                            keyboardType: TextInputType.multiline,
+
+                            decoration: const InputDecoration(
+                              hintText: "Remarks",
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 10,
+                              ),
+                            ),
+
+                            onChanged: (val) {
+                              item.scheduleRemarks = val;
+                            },
                           ),
-                          onChanged: (val) {
-                            item.scheduleRemarks = val;
+                        ),
+
+                        /// CLEAR
+                        if (controller.text.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                controller.clear();
+                                item.scheduleRemarks = "";
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 0),
+                              child: Icon(
+                                Icons.close,
+                                size: 18,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ),
+                        SizedBox(width: 10),
+
+                        /// SEPARATOR
+                        if (controller.text.isNotEmpty)
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: Colors.grey.shade400,
+                          ),
+
+                        if (showLanguageSelector)
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.language, size: 18),
+                            onSelected: (val) {
+                              setState(() => selectedLocaleId = val);
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: "en_IN",
+                                child: Text("English"),
+                              ),
+                              PopupMenuItem(
+                                value: "hi_IN",
+                                child: Text("Hindi"),
+                              ),
+                              PopupMenuItem(
+                                value: "ta_IN",
+                                child: Text("Tamil"),
+                              ),
+                              PopupMenuItem(
+                                value: "kn_IN",
+                                child: Text("Kannada"),
+                              ),
+                              PopupMenuItem(
+                                value: "te_IN",
+                                child: Text("Telugu"),
+                              ),
+                              PopupMenuItem(
+                                value: "ml_IN",
+                                child: Text("Malayalam"),
+                              ),
+                            ],
+                          ),
+
+                        /// 🎤 MIC
+                        IconButton(
+                          icon: Icon(
+                            Icons.mic,
+                            size: 20,
+                            color: _isListening ? Colors.red : Colors.grey,
+                          ),
+                          onPressed: () async {
+                            if (_isListening) {
+                              stopListening();
+                            } else {
+                              await initSpeech();
+                              startListening(item, index);
+                            }
                           },
                         ),
-                      ),
-
-                      const SizedBox(width: 6),
-
-                      /// Listening indicator
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 250),
-                        child: VoiceIndicator(
-                          isListening: _isListening,
-                          isProcessing: _isProcessing,
-                        ),
-                      ),
-
-                      if (showLanguageSelector)
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.language, size: 18),
-                          onSelected: (val) {
-                            setState(() => selectedLocaleId = val);
-                          },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: "en_IN",
-                              child: Text("English"),
-                            ),
-                            PopupMenuItem(value: "hi_IN", child: Text("Hindi")),
-                            PopupMenuItem(value: "ta_IN", child: Text("Tamil")),
-                            PopupMenuItem(
-                              value: "kn_IN",
-                              child: Text("Kannada"),
-                            ),
-                            PopupMenuItem(
-                              value: "te_IN",
-                              child: Text("Telugu"),
-                            ),
-                            PopupMenuItem(
-                              value: "ml_IN",
-                              child: Text("Malayalam"),
-                            ),
-                          ],
-                        ),
-
-                      /// Mic button
-                      IconButton(
-                        icon: Icon(
-                          _isListening ? Icons.mic : Icons.mic_none,
-                          color: _isListening ? Colors.red : Colors.blue,
-                        ),
-                        onPressed: () async {
-                          if (_isListening) {
-                            stopListening();
-                          } else {
-                            await initSpeech();
-                            startListening(item, index);
-                          }
-                        },
-                      ),
-                      Text(
-                        selectedLocaleId.split("_")[0].toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   )
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1708,7 +1906,7 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                             ),
                           ),
                         )
-                      else
+                      else if (item.scheduleRemarks.isNotEmpty)
                         Expanded(
                           child: Text(
                             item.scheduleRemarks,
@@ -1735,10 +1933,10 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                     ],
                   ),
 
-            const SizedBox(height: 8),
+            isEditing ? const SizedBox(height: 10) : const SizedBox(height: 0),
 
-            /// PRIORITY
-            isEditing ? buildPriorityDropdown(item) : SizedBox(height: 0),
+            // PRIORITY
+            isEditing ? buildPriorityField(item) : SizedBox(height: 0),
           ],
         ),
       ),
@@ -1746,47 +1944,129 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
   }
 
   Widget buildCustomerField(MonthlySchedule item) {
-    final controller = TextEditingController();
-    controller.text = item.scheduleCustomerName;
+    final controller = customerControllers[item.hashCode] ??=
+        TextEditingController(text: item.scheduleCustomerName);
 
-    return AsyncAutocomplete<CustomerCommon>(
-      controller: controller,
-      decoration: const InputDecoration(
-        labelText: "Customer",
-        hintText: "Search Hospital / Distributor", // ✅ THIS IS PLACEHOLDER
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
       ),
-      asyncSuggestions: (searchValue) async {
-        final results = await searchCustomer(searchValue);
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: AsyncAutocomplete<CustomerCommon>(
+              controller: controller,
 
-        if (results.isEmpty && searchValue.isNotEmpty) {
-          return [CustomerCommon(name: searchValue, code: "", type: "O")];
-        }
+              asyncSuggestions: (query) async {
+                return await searchCustomer(query);
+              },
 
-        return results;
-      },
+              suggestionBuilder: (customer) {
+                return ListTile(
+                  dense: true,
+                  title: Text(customer.name),
+                  subtitle: Text(
+                    "${customer.code} • ${customer.type == "H" ? "🏥 Hospital" : "🏢 Distributor"}",
+                  ),
+                );
+              },
 
-      suggestionBuilder: (customer) {
-        return ListTile(
-          title: Text(customer.name),
-          subtitle: Text(
-            "${customer.code} • ${customer.type == "H" ? "🏥 Hospital" : "🏢 Distributor"}",
+              onTapItem: (customer) {
+                setState(() {
+                  item.scheduleCustomerName = customer.name;
+                  item.scheduleCustomerCode = customer.code;
+                  item.scheduleCustomerType = customer.type;
+                });
+
+                controller.text = customer.name;
+              },
+
+              onChanged: (val) {
+                setState(() {
+                  item.scheduleCustomerName = val;
+
+                  if (val.isEmpty) {
+                    item.scheduleCustomerCode = "";
+                    item.scheduleCustomerType = "";
+                  }
+                });
+              },
+
+              decoration: const InputDecoration(
+                hintText: "Select Hospital / Distributor",
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero, // IMPORTANT
+              ),
+            ),
           ),
-        );
-      },
 
-      onTapItem: (CustomerCommon customer) {
-        setState(() {
-          item.scheduleCustomerName = customer.name;
-          item.scheduleCustomerCode = customer.code;
-          item.scheduleCustomerType = customer.type;
-        });
+          /// Clear icon
+          if (controller.text.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  controller.clear();
+                  item.scheduleCustomerName = "";
+                  item.scheduleCustomerCode = "";
+                  item.scheduleCustomerType = "";
+                });
 
-        controller.text = customer.name; //  THIS FIXES UI
-      },
+                FocusScope.of(context).unfocus();
+              },
+              child: const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.close, size: 18, color: Colors.grey),
+              ),
+            ),
+
+          const SizedBox(width: 6),
+
+          controller.text.isNotEmpty
+              ? Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  width: 1,
+                  height: 30,
+                  color: Colors.grey.shade400,
+                )
+              : SizedBox(height: 30),
+
+          /// Mic icon
+          GestureDetector(
+            onTap: () async {
+              if (_isCustomerListening) {
+                await _speech!.stop();
+
+                setState(() {
+                  _isCustomerListening = false;
+                });
+
+                // remove focus after stopping
+                FocusScope.of(context).unfocus();
+              } else {
+                setState(() {
+                  _isCustomerListening = true;
+                });
+
+                startVoiceInput(controller, item);
+              }
+            },
+
+            child: Icon(
+              Icons.mic,
+              size: 20,
+              color: _isCustomerListening ? Colors.red : Colors.grey,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget buildParticipantsField(MonthlySchedule item) {
+  Widget buildParticipantsFieldOld(MonthlySchedule item) {
     final TextEditingController controller = TextEditingController();
 
     return Column(
@@ -1830,6 +2110,17 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
           suggestionBuilder: (p) =>
               ListTile(title: Text(p.scheduleParticipantUserName)),
 
+          onChanged: (val) {
+            setState(() {
+              item.scheduleCustomerName = val;
+
+              // VERY IMPORTANT
+              if (val.isEmpty) {
+                item.scheduleCustomerCode = "";
+                item.scheduleCustomerType = "";
+              }
+            });
+          },
           onTapItem: (ScheduleParticipant selected) {
             setState(() {
               if (!item.participantList.contains(selected)) {
@@ -1849,23 +2140,187 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     );
   }
 
-  Widget buildPriorityDropdown(MonthlySchedule item) {
-    return DropdownButtonFormField<int>(
-      value: int.tryParse(item.schedulePriority) ?? 3,
-      decoration: const InputDecoration(
-        labelText: "Priority",
-        border: OutlineInputBorder(),
-      ),
-      items: const [
-        DropdownMenuItem(value: 1, child: Text("High")),
-        DropdownMenuItem(value: 2, child: Text("Medium")),
-        DropdownMenuItem(value: 3, child: Text("Low")),
+  Widget buildParticipantsField(MonthlySchedule item) {
+    final TextEditingController controller = TextEditingController();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        /// Chips display (UNCHANGED)
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: item.participantList.map((p) {
+            return Chip(
+              label: Text(p.scheduleParticipantUserName),
+              deleteIcon: const Icon(Icons.close, size: 18),
+              onDeleted: () {
+                setState(() {
+                  item.participantList.remove(p);
+                });
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 6),
+
+        /// Rounded container for dropdown
+        Builder(
+          builder: (fieldContext) {
+            return Focus(
+              onFocusChange: (hasFocus) {
+                if (hasFocus) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    Future.delayed(const Duration(milliseconds: 200), () {
+                      if (!mounted) return;
+
+                      Scrollable.ensureVisible(
+                        fieldContext,
+                        duration: const Duration(milliseconds: 300),
+                        alignment: 0.2,
+                        curve: Curves.easeInOut,
+                      );
+                    });
+                  });
+                }
+              },
+
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+
+                child: AsyncAutocomplete<ScheduleParticipant>(
+                  controller: controller,
+
+                  asyncSuggestions: (search) async {
+                    return monthlyParticipantList
+                        .where(
+                          (p) =>
+                              p.scheduleParticipantUserName
+                                  .toLowerCase()
+                                  .contains(search.toLowerCase()) &&
+                              !item.participantList.contains(p),
+                        )
+                        .toList();
+                  },
+
+                  suggestionBuilder: (p) =>
+                      ListTile(title: Text(p.scheduleParticipantUserName)),
+
+                  onTapItem: (ScheduleParticipant selected) {
+                    setState(() {
+                      if (!item.participantList.contains(selected)) {
+                        item.participantList.add(selected);
+                      }
+                    });
+
+                    controller.clear();
+                  },
+
+                  decoration: const InputDecoration(
+                    hintText: "Add participant",
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        // Container(
+        //   decoration: BoxDecoration(
+        //     color: Colors.grey.shade100,
+        //     borderRadius: BorderRadius.circular(10),
+        //     border: Border.all(color: Colors.grey.shade300),
+        //   ),
+        //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+
+        //   child: AsyncAutocomplete<ScheduleParticipant>(
+        //     controller: controller,
+
+        //     asyncSuggestions: (search) async {
+        //       return monthlyParticipantList
+        //           .where(
+        //             (p) =>
+        //                 p.scheduleParticipantUserName.toLowerCase().contains(
+        //                   search.toLowerCase(),
+        //                 ) &&
+        //                 !item.participantList.contains(p),
+        //           )
+        //           .toList();
+        //     },
+
+        //     suggestionBuilder: (p) =>
+        //         ListTile(title: Text(p.scheduleParticipantUserName)),
+
+        //     onTapItem: (ScheduleParticipant selected) {
+        //       setState(() {
+        //         if (!item.participantList.contains(selected)) {
+        //           item.participantList.add(selected);
+        //         }
+        //       });
+
+        //       controller.clear(); // keep this
+        //     },
+
+        //     /// Remove default border (IMPORTANT)
+        //     decoration: const InputDecoration(
+        //       hintText: "Add participant",
+        //       border: InputBorder.none,
+        //       isDense: true,
+        //       contentPadding: EdgeInsets.zero,
+        //     ),
+        //   ),
+        // ),
       ],
-      onChanged: (val) {
-        setState(() {
-          item.schedulePriority = val.toString();
-        });
-      },
+    );
+  }
+
+  Widget buildPriorityField(MonthlySchedule item) {
+    final priorities = [
+      {"label": "Low", "value": "3"},
+      {"label": "Medium", "value": "2"},
+      {"label": "High", "value": "1"},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Priority", style: TextStyle(fontSize: 12)),
+
+        const SizedBox(height: 6),
+
+        Wrap(
+          spacing: 8,
+          children: priorities.map((p) {
+            return ChoiceChip(
+              label: Text(p["label"]!),
+              selected: item.schedulePriority == p["value"],
+              selectedColor: item.schedulePriority == "1"
+                  ? Colors.red.shade200
+                  : item.schedulePriority == "2"
+                  ? Colors.orange.shade200
+                  : Colors.green.shade200,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    item.schedulePriority = p["value"]!;
+                  });
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 

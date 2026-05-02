@@ -1,6 +1,6 @@
 class ApiHelper {
-  // static const String companyName = 'Bapuji Surgicals'; // or ''
-  static const String companyName = 'Amaryllis Healthcare Pvt. Ltd.';
+  static const String companyName = 'Bapuji Surgicals'; // or ''
+  // static const String companyName = 'Amaryllis Healthcare Pvt. Ltd.';
 
   static const String projectName = 'Bapuji'; // or ''
   // static const String projectName = 'Amaryllis';
