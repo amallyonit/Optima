@@ -15,7 +15,6 @@ import 'package:optima/login_screen.dart';
 import 'package:http/http.dart' as http;
 import '../../classes/dataManager.dart';
 import 'package:optima/classes/scheduler.dart';
-
 import '../../sidemenu/sidemenu.dart';
 
 class Hospital {
@@ -117,7 +116,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
     }
   }
 
-  List<Hospital> convertList(List<Map<String, dynamic>> customerList) {
+  List<Hospital> convertCustomerList(List<Map<String, dynamic>> customerList) {
     return customerList
         .map(
           (map) => Hospital(
@@ -128,7 +127,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
         .toList();
   }
 
-  List<ScheduleParticipant> convertToList(
+  List<ScheduleParticipant> convertParticipantList(
     List<Map<String, dynamic>> participantList,
   ) {
     return participantList.map((participant) {
@@ -143,7 +142,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
   }
 
   Future<List<Hospital>> getCustomer(String search) async {
-    List<Hospital> hospitalList = convertList(customerList);
+    List<Hospital> hospitalList = convertCustomerList(customerList);
     List<Hospital> filteredHospitals = hospitalList
         .where(
           (element) =>
@@ -187,7 +186,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
           }
           setState(() {
             customerList = newCustomerList;
-            hspList = convertList(customerList);
+            hspList = convertCustomerList(customerList);
           });
         } else {
           if (responseJson.containsKey("Error") &&
@@ -224,7 +223,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
     }
   }
 
-  Future<void> _loadparticipant(
+  Future<void> _loadParticipant(
     String userId,
     String userJwtToken,
     String userMailID,
@@ -257,7 +256,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
           }
           setState(() {
             participantList = newParticipantList;
-            monthlyParticipantList = convertToList(participantList);
+            monthlyParticipantList = convertParticipantList(participantList);
           });
         } else {
           if (responseJson.containsKey("Error") &&
@@ -298,7 +297,9 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
     await _loadCustomer(userId, userJwtToken, userMailID);
-    await _loadparticipant(userId, userJwtToken, userMailID);
+    await _loadParticipant(userId, userJwtToken, userMailID);
+
+    await _loadMonthlyScheduler(userId, userJwtToken, userMailID);
     setState(() {
       scheduleCompleted = isMonthlyScheduleComplete(
         DataManager.readSelectedDateCalendar() ?? DateTime.now(),
@@ -322,7 +323,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
       remarksController.text = "";
       selectedMonthlyParticipantList = [];
       monthlyParticipantList = [];
-      monthlyParticipantList = convertToList(participantList);
+      monthlyParticipantList = convertParticipantList(participantList);
       _selectedPriority = 3;
       monthlyScheduleList = tmpScheduleList;
       scheduleID = 0;
@@ -482,7 +483,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
     return '$y-$m-$d';
   }
 
-  Future<void> _loadmonthlyscheduler(
+  Future<void> _loadMonthlyScheduler(
     String userId,
     String userJwtToken,
     String userMailID,
@@ -637,15 +638,9 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
       deviceOrientation = "Landscape";
     }
 
-    if (MediaQuery.of(context).orientation == Orientation.portrait) {
-      deviceOrientation = "Portrait";
-    } else {
-      deviceOrientation = "Landscape";
-    }
     final screenHeight = MediaQuery.of(context).size.height;
     double containerDropDownHeight = 0;
     double containerHeight = 0;
-    // collectionCheckList = List<bool>.filled(invoiceList.length, false);
     if (deviceOrientation == "Portrait") {
       containerDropDownHeight = screenHeight * 0.06;
       containerHeight = screenHeight * 0.06;
@@ -661,7 +656,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
               backgroundColor: Colors.white,
               elevation: 0.0,
               title: const Text(
-                "Scheduler Approval",
+                "Monthly Schedule Approval",
                 style: TextStyle(
                   color: Colors.blue,
                   fontFamily: "Poppins",
@@ -818,21 +813,22 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
                                     child: SizedBox(
                                       height: deviceOrientation == "Portrait"
                                           ? containerHeight
-                                          : containerDropDownHeight / 1.5,
+                                          : (containerDropDownHeight / 1.5)
+                                                .clamp(48.0, double.infinity),
                                       child: Stack(
                                         children: [
                                           Positioned.fill(
                                             child: AsyncAutocomplete<ScheduleParticipant>(
                                               onChanged: (s) {
                                                 setState(() {
-                                                  participantController.text ==
+                                                  participantController.text =
                                                       s;
                                                 });
                                               },
                                               onSaved: (s) {
                                                 setState(() {
-                                                  participantController.text ==
-                                                      s;
+                                                  participantController.text =
+                                                      s!;
                                                 });
                                               },
                                               maxListHeight:
@@ -896,7 +892,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
                                                           'userMailID',
                                                         ) ??
                                                         '';
-                                                    await _loadmonthlyscheduler(
+                                                    await _loadMonthlyScheduler(
                                                       userId,
                                                       userJwtToken,
                                                       userMailID,

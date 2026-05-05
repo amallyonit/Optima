@@ -961,7 +961,7 @@ class SideMenuState extends State<SideMenu> {
           if (userRoleCode == "R1" || userRoleCode == "R2")
             buildHoverTile(
               icon: Icons.calendar_month,
-              title: 'Scheduler Approval',
+              title: 'Monthly Schedule Approval',
               onTap: () {
                 Navigator.pushReplacement(
                   context,

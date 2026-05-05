@@ -769,7 +769,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
         final newList = data
             .map((item) => ModeOfPaymentList.fromJson(item))
-            // ✅ filter while mapping (single pass)
             .where((e) => e.vendorGroup.isNotEmpty)
             .toList();
 
@@ -1130,7 +1129,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
     DateTime parseDate(String d) => dateFormat.parse(d);
 
-    /// 🔹 STEP 1: Pre-group (NO repeated where)
+    /// STEP 1: Pre-group (NO repeated where)
     final salesMap = {
       "NH": <SalesList>[],
       "OFFICE": <SalesList>[],
@@ -1168,7 +1167,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       "SALES": filterByManager(collection, "SALES"),
     };
 
-    /// 🔹 STEP 2: Month Loop
+    /// STEP 2: Month Loop
     for (int i = 4; i <= 15; i++) {
       final monthName = getMonthName(i);
 
@@ -1211,7 +1210,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         for (var r in receivableList) {
           final d = parseDate(r.postingDate);
           if (d.isAtMost(end)) {
-            receivableTotal += (double.tryParse(r.balance) ?? 0).abs();
+            receivableTotal += double.tryParse(r.balance) ?? 0;
           }
         }
 
@@ -1248,7 +1247,14 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         collectionMap["SALES"]!,
       );
 
-      /// STEP 4: Payables
+      /// STEP 4: Payables & Paid
+      double paid = 0;
+      for (var c in modeOfPayment) {
+        final d = parseDate(c.postingDate);
+        if (d.isAtLeast(start) && d.isAtMost(end)) {
+          paid += double.tryParse(c.total) ?? 0;
+        }
+      }
       double payable = 0;
       for (var p in payables) {
         final d = parseDate(p.postingDate);
@@ -1277,6 +1283,12 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                 getCompletedDaysInMonth(DateTime.now().year, i)
           : 0;
 
+      payable = payable.abs();
+      final avg = (payable + paid) / 2;
+      final days = getCompletedDaysInMonth(DateTime.now().year, i);
+
+      payable = payable != 0 ? (avg / cogsData.cogs) * days : 0;
+
       final totalDSO = dsoNH + dsoSales + dsoOffice;
 
       soDataList.add(
@@ -1292,7 +1304,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       );
     }
 
-    /// STEP 6: Graph Selection (UNCHANGED LOGIC)
+    /// STEP 6: Graph Selection
     monthlyAnalysisData = CashConversionGraphList(monthData: soDataList);
 
     int displayIndex;
@@ -1425,7 +1437,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
       final balance = double.tryParse(record.rowTotal) ?? 0.0;
 
-      monthlyBalanceMap[key] = (monthlyBalanceMap[key] ?? 0.0) + balance.abs();
+      monthlyBalanceMap[key] = (monthlyBalanceMap[key] ?? 0.0) + balance;
     }
 
     /// Ensure chronological order (important)
@@ -1442,7 +1454,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       );
     }
 
-    /// Assign results (same as your logic)
     purchaseMonthlyData = DailyAnalysisExpensesList(
       dailyData: groupWiseDataList,
     );
@@ -1808,7 +1819,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                               PopupMenuItem(
                                 onTap: () {
                                   generateCashConversionExcel();
-                                  // generateVendorPaymentProjectionReport();
                                 },
                                 child: const Row(
                                   children: [Text("Download Excel")],
