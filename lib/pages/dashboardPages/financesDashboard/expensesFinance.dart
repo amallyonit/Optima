@@ -823,7 +823,7 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
     await _loadSubGroupWiseAnalysis(0, "", "", "");
     await _loadSubSubGroupWiseAnalysis(0, "", "", "");
     await _loadMonthlyAnalysis("", "");
-
+    if (!mounted) return;
     setState(() => chartDataLoadedExpenses = true);
   }
 

@@ -36,7 +36,6 @@ String deviceOrientation = "";
 
 bool chartDataLoaded = false;
 bool scheduleCompleted = false;
-int _selectedPriority = 3;
 
 List<ScheduleParticipant> participantListMaster = [];
 
@@ -65,26 +64,19 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
   List<MonthlySchedule> tmpScheduleList = [];
   List<MonthlySchedule> monthlyScheduleList = [];
   DateTime selectedDate = DateTime.now();
-  final TextEditingController participantController = TextEditingController();
-  final TextEditingController hospitalController = TextEditingController();
-  final TextEditingController distributorController = TextEditingController();
-  final TextEditingController othersController = TextEditingController();
+  late TextEditingController participantController = TextEditingController();
   final TextEditingController remarksController = TextEditingController();
   late Future<void> loadDataFuture;
-  int _selectedIndex = 0;
   int scheduleID = 0;
 
   String selectedOption = '';
-  String selectedHospitalId = "";
-  String selectedHospitalName = "";
-  String selectedOption2 = '';
-  String selectedDistributorName = "";
-  String selectedDistributorId = "";
-  var monthlyHospitalKey = GlobalKey();
-  var monthlyDistributorKey = GlobalKey();
-  List<Map<String, dynamic>> distributorList = [];
+  String selectedParticipantName = "";
+  String selectedParticipantId = "";
   String userId = "";
+  String userJwtToken = "";
+  String userMailID = "";
   var participantKey = GlobalKey();
+  Key asyncAutoCompleteKey = UniqueKey();
   late List<bool> _checked;
   List<String> _reasons = [];
   final TextEditingController _reasonController = TextEditingController();
@@ -112,6 +104,15 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
             picked.year != selectedMonth.year)) {
       setState(() {
         selectedMonth = picked;
+        chartDataLoaded = false;
+        participantController.dispose();
+      });
+      participantController = TextEditingController();
+      // Load default data
+      await _loadMonthlyScheduler(userId, userJwtToken, userMailID);
+
+      setState(() {
+        chartDataLoaded = true;
       });
     }
   }
@@ -292,13 +293,15 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
   }
 
   Future<void> loadData() async {
+    setState(() {
+      chartDataLoaded = false;
+    });
     final prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('userId') ?? '';
-    final userJwtToken = prefs.getString('userJwtToken') ?? '';
-    final userMailID = prefs.getString('userMailID') ?? '';
+    userJwtToken = prefs.getString('userJwtToken') ?? '';
+    userMailID = prefs.getString('userMailID') ?? '';
     await _loadCustomer(userId, userJwtToken, userMailID);
     await _loadParticipant(userId, userJwtToken, userMailID);
-
     await _loadMonthlyScheduler(userId, userJwtToken, userMailID);
     setState(() {
       scheduleCompleted = isMonthlyScheduleComplete(
@@ -315,16 +318,11 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
 
   void clearVariables() async {
     setState(() {
-      hospitalController.clear();
-      distributorController.clear();
-      othersController.clear();
       remarksController.clear();
-      othersController.text = "";
       remarksController.text = "";
       selectedMonthlyParticipantList = [];
       monthlyParticipantList = [];
       monthlyParticipantList = convertParticipantList(participantList);
-      _selectedPriority = 3;
       monthlyScheduleList = tmpScheduleList;
       scheduleID = 0;
       DateTime parsedDate = DateFormat(
@@ -333,141 +331,6 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
       DataManager.saveSelectedDateCalendar(parsedDate);
       selectedDate = parsedDate;
     });
-  }
-
-  void addDataToList() async {
-    final hospitalName = hospitalController.text;
-    final distributorName = distributorController.text;
-    final othersPlaceOfVisit = othersController.text;
-
-    selectedDate = DataManager.readSelectedDateCalendar()!;
-    final newSchedule = MonthlySchedule(
-      scheduledUser: "",
-      scheduleID: scheduleID,
-      scheduleUserId: int.tryParse(userId) ?? 0,
-      scheduleDate: DateFormat('yyyy/MM/dd').format(selectedDate),
-      scheduleCustomerCode: _selectedIndex == 0
-          ? selectedHospitalId
-          : _selectedIndex == 1
-          ? selectedDistributorId
-          : '',
-      scheduleCustomerName: _selectedIndex == 0
-          ? hospitalName
-          : _selectedIndex == 1
-          ? distributorName
-          : othersPlaceOfVisit,
-      scheduleCustomerType: _selectedIndex == 0
-          ? 'H'
-          : _selectedIndex == 1
-          ? 'D'
-          : 'O',
-      scheduleRemarks: remarksController.text,
-      schedulePriority: _selectedPriority.toString(),
-      scheduleStatus: 'Pending', // Default status
-      participantList: selectedMonthlyParticipantList,
-    );
-
-    setState(() {
-      monthlyScheduleList.add(newSchedule);
-      monthlyScheduleList.sort((a, b) {
-        DateTime dateA = DateFormat('dd/MM/yyyy').parse(a.scheduleDate);
-        DateTime dateB = DateFormat('dd/MM/yyyy').parse(b.scheduleDate);
-        return dateB.compareTo(dateA); // DESC
-      });
-    });
-    try {
-      setState(() {
-        scheduleCompleted = isMonthlyScheduleComplete(
-          DataManager.readSelectedDateCalendar() ?? DateTime.now(),
-        );
-      });
-    } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  void addDataToListWhenClear() async {
-    final hospitalName = hospitalController.text;
-    final distributorName = distributorController.text;
-    final othersPlaceOfVisit = othersController.text;
-
-    selectedDate = DataManager.readSelectedDateCalendar()!;
-    final newSchedule = MonthlySchedule(
-      scheduleID: scheduleID,
-      scheduledUser: "",
-      scheduleUserId: int.tryParse(userId) ?? 0,
-      scheduleDate: DateFormat('yyyy/MM/dd').format(selectedDate),
-      scheduleCustomerCode: _selectedIndex == 0
-          ? selectedHospitalId
-          : _selectedIndex == 1
-          ? selectedDistributorId
-          : '',
-      scheduleCustomerName: _selectedIndex == 0
-          ? hospitalName
-          : _selectedIndex == 1
-          ? distributorName
-          : othersPlaceOfVisit,
-      scheduleCustomerType: _selectedIndex == 0
-          ? 'H'
-          : _selectedIndex == 1
-          ? 'D'
-          : 'O',
-      scheduleRemarks: remarksController.text,
-      schedulePriority: _selectedPriority.toString(),
-      scheduleStatus: 'Pending', // Default status
-      participantList: selectedMonthlyParticipantList,
-    );
-
-    setState(() {
-      monthlyScheduleList.add(newSchedule);
-      monthlyScheduleList.sort((a, b) {
-        DateTime dateA = DateFormat('dd/MM/yyyy').parse(a.scheduleDate);
-        DateTime dateB = DateFormat('dd/MM/yyyy').parse(b.scheduleDate);
-        return dateB.compareTo(dateA); // DESC
-      });
-    });
-  }
-
-  void loadContactDetails(MonthlySchedule item) {
-    setState(() {
-      scheduleID = item.scheduleID;
-      if (item.scheduleCustomerType == "H") {
-        _selectedIndex = 0;
-        selectedHospitalId = item.scheduleCustomerCode;
-        hospitalController.text = item.scheduleCustomerName;
-      } else if (item.scheduleCustomerType == "D") {
-        _selectedIndex = 1;
-        selectedDistributorId = item.scheduleCustomerCode;
-        distributorController.text = item.scheduleCustomerName;
-      } else {
-        _selectedIndex = 2;
-        othersController.text = item.scheduleCustomerName;
-      }
-      remarksController.text = item.scheduleRemarks;
-      selectedMonthlyParticipantList = item.participantList;
-      _selectedPriority = int.tryParse(item.schedulePriority) ?? 3;
-      DataManager.saveSelectedDateCalendar(
-        DateFormat('yyyy/MM/dd').parse(item.scheduleDate),
-      );
-      selectedDate = DateFormat('yyyy/MM/dd').parse(item.scheduleDate);
-    });
-  }
-
-  String previousMonthLastDay(DateTime date) {
-    final lastDayPrevMonth = DateTime(date.year, date.month, 0);
-
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-
-    final y = lastDayPrevMonth.year;
-    final m = twoDigits(lastDayPrevMonth.month);
-    final d = twoDigits(lastDayPrevMonth.day);
-
-    return '$y-$m-$d';
   }
 
   String nextMonthLastDay(DateTime date) {
@@ -488,11 +351,16 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
     String userJwtToken,
     String userMailID,
   ) async {
+    monthlyScheduleList = [];
+    tmpScheduleList = [];
     final data = {
       'UserID': userId,
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
       'GivenDate': nextMonthLastDay(DateTime.now()),
+      // 'GivenDate': selectedMonth.toIso8601String().split(
+      //   'T',
+      // )[0], // for testing purpose, change to nextMonthLastDay(DateTime.now()) for production
       'ScheduleStatus': 'P',
     };
     const apiUrl = '${ApiHelper.baseUrl}loadmonthlyschedulerforapproval';
@@ -538,21 +406,9 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+          } else {}
         }
-      } else {
-        const snackBar = SnackBar(
-          content: Text('Monthly schedules are not available.'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -614,6 +470,7 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
   @override
   void initState() {
     super.initState();
+    participantController = TextEditingController();
     monthlyParticipantList = [];
 
     if (isUserLoggedIn) {
@@ -627,6 +484,8 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
   @override
   void dispose() {
     participantController.dispose();
+    remarksController.dispose();
+    _reasonController.dispose();
     super.dispose();
   }
 
@@ -654,15 +513,30 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
             appBar: AppBar(
               automaticallyImplyLeading: true,
               backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "Monthly Schedule Approval",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+              elevation: 1,
+              surfaceTintColor: Colors.white,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Monthly Schedule Approval",
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontFamily: "Poppins",
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text(
+                    DateFormat('MMMM yyyy').format(selectedMonth),
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontFamily: "Poppins",
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
               ),
               actions: <Widget>[
                 IconButton(
@@ -675,587 +549,680 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
               ],
               centerTitle: true,
             ),
-            body: SingleChildScrollView(
+            body: ListView(
               keyboardDismissBehavior: kIsWeb
                   ? ScrollViewKeyboardDismissBehavior.manual
                   : ScrollViewKeyboardDismissBehavior.onDrag,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: 373,
-                    child: SingleChildScrollView(
-                      child: Container(
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.only(
-                          top: 20,
-                          left: 10,
-                          right: 10,
-                        ),
-                        child: Column(
-                          children: <Widget>[
-                            kIsWeb
-                                ? RawAutocomplete<ScheduleParticipant>(
-                                    textEditingController:
-                                        participantController,
-                                    optionsBuilder: (TextEditingValue val) {
-                                      return monthlyParticipantList.where(
-                                        (user) => user
-                                            .scheduleParticipantUserName
-                                            .toLowerCase()
-                                            .contains(val.text.toLowerCase()),
-                                      );
-                                    },
-                                    displayStringForOption:
-                                        (ScheduleParticipant option) =>
-                                            option.scheduleParticipantUserName,
-                                    fieldViewBuilder:
-                                        (
-                                          context,
-                                          textEditingController,
-                                          focusNode,
-                                          onFieldSubmitted,
-                                        ) {
-                                          return TextField(
-                                            controller: textEditingController,
-                                            focusNode: focusNode,
-                                            onSubmitted: (value) =>
-                                                onFieldSubmitted(),
-                                            decoration: InputDecoration(
-                                              labelText: 'Search',
-                                              labelStyle: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w400,
-                                                color: Color(0xFF8F8F8F),
-                                              ),
-                                              suffixIcon: IconButton(
-                                                icon:
-                                                    participantController
-                                                            .text ==
-                                                        ""
-                                                    ? const Icon(
-                                                        Icons.search,
-                                                        color: Color(
-                                                          0xff2ca9df,
-                                                        ),
-                                                      )
-                                                    : const Icon(Icons.clear),
-                                                onPressed: () {
-                                                  setState(() {
-                                                    selectedDistributorId = "";
-                                                    selectedDistributorName =
-                                                        "";
-                                                    participantController
-                                                        .clear();
-                                                    monthlyScheduleList.clear();
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                    onSelected: (ScheduleParticipant value) {
-                                      setState(() {
-                                        participantController.text =
-                                            value.scheduleParticipantUserName;
-                                      });
-                                    },
-                                    optionsViewBuilder:
-                                        (
-                                          BuildContext context,
-                                          void Function(ScheduleParticipant)
-                                          onSelected,
-                                          Iterable<ScheduleParticipant> options,
-                                        ) {
-                                          return Material(
-                                            elevation: 4.0,
-                                            child: Container(
-                                              constraints: const BoxConstraints(
-                                                maxHeight: 200,
-                                              ),
-                                              child: ListView.builder(
-                                                padding: EdgeInsets.zero,
-                                                physics:
-                                                    const ClampingScrollPhysics(),
-                                                shrinkWrap: true,
-                                                itemCount: options.length,
-                                                itemBuilder:
-                                                    (
-                                                      BuildContext context,
-                                                      int index,
-                                                    ) {
-                                                      final ScheduleParticipant
-                                                      option = options
-                                                          .elementAt(index);
-                                                      return GestureDetector(
-                                                        onTap: () {
-                                                          onSelected(option);
-                                                        },
-                                                        child: ListTile(
-                                                          title: Text(
-                                                            option
-                                                                .scheduleParticipantUserName,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                  )
-                                : Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 16.0,
-                                      right: 16.0,
-                                      bottom: 32.0,
-                                    ),
-                                    child: SizedBox(
-                                      height: deviceOrientation == "Portrait"
-                                          ? containerHeight
-                                          : (containerDropDownHeight / 1.5)
-                                                .clamp(48.0, double.infinity),
-                                      child: Stack(
-                                        children: [
-                                          Positioned.fill(
-                                            child: AsyncAutocomplete<ScheduleParticipant>(
-                                              onChanged: (s) {
-                                                setState(() {
-                                                  participantController.text =
-                                                      s;
-                                                });
-                                              },
-                                              onSaved: (s) {
-                                                setState(() {
-                                                  participantController.text =
-                                                      s!;
-                                                });
-                                              },
-                                              maxListHeight:
-                                                  deviceOrientation ==
-                                                      "Portrait"
-                                                  ? 370
-                                                  : 220,
+              children: [
+                Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Container(
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.only(top: 20),
+                          child: Column(
+                            children: <Widget>[
+                              kIsWeb
+                                  ? RawAutocomplete<ScheduleParticipant>(
+                                      textEditingController:
+                                          participantController,
+                                      optionsBuilder: (TextEditingValue val) {
+                                        return monthlyParticipantList.where(
+                                          (user) => user
+                                              .scheduleParticipantUserName
+                                              .toLowerCase()
+                                              .contains(val.text.toLowerCase()),
+                                        );
+                                      },
+                                      displayStringForOption:
+                                          (ScheduleParticipant option) => option
+                                              .scheduleParticipantUserName,
+                                      fieldViewBuilder:
+                                          (
+                                            context,
+                                            textEditingController,
+                                            focusNode,
+                                            onFieldSubmitted,
+                                          ) {
+                                            return TextField(
+                                              controller: textEditingController,
+                                              focusNode: focusNode,
+                                              onSubmitted: (value) =>
+                                                  onFieldSubmitted(),
                                               decoration: InputDecoration(
-                                                contentPadding:
-                                                    const EdgeInsets.only(
-                                                      left: 0,
-                                                      right: 30,
-                                                      top: 0,
-                                                      bottom: 0,
-                                                    ),
-                                                border: UnderlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(5),
-                                                ),
-                                                hintText: 'Search',
-                                                hintStyle: const TextStyle(
+                                                labelText: 'Search',
+                                                labelStyle: const TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w400,
                                                   color: Color(0xFF8F8F8F),
                                                 ),
-                                                focusedBorder: UnderlineInputBorder(
-                                                  borderSide: const BorderSide(
-                                                    color: Colors
-                                                        .blue, // Set your desired focus color
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        6.0,
-                                                      ),
-                                                ),
-                                              ),
-                                              controller: participantController,
-                                              inputKey: participantKey,
-                                              onTapItem:
-                                                  (
-                                                    ScheduleParticipant users,
-                                                  ) async {
-                                                    setState(() {
-                                                      participantController
-                                                          .text = users
-                                                          .scheduleParticipantUserName;
-                                                    });
-                                                    chartDataLoaded = false;
-                                                    final prefs =
-                                                        await SharedPreferences.getInstance();
-                                                    userId = users
-                                                        .scheduleParticipantUserId
-                                                        .toString();
-                                                    final userJwtToken =
-                                                        prefs.getString(
-                                                          'userJwtToken',
-                                                        ) ??
-                                                        '';
-                                                    final userMailID =
-                                                        prefs.getString(
-                                                          'userMailID',
-                                                        ) ??
-                                                        '';
-                                                    await _loadMonthlyScheduler(
-                                                      userId,
-                                                      userJwtToken,
-                                                      userMailID,
-                                                    );
-                                                    setState(() {
-                                                      chartDataLoaded = true;
-                                                    });
-                                                  },
-                                              suggestionBuilder: (data) => ListTile(
-                                                title: Text(
-                                                  data.scheduleParticipantUserName,
-                                                ),
-                                              ),
-                                              asyncSuggestions: (searchValue) =>
-                                                  getASM(searchValue),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            top: 0,
-                                            right: -1,
-                                            bottom: 2,
-                                            child: Visibility(
-                                              child: SizedBox(
-                                                child: GestureDetector(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      monthlyScheduleList
-                                                          .clear();
-                                                      selectedDistributorId =
-                                                          "";
-                                                      selectedDistributorName =
-                                                          "";
-                                                      participantController
-                                                          .clear();
-                                                      getASM("");
-                                                    });
-                                                  },
-                                                  child:
+                                                suffixIcon: IconButton(
+                                                  icon:
                                                       participantController
                                                               .text ==
                                                           ""
-                                                      ? Container(
-                                                          decoration:
-                                                              const BoxDecoration(
-                                                                color: Colors
-                                                                    .transparent,
-                                                              ),
-                                                          child: const Padding(
-                                                            padding:
-                                                                EdgeInsets.only(
-                                                                  top: 14,
-                                                                  right: 2,
-                                                                ),
-                                                            child: Icon(
-                                                              Icons.search,
-                                                              color: Color(
-                                                                0xff2ca9df,
-                                                              ),
-                                                            ),
+                                                      ? const Icon(
+                                                          Icons.search,
+                                                          color: Color(
+                                                            0xff2ca9df,
                                                           ),
                                                         )
-                                                      : Container(
-                                                          decoration:
-                                                              const BoxDecoration(
-                                                                color: Colors
-                                                                    .transparent,
-                                                              ),
-                                                          child: const Padding(
-                                                            padding:
-                                                                EdgeInsets.only(
-                                                                  top: 14,
-                                                                  right: 2,
-                                                                ),
-                                                            child: Icon(
-                                                              Icons
-                                                                  .cancel_outlined,
-                                                              color: Color(
-                                                                0xff2ca9df,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
+                                                      : const Icon(Icons.clear),
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      selectedParticipantId =
+                                                          "";
+                                                      selectedParticipantName =
+                                                          "";
+                                                      participantController
+                                                          .clear();
+                                                      monthlyScheduleList
+                                                          .clear();
+                                                    });
+                                                  },
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      physics: const ClampingScrollPhysics(),
-                      itemCount: monthlyScheduleList.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final inputFormat = DateFormat('yyyy/MM/dd');
-                        final outputFormat = DateFormat('dd/MM/yyyy');
-
-                        DateTime dateTime = inputFormat.parse(
-                          monthlyScheduleList[index].scheduleDate,
-                        );
-
-                        String filterDate = outputFormat.format(dateTime);
-                        return Column(
-                          children: <Widget>[
-                            SizedBox(
-                              width: 375,
-                              child: Container(
-                                color: const Color(0xFFefefef),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Column(
-                                    //   mainAxisAlignment:
-                                    //   MainAxisAlignment.center,
-                                    //   crossAxisAlignment:
-                                    //   CrossAxisAlignment.center,
-                                    //   children: [
-                                    //     Padding(
-                                    //         padding: const EdgeInsets.only(
-                                    //             left: 8.0),
-                                    //         child: Container(
-                                    //           height: 40,
-                                    //           color: Colors.white,
-                                    //           child: Center(
-                                    //               child: Padding(
-                                    //                 padding:
-                                    //                 const EdgeInsets.all(8.0),
-                                    //                 child: Text(
-                                    //                   monthlyScheduleList[index]
-                                    //                       .scheduleDate
-                                    //                       .toString()
-                                    //                       .substring(8, 10),
-                                    //                 ),
-                                    //               )),
-                                    //         )),
-                                    //   ],
-                                    // ),
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.start,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const SizedBox(height: 10),
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 8.0,
-                                          ),
-                                          child: Center(
-                                            child: Text(filterDate.toString()),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 8.0,
-                                          ),
-                                          child: Text(
-                                            monthlyScheduleList[index]
-                                                .scheduleCustomerName,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                              color: Color(0xff454545),
-                                              fontFamily: "Poppins",
-                                            ),
-                                          ),
-                                        ),
-                                        // Padding(
-                                        //   padding:
-                                        //   const EdgeInsets
-                                        //       .only(
-                                        //       left:
-                                        //       8.0),
-                                        //   child: Text(
-                                        //     monthlyScheduleList[
-                                        //     index]
-                                        //         .scheduledUser,
-                                        //     style: const TextStyle(
-                                        //         fontSize:
-                                        //         14,
-                                        //         fontWeight: FontWeight.w300,
-                                        //         color: Color(
-                                        //             0xff454545),
-                                        //         fontFamily:
-                                        //         "Poppins"),
-                                        //   ),
-                                        // ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 8.0,
-                                          ),
-                                          child: Text(
-                                            monthlyScheduleList[index]
-                                                .scheduleRemarks,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Color(0xff454545),
-                                              fontFamily: "Poppins",
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 15),
-                                    Expanded(
-                                      child: ListTile(
-                                        title: const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [],
-                                        ),
-                                        subtitle: _checked[index]
-                                            ? null
-                                            : Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  if (_reasons[index]
-                                                      .isNotEmpty)
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            top: 8.0,
+                                            );
+                                          },
+                                      onSelected: (ScheduleParticipant value) {
+                                        setState(() {
+                                          participantController.text =
+                                              value.scheduleParticipantUserName;
+                                        });
+                                      },
+                                      optionsViewBuilder:
+                                          (
+                                            BuildContext context,
+                                            void Function(ScheduleParticipant)
+                                            onSelected,
+                                            Iterable<ScheduleParticipant>
+                                            options,
+                                          ) {
+                                            return Material(
+                                              elevation: 4.0,
+                                              child: Container(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      maxHeight: 200,
+                                                    ),
+                                                child: ListView.builder(
+                                                  padding: EdgeInsets.zero,
+                                                  physics:
+                                                      const ClampingScrollPhysics(),
+                                                  shrinkWrap: true,
+                                                  itemCount: options.length,
+                                                  itemBuilder:
+                                                      (
+                                                        BuildContext context,
+                                                        int index,
+                                                      ) {
+                                                        final ScheduleParticipant
+                                                        option = options
+                                                            .elementAt(index);
+                                                        return GestureDetector(
+                                                          onTap: () {
+                                                            onSelected(option);
+                                                          },
+                                                          child: ListTile(
+                                                            title: Text(
+                                                              option
+                                                                  .scheduleParticipantUserName,
+                                                            ),
                                                           ),
-                                                      child: Text(
-                                                        'Reason: ${_reasons[index]}',
-                                                        style: const TextStyle(
-                                                          fontStyle:
-                                                              FontStyle.italic,
-                                                          fontSize: 12,
+                                                        );
+                                                      },
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                    )
+                                  : Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12.0,
+                                      ),
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.05,
+                                              ),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: SizedBox(
+                                          height:
+                                              deviceOrientation == "Portrait"
+                                              ? containerHeight
+                                              : (containerDropDownHeight / 1.5)
+                                                    .clamp(
+                                                      48.0,
+                                                      double.infinity,
+                                                    ),
+                                          width: double.infinity,
+                                          child: Stack(
+                                            children: [
+                                              Positioned.fill(
+                                                child: AsyncAutocomplete<ScheduleParticipant>(
+                                                  onChanged: (s) {
+                                                    setState(() {
+                                                      participantController
+                                                              .text =
+                                                          s;
+                                                    });
+                                                  },
+                                                  onSaved: (s) {
+                                                    setState(() {
+                                                      participantController
+                                                              .text =
+                                                          s!;
+                                                    });
+                                                  },
+                                                  maxListHeight:
+                                                      deviceOrientation ==
+                                                          "Portrait"
+                                                      ? 370
+                                                      : 220,
+                                                  decoration: InputDecoration(
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+
+                                                    contentPadding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 14,
+                                                          vertical: 12,
+                                                        ),
+
+                                                    enabledBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                12,
+                                                              ),
+                                                          borderSide:
+                                                              BorderSide.none,
+                                                        ),
+
+                                                    focusedBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                12,
+                                                              ),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color: Color(
+                                                                  0xff2ca9df,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                    hintText: 'Search',
+                                                    hintStyle: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                      color: Color(0xFF8F8F8F),
+                                                    ),
+                                                  ),
+                                                  controller:
+                                                      participantController,
+                                                  inputKey: participantKey,
+                                                  onTapItem:
+                                                      (
+                                                        ScheduleParticipant
+                                                        users,
+                                                      ) async {
+                                                        setState(() {
+                                                          participantController
+                                                              .text = users
+                                                              .scheduleParticipantUserName;
+                                                        });
+                                                        chartDataLoaded = false;
+                                                        String tmpUserId = users
+                                                            .scheduleParticipantUserId
+                                                            .toString();
+                                                        await _loadMonthlyScheduler(
+                                                          tmpUserId,
+                                                          userJwtToken,
+                                                          userMailID,
+                                                        );
+                                                        setState(() {
+                                                          chartDataLoaded =
+                                                              true;
+                                                        });
+                                                      },
+                                                  suggestionBuilder: (data) =>
+                                                      ListTile(
+                                                        title: Text(
+                                                          data.scheduleParticipantUserName,
+                                                        ),
+                                                      ),
+                                                  asyncSuggestions:
+                                                      (searchValue) =>
+                                                          getASM(searchValue),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                top: 0,
+                                                right: 6,
+                                                bottom: 0,
+                                                child: Visibility(
+                                                  child: SizedBox(
+                                                    width: 40,
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        FocusScope.of(
+                                                          context,
+                                                        ).unfocus();
+
+                                                        setState(() {
+                                                          chartDataLoaded =
+                                                              false;
+
+                                                          selectedParticipantId =
+                                                              "";
+                                                          selectedParticipantName =
+                                                              "";
+
+                                                          // recreate controller instead of clearing text
+                                                          participantController
+                                                              .dispose();
+
+                                                          getASM("");
+                                                        });
+
+                                                        await Future.delayed(
+                                                          const Duration(
+                                                            milliseconds: 100,
+                                                          ),
+                                                        );
+
+                                                        if (!mounted) return;
+
+                                                        // create fresh controller
+                                                        participantController =
+                                                            TextEditingController();
+
+                                                        await _loadMonthlyScheduler(
+                                                          userId,
+                                                          userJwtToken,
+                                                          userMailID,
+                                                        );
+
+                                                        if (!mounted) return;
+
+                                                        setState(() {
+                                                          chartDataLoaded =
+                                                              true;
+                                                        });
+                                                      },
+                                                      child: Center(
+                                                        child: Icon(
+                                                          participantController
+                                                                      .text ==
+                                                                  ""
+                                                              ? Icons.search
+                                                              : Icons
+                                                                    .cancel_outlined,
+                                                          color: const Color(
+                                                            0xff2ca9df,
+                                                          ),
+                                                          size: 22,
                                                         ),
                                                       ),
                                                     ),
-                                                ],
+                                                  ),
+                                                ),
                                               ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    Checkbox(
-                                      value: _checked[index],
-                                      onChanged: (checked) {
-                                        if (checked == false) {
-                                          _reasonController.clear();
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: const Text(
-                                                'Please enter a reason',
-                                              ),
-                                              content: TextField(
-                                                controller: _reasonController,
-                                                decoration:
-                                                    const InputDecoration(
-                                                      hintText: 'Reason?',
-                                                    ),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      _checked[index] = false;
-                                                      _reasons[index] =
-                                                          _reasonController
-                                                              .text;
-                                                    });
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                  child: const Text('OK'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                  child: const Text('Cancel'),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        } else {
-                                          setState(() {
-                                            _checked[index] = true;
-                                          });
-                                        }
-                                      },
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      child: monthlyScheduleList.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.only(top: 100),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.event_busy,
+                                      size: 60,
+                                      color: Colors.grey,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      "No schedules found",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: monthlyScheduleList.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final inputFormat = DateFormat('yyyy/MM/dd');
+                                final outputFormat = DateFormat('dd/MM/yyyy');
+
+                                DateTime dateTime = inputFormat.parse(
+                                  monthlyScheduleList[index].scheduleDate,
+                                );
+
+                                String filterDate = outputFormat.format(
+                                  dateTime,
+                                );
+                                return Column(
+                                  children: <Widget>[
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: Container(
+                                          margin: const EdgeInsets.symmetric(
+                                            vertical: 6,
+                                          ),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.05,
+                                                ),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const SizedBox(height: 10),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 5.0,
+                                                        ),
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 4,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            const Color(
+                                                              0xff2ca9df,
+                                                            ).withValues(
+                                                              alpha: 0.1,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        filterDate,
+                                                        style: const TextStyle(
+                                                          color: Color(
+                                                            0xff2ca9df,
+                                                          ),
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 8.0,
+                                                        ),
+                                                    child: Text(
+                                                      monthlyScheduleList[index]
+                                                          .scheduleCustomerName,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 14,
+                                                        color: Color(
+                                                          0xff454545,
+                                                        ),
+                                                        fontFamily: "Poppins",
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 8.0,
+                                                        ),
+                                                    child: Text(
+                                                      monthlyScheduleList[index]
+                                                          .participantList
+                                                          .map(
+                                                            (e) => e
+                                                                .scheduleParticipantUserName,
+                                                          )
+                                                          .join(', '),
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w300,
+                                                        color: Color(
+                                                          0xff454545,
+                                                        ),
+                                                        fontFamily: "Poppins",
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 8.0,
+                                                        ),
+                                                    child: Text(
+                                                      monthlyScheduleList[index]
+                                                          .scheduleRemarks,
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        color: Color(
+                                                          0xff454545,
+                                                        ),
+                                                        fontFamily: "Poppins",
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 15),
+                                              Expanded(
+                                                child: ListTile(
+                                                  title: const Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [],
+                                                  ),
+                                                  subtitle: _checked[index]
+                                                      ? null
+                                                      : Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            if (_reasons[index]
+                                                                .isNotEmpty)
+                                                              Padding(
+                                                                padding:
+                                                                    const EdgeInsets.only(
+                                                                      top: 8.0,
+                                                                    ),
+                                                                child: Text(
+                                                                  'Reason: ${_reasons[index]}',
+                                                                  style: const TextStyle(
+                                                                    fontStyle:
+                                                                        FontStyle
+                                                                            .italic,
+                                                                    fontSize:
+                                                                        12,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                          ],
+                                                        ),
+                                                ),
+                                              ),
+                                              Checkbox(
+                                                value: _checked[index],
+                                                onChanged: (checked) {
+                                                  if (checked == false) {
+                                                    _reasonController.clear();
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (context) => AlertDialog(
+                                                        title: const Text(
+                                                          'Please enter a reason',
+                                                        ),
+                                                        content: TextField(
+                                                          controller:
+                                                              _reasonController,
+                                                          decoration:
+                                                              const InputDecoration(
+                                                                hintText:
+                                                                    'Reason?',
+                                                              ),
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () {
+                                                              setState(() {
+                                                                _checked[index] =
+                                                                    false;
+                                                                _reasons[index] =
+                                                                    _reasonController
+                                                                        .text;
+                                                              });
+                                                              Navigator.of(
+                                                                context,
+                                                              ).pop();
+                                                            },
+                                                            child: const Text(
+                                                              'OK',
+                                                            ),
+                                                          ),
+                                                          TextButton(
+                                                            onPressed: () {
+                                                              Navigator.of(
+                                                                context,
+                                                              ).pop();
+                                                            },
+                                                            child: const Text(
+                                                              'Cancel',
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    setState(() {
+                                                      _checked[index] = true;
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
-                          ],
-                        );
-                      },
+                    ),
+                    Center(
+                      child: Text(
+                        scheduleCompleted
+                            ? "All schedules have been reviewed."
+                            : "Please review all schedules before saving.",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: scheduleCompleted ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff2ca9df),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: scheduleCompleted ? () {} : null,
+                    child: const Text(
+                      "Save",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
-                  // Center(
-                  //   child: ElevatedButton(
-                  //     style: ElevatedButton.styleFrom(
-                  //       backgroundColor: const Color(0xff2ca9df),
-                  //       shape: RoundedRectangleBorder(
-                  //         borderRadius: BorderRadius.circular(5.0),
-                  //       ),
-                  //     ),
-                  //     onPressed: scheduleCompleted
-                  //         ? () {
-                  //       // Save logic here
-                  //     }
-                  //         : null, // Disabled if not complete
-                  //     child: const SizedBox(
-                  //       width: 400,
-                  //       child: Center(
-                  //         child: Text(
-                  //           "Save",
-                  //           style: TextStyle(fontSize: 14, color: Colors.white),
-                  //         ),
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
-                ],
+                ),
               ),
             ),
           )
         : const Scaffold(
             body: Center(child: CircularProgressIndicator(color: Colors.blue)),
           );
-  }
-
-  Widget buildSelectableText(int index, String text) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(3.0),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          color: _selectedIndex == index
-              ? const Color(0xff2ca9df)
-              : const Color(0xFFCFCFCF),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontFamily: "Poppins",
-              color: _selectedIndex == index
-                  ? Colors.white
-                  : const Color(0xFF8F8F8F),
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -16,7 +16,6 @@ import 'package:optima/classes/leads.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
-
 late Future<void> loadDataFuture;
 
 List<Users> usersList = [];
@@ -1323,6 +1322,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
     dataList.add(
       DSOGraphData(
+        monthname: soDataList[displayIndex].monthName,
         name: "Receivables Days Outstanding",
         target: 60,
         achievement: soDataList[displayIndex].dsoAllDays,
@@ -1331,6 +1331,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
     dataList.add(
       DSOGraphData(
+        monthname: soDataList[displayIndex].monthName,
         name: "Inventory Days Outstanding",
         target: 60,
         achievement: soDataList[displayIndex].inventoryDays,
@@ -1339,6 +1340,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
     dataList.add(
       DSOGraphData(
+        monthname: soDataList[displayIndex].monthName,
         name: "Payable Days Outstanding",
         target: 75,
         achievement: soDataList[displayIndex].payableDays,
@@ -1353,11 +1355,15 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   }
 
   Future<void> loadDataWithFilter(String? touchedMonth) async {
+    setState(() {
+      chartDataLoadedCCC = false;
+    });
     clearVariablesForFilter();
     LoadDates();
-    _loadMonthlySalesBarCashConversionChartData(touchedMonth);
-
-    chartDataLoadedCCC = true;
+    await _loadMonthlySalesBarCashConversionChartData(touchedMonth);
+    setState(() {
+      chartDataLoadedCCC = true;
+    });
   }
 
   void clearVariablesForFilter() {
@@ -1548,7 +1554,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   Future<void> generateMonthlyCCExcel(DSOGraphList list) async {
     await reportService.generateExcel(
       sheetName: 'CashConversionMonthlyAnalysis',
-      headers: ['Month', 'Achievement', 'Target'],
+      headers: ['Category', 'Achievement', 'Target'],
       rows: list.monthData
           .map(
             (data) => [
@@ -1561,14 +1567,16 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       fileName: 'cash_conversion_monthly_analysis.xlsx',
       amountColumns: [2, 3], // Achievement & Target columns
       addTotalRow: true,
-      reportTitle: 'Cash Conversion Monthly Analysis',
+      reportTitle:
+          'Cash Conversion Monthly Analysis - ${list.monthData.first.monthname}',
     );
   }
 
   Future<void> generateMonthlyCCPDF(DSOGraphList list) async {
     await reportService.generatePDF(
-      title: 'Cash Conversion Monthly Analysis',
-      headers: ['Month', 'Achievement', 'Target'],
+      title:
+          'Cash Conversion Monthly Analysis - ${list.monthData.first.monthname}',
+      headers: ['Category', 'Achievement', 'Target'],
       rows: list.monthData
           .map(
             (data) => [
@@ -1784,16 +1792,16 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                               ),
                       ],
                     ),
-                    // Row(
-                    //   children: [
-                    //     IconButton(
-                    //       onPressed: () {
-                    //         showFilterBottomSheet(context);
-                    //       },
-                    //       icon: const Icon(Icons.filter_alt_outlined),
-                    //     ),
-                    //   ],
-                    // ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            showFilterBottomSheet(context);
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -2100,37 +2108,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    // touchedMonth = monthlyAnalysisData
-                    //     .monthData[barTouchResponse.spot!.spot.x.toInt()]
-                    //     .monthName;
-                    // List months = [
-                    //   'Jan',
-                    //   'Feb',
-                    //   'Mar',
-                    //   'Apr',
-                    //   'May',
-                    //   'Jun',
-                    //   'Jul',
-                    //   'Aug',
-                    //   'Sep',
-                    //   'Oct',
-                    //   'Nov',
-                    //   'Dec'
-                    // ];
-                    // if (flTouchEvent is FlTapUpEvent) {
-                    //   touchedMonthIndex = touchedMonthIndex == 0
-                    //       ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-                    //       : 0;
-                    //   selectedChart = barTouchResponse.spot!.spot.x;
-                    //   showDrillDownChart = true;
-                    //   // loadDataWithFilter(
-                    //   //   touchedMonthIndex,
-                    //   //   touchedDailyDate,
-                    //   //   touchedLedger,
-                    //   // );
-                    // }
-                  });
+                  setState(() {});
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -2142,7 +2120,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                 ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                    '${graphData.monthData[grpIndex].name}\n',
+                    '${graphData.monthData[grpIndex].monthname}\n${graphData.monthData[grpIndex].name}\n',
                     const TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,

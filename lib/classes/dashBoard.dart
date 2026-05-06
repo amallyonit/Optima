@@ -5525,10 +5525,12 @@ class DSOGraphList {
 }
 
 class DSOGraphData {
+  final String monthname;
   final String name;
   final double target;
   final double achievement;
   DSOGraphData({
+    required this.monthname,
     required this.name,
     required this.target,
     required this.achievement,
