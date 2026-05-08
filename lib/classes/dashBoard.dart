@@ -2874,6 +2874,8 @@ class ProductionOrderList {
   final String expDate;
   final String dcNo;
 
+  final DateTime? parsedOrderDate;
+
   ProductionOrderList({
     required this.orderNo,
     required this.orderDate,
@@ -2905,40 +2907,47 @@ class ProductionOrderList {
     required this.manfDate,
     required this.expDate,
     required this.dcNo,
+    required this.parsedOrderDate,
   });
 
   factory ProductionOrderList.fromJson(Map<String, dynamic> json) {
+    final orderDate = (json['orderDate'] ?? '').toString();
+
     return ProductionOrderList(
-      orderNo: json['orderNo'],
-      orderDate: json['orderDate'],
-      plant: json['plant'],
-      unit: json['unit'],
-      branch: json['branch'],
-      shift: json['shift'],
-      customerCode: json['customerCode'],
-      customerName: json['customerName'],
-      productCode: json['productCode'],
-      productDescription: json['productDescription'],
-      groupName: json['groupName'],
-      itemSubGroup: json['itemSubGroup'],
-      uom: json['uom'],
-      boxQty: json['boxQty'],
-      plannedQty: json['plannedQty'],
-      completedQty: json['completedQty'],
-      rejectedQty: json['rejectedQty'],
-      status: json['status'],
-      soNo: json['soNo'],
-      soDate: json['soDate'],
-      proStartDate: json['proStartDate'],
-      proClosingDate: json['proClosingDate'],
-      proDueDate: json['proDueDate'],
-      agingDays: json['agingDays'],
-      kitRefNo: json['kitRefNo'],
-      sterileStatus: json['sterileStatus'],
-      batchNo: json['batchNo'],
-      manfDate: json['manfDate'],
-      expDate: json['expDate'],
-      dcNo: json['dcNo'],
+      orderNo: (json['orderNo'] ?? '').toString(),
+      orderDate: orderDate,
+      plant: (json['plant'] ?? '').toString(),
+      unit: (json['unit'] ?? '').toString(),
+      branch: (json['branch'] ?? '').toString(),
+      shift: (json['shift'] ?? '').toString(),
+      customerCode: (json['customerCode'] ?? '').toString(),
+      customerName: (json['customerName'] ?? '').toString(),
+      productCode: (json['productCode'] ?? '').toString(),
+      productDescription: (json['productDescription'] ?? '').toString(),
+      groupName: (json['groupName'] ?? '').toString(),
+      itemSubGroup: (json['itemSubGroup'] ?? '').toString(),
+      uom: (json['uom'] ?? '').toString(),
+      boxQty: (json['boxQty'] ?? '').toString(),
+      plannedQty: (json['plannedQty'] ?? '').toString(),
+      completedQty: (json['completedQty'] ?? '').toString(),
+      rejectedQty: (json['rejectedQty'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      soNo: (json['soNo'] ?? '').toString(),
+      soDate: (json['soDate'] ?? '').toString(),
+      proStartDate: (json['proStartDate'] ?? '').toString(),
+      proClosingDate: (json['proClosingDate'] ?? '').toString(),
+      proDueDate: (json['proDueDate'] ?? '').toString(),
+      agingDays: (json['agingDays'] ?? '').toString(),
+      kitRefNo: (json['kitRefNo'] ?? '').toString(),
+      sterileStatus: (json['sterileStatus'] ?? '').toString(),
+      batchNo: (json['batchNo'] ?? '').toString(),
+      manfDate: (json['manfDate'] ?? '').toString(),
+      expDate: (json['expDate'] ?? '').toString(),
+      dcNo: (json['dcNo'] ?? '').toString(),
+
+      parsedOrderDate: orderDate.isNotEmpty
+          ? DateFormat('dd/MM/yyyy').parseStrict(orderDate)
+          : null,
     );
   }
 }

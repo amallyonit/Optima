@@ -352,11 +352,7 @@ class HomePageState extends State<HomePage> {
             navigateToLoginScreen();
           }
         }
-      } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       if (mounted) {
         final snackBar = SnackBar(content: Text('Error: $e'));
@@ -750,13 +746,7 @@ class HomePageState extends State<HomePage> {
                   );
                 });
               }
-            } else {
-              const snackBar = SnackBar(
-                content: Text('Lead master not found.'),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
+            } else {}
             if (data.length > 1 && data[1] is List) {
               List<LeadContact> newLeadContacts = (data[1] as List)
                   .map((item) => LeadContact.fromJson(item))
@@ -766,18 +756,8 @@ class HomePageState extends State<HomePage> {
                   newLeadContacts,
                 );
               });
-            } else {
-              const snackBar = SnackBar(
-                content: Text('Lead contacts not found.'),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
-          } else {
-            const snackBar = SnackBar(content: Text('Leads are not found.'));
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+            } else {}
+          } else {}
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
@@ -799,11 +779,7 @@ class HomePageState extends State<HomePage> {
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
-      } else {
-        const snackBar = SnackBar(content: Text('Leads data is not available'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -855,13 +831,7 @@ class HomePageState extends State<HomePage> {
                 leadActivity = newLeadActivity;
               });
             }
-          } else {
-            const snackBar = SnackBar(
-              content: Text('Leads activity details not found.'),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+          } else {}
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
@@ -883,13 +853,7 @@ class HomePageState extends State<HomePage> {
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
-      } else {
-        const snackBar = SnackBar(
-          content: Text('Leads activity details not found.'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -942,13 +906,7 @@ class HomePageState extends State<HomePage> {
                 scheduledLeadActivity = newScheduledLeadActivity;
               });
             }
-          } else {
-            const snackBar = SnackBar(
-              content: Text('Scheduled Leads activity details not found.'),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+          } else {}
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
@@ -970,13 +928,7 @@ class HomePageState extends State<HomePage> {
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
           }
         }
-      } else {
-        const snackBar = SnackBar(
-          content: Text('Scheduled Leads activity details not found.'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -1045,19 +997,9 @@ class HomePageState extends State<HomePage> {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+          } else {}
         }
-      } else {
-        const snackBar = SnackBar(content: Text('Checkin details not found.'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -1126,21 +1068,9 @@ class HomePageState extends State<HomePage> {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+          } else {}
         }
-      } else {
-        const snackBar = SnackBar(
-          content: Text('Monthly schedules are not available.'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -1214,21 +1144,9 @@ class HomePageState extends State<HomePage> {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(snackBar);
             navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+          } else {}
         }
-      } else {
-        const snackBar = SnackBar(
-          content: Text('Monthly schedules are not available.'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      } else {}
     } catch (e) {
       final snackBar = SnackBar(
         duration: const Duration(seconds: 2),
@@ -3558,25 +3476,9 @@ class HomePageState extends State<HomePage> {
                                 fontSize: 18,
                                 fontWeight: FontWeight.w400,
                                 color: Color(0xff2ca9df),
-                                // height: 11 / 14,
                               ),
                             ),
                             Spacer(),
-                            // IconButton(
-                            //   icon: const Icon(
-                            //     Icons.add_circle_rounded,
-                            //     size: 24,
-                            //     color: Color(0xff2ca9df),
-                            //   ),
-                            //   onPressed: () {
-                            //     Navigator.push(
-                            //       context,
-                            //       MaterialPageRoute(
-                            //         builder: (context) => const SchedulerPage(),
-                            //       ),
-                            //     );
-                            //   },
-                            // ),
                           ],
                         ),
                       ),
@@ -3873,6 +3775,7 @@ class HomePageState extends State<HomePage> {
                                                                               .text
                                                                               .trim();
                                                                         });
+
                                                                         await _updatemonthlyschedulestatus(
                                                                           monthlyScheduleListNotifications[index]
                                                                               .scheduleID,

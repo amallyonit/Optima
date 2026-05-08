@@ -419,6 +419,88 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
     }
   }
 
+  Future<void> approveSchedules() async {
+    bool invalidReason = false;
+
+    for (int i = 0; i < _checked.length; i++) {
+      if (!_checked[i] && _reasons[i].trim().isEmpty) {
+        invalidReason = true;
+        break;
+      }
+    }
+
+    if (invalidReason) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter reason for rejected schedules"),
+        ),
+      );
+
+      return;
+    }
+    try {
+      setState(() {
+        chartDataLoaded = false;
+      });
+
+      List<Map<String, dynamic>> schedules = [];
+
+      for (int i = 0; i < monthlyScheduleList.length; i++) {
+        schedules.add({
+          "ScheduleId": monthlyScheduleList[i].scheduleID,
+          "ScheduleStatus": _checked[i] ? "A" : "R",
+          "ScheduleRemarks": _checked[i] ? "" : _reasons[i],
+        });
+      }
+
+      final data = {
+        "UserJwtToken": userJwtToken,
+        "UsermailID": userMailID,
+        "Schedules": schedules,
+      };
+
+      const apiUrl = '${ApiHelper.baseUrl}updatemonthlyschedulestatus';
+
+      var headers = {HttpHeaders.contentTypeHeader: 'application/json'};
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+
+      final responseJson = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseJson["Status"] == true) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Schedules approved successfully")),
+        );
+
+        await _loadMonthlyScheduler(userId, userJwtToken, userMailID);
+      } else {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseJson["Error"] ?? "Approval failed")),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) {
+        setState(() {
+          chartDataLoaded = true;
+        });
+      }
+    }
+  }
+
   bool isMonthlyScheduleComplete(DateTime selectedDate) {
     final year = selectedDate.year;
     final month = selectedDate.month;
@@ -1211,7 +1293,11 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: scheduleCompleted ? () {} : null,
+                    onPressed: scheduleCompleted
+                        ? () async {
+                            await approveSchedules();
+                          }
+                        : null,
                     child: const Text(
                       "Save",
                       style: TextStyle(fontSize: 16, color: Colors.white),

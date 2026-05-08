@@ -59,6 +59,8 @@ dependencies:
   path_provider: ^2.1.4
   syncfusion_flutter_xlsio: ^24.1.41
   file_picker: ^8.0.0
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.2
 
   # Speech / Web
   speech_to_text: ^7.3.0
@@ -79,19 +81,19 @@ flutter:
   uses-material-design: true
 
   assets:
-    # - assets/images/Amaryllis/logo.png
-    # - assets/images/Amaryllis/ph_user-circle-thin.png
-    # - assets/images/Amaryllis/password-visibility.png
-    # - assets/images/Amaryllis/splashscreen.png
-    # - assets/images/Amaryllis/companyName.png
-    # - assets/images/Amaryllis/optima.png
+    - assets/images/Amaryllis/logo.png
+    - assets/images/Amaryllis/ph_user-circle-thin.png
+    - assets/images/Amaryllis/password-visibility.png
+    - assets/images/Amaryllis/splashscreen.png
+    - assets/images/Amaryllis/companyName.png
+    - assets/images/Amaryllis/optima.png
     
-    - assets/images/Bapuji/logo.png
-    - assets/images/Bapuji/ph_user-circle-thin.png
-    - assets/images/Bapuji/password-visibility.png
-    - assets/images/Bapuji/splashscreen.png
-    - assets/images/Bapuji/companyName.png
-    - assets/images/Bapuji/optima.png
+    # - assets/images/Bapuji/logo.png
+    # - assets/images/Bapuji/ph_user-circle-thin.png
+    # - assets/images/Bapuji/password-visibility.png
+    # - assets/images/Bapuji/splashscreen.png
+    # - assets/images/Bapuji/companyName.png
+    # - assets/images/Bapuji/optima.png
 
   fonts:
     - family: Roboto

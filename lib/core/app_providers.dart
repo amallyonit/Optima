@@ -12,12 +12,10 @@ import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventoryAgeing
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventoryMovementAnalysis.dart';
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventorySlowDeadAnalysis.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/agingReport.dart';
-// import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpowerCostingReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/minimumStockVsActualStock.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/salesVsProduction.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/stockStatement.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/summaryOfRawMaterials.dart';
-import 'package:optima/pages/dashboardPages/productionDashboardBI/dayWiseProductionDetails.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/dayWiseProductionReportwrtMPPresent.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/jobCardEntryForAlternateMaterials.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/openProductionOrderAnalysis.dart';
@@ -139,7 +137,6 @@ class AppProviders {
     ChangeNotifierProvider(
       create: (_) => ProductionOrderSPendingReportProvider(),
     ),
-    ChangeNotifierProvider(create: (_) => DayWiseProductionDetailsProvider()),
     ChangeNotifierProvider(create: (_) => SalesOrderVsProductionProvider()),
     ChangeNotifierProvider(create: (_) => DayWiseProductionwrtMPProvider()),
     ChangeNotifierProvider(create: (_) => JobCardEntryProvider()),

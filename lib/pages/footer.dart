@@ -256,13 +256,7 @@ class FooterPageState extends State<FooterPage> {
                 });
               }
             }
-          } else {
-            const snackBar = SnackBar(
-              content: Text('Leads details not found.'),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
+          } else {}
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
@@ -391,13 +385,7 @@ class FooterPageState extends State<FooterPage> {
               } else {
                 clearControls();
               }
-            } else {
-              const snackBar = SnackBar(
-                content: Text('Leads activity details not found.'),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
+            } else {}
           } else {
             if (responseJson.containsKey("Error") &&
                 responseJson["Error"].toString() ==

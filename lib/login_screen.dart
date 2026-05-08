@@ -2,7 +2,8 @@
 
 import 'dart:convert';
 import 'dart:io';
-// import 'dart:math';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
@@ -12,7 +13,6 @@ import 'package:optima/tabs/tabspage.dart';
 import 'package:optima/forgetpassword_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -29,10 +29,15 @@ class LoginScreenState extends State<LoginScreen> {
   bool _isLoading = true;
   String currentVersion = "";
 
+  final LocalAuthentication auth = LocalAuthentication();
+  FlutterSecureStorage? secureStorage;
   @override
   void initState() {
     super.initState();
     getVersionNumber();
+    if (!kIsWeb) {
+      secureStorage = const FlutterSecureStorage();
+    }
     loadData();
   }
 
@@ -60,6 +65,17 @@ class LoginScreenState extends State<LoginScreen> {
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
     await _sapApiToken();
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      final biometricEnabled = await secureStorage?.read(
+        key: 'biometric_enabled',
+      );
+
+      if (biometricEnabled == 'true') {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          biometricLogin();
+        });
+      }
+    }
     await checkUserTokenAndNavigate(
       userJwtToken,
       userName,
@@ -158,11 +174,15 @@ class LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  bool _isLoginLoading = false;
   bool _isLoginpasswordVisible = false;
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   void _login() async {
+    setState(() {
+      _isLoginLoading = true;
+    });
     String email = emailController.text;
     String password = passwordController.text;
     final data = {'UsermailID': email, 'Password': password};
@@ -185,6 +205,10 @@ class LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isUserLoggedIn', false);
         if (status && responseJson["Data"].toString().isNotEmpty) {
+          await secureStorage?.write(key: 'email', value: email);
+          await secureStorage?.write(key: 'password', value: password);
+          await secureStorage?.write(key: 'biometric_enabled', value: 'true');
+
           final userJwtToken = responseJson["Data"][0]["UserJwtToken"];
           final userName = responseJson["Data"][0]["UserName"];
           final userId = responseJson["Data"][0]["UserID"].toString();
@@ -213,14 +237,65 @@ class LoginScreenState extends State<LoginScreen> {
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } else {
+        setState(() {
+          _isLoginLoading = false;
+        });
         const snackBar = SnackBar(content: Text('Login failed'));
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
+      setState(() {
+        _isLoginLoading = false;
+      });
       const snackBar = SnackBar(content: Text('Login failed.'));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+  }
+
+  Future<void> biometricLogin() async {
+    try {
+      bool canCheckBiometrics = await auth.canCheckBiometrics;
+      bool isDeviceSupported = await auth.isDeviceSupported();
+
+      if (!canCheckBiometrics || !isDeviceSupported) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Biometric authentication not available"),
+          ),
+        );
+        return;
+      }
+
+      bool authenticated = await auth.authenticate(
+        localizedReason: 'Authenticate to login',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+          sensitiveTransaction: false,
+        ),
+      );
+
+      if (authenticated) {
+        String? savedEmail = await secureStorage?.read(key: 'email');
+        String? savedPassword = await secureStorage?.read(key: 'password');
+
+        if (savedEmail != null && savedPassword != null) {
+          emailController.text = savedEmail;
+          passwordController.text = savedPassword;
+
+          _login();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No saved credentials found")),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Biometric Error: $e")));
     }
   }
 
@@ -254,14 +329,7 @@ class LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login log saved successfully")),
-        );
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
-      }
+      } else {}
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -404,7 +472,7 @@ class LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             "Login",
@@ -489,21 +557,54 @@ class LoginScreenState extends State<LoginScreen> {
                             ), // Increase the border radius here
                           ),
                           child: TextButton(
-                            onPressed: () => _login(),
-                            child: const Text(
-                              'Login',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
+                            onPressed: _isLoginLoading ? null : () => _login(),
+                            child: _isLoginLoading
+                                ? SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    'Login',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
+                            // child: const Text(
+                            //   'Login',
+                            //   style: TextStyle(
+                            //     color: Colors.white,
+                            //     fontSize: 20,
+                            //     fontFamily: 'Poppins',
+                            //   ),
+                            // ),
                           ),
                         ),
+                        !kIsWeb
+                            ? const SizedBox(height: 15)
+                            : const SizedBox(height: 0),
+
+                        !kIsWeb
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.fingerprint_sharp,
+                                  size: 35,
+                                  color: Color(0xFF2CA9DF),
+                                ),
+                                onPressed: biometricLogin,
+                              )
+                            : SizedBox(height: 0),
                       ],
                     ),
                   ),
-                  SizedBox(height: screenHeight / 5),
+                  SizedBox(height: screenHeight / 10),
                   Column(
                     children: [
                       const Center(

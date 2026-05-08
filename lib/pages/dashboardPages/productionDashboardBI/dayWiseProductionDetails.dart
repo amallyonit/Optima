@@ -1,5 +1,5 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -7,21 +7,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/leads.dart';
 import '../../../classes/globals.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
+final reportService = ReportService();
 
 class DayWiseProductionDetails extends StatefulWidget {
   const DayWiseProductionDetails({super.key});
@@ -32,8 +26,6 @@ class DayWiseProductionDetails extends StatefulWidget {
 }
 
 late Future<void> loadDataFuture;
-
-DateTime? currentDate;
 
 DateTime? currentMonthFromDate;
 DateTime? currentMonthToDate;
@@ -46,14 +38,11 @@ DateTime? lastQuarterToDate;
 DateTime? fiscalYearStartDate;
 DateTime? prevFiscalYearStartDate;
 DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
 int currentQuarter = 0;
 
 double totalPlannedProduction = 0;
 double totalCompletedProduction = 0;
 
-List<ProductionOrderList> dayWiseProduction = [];
 List<Users> usersList = [];
 
 DailyCompletedQtyAnalysisList dailyData = DailyCompletedQtyAnalysisList(
@@ -69,25 +58,66 @@ SterileStatusAnalysisList sterileData = SterileStatusAnalysisList(
   sterileData: [],
 );
 
-bool chartDataLoaded = false;
 String touchedDay = "";
 String touchedItem = "";
-
-class DayWiseProductionDetailsProvider with ChangeNotifier {
-  List<ProductionOrderList> _salesList = [];
-  List<ProductionOrderList> get salesList => _salesList;
-  void updateProductionList(List<ProductionOrderList> newSalesList) {
-    _salesList = newSalesList;
-    notifyListeners();
-  }
-}
 
 class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
   bool touchedYTDGoals = false;
-  bool showDrillDownChart = false;
   int touchedIndex = -1;
+  DateTime? currentDate;
+  List<ProductionOrderList> dayWiseProduction = [];
+  bool chartDataLoaded = false;
+
+  late List<BarChartGroupData> dailyCompletedChartBars;
+  late List<BarChartGroupData> dailyProducedBoxesBars;
+  late List<BarChartGroupData> itemWiseChartBars;
+
+  double dailyCompletedMaxY = 0;
+  double dailyProducedBoxesMaxY = 0;
+  double itemWiseMaxY = 0;
+
+  final http.Client client = http.Client();
+
+  void prepareChartData() {
+    /// DAILY COMPLETED
+    dailyCompletedChartBars = _dailyCompletedQtyAnalysisChartData(
+      dailyData.dailyData,
+    );
+
+    dailyCompletedMaxY = dailyData.dailyData.isNotEmpty
+        ? dailyData.dailyData
+              .map((e) => e.completedQty)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    /// DAILY BOXES
+    dailyProducedBoxesBars = _dailyProducedBoxesAnalysisChartData(
+      dailyBoxData.dailyProducedData,
+    );
+
+    dailyProducedBoxesMaxY = dailyBoxData.dailyProducedData.isNotEmpty
+        ? dailyBoxData.dailyProducedData
+              .map((e) => e.producedQty)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    /// ITEM WISE
+    itemWiseChartBars = _itemWiseQtyAnalysisChartData(
+      itemWiseData.itemWiseData,
+    );
+
+    itemWiseMaxY = itemWiseData.itemWiseData.isNotEmpty
+        ? itemWiseData.itemWiseData
+              .map(
+                (e) => e.plannedQty > e.completedQty
+                    ? e.plannedQty
+                    : e.completedQty,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+  }
 
   double getMaxValue(double maxValue) {
     double divVal = 0;
@@ -142,19 +172,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     }
   }
 
-  double convertAmount(double amount) {
-    if (amount >= 10000000) {
-      // Amount in crores
-      return double.parse((amount / 10000000).toStringAsFixed(2));
-    } else if (amount >= 100000) {
-      // Amount in lakhs
-      return double.parse((amount / 100000).toStringAsFixed(2));
-    } else {
-      // Amount in thousands
-      return double.parse((amount / 1000).toStringAsFixed(2));
-    }
-  }
-
   Color getCategoryColor(int categoryId) {
     switch (categoryId) {
       case 0:
@@ -165,16 +182,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
         return const Color(0xFF6CCC3F);
       default:
         return const Color(0xFF6CCC3F);
-    }
-  }
-
-  String formatFinanceAmount(double amount) {
-    if (amount >= 1000000000) {
-      return "${(amount / 1000000000).toStringAsFixed(2)} B";
-    } else if (amount >= 1000000) {
-      return "${(amount / 1000000).toStringAsFixed(2)} M";
-    } else {
-      return '${(amount / 1000).toStringAsFixed(2)} K';
     }
   }
 
@@ -222,11 +229,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     }
   }
 
-  String getMonthName(int month) {
-    final formatter = DateFormat('MMMM');
-    return formatter.format(DateTime(2000, month));
-  }
-
   void getLastQuarterDates() {
     DateTime now = DateTime.now();
     switch (getCurrentQuarter()) {
@@ -268,15 +270,19 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       case 1:
         currentQuarterFromDate = DateTime(now.year, 4, 1);
         currentQuarterToDate = DateTime(now.year, 6, 30);
+        break;
       case 2:
         currentQuarterFromDate = DateTime(now.year, 7, 1);
         currentQuarterToDate = DateTime(now.year, 9, 30);
+        break;
       case 3:
         currentQuarterFromDate = DateTime(now.year, 10, 1);
         currentQuarterToDate = DateTime(now.year, 12, 31);
+        break;
       case 4:
         currentQuarterFromDate = DateTime(now.year - 1, 1, 1);
         currentQuarterToDate = DateTime(now.year - 1, 3, 31);
+        break;
       default:
         throw Error();
     }
@@ -286,18 +292,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear = currentDate!.month >= 4
-        ? currentDate!.year
-        : currentDate!.year - 1;
-
-    int fiscalYearEndYear = fiscalYearStartYear + 1;
-    financialYear =
-        'FY${fiscalYearStartYear.toString().substring(2)}-${fiscalYearEndYear.toString().substring(2)}';
-
-    int prevFiscalYearStartYear = fiscalYearStartYear - 1;
-    int prevFiscalYearEndYear = prevFiscalYearStartYear + 1;
-    prevFinancialYear =
-        'FY${prevFiscalYearStartYear.toString().substring(2)}-${prevFiscalYearEndYear.toString().substring(2)}';
   }
 
   String formatDate(DateTime date) {
@@ -450,67 +444,64 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   List<BarChartGroupData> _dailyCompletedQtyAnalysisChartData(
     List<DailyCompletedQtyAnalysisData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.completedQty,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.completedQty,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _dailyProducedBoxesAnalysisChartData(
     List<DailyProducedBoxAnalysisData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.producedQty,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.producedQty,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _itemWiseQtyAnalysisChartData(
     List<ItemWiseQtyAnalysisData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  show: true,
-                  toY: chartData.plannedQty,
-                  color: const Color(0xFFF49136),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.completedQty,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              show: true,
+              toY: chartData.plannedQty,
+              color: const Color(0xFFF49136),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.completedQty,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   Future<void> _loadProductionOrderAnalysis(
@@ -520,7 +511,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
-    List<ProductionOrderList> salesList = [];
+    List<ProductionOrderList> productionList = [];
     int monthIndex = DateTime.now().month;
     try {
       do {
@@ -534,26 +525,24 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
           "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoProductionAnalysis';
-        final response = await http.post(
-          Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
-          body: jsonEncode(body),
-        );
+        final response = await client
+            .post(
+              Uri.parse(apiUrl),
+              headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
-            List<ProductionOrderList> newSalesList =
+            List<ProductionOrderList> newProductionList =
                 (responseJson['responseData'] as List)
                     .map((item) => ProductionOrderList.fromJson(item))
                     .toList();
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
+            productionList.addAll(newProductionList);
+            fetchedCount = newProductionList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -563,36 +552,12 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
         }
       } while (fetchedCount == limit);
 
-      setState(() {
-        dayWiseProduction = salesList;
-        context.read<DayWiseProductionDetailsProvider>().updateProductionList(
-          salesList,
-        );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          dayWiseProduction = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          dayWiseProduction = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          dayWiseProduction = salesList.toList();
-        } else {
-          dayWiseProduction = salesList.toList();
-        }
-      });
+      dayWiseProduction = productionList;
 
       var productSalesList = dayWiseProduction.where((target) {
         try {
-          if (target.orderDate.isEmpty) {
-            return false;
-          }
-
-          DateTime dueOn = DateFormat(
-            'dd/MM/yyyy',
-          ).parseStrict(target.orderDate);
+          final dueOn = target.parsedOrderDate;
+          if (dueOn == null) return false;
           return dueOn.isAtLeast(fiscalYearStartDate!) &&
               dueOn.isAtMost(currentDate!);
         } catch (e) {
@@ -604,7 +569,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       double completedQty = 0;
       double plannedQtyTotal = 0;
       double completedQtyTotal = 0;
-      for (var val in productSalesList.toList()) {
+      for (var val in productSalesList) {
         plannedQty = double.tryParse(val.plannedQty) ?? 0;
         completedQty = double.tryParse(val.completedQty) ?? 0;
         plannedQtyTotal += plannedQty;
@@ -624,82 +589,61 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       DateTime.now().month,
     );
-
-    Set<String> processedDates = {};
-
-    var todayTarget = dayWiseProduction.where((target) {
-      try {
-        if (target.orderDate.isEmpty) {
-          return false;
-        }
-        DateTime dueOn = DateFormat('dd/MM/yyyy').parseStrict(target.orderDate);
-        return dueOn.isAtLeast(monthDates['start']!) &&
-            dueOn.isAtMost(monthDates['end']!);
-      } catch (e) {
-        return false;
-      }
+    final todayTarget = dayWiseProduction.where((target) {
+      final dueOn = target.parsedOrderDate;
+      if (dueOn == null) return false;
+      return dueOn.isAtLeast(monthDates['start']!) &&
+          dueOn.isAtMost(monthDates['end']!);
     }).toList();
 
-    for (var target in todayTarget) {
-      if (processedDates.contains(target.orderDate)) continue;
+    final Map<String, double> groupedData = {};
 
-      double completedQty = 0;
-      todayTarget.where((t) => t.orderDate == target.orderDate).forEach((t) {
-        completedQty += double.tryParse(t.completedQty) ?? 0;
-      });
-
-      dataList.add(
-        DailyCompletedQtyAnalysisData(
-          date: target.orderDate,
-          completedQty: completedQty,
-        ),
+    for (final target in todayTarget) {
+      groupedData.update(
+        target.orderDate,
+        (value) => value + (double.tryParse(target.completedQty) ?? 0),
+        ifAbsent: () => double.tryParse(target.completedQty) ?? 0,
       );
-
-      processedDates.add(target.orderDate);
     }
+
+    dataList = groupedData.entries.map((e) {
+      return DailyCompletedQtyAnalysisData(date: e.key, completedQty: e.value);
+    }).toList();
+
     dailyData = DailyCompletedQtyAnalysisList(dailyData: dataList);
   }
 
   Future<void> _loadDailyProducedBoxAnalysis() async {
     List<DailyProducedBoxAnalysisData> dataList = [];
-    String date = "";
-    double producedQty = 0;
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       DateTime.now().month,
     );
 
-    var todayTarget = dayWiseProduction.where((target) {
-      try {
-        if (target.orderDate.isEmpty) {
-          return false;
-        }
-
-        DateTime dueOn = DateFormat('dd/MM/yyyy').parseStrict(target.orderDate);
-        return dueOn.isAtLeast(monthDates['start']!) &&
-            dueOn.isAtMost(monthDates['end']!);
-      } catch (e) {
-        return false;
-      }
+    final todayTarget = dayWiseProduction.where((target) {
+      final dueOn = target.parsedOrderDate;
+      if (dueOn == null) return false;
+      return dueOn.isAtLeast(monthDates['start']!) &&
+          dueOn.isAtMost(monthDates['end']!);
     }).toList();
 
-    Set<String> processedDates = {};
-    for (var target in todayTarget.toList()) {
-      if (!processedDates.contains(target.orderDate)) {
-        String orderDate = target.orderDate;
-        date = orderDate;
-        double ordered = double.tryParse(target.completedQty) ?? 0;
-        double boxQty = double.tryParse(target.boxQty) ?? 0;
-        int tempProducedQty = (ordered ~/ boxQty);
-        producedQty += tempProducedQty;
+    final Map<String, double> groupedBoxes = {};
 
-        dataList.add(
-          DailyProducedBoxAnalysisData(date: date, producedQty: producedQty),
-        );
-        processedDates.add(target.orderDate);
-      }
+    for (final target in todayTarget) {
+      double ordered = double.tryParse(target.completedQty) ?? 0;
+      double boxQty = double.tryParse(target.boxQty) ?? 0;
+
+      double producedQty = boxQty == 0 ? 0 : (ordered ~/ boxQty).toDouble();
+
+      groupedBoxes.update(
+        target.orderDate,
+        (value) => value + producedQty,
+        ifAbsent: () => producedQty,
+      );
     }
-    date = "";
-    producedQty = 0;
+
+    dataList = groupedBoxes.entries.map((e) {
+      return DailyProducedBoxAnalysisData(date: e.key, producedQty: e.value);
+    }).toList();
     dailyBoxData = DailyProducedBoxAnalysisList(dailyProducedData: dataList);
   }
 
@@ -709,68 +653,66 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   ) async {
     List<ItemWiseQtyAnalysisData> productwiseDataList = [];
     var tempList = dayWiseProduction;
-    String itemName = "";
-    double rejectedQty = 0.00;
-    double completedQty = 0.00;
-    double plannedQty = 0.00;
 
-    var saleList = const Iterable.empty();
-    saleList = tempList.toList();
+    var productionList = const Iterable.empty();
+    productionList = tempList;
     if (selectedDay == "") {
       Map<String, DateTime> monthDates = getMonthStartEndDates(
         DateTime.now().month,
       );
-      saleList = saleList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.orderDate);
+      productionList = productionList.where((target) {
+        if (target.parsedOrderDate == null) return false;
+        DateTime invoiceDate = target.parsedOrderDate;
         return (invoiceDate.isAtLeast(monthDates['start']!) &&
             invoiceDate.isAtMost(monthDates['end']!));
       });
     } else {
-      saleList = saleList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.orderDate);
-        return (invoiceDate.isAtLeast(
-              DateFormat('dd/MM/yyyy').parse(selectedDay),
-            ) &&
-            invoiceDate.isAtMost(DateFormat('dd/MM/yyyy').parse(selectedDay)));
+      final selectedDate = DateFormat('dd/MM/yyyy').parse(selectedDay);
+      productionList = productionList.where((target) {
+        if (target.parsedOrderDate == null) return false;
+        DateTime invoiceDate = target.parsedOrderDate;
+        return (invoiceDate.isAtLeast(selectedDate) &&
+            invoiceDate.isAtMost(selectedDate));
       });
     }
-    saleList = filterProductionList(
-      saleList.cast<ProductionOrderList>().toList(),
-      itemCode: itemCode,
-    );
-
-    Set<String> processedProductCodes = {};
-    for (var product in saleList.toList().toList()) {
-      if (!processedProductCodes.contains(product.productDescription)) {
-        itemName = product.productDescription;
-        for (var target in saleList.toList().where(
-          (prdelement) => prdelement.productDescription == itemName,
-        )) {
-          double planned = double.tryParse(target.plannedQty) ?? 0;
-          double rejected = double.tryParse(target.rejectedQty) ?? 0;
-          double completed = double.tryParse(target.completedQty) ?? 0;
-          plannedQty += planned;
-          rejectedQty += rejected;
-          completedQty += completed;
-        }
-
-        productwiseDataList.add(
-          ItemWiseQtyAnalysisData(
-            itemName: itemName,
-            rejectedQty: rejectedQty,
-            plannedQty: plannedQty,
-            completedQty: completedQty,
-          ),
-        );
-        processedProductCodes.add(product.productDescription);
-      }
-      rejectedQty = 0;
-      completedQty = 0;
-      plannedQty = 0;
-      itemName = "";
+    if (itemCode.isNotEmpty) {
+      productionList = productionList.where(
+        (e) => e.productDescription == itemCode,
+      );
+    } else {
+      productionList = productionList;
     }
-    productwiseDataList.sort((a, b) => b.plannedQty.compareTo(a.plannedQty));
+    final Map<String, ItemWiseQtyAnalysisData> groupedItems = {};
 
+    for (final target in productionList) {
+      final itemName = target.productDescription;
+
+      final planned = double.tryParse(target.plannedQty) ?? 0;
+      final rejected = double.tryParse(target.rejectedQty) ?? 0;
+      final completed = double.tryParse(target.completedQty) ?? 0;
+
+      if (groupedItems.containsKey(itemName)) {
+        final existing = groupedItems[itemName]!;
+
+        groupedItems[itemName] = ItemWiseQtyAnalysisData(
+          itemName: itemName,
+          plannedQty: existing.plannedQty + planned,
+          completedQty: existing.completedQty + completed,
+          rejectedQty: existing.rejectedQty + rejected,
+        );
+      } else {
+        groupedItems[itemName] = ItemWiseQtyAnalysisData(
+          itemName: itemName,
+          plannedQty: planned,
+          completedQty: completed,
+          rejectedQty: rejected,
+        );
+      }
+    }
+
+    productwiseDataList = groupedItems.values.toList();
+
+    productwiseDataList.sort((a, b) => b.plannedQty.compareTo(a.plannedQty));
     itemWiseData = ItemWiseQtyAnalysisList(itemWiseData: productwiseDataList);
   }
 
@@ -780,61 +722,57 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   ) async {
     List<SterileStatusAnalysisData> statusList = [];
     var tempList = dayWiseProduction;
-    String statusName = "";
-    double productActual = 0.00;
     int categoryId = 0;
-    var saleList = const Iterable.empty();
-    saleList = tempList.toList();
+    var productionList = const Iterable.empty();
+    productionList = tempList;
 
     if (selectedDay == "") {
       Map<String, DateTime> monthDates = getMonthStartEndDates(
         DateTime.now().month,
       );
-      saleList = saleList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.orderDate);
+      productionList = productionList.where((target) {
+        if (target.parsedOrderDate == null) return false;
+        DateTime invoiceDate = target.parsedOrderDate;
         return (invoiceDate.isAtLeast(monthDates['start']!) &&
             invoiceDate.isAtMost(monthDates['end']!));
       });
     } else {
-      saleList = saleList.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.orderDate);
-        return (invoiceDate.isAtLeast(
-              DateFormat('dd/MM/yyyy').parse(selectedDay),
-            ) &&
-            invoiceDate.isAtMost(DateFormat('dd/MM/yyyy').parse(selectedDay)));
+      final selectedDate = DateFormat('dd/MM/yyyy').parse(selectedDay);
+      productionList = productionList.where((target) {
+        if (target.parsedOrderDate == null) return false;
+        DateTime invoiceDate = target.parsedOrderDate;
+        return (invoiceDate.isAtLeast(selectedDate) &&
+            invoiceDate.isAtMost(selectedDate));
       });
     }
-    saleList = filterProductionList(
-      saleList.cast<ProductionOrderList>().toList(),
-      itemCode: itemCode,
-    );
-
-    Set<String> processedProductCodes = {};
-    for (var product in saleList.toList().toList()) {
-      if (!processedProductCodes.contains(product.sterileStatus)) {
-        statusName = product.sterileStatus;
-        for (var target in saleList.toList().where(
-          (prdelement) => prdelement.sterileStatus == statusName,
-        )) {
-          double salesAmt = 0;
-          salesAmt = double.tryParse(target.plannedQty) ?? 0;
-          productActual += salesAmt;
-        }
-
-        statusList.add(
-          SterileStatusAnalysisData(
-            categoryId: categoryId++,
-            amount: productActual,
-            sterileStatus: statusName,
-            percentage: 0,
-          ),
-        );
-        processedProductCodes.add(product.sterileStatus);
-      }
-      productActual = 0;
-      statusName = "";
+    if (itemCode.isNotEmpty) {
+      productionList = productionList.where(
+        (e) => e.productDescription == itemCode,
+      );
+    } else {
+      productionList = productionList;
     }
 
+    final Map<String, double> groupedStatus = {};
+
+    for (final target in productionList) {
+      final plannedQty = double.tryParse(target.plannedQty) ?? 0;
+
+      groupedStatus.update(
+        target.sterileStatus,
+        (value) => value + plannedQty,
+        ifAbsent: () => plannedQty,
+      );
+    }
+
+    statusList = groupedStatus.entries.map((e) {
+      return SterileStatusAnalysisData(
+        categoryId: categoryId++,
+        sterileStatus: e.key,
+        amount: e.value,
+        percentage: 0,
+      );
+    }).toList();
     double totalAmount = statusList.fold(
       0,
       (double previousValue, SterileStatusAnalysisData element) =>
@@ -854,7 +792,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
 
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
-    selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userName = selectedUser == ""
         ? prefs.getString('userName') ?? ''
         : selectedUser;
@@ -864,23 +801,11 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     await _loadDailyProducedBoxAnalysis();
     await _loadItemWiseProductionAnalysis("", "");
     await _loadOrderStatusOpenProduction("", "");
+    prepareChartData();
     chartDataLoaded = true;
-  }
-
-  List<ProductionOrderList> filterProductionList(
-    List<ProductionOrderList> productionList, {
-    String? selectedDay,
-    String? itemCode,
-  }) {
-    List<ProductionOrderList> filteredProductionList = [];
-    for (var production in productionList) {
-      if ((itemCode == null ||
-          itemCode.isEmpty ||
-          production.productDescription == itemCode)) {
-        filteredProductionList.add(production);
-      }
+    if (mounted) {
+      setState(() {});
     }
-    return filteredProductionList;
   }
 
   Future<void> removeFilter() async {
@@ -894,7 +819,11 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     LoadDates();
     await _loadItemWiseProductionAnalysis("", "");
     await _loadOrderStatusOpenProduction("", "");
+    prepareChartData();
     chartDataLoaded = true;
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> loadDataWithFilter(String selectedDay, String itemCode) async {
@@ -902,570 +831,155 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     LoadDates();
     await _loadItemWiseProductionAnalysis(selectedDay, itemCode);
     await _loadOrderStatusOpenProduction(selectedDay, itemCode);
+    prepareChartData();
     chartDataLoaded = true;
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void clearVariables() {
-    setState(() {
-      chartDataLoaded = false;
-      itemWiseData = ItemWiseQtyAnalysisList(itemWiseData: []);
-      sterileData = SterileStatusAnalysisList(sterileData: []);
-      touchedDay = "";
-      touchedItem = "";
-    });
+    chartDataLoaded = false;
+    itemWiseData = ItemWiseQtyAnalysisList(itemWiseData: []);
+    sterileData = SterileStatusAnalysisList(sterileData: []);
+    touchedDay = "";
+    touchedItem = "";
   }
 
   void clearVariablesForFilter() {
-    setState(() {
-      chartDataLoaded = false;
-      itemWiseData = ItemWiseQtyAnalysisList(itemWiseData: []);
-      sterileData = SterileStatusAnalysisList(sterileData: []);
-    });
-  }
-
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
+    chartDataLoaded = false;
+    itemWiseData = ItemWiseQtyAnalysisList(itemWiseData: []);
+    sterileData = SterileStatusAnalysisList(sterileData: []);
   }
 
   Future<void> generateDailyCompletedOrderExcel(
     DailyCompletedQtyAnalysisList dailyCompletedQtyAnalysisList,
   ) async {
-    double totalCompletedQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Date', 'Completed Qty.']));
-      for (var dailyData in dailyCompletedQtyAnalysisList.dailyData) {
-        sheet.appendRow(toCellRow([dailyData.date, dailyData.completedQty]));
-        totalCompletedQty += dailyData.completedQty;
-      }
-      sheet.appendRow(toCellRow(["Total", totalCompletedQty]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('daily_completed_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_completed_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'DailyCompletedOrders',
+      headers: ['Date', 'Completed Qty.'],
+      rows: dailyCompletedQtyAnalysisList.dailyData
+          .map((e) => [e.date, e.completedQty])
+          .toList(),
+      fileName: 'daily_completed_order_report.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Production - Daily Completed Orders',
+    );
   }
 
   Future<void> generateDailyCompletedOrderPDF(
     DailyCompletedQtyAnalysisList dailyCompletedQtyAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Daily Completed Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Date',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Completed Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var dailyData in dailyCompletedQtyAnalysisList.dailyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        dailyData.date,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        dailyData.completedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_completed_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Daily Completed Orders',
+      headers: ['Date', 'Completed Qty.'],
+      rows: dailyCompletedQtyAnalysisList.dailyData
+          .map((e) => [e.date, e.completedQty])
+          .toList(),
+      fileName: 'daily_completed_order_report.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateDailyCompletedBoxOrderExcel(
     DailyProducedBoxAnalysisList dailyProducedBoxAnalysisList,
   ) async {
-    double totalCompletedBoxes = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Date', 'Completed Boxes']));
-      for (var dailyData in dailyProducedBoxAnalysisList.dailyProducedData) {
-        sheet.appendRow(toCellRow([dailyData.date, dailyData.producedQty]));
-        totalCompletedBoxes += dailyData.producedQty;
-      }
-      sheet.appendRow(toCellRow(["Total", totalCompletedBoxes]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('daily_completedbox_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_completedbox_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'DailyCompletedBoxes',
+      headers: ['Date', 'Completed Boxes'],
+      rows: dailyProducedBoxAnalysisList.dailyProducedData
+          .map((e) => [e.date, e.producedQty])
+          .toList(),
+      fileName: 'daily_completed_boxes_order_report.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Production - Daily Completed Orders[Boxes]',
+    );
   }
 
   Future<void> generateDailyCompletedBoxOrderPDF(
     DailyProducedBoxAnalysisList dailyProducedBoxAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Daily Completed Boxes Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Date',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Completed Boxes',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var dailyData
-                    in dailyProducedBoxAnalysisList.dailyProducedData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        dailyData.date,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        dailyData.producedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_completedbox_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Daily Completed Boxes Order Report',
+      headers: ['Date', 'Completed Boxes'],
+      rows: dailyProducedBoxAnalysisList.dailyProducedData
+          .map((e) => [e.date, e.producedQty])
+          .toList(),
+      fileName: 'daily_completed_boxes_order_report.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateProductwiseOrderExcel(
     ItemWiseQtyAnalysisList itemWiseQtyAnalysisList,
   ) async {
-    double totalPlannedQty = 0, totalCompletedQty = 0, totalRejectedQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Product Name',
-          'Planned Qty.',
-          'Completed Qty.',
-          'Rejected Qty.',
-        ]),
-      );
-      for (var data in itemWiseQtyAnalysisList.itemWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            data.itemName,
-            data.plannedQty,
-            data.completedQty,
-            data.rejectedQty,
-          ]),
-        );
-        totalPlannedQty += data.plannedQty;
-        totalCompletedQty += data.completedQty;
-        totalRejectedQty += data.rejectedQty;
-      }
-      sheet.appendRow(
-        toCellRow([
-          "Total",
-          totalPlannedQty,
-          totalCompletedQty,
-          totalRejectedQty,
-        ]),
-      );
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('productwise_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/productwise_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ProductwiseOrders',
+      headers: [
+        'Product Name',
+        'Planned Qty.',
+        'Completed Qty.',
+        'Rejected Qty.',
+      ],
+      rows: itemWiseQtyAnalysisList.itemWiseData
+          .map((e) => [e.itemName, e.plannedQty, e.completedQty, e.rejectedQty])
+          .toList(),
+      fileName: 'productwise_order_report.xlsx',
+      amountColumns: [2, 3, 4],
+      addTotalRow: true,
+      reportTitle: 'Production - Productwise Orders',
+    );
   }
 
   Future<void> generateProductwiseOrderPDF(
     ItemWiseQtyAnalysisList itemWiseQtyAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Productwise Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Product Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Planned Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Completed Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Rejected Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in itemWiseQtyAnalysisList.itemWiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.itemName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.plannedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.completedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.rejectedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/product_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Productwise Order Report',
+      headers: [
+        'Product Name',
+        'Planned Qty.',
+        'Completed Qty.',
+        'Rejected Qty.',
+      ],
+      rows: itemWiseQtyAnalysisList.itemWiseData
+          .map((e) => [e.itemName, e.plannedQty, e.completedQty, e.rejectedQty])
+          .toList(),
+      fileName: 'productwise_order_report.pdf',
+      amountColumns: [2, 3, 4],
+    );
   }
 
   Future<void> generateSterileStatusExcel(
     SterileStatusAnalysisList sterileStatusAnalysisList,
   ) async {
-    double totalStatusQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Status', 'Status Qty.', 'Status %']));
-      for (var data in sterileStatusAnalysisList.sterileData) {
-        sheet.appendRow(
-          toCellRow([data.sterileStatus, data.amount, data.percentage]),
-        );
-        totalStatusQty += data.amount;
-      }
-      sheet.appendRow(toCellRow(["Total", totalStatusQty, ""]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('sterile_status_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sterile_status_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'SterileStatus',
+      headers: ['Status', 'Status Qty.', 'Status %.'],
+      rows: sterileStatusAnalysisList.sterileData
+          .map((e) => [e.sterileStatus, e.amount, e.percentage])
+          .toList(),
+      fileName: 'sterile_status_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Sterile Status Report',
+    );
   }
 
   Future<void> generateSterileStatusPDF(
     SterileStatusAnalysisList sterileStatusAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sterile Status Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Status',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Status Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Status %.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in sterileStatusAnalysisList.sterileData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.sterileStatus,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.amount.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.percentage.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sterile_status_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Sterile Status Report',
+      headers: ['Status', 'Status Qty.', 'Status %.'],
+      rows: sterileStatusAnalysisList.sterileData
+          .map((e) => [e.sterileStatus, e.amount, e.percentage])
+          .toList(),
+      fileName: 'sterile_status_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   @override
@@ -1478,7 +992,14 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   }
 
   @override
+  void dispose() {
+    client.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     String formattedFiscalYearStartDate = DateFormat(
       'dd/MM/yy',
     ).format(fiscalYearStartDate!);
@@ -1538,77 +1059,79 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                     ),
                   ],
                 ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
+                RepaintBoundary(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF97D7F3),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
+                              ),
                             ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Text('Total Planned Production'),
-                                Text(formatAmount(totalPlannedProduction)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Text('Total Completed Production'),
-                                Text(formatAmount(totalCompletedProduction)),
-                              ],
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const Text('Total Planned Production'),
+                                  Text(formatAmount(totalPlannedProduction)),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF97D7F3),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
+                              ),
                             ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Text('Overall Production Achievement'),
-                                Text(formatAmount(totalCompletedProduction)),
-                              ],
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const Text('Total Completed Production'),
+                                  Text(formatAmount(totalCompletedProduction)),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF97D7F3),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const Text('Overall Production Achievement'),
+                                  Text(formatAmount(totalCompletedProduction)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Row(
@@ -1633,17 +1156,13 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateDailyCompletedOrderExcel(dailyData);
-                                  });
+                                  generateDailyCompletedOrderExcel(dailyData);
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateDailyCompletedOrderPDF(dailyData);
-                                  });
+                                  generateDailyCompletedOrderPDF(dailyData);
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -1656,7 +1175,9 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _dailyCompletedQtyAnalysis(),
+                  child: RepaintBoundary(
+                    child: _dailyCompletedQtyAnalysis(screenWidth),
+                  ),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1684,21 +1205,17 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateDailyCompletedBoxOrderExcel(
-                                      dailyBoxData,
-                                    );
-                                  });
+                                  generateDailyCompletedBoxOrderExcel(
+                                    dailyBoxData,
+                                  );
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateDailyCompletedBoxOrderPDF(
-                                      dailyBoxData,
-                                    );
-                                  });
+                                  generateDailyCompletedBoxOrderPDF(
+                                    dailyBoxData,
+                                  );
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -1711,7 +1228,9 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _dailyProducedBoxesAnalysis(),
+                  child: RepaintBoundary(
+                    child: _dailyProducedBoxesAnalysis(screenWidth),
+                  ),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1739,17 +1258,13 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateSterileStatusExcel(sterileData);
-                                  });
+                                  generateSterileStatusExcel(sterileData);
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateSterileStatusPDF(sterileData);
-                                  });
+                                  generateSterileStatusPDF(sterileData);
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -1769,20 +1284,22 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      SizedBox(
-                        height: 250,
-                        width: 100,
-                        child: PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback:
-                                  (FlTouchEvent event, pieTouchResponse) {},
+                      RepaintBoundary(
+                        child: SizedBox(
+                          height: 250,
+                          width: 100,
+                          child: PieChart(
+                            PieChartData(
+                              pieTouchData: PieTouchData(
+                                touchCallback:
+                                    (FlTouchEvent event, pieTouchResponse) {},
+                              ),
+                              borderData: FlBorderData(show: false),
+                              sectionsSpace: 1,
+                              centerSpaceRadius: 0,
+                              startDegreeOffset: 180,
+                              sections: showingSections(),
                             ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 1,
-                            centerSpaceRadius: 0,
-                            startDegreeOffset: 180,
-                            sections: showingSections(),
                           ),
                         ),
                       ),
@@ -1793,21 +1310,18 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // for (final categoryData in receivablesCategoryList.categoryData)
                                 Column(
                                   children: [
                                     Container(
                                       height: 8,
                                       width: 16,
                                       color: const Color(0xFFFF9F47),
-                                      // color: getCategoryColor(categoryData.categoryId),
                                     ),
                                     const SizedBox(height: 6),
                                     Container(
                                       height: 8,
                                       width: 16,
                                       color: const Color(0xFF97D7F3),
-                                      // color: getCategoryColor(categoryData.categoryId),
                                     ),
                                     const SizedBox(height: 6),
                                   ],
@@ -1818,8 +1332,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                           const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // for (final categoryData
-                              // in receivablesCategoryList.categoryData)
                               Padding(
                                 padding: EdgeInsets.only(left: 8.0),
                                 child: Text(
@@ -1904,17 +1416,13 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                             return [
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateProductwiseOrderExcel(itemWiseData);
-                                  });
+                                  generateProductwiseOrderExcel(itemWiseData);
                                 },
                                 child: const Text("Download Excel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
-                                  setState(() {
-                                    generateProductwiseOrderPDF(itemWiseData);
-                                  });
+                                  generateProductwiseOrderPDF(itemWiseData);
                                 },
                                 child: const Text("Download PDF"),
                               ),
@@ -1927,7 +1435,9 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemWiseQtyAnalysis(),
+                  child: RepaintBoundary(
+                    child: _itemWiseQtyAnalysis(screenWidth),
+                  ),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1956,7 +1466,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     });
   }
 
-  Widget _dailyCompletedQtyAnalysis() {
+  Widget _dailyCompletedQtyAnalysis(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = dailyData.dailyData.length;
@@ -1965,15 +1475,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? dailyData.dailyData
-              .map(
-                (data) => data.completedQty > data.completedQty
-                    ? data.completedQty
-                    : data.completedQty,
-              ) // Compare salesAmount and monthsAvg
-              .reduce((a, b) => a > b ? a : b) // Find the max value
-        : 0;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -1981,7 +1483,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(dailyCompletedMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -2008,23 +1510,20 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups: _dailyCompletedQtyAnalysisChartData(dailyData.dailyData),
+            barGroups: dailyCompletedChartBars,
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedDay = touchedDay == ""
-                          ? dailyData
-                                .dailyData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .date
-                          : "";
-                      showDrillDownChart = true;
-                      loadDataWithFilter(touchedDay, touchedItem);
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedDay = touchedDay == ""
+                        ? dailyData
+                              .dailyData[barTouchResponse.spot!.spot.x.toInt()]
+                              .date
+                        : "";
+
+                    await loadDataWithFilter(touchedDay, touchedItem);
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -2069,7 +1568,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     );
   }
 
-  Widget _dailyProducedBoxesAnalysis() {
+  Widget _dailyProducedBoxesAnalysis(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = dailyBoxData.dailyProducedData.length;
@@ -2078,15 +1577,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? dailyBoxData.dailyProducedData
-              .map(
-                (data) => data.producedQty > data.producedQty
-                    ? data.producedQty
-                    : data.producedQty,
-              ) // Compare salesAmount and monthsAvg
-              .reduce((a, b) => a > b ? a : b) // Find the max value
-        : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -2094,7 +1584,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(dailyProducedBoxesMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(
@@ -2124,25 +1614,20 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups: _dailyProducedBoxesAnalysisChartData(
-              dailyBoxData.dailyProducedData,
-            ),
+            barGroups: dailyProducedBoxesBars,
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedDay = touchedDay == ""
-                          ? dailyBoxData
-                                .dailyProducedData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .date
-                          : "";
-                      showDrillDownChart = true;
-                      loadDataWithFilter(touchedDay, touchedItem);
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedDay = touchedDay == ""
+                        ? dailyBoxData
+                              .dailyProducedData[barTouchResponse.spot!.spot.x
+                                  .toInt()]
+                              .date
+                        : "";
+                  }
+                  await loadDataWithFilter(touchedDay, touchedItem);
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -2187,7 +1672,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     );
   }
 
-  Widget _itemWiseQtyAnalysis() {
+  Widget _itemWiseQtyAnalysis(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = itemWiseData.itemWiseData.length;
@@ -2196,15 +1681,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? itemWiseData.itemWiseData
-              .map(
-                (data) => data.plannedQty > data.completedQty
-                    ? data.plannedQty
-                    : data.completedQty,
-              )
-              .reduce((a, b) => a > b ? a : b) // Find the max value
-        : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -2212,7 +1688,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(itemWiseMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -2239,23 +1715,20 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 top: BorderSide(color: Colors.grey.shade400, width: 0.7),
               ),
             ),
-            barGroups: _itemWiseQtyAnalysisChartData(itemWiseData.itemWiseData),
+            barGroups: itemWiseChartBars,
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItem = touchedItem == ""
-                          ? itemWiseData
-                                .itemWiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .itemName
-                          : "";
-                      showDrillDownChart = true;
-                      loadDataWithFilter(touchedDay, touchedItem);
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedItem = touchedItem == ""
+                        ? itemWiseData
+                              .itemWiseData[barTouchResponse.spot!.spot.x
+                                  .toInt()]
+                              .itemName
+                        : "";
+                  }
+                  await loadDataWithFilter(touchedDay, touchedItem);
                 }
               },
               touchTooltipData: BarTouchTooltipData(
