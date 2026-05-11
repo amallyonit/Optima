@@ -20,7 +20,6 @@ import 'package:optima/pages/dashboardPages/productionDashboardBI/dayWiseProduct
 import 'package:optima/pages/dashboardPages/productionDashboardBI/jobCardEntryForAlternateMaterials.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/openProductionOrderAnalysis.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/productAnalysis.dart';
-import 'package:optima/pages/dashboardPages/productionDashboardBI/productionOrderAnalysis.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/produtionOrdersPendingReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/salesOrderVsProductionCompletedReport.dart';
 import 'package:optima/pages/dashboardPages/purchaseDashboard/procurementLeadTimeAnalysis.dart';
@@ -128,7 +127,6 @@ class AppProviders {
     ChangeNotifierProvider(
       create: (_) => InventoryListInventoryLevelAnalysisProvider(),
     ),
-    ChangeNotifierProvider(create: (_) => ProductionOrderAnalysisProvider()),
     ChangeNotifierProvider(
       create: (_) => OpenProductionOrderAnalysisProvider(),
     ),

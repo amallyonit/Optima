@@ -28,6 +28,7 @@ class LoginScreen extends StatefulWidget {
 class LoginScreenState extends State<LoginScreen> {
   bool _isLoading = true;
   String currentVersion = "";
+  bool biometricEnabled = false;
 
   final LocalAuthentication auth = LocalAuthentication();
   FlutterSecureStorage? secureStorage;
@@ -66,16 +67,13 @@ class LoginScreenState extends State<LoginScreen> {
     final userMailID = prefs.getString('userMailID') ?? '';
     await _sapApiToken();
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      final biometricEnabled = await secureStorage?.read(
-        key: 'biometric_enabled',
-      );
+      final enabled = await secureStorage?.read(key: 'biometric_enabled');
 
-      if (biometricEnabled == 'true') {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          biometricLogin();
-        });
-      }
+      biometricEnabled = enabled == 'true';
+      if (!mounted) return;
+      setState(() {});
     }
+
     await checkUserTokenAndNavigate(
       userJwtToken,
       userName,
@@ -126,6 +124,7 @@ class LoginScreenState extends State<LoginScreen> {
         navigateToHomePage();
       } else {
         // Token is valid but user is not logged in; stop showing the loading indicator
+        if (!mounted) return;
         setState(() {
           setLoginStatus();
           _isLoading = false;
@@ -133,6 +132,7 @@ class LoginScreenState extends State<LoginScreen> {
       }
     } else {
       // User not logged in; stop showing the loading indicator
+      if (!mounted) return;
       setState(() {
         setLoginStatus();
         _isLoading = false;
@@ -180,9 +180,11 @@ class LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   void _login() async {
+    if (!mounted) return;
     setState(() {
       _isLoginLoading = true;
     });
+    final prefs = await SharedPreferences.getInstance();
     String email = emailController.text;
     String password = passwordController.text;
     final data = {'UsermailID': email, 'Password': password};
@@ -202,12 +204,10 @@ class LoginScreenState extends State<LoginScreen> {
           await _sapApiToken();
           DataManager.saveSapToken(sapToken);
         }
-        final prefs = await SharedPreferences.getInstance();
+
         await prefs.setBool('isUserLoggedIn', false);
         if (status && responseJson["Data"].toString().isNotEmpty) {
-          await secureStorage?.write(key: 'email', value: email);
-          await secureStorage?.write(key: 'password', value: password);
-          await secureStorage?.write(key: 'biometric_enabled', value: 'true');
+          await _showBiometricDialog(email, password);
 
           final userJwtToken = responseJson["Data"][0]["UserJwtToken"];
           final userName = responseJson["Data"][0]["UserName"];
@@ -231,26 +231,95 @@ class LoginScreenState extends State<LoginScreen> {
           setSelectedDate();
           navigateToHomePage();
         } else {
+          if (!mounted) return;
+          setState(() {
+            _isLoginLoading = false;
+          });
           await prefs.setBool('isUserLoggedIn', false);
           const snackBar = SnackBar(content: Text('Login failed'));
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } else {
+        if (!mounted) return;
         setState(() {
           _isLoginLoading = false;
         });
+        await prefs.setBool('isUserLoggedIn', false);
         const snackBar = SnackBar(content: Text('Login failed'));
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoginLoading = false;
       });
+      await prefs.setBool('isUserLoggedIn', false);
       const snackBar = SnackBar(content: Text('Login failed.'));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+  }
+
+  Future<void> _showBiometricDialog(String email, String password) async {
+    final biometrics = await auth.getAvailableBiometrics();
+    if (biometrics.isEmpty) {
+      return;
+    }
+
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+      return;
+    }
+
+    final enabled = await secureStorage?.read(key: 'biometric_enabled');
+
+    // Already configured once
+    if (enabled != null) {
+      return;
+    }
+
+    bool? result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Enable Fingerprint Login'),
+          content: const Text(
+            'Do you want to enable biometric login on this device?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text('Not Now'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: const Text('Enable'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      if (!mounted) return;
+      setState(() {
+        biometricEnabled = true;
+      });
+      await secureStorage?.write(key: 'email', value: email);
+      await secureStorage?.write(key: 'password', value: password);
+      await secureStorage?.write(key: 'biometric_enabled', value: 'true');
+    } else {
+      if (!mounted) return;
+      setState(() {
+        biometricEnabled = false;
+      });
+      await secureStorage?.write(key: 'biometric_enabled', value: 'false');
     }
   }
 
@@ -577,30 +646,22 @@ class LoginScreenState extends State<LoginScreen> {
                                       fontFamily: 'Poppins',
                                     ),
                                   ),
-                            // child: const Text(
-                            //   'Login',
-                            //   style: TextStyle(
-                            //     color: Colors.white,
-                            //     fontSize: 20,
-                            //     fontFamily: 'Poppins',
-                            //   ),
-                            // ),
                           ),
                         ),
-                        !kIsWeb
+                        !kIsWeb && biometricEnabled
                             ? const SizedBox(height: 15)
-                            : const SizedBox(height: 0),
+                            : const SizedBox.shrink(),
 
-                        !kIsWeb
+                        !kIsWeb && biometricEnabled
                             ? IconButton(
                                 icon: const Icon(
-                                  Icons.fingerprint_sharp,
+                                  Icons.fingerprint,
                                   size: 35,
                                   color: Color(0xFF2CA9DF),
                                 ),
                                 onPressed: biometricLogin,
                               )
-                            : SizedBox(height: 0),
+                            : const SizedBox.shrink(),
                       ],
                     ),
                   ),

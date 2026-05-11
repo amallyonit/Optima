@@ -1,5 +1,5 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -7,22 +7,16 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
+final reportService = ReportService();
 
 class ProductionOrderAnalysis extends StatefulWidget {
   const ProductionOrderAnalysis({super.key});
@@ -32,146 +26,189 @@ class ProductionOrderAnalysis extends StatefulWidget {
       _ProductionOrderAnalysisState();
 }
 
-late Future<void> loadDataFuture;
-
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
-int currentQuarter = 0;
-
-int CurrentMonthSalesPercentage = 0;
-String CurrentMonthSalesPercentageStr = "";
-String CurrentMonthSalesStr = "";
-String SalesGoalStr = "";
-int LastMonthPercentage = 0;
-String LastMonthPercentageStr = "";
-double LastMonthSales = 0;
-String LastMonthSalesStr = "";
-double LastMonthTarget = 0;
-String LastMonthTargetStr = "";
-double CurrentQtrSales = 0;
-String CurrentQtrSalesStr = "";
-double CurrentQtrTarget = 0;
-String CurrentQtrTargetStr = "";
-int CurrentQtrPercentage = 0;
-String CurrentQtrPercentageStr = "";
-int YtdPercentage = 0;
-String YtdPercentageStr = "";
-double YtdSales = 0;
-String YtdSalesStr = "";
-double YtdTarget = 0;
-String YtdTargetStr = "";
-double CurrentMonthTarget = 0;
-String CurrentMonthTargetStr = "";
-int CurrentMonthPercentage = 0;
-double Q1Sales = 0;
-double Q1Target = 0;
-double Q1Diff = 0;
-int Q1Percentage = 0;
-String Q1SalesStr = "";
-String Q1TargetStr = "";
-String Q1DiffStr = "";
-String Q1PercentageStr = "";
-double Q2Sales = 0;
-double Q2Target = 0;
-double Q2Diff = 0;
-int Q2Percentage = 0;
-String Q2SalesStr = "";
-String Q2TargetStr = "";
-String Q2DiffStr = "";
-String Q2PercentageStr = "";
-double Q3Sales = 0;
-double Q3Target = 0;
-double Q3Diff = 0;
-int Q3Percentage = 0;
-String Q3SalesStr = "";
-String Q3TargetStr = "";
-String Q3DiffStr = "";
-String Q3PercentageStr = "";
-double Q4Sales = 0;
-double Q4Target = 0;
-double Q4Diff = 0;
-int Q4Percentage = 0;
-String Q4SalesStr = "";
-String Q4TargetStr = "";
-String Q4DiffStr = "";
-String Q4PercentageStr = "";
-double Q1Average = 0;
-String Q1AverageStr = "";
-double Q2Average = 0;
-String Q2AverageStr = "";
-double Q3Average = 0;
-String Q3AverageStr = "";
-double Q4Average = 0;
-String Q4AverageStr = "";
-DateTime? q1FromDate;
-DateTime? q1ToDate;
-DateTime? q2FromDate;
-DateTime? q2ToDate;
-DateTime? q3FromDate;
-DateTime? q3ToDate;
-DateTime? q4FromDate;
-DateTime? q4ToDate;
-
-double CurrentMonthSales = 0;
-double SalesGoal = 0;
-
-List<ProductionOrderList> production = [];
-List<Users> usersList = [];
-
-MonthlyProductionList monthData = MonthlyProductionList(monthlyData: []);
-ItemWiseProductionList itemWiseData = ItemWiseProductionList(itemWiseData: []);
-BranchWiseProductionList branchWiseData = BranchWiseProductionList(
-  branchWiseData: [],
-);
-ItemGroupWiseProductionList itemGroupWiseData = ItemGroupWiseProductionList(
-  itemGroupWiseData: [],
-);
-ItemSubGroupWiseProductionList itemSubGroupWiseData =
-    ItemSubGroupWiseProductionList(itemSubGroupWiseData: []);
-PlantWiseProductionList plantWiseData = PlantWiseProductionList(plantData: []);
-UnitWiseProductionList unitWiseData = UnitWiseProductionList(unitData: []);
-ShiftWiseProductionList shiftWiseData = ShiftWiseProductionList(shiftData: []);
-OrderStatusList statusData = OrderStatusList(statusData: []);
-
-bool chartDataLoaded = false;
-int touchedMonthIndex = 0;
-String touchedMonth = "";
-String touchedItemCode = "";
-String touchedBranchName = "";
-String touchedItemGroup = "";
-String touchedItemSubGroup = "";
-String touchedPlant = "";
-String touchedUnit = "";
-String touchedShift = "";
-double selectedChart = 0;
-
-class ProductionOrderAnalysisProvider with ChangeNotifier {
-  List<ProductionOrderList> _salesList = [];
-  List<ProductionOrderList> get salesList => _salesList;
-  void updatePurchaseList(List<ProductionOrderList> newSalesList) {
-    _salesList = newSalesList;
-    notifyListeners();
-  }
-}
-
 class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
+  late String formattedFiscalYearStartDate;
+  late String formattedQuarterStartDate;
+  late String formattedQuarterLastDate;
+  late String formattedDateNow;
+  late String formattedDateFirstOfLastMonth;
+  late String formattedDateLastOfLastMonth;
+  late String formattedDateFirstOfThisMonth;
+
+  double monthWiseMaxY = 0;
+  double itemWiseMaxY = 0;
+  double branchWiseMaxY = 0;
+  double itemGroupMaxY = 0;
+  double itemSubGroupMaxY = 0;
+  double plantWiseMaxY = 0;
+  double unitWiseMaxY = 0;
+  double shiftWiseMaxY = 0;
+  late Future<void> loadDataFuture;
+
+  DateTime? currentDate;
+  DateTime? currentMonthFromDate;
+  DateTime? currentMonthToDate;
+  DateTime? lastMonthFromDate;
+  DateTime? lastMonthToDate;
+  DateTime? currentQuarterFromDate;
+  DateTime? currentQuarterToDate;
+  DateTime? lastQuarterFromDate;
+  DateTime? lastQuarterToDate;
+  DateTime? fiscalYearStartDate;
+  DateTime? prevFiscalYearStartDate;
+  DateTime? prevFiscalYearEndDate;
+  String financialYear = "";
+  String prevFinancialYear = "";
+  int currentQuarter = 0;
+
+  int CurrentMonthSalesPercentage = 0;
+  String CurrentMonthSalesPercentageStr = "";
+  String CurrentMonthSalesStr = "";
+  String SalesGoalStr = "";
+  int LastMonthPercentage = 0;
+  String LastMonthPercentageStr = "";
+  double LastMonthSales = 0;
+  String LastMonthSalesStr = "";
+  double LastMonthTarget = 0;
+  String LastMonthTargetStr = "";
+  double CurrentQtrSales = 0;
+  String CurrentQtrSalesStr = "";
+  double CurrentQtrTarget = 0;
+  String CurrentQtrTargetStr = "";
+  int CurrentQtrPercentage = 0;
+  String CurrentQtrPercentageStr = "";
+  int YtdPercentage = 0;
+  String YtdPercentageStr = "";
+  double YtdSales = 0;
+  String YtdSalesStr = "";
+  double YtdTarget = 0;
+  String YtdTargetStr = "";
+  double CurrentMonthTarget = 0;
+  String CurrentMonthTargetStr = "";
+  int CurrentMonthPercentage = 0;
+  double Q1Sales = 0;
+  double Q1Target = 0;
+  double Q1Diff = 0;
+  int Q1Percentage = 0;
+  String Q1SalesStr = "";
+  String Q1TargetStr = "";
+  String Q1DiffStr = "";
+  String Q1PercentageStr = "";
+  double Q2Sales = 0;
+  double Q2Target = 0;
+  double Q2Diff = 0;
+  int Q2Percentage = 0;
+  String Q2SalesStr = "";
+  String Q2TargetStr = "";
+  String Q2DiffStr = "";
+  String Q2PercentageStr = "";
+  double Q3Sales = 0;
+  double Q3Target = 0;
+  double Q3Diff = 0;
+  int Q3Percentage = 0;
+  String Q3SalesStr = "";
+  String Q3TargetStr = "";
+  String Q3DiffStr = "";
+  String Q3PercentageStr = "";
+  double Q4Sales = 0;
+  double Q4Target = 0;
+  double Q4Diff = 0;
+  int Q4Percentage = 0;
+  String Q4SalesStr = "";
+  String Q4TargetStr = "";
+  String Q4DiffStr = "";
+  String Q4PercentageStr = "";
+  double Q1Average = 0;
+  String Q1AverageStr = "";
+  double Q2Average = 0;
+  String Q2AverageStr = "";
+  double Q3Average = 0;
+  String Q3AverageStr = "";
+  double Q4Average = 0;
+  String Q4AverageStr = "";
+  DateTime? q1FromDate;
+  DateTime? q1ToDate;
+  DateTime? q2FromDate;
+  DateTime? q2ToDate;
+  DateTime? q3FromDate;
+  DateTime? q3ToDate;
+  DateTime? q4FromDate;
+  DateTime? q4ToDate;
+
+  double CurrentMonthSales = 0;
+  double SalesGoal = 0;
+
+  List<ProductionOrderList> production = [];
+  List<Users> usersList = [];
+
+  MonthlyProductionList monthData = MonthlyProductionList(monthlyData: []);
+  ItemWiseProductionList itemWiseData = ItemWiseProductionList(
+    itemWiseData: [],
+  );
+  BranchWiseProductionList branchWiseData = BranchWiseProductionList(
+    branchWiseData: [],
+  );
+  ItemGroupWiseProductionList itemGroupWiseData = ItemGroupWiseProductionList(
+    itemGroupWiseData: [],
+  );
+  ItemSubGroupWiseProductionList itemSubGroupWiseData =
+      ItemSubGroupWiseProductionList(itemSubGroupWiseData: []);
+  PlantWiseProductionList plantWiseData = PlantWiseProductionList(
+    plantData: [],
+  );
+  UnitWiseProductionList unitWiseData = UnitWiseProductionList(unitData: []);
+  ShiftWiseProductionList shiftWiseData = ShiftWiseProductionList(
+    shiftData: [],
+  );
+  OrderStatusList statusData = OrderStatusList(statusData: []);
+
+  bool chartDataLoaded = false;
+  int touchedMonthIndex = 0;
+  String touchedMonth = "";
+  String touchedItemCode = "";
+  String touchedBranchName = "";
+  String touchedItemGroup = "";
+  String touchedItemSubGroup = "";
+  String touchedPlant = "";
+  String touchedUnit = "";
+  String touchedShift = "";
+  double selectedChart = 0;
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
   bool touchedYTDGoals = false;
-  bool showDrillDownChart = false;
   int touchedIndex = -1;
+
+  void prepareFormattedDates() {
+    final formatter = DateFormat('dd/MM/yy');
+
+    formattedFiscalYearStartDate = fiscalYearStartDate != null
+        ? formatter.format(fiscalYearStartDate!)
+        : '';
+
+    formattedQuarterStartDate = currentQuarterFromDate != null
+        ? formatter.format(currentQuarterFromDate!)
+        : '';
+
+    formattedQuarterLastDate = currentQuarterToDate != null
+        ? formatter.format(currentQuarterToDate!)
+        : '';
+
+    formattedDateNow = currentDate != null
+        ? formatter.format(currentDate!)
+        : '';
+
+    formattedDateFirstOfLastMonth = lastMonthFromDate != null
+        ? formatter.format(lastMonthFromDate!)
+        : '';
+
+    formattedDateLastOfLastMonth = lastMonthToDate != null
+        ? formatter.format(lastMonthToDate!)
+        : '';
+
+    formattedDateFirstOfThisMonth = currentMonthFromDate != null
+        ? formatter.format(currentMonthFromDate!)
+        : '';
+  }
 
   String formatAmount(double amount) {
     if (amount >= 10000000) {
@@ -186,39 +223,16 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     }
   }
 
-  double convertAmount(double amount) {
-    if (amount >= 10000000) {
-      // Amount in crores
-      return double.parse((amount / 10000000).toStringAsFixed(2));
-    } else if (amount >= 100000) {
-      // Amount in lakhs
-      return double.parse((amount / 100000).toStringAsFixed(2));
-    } else {
-      // Amount in thousands
-      return double.parse((amount / 1000).toStringAsFixed(2));
-    }
-  }
-
   Color getCategoryColor(int categoryId) {
     switch (categoryId) {
       case 0:
-        return const Color(0xFF97D7F3);
+        return const Color(0xFF6CCC3F);
       case 1:
-        return const Color(0xFFF49136);
+        return const Color(0xFF97D7F3);
       case 2:
-        return const Color(0xFF6CCC3F);
+        return const Color.fromARGB(255, 208, 19, 22);
       default:
-        return const Color(0xFF6CCC3F);
-    }
-  }
-
-  String formatFinanceAmount(double amount) {
-    if (amount >= 1000000000) {
-      return "${(amount / 1000000000).toStringAsFixed(2)} B";
-    } else if (amount >= 1000000) {
-      return "${(amount / 1000000).toStringAsFixed(2)} M";
-    } else {
-      return '${(amount / 1000).toStringAsFixed(2)} K';
+        return const Color.fromARGB(255, 208, 19, 22);
     }
   }
 
@@ -324,80 +338,90 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     return Text(text.length > 3 ? text.substring(0, 3) : text);
   }
 
-  double getItemMaxValue(ItemWiseProductionList itemData) {
-    double maxValue = 0.0;
-    for (var itemData in itemData.itemWiseData) {
-      maxValue = maxValue > itemData.productionActual
-          ? maxValue
-          : itemData.productionActual;
-      maxValue = maxValue > itemData.production3Month
-          ? maxValue
-          : itemData.production3Month;
-    }
-    return ((maxValue ~/ 200000) + 1) * 200000;
-  }
+  void prepareMaxValues() {
+    /// MONTH WISE
+    monthWiseMaxY = monthData.monthlyData.isNotEmpty
+        ? monthData.monthlyData
+              .map((e) => e.production > e.target ? e.production : e.target)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
 
-  double getBranchMaxValue(BranchWiseProductionList brData) {
-    double maxValue = 0.0;
-    for (var brData in brData.branchWiseData) {
-      maxValue = maxValue > brData.productionActual
-          ? maxValue
-          : brData.productionActual;
-      maxValue = maxValue > brData.production3Month
-          ? maxValue
-          : brData.production3Month;
-    }
-    return ((maxValue ~/ 5000000) + 1) * 5000000;
-  }
+    /// ITEM WISE
+    itemWiseMaxY = itemWiseData.itemWiseData.isNotEmpty
+        ? itemWiseData.itemWiseData
+              .map(
+                (e) => e.productionActual > e.production3Month
+                    ? e.productionActual
+                    : e.production3Month,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
 
-  double getGroupMaxValue(ItemGroupWiseProductionList grpData) {
-    double maxValue = 0.0;
-    for (var brData in grpData.itemGroupWiseData) {
-      maxValue = maxValue > brData.productionActual
-          ? maxValue
-          : brData.productionActual;
-    }
-    return ((maxValue ~/ 5000000) + 1) * 5000000;
-  }
+    /// BRANCH WISE
+    branchWiseMaxY = branchWiseData.branchWiseData.isNotEmpty
+        ? branchWiseData.branchWiseData
+              .map(
+                (e) => e.productionActual > e.production3Month
+                    ? e.productionActual
+                    : e.production3Month,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
 
-  double getSubGroupMaxValue(ItemSubGroupWiseProductionList subData) {
-    double maxValue = 0.0;
-    for (var brData in subData.itemSubGroupWiseData) {
-      maxValue = maxValue > brData.productionActual
-          ? maxValue
-          : brData.productionActual;
-    }
-    return ((maxValue ~/ 5000000) + 1) * 5000000;
-  }
+    /// ITEM GROUP WISE
+    itemGroupMaxY = itemGroupWiseData.itemGroupWiseData.isNotEmpty
+        ? itemGroupWiseData.itemGroupWiseData
+              .map(
+                (e) => e.productionActual > e.production3Month
+                    ? e.productionActual
+                    : e.production3Month,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
 
-  double getPlantMaxValue(PlantWiseProductionList plantData) {
-    double maxValue = 0.0;
-    for (var brData in plantData.plantData) {
-      maxValue = maxValue > brData.productionActual
-          ? maxValue
-          : brData.productionActual;
-    }
-    return ((maxValue ~/ 5000000) + 1) * 5000000;
-  }
+    /// ITEM SUB GROUP WISE
+    itemSubGroupMaxY = itemSubGroupWiseData.itemSubGroupWiseData.isNotEmpty
+        ? itemSubGroupWiseData.itemSubGroupWiseData
+              .map(
+                (e) => e.productionActual > e.production3Month
+                    ? e.productionActual
+                    : e.production3Month,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
 
-  double getUnitMaxValue(UnitWiseProductionList unitData) {
-    double maxValue = 0.0;
-    for (var brData in unitData.unitData) {
-      maxValue = maxValue > brData.productionActual
-          ? maxValue
-          : brData.productionActual;
-    }
-    return ((maxValue ~/ 5000000) + 1) * 5000000;
-  }
+    /// PLANT WISE
+    plantWiseMaxY = plantWiseData.plantData.isNotEmpty
+        ? plantWiseData.plantData
+              .map(
+                (e) => e.productionActual > e.production3Month
+                    ? e.productionActual
+                    : e.production3Month,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
 
-  double getShiftMaxValue(ShiftWiseProductionList shiftData) {
-    double maxValue = 0.0;
-    for (var brData in shiftData.shiftData) {
-      maxValue = maxValue > brData.productionActual
-          ? maxValue
-          : brData.productionActual;
-    }
-    return ((maxValue ~/ 5000000) + 1) * 5000000;
+    /// UNIT WISE
+    unitWiseMaxY = unitWiseData.unitData.isNotEmpty
+        ? unitWiseData.unitData
+              .map(
+                (e) => e.productionActual > e.production3Month
+                    ? e.productionActual
+                    : e.production3Month,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    /// SHIFT WISE
+    shiftWiseMaxY = shiftWiseData.shiftData.isNotEmpty
+        ? shiftWiseData.shiftData
+              .map(
+                (e) => e.productionActual > e.production3Month
+                    ? e.productionActual
+                    : e.production3Month,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
   }
 
   String getMonthName(int month) {
@@ -984,220 +1008,209 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
   List<BarChartGroupData> _monthWiseProductionAnalysisChartData(
     List<MonthlyProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.target,
-                  show: true,
-                  color: const Color(0xFFF49136),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.production,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.target,
+              show: true,
+              color: const Color(0xFFF49136),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.production,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _itemWiseProductionOrdersChartData(
     List<ItemWiseProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.production3Month,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.productionActual,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.production3Month,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.productionActual,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _branchWiseProductionOrdersChartData(
     List<BranchWiseProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.production3Month,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.productionActual,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.production3Month,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.productionActual,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _itemGroupWiseAnalysisChartData(
     List<ItemGroupWiseProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.production3Month,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.productionActual,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.production3Month,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.productionActual,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _itemSubGroupWiseAnalysisChartData(
     List<ItemSubGroupWiseProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.production3Month,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.productionActual,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.production3Month,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.productionActual,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _plantWiseAnalysisChartData(
     List<PlantWiseProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.production3Month,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.productionActual,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.production3Month,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.productionActual,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _unitWiseAnalysisChartData(
     List<UnitWiseProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.production3Month,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.productionActual,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.production3Month,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.productionActual,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _shiftWiseAnalysisChartData(
     List<ShiftWiseProductionData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.production3Month,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.productionActual,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.production3Month,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.productionActual,
+            width: 30,
           ),
-        )
-        .toList();
-  }
-
-  Map<String, DateTime> getMonthStartEndDatesOld(int month) {
-    int currentYear = DateTime.now().year;
-    if (month >= 4 && month <= 12) {
-      currentYear--;
-    }
-    DateTime firstDayOfMonth = DateTime(currentYear, month, 1);
-    DateTime lastDayOfMonth = DateTime(currentYear, month + 1, 0);
-
-    return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
+        ],
+      );
+    });
   }
 
   Map<String, DateTime> getMonthStartEndDates(int month) {
@@ -1273,18 +1286,10 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
 
       setState(() {
         production = salesList;
-        context.read<ProductionOrderAnalysisProvider>().updatePurchaseList(
-          salesList,
-        );
-        production = salesList.toList();
       });
       double sum = 0;
       DateTime? prevThreethFromDate;
       DateTime? prevThreeMthToDate;
-      // prevThreethFromDate = addMonth(currentMonthFromDate!, -3);
-      // prevThreeMthToDate =
-      //     addMonth(prevThreethFromDate, 3).add(const Duration(days: -1));
-
       var dateRange = getLastThreeMonthsRange(currentMonthFromDate!.month);
       prevThreethFromDate = dateRange['fromDate']!;
       prevThreeMthToDate = dateRange['toDate']!;
@@ -1304,10 +1309,6 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       CurrentMonthTarget = sum / 3;
       CurrentMonthTargetStr =
           "${(CurrentMonthTarget / 100000).toStringAsFixed(2)} L";
-
-      // prevThreethFromDate = addMonth(lastMonthFromDate!, -3);
-      // prevThreeMthToDate =
-      //     addMonth(prevThreethFromDate, 3).add(const Duration(days: -1));
 
       dateRange = getLastThreeMonthsRange(lastMonthFromDate!.month);
       prevThreethFromDate = dateRange['fromDate']!;
@@ -1594,7 +1595,37 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         actualAmt = (double.tryParse(target.completedQty) ?? 0);
         monthlyProduction += actualAmt;
       }
-      if (monthlyProduction > 0) {
+      // if (monthlyProduction > 0) {
+      //   month.add(
+      //     MonthlyProductionData(
+      //       monthName: monthName,
+      //       target: monthlyTarget,
+      //       production: monthlyProduction,
+      //     ),
+      //   );
+      // }
+      final currentMonth = DateTime.now().month;
+
+      /// Convert fiscal loop month
+      final actualMonth = i > 12 ? i - 12 : i;
+
+      /// Convert to fiscal sequence
+      final fiscalSequence = actualMonth >= 4
+          ? actualMonth - 3
+          : actualMonth + 9;
+
+      /// Current fiscal sequence
+      final currentFiscalSequence = currentMonth >= 4
+          ? currentMonth - 3
+          : currentMonth + 9;
+
+      final shouldShowMonth =
+          /// Show completed FY months
+          fiscalSequence <= currentFiscalSequence ||
+          /// Show future months only if target exists
+          monthlyTarget > 0;
+
+      if (shouldShowMonth) {
         month.add(
           MonthlyProductionData(
             monthName: monthName,
@@ -2610,6 +2641,11 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     await _loadOrderStatusProduction(0, "", "", "", "", "", "", "");
 
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   List<ProductionOrderList> filterProductionList(
@@ -2667,6 +2703,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     clearVariables();
     LoadDates();
     LoadAllQuarterFromToDates();
+    prepareFormattedDates();
     await _loadEachQtrValues();
     await _loadItemWiseProductionOrders(0, "", "", "", "", "", "", "");
     await _loadBranchWiseProductionOrders(0, "", "", "", "", "", "", "");
@@ -2677,6 +2714,11 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     await _loadShiftWiseProductionOrders(0, "", "", "", "", "", "", "");
     await _loadOrderStatusProduction(0, "", "", "", "", "", "", "");
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> loadDataWithFilter(
@@ -2692,6 +2734,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     clearVariablesForFilter();
     LoadDates();
     LoadAllQuarterFromToDates();
+    prepareFormattedDates();
     await _loadItemWiseProductionOrders(
       monthIndex,
       itemCode,
@@ -2773,6 +2816,11 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
       shiftName,
     );
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void clearVariables() {
@@ -2862,1364 +2910,286 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateMonthlyProductionExcel(
     MonthlyProductionList monthlyProductionList,
   ) async {
-    double totalProduction = 0;
-    double totalTarget = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Achievement', 'Target']));
-      for (var monthlyData in monthlyProductionList.monthlyData) {
-        sheet.appendRow(
-          toCellRow([
-            monthlyData.monthName,
-            monthlyData.production,
-            monthlyData.target,
-          ]),
-        );
-        totalProduction += monthlyData.production;
-        totalTarget += monthlyData.target;
-      }
-      sheet.appendRow(toCellRow(["", totalProduction, totalTarget]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthly_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'MonthlyProduction',
+      headers: ['Month', 'Achievement', 'Target'],
+      rows: monthlyProductionList.monthlyData
+          .map((e) => [e.monthName, e.production, e.target])
+          .toList(),
+      fileName: 'monthly_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Monthly Analysis',
+    );
   }
 
   Future<void> generateMonthlyProductionPDF(
     MonthlyProductionList monthlyProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Achievement',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var monthlyData in monthlyProductionList.monthlyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        monthlyData.monthName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.production.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.target.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Monthly Analysis',
+      headers: ['Month', 'Achievement', 'Target'],
+      rows: monthlyProductionList.monthlyData
+          .map((e) => [e.monthName, e.production, e.target])
+          .toList(),
+      fileName: 'monthly_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateItemProductionExcel(
     ItemWiseProductionList itemWiseProductionList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Product Name', 'Production Qty.', 'Monthly Avg.']),
-      );
-      for (var itemData in itemWiseProductionList.itemWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.itemName,
-            itemData.productionActual.toStringAsFixed(2),
-            itemData.production3Month.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('item_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/item_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemWiseProduction',
+      headers: ['Item Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: itemWiseProductionList.itemWiseData
+          .map((e) => [e.itemName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'item_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Item Wise Analysis',
+    );
   }
 
   Future<void> generateItemProductionPDF(
     ItemWiseProductionList itemWiseProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Productwise Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (itemWiseProductionList.itemWiseData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > itemWiseProductionList.itemWiseData.length
-            ? itemWiseProductionList.itemWiseData.length
-            : start + rowsPerPage;
-        final tableData = itemWiseProductionList.itemWiseData.sublist(
-          start,
-          end,
-        );
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Item Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Monthly Avg.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.itemName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productionActual.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.production3Month.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/itemwise_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Item Wise Analysis',
+      headers: ['Item Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: itemWiseProductionList.itemWiseData
+          .map((e) => [e.itemName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'item_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateItemGroupProductionExcel(
     ItemGroupWiseProductionList itemGroupWiseProductionList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Product Name', 'Production Qty.', 'Monthly Avg.']),
-      );
-      for (var itemData in itemGroupWiseProductionList.itemGroupWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.itemGroupName,
-            itemData.productionActual.toStringAsFixed(2),
-            itemData.production3Month.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('itemgroup_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/itemgroup_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemGroupWiseProduction',
+      headers: ['Item Group Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: itemGroupWiseProductionList.itemGroupWiseData
+          .map((e) => [e.itemGroupName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'itemgroup_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Item Group Wise Analysis',
+    );
   }
 
   Future<void> generateItemGroupProductionPDF(
     ItemGroupWiseProductionList itemGroupWiseProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Product Group Wise Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (itemGroupWiseProductionList.itemGroupWiseData.length / rowsPerPage)
-              .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage >
-                itemGroupWiseProductionList.itemGroupWiseData.length
-            ? itemGroupWiseProductionList.itemGroupWiseData.length
-            : start + rowsPerPage;
-        final tableData = itemGroupWiseProductionList.itemGroupWiseData.sublist(
-          start,
-          end,
-        );
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Group Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Monthly Avg.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.itemGroupName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productionActual.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.production3Month.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/item_groupwise_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Item Group Wise Analysis',
+      headers: ['Item Group Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: itemGroupWiseProductionList.itemGroupWiseData
+          .map((e) => [e.itemGroupName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'item_groupwise_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateItemSubGroupProductionExcel(
     ItemSubGroupWiseProductionList itemSubGroupWiseProductionList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Sub Group Name', 'Production Qty.', 'Monthly Avg.']),
-      );
-      for (var itemData
-          in itemSubGroupWiseProductionList.itemSubGroupWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.itemSubGroupName,
-            itemData.productionActual.toStringAsFixed(2),
-            itemData.production3Month.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('itemsubgroup_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/itemsubgroup_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemGroupWiseProduction',
+      headers: ['Item Sub Group Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: itemSubGroupWiseProductionList.itemSubGroupWiseData
+          .map(
+            (e) => [e.itemSubGroupName, e.productionActual, e.production3Month],
+          )
+          .toList(),
+      fileName: 'item_subgroup_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Item Sub Group Wise Analysis',
+    );
   }
 
   Future<void> generateItemSubGroupProductionPDF(
     ItemSubGroupWiseProductionList itemSubGroupWiseProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Product Sub Group Wise Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (itemSubGroupWiseProductionList.itemSubGroupWiseData.length /
-                  rowsPerPage)
-              .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage >
-                itemSubGroupWiseProductionList.itemSubGroupWiseData.length
-            ? itemSubGroupWiseProductionList.itemSubGroupWiseData.length
-            : start + rowsPerPage;
-        final tableData = itemSubGroupWiseProductionList.itemSubGroupWiseData
-            .sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Sub Group Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Monthly Avg.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.itemSubGroupName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productionActual.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.production3Month.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/item_subgroupwise_production_report.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Item Sub Group Wise Analysis',
+      headers: ['Item Sub Group Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: itemSubGroupWiseProductionList.itemSubGroupWiseData
+          .map(
+            (e) => [e.itemSubGroupName, e.productionActual, e.production3Month],
+          )
+          .toList(),
+      fileName: 'item_subgroup_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateBranchProductionExcel(
     BranchWiseProductionList branchWiseProductionList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Branch Name', 'Production Qty.', 'Monthly Avg.']),
-      );
-      for (var itemData in branchWiseProductionList.branchWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.branchName,
-            itemData.productionActual.toStringAsFixed(2),
-            itemData.production3Month.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('branch_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/branch_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'BranchProduction',
+      headers: ['Branch Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: branchWiseProductionList.branchWiseData
+          .map((e) => [e.branchName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'branch_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Branch Wise Analysis',
+    );
   }
 
   Future<void> generateBranchProductionPDF(
     BranchWiseProductionList branchWiseProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Branch Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (branchWiseProductionList.branchWiseData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > branchWiseProductionList.branchWiseData.length
-            ? branchWiseProductionList.branchWiseData.length
-            : start + rowsPerPage;
-        final tableData = branchWiseProductionList.branchWiseData.sublist(
-          start,
-          end,
-        );
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Branch Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Monthly Avg.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.branchName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productionActual.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.production3Month.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/branch_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Branch Wise Analysis',
+      headers: ['Branch Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: branchWiseProductionList.branchWiseData
+          .map((e) => [e.branchName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'branch_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateOrderStatusProductionExcel(
     OrderStatusList orderStatusList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Status', 'Production Qty.', 'Percentage']));
-      for (var itemData in orderStatusList.statusData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.statusName,
-            itemData.statusAmount.toStringAsFixed(2),
-            itemData.statusPercentage.toString(),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('Order_status_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/Order_status_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'OrderStatusProduction',
+      headers: ['Status', 'Production Qty.', 'Percentage'],
+      rows: orderStatusList.statusData
+          .map((e) => [e.statusName, e.statusAmount, e.statusPercentage])
+          .toList(),
+      fileName: 'order_status_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Order Status Wise Analysis',
+    );
   }
 
   Future<void> generateOrderStatusProductionPDF(
     OrderStatusList orderStatusList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Order Status Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages = (orderStatusList.statusData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > orderStatusList.statusData.length
-            ? orderStatusList.statusData.length
-            : start + rowsPerPage;
-        final tableData = orderStatusList.statusData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Status',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Percentage',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.statusName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.statusAmount.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.statusPercentage.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/orderstatus_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Order Status Wise Analysis',
+      headers: ['Status', 'Production Qty.', 'Percentage'],
+      rows: orderStatusList.statusData
+          .map((e) => [e.statusName, e.statusAmount, e.statusPercentage])
+          .toList(),
+      fileName: 'order_status_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generatePlantProductionExcel(
     PlantWiseProductionList plantWiseProductionList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Plant Name', 'Production Qty.', 'Monthly Avg.']),
-      );
-      for (var itemData in plantWiseProductionList.plantData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.plantName,
-            itemData.productionActual.toStringAsFixed(2),
-            itemData.production3Month.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('plant_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/plant_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'PlantProduction',
+      headers: ['Plant Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: plantWiseProductionList.plantData
+          .map((e) => [e.plantName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'plant_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Plant Wise Analysis',
+    );
   }
 
   Future<void> generatePlantProductionPDF(
     PlantWiseProductionList plantWiseProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Plantwise Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (plantWiseProductionList.plantData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > plantWiseProductionList.plantData.length
-            ? plantWiseProductionList.plantData.length
-            : start + rowsPerPage;
-        final tableData = plantWiseProductionList.plantData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Plant Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Monthly Avg.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.plantName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productionActual.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.production3Month.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/plantwise_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Plant Wise Analysis',
+      headers: ['Plant Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: plantWiseProductionList.plantData
+          .map((e) => [e.plantName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'plant_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateUnitProductionExcel(
     UnitWiseProductionList unitWiseProductionList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Unit Name', 'Production Qty.', 'Monthly Avg.']),
-      );
-      for (var itemData in unitWiseProductionList.unitData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.unitName,
-            itemData.productionActual.toStringAsFixed(2),
-            itemData.production3Month.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('unit_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/unit_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'UnitProduction',
+      headers: ['Unit Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: unitWiseProductionList.unitData
+          .map((e) => [e.unitName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'unit_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Unit Wise Analysis',
+    );
   }
 
   Future<void> generateUnitProductionPDF(
     UnitWiseProductionList unitWiseProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Unitwise Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages = (unitWiseProductionList.unitData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > unitWiseProductionList.unitData.length
-            ? unitWiseProductionList.unitData.length
-            : start + rowsPerPage;
-        final tableData = unitWiseProductionList.unitData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Unit Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Monthly Avg.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.unitName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productionActual.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.production3Month.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/unitwise_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Unit Wise Analysis',
+      headers: ['Unit Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: unitWiseProductionList.unitData
+          .map((e) => [e.unitName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'unit_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateShiftProductionExcel(
     ShiftWiseProductionList shiftWiseProductionList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Shift Name', 'Production Qty.', 'Monthly Avg.']),
-      );
-      for (var itemData in shiftWiseProductionList.shiftData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.shiftName,
-            itemData.productionActual.toStringAsFixed(2),
-            itemData.production3Month.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('shift_production_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/shift_production_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ShiftProduction',
+      headers: ['Shift Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: shiftWiseProductionList.shiftData
+          .map((e) => [e.shiftName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'shift_production_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Shift Wise Analysis',
+    );
   }
 
   Future<void> generateShiftProductionPDF(
     ShiftWiseProductionList shiftWiseProductionList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Shiftwise Production Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (shiftWiseProductionList.shiftData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > shiftWiseProductionList.shiftData.length
-            ? shiftWiseProductionList.shiftData.length
-            : start + rowsPerPage;
-        final tableData = shiftWiseProductionList.shiftData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Shift Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Production Qty.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Monthly Avg.',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.shiftName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productionActual.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.production3Month.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/shiftwise_production_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'Production - Shift Wise Analysis',
+      headers: ['Shift Name', 'Production Qty.', 'Monthly Avg.'],
+      rows: shiftWiseProductionList.shiftData
+          .map((e) => [e.shiftName, e.productionActual, e.production3Month])
+          .toList(),
+      fileName: 'shift_production_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   @override
   void initState() {
     super.initState();
     LoadDates();
+    LoadAllQuarterFromToDates();
+    prepareFormattedDates();
     if (isUserLoggedIn && isBiDashboardStart) {
       loadDataFuture = loadData("");
     }
@@ -4227,1426 +3197,1459 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    String formattedFiscalYearStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(fiscalYearStartDate!);
-    String formattedQuarterStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterFromDate!);
-    String formattedQuarterLastDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterToDate!);
-    String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
+    final media = MediaQuery.sizeOf(context);
+    final screenWidth = media.width;
+    final screenHeight = media.height;
     return chartDataLoaded == true
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ? ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              SingleChildScrollView(
+                child: Column(
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const SizedBox(width: 15),
-                        touchedMonthGoals == true
-                            ? Text(
-                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
-                              )
-                            : touchedQuarterGoals == true
-                            ? Text(
-                                "$formattedQuarterStartDate - $formattedQuarterLastDate",
-                              )
-                            : touchedYTDGoals == true
-                            ? Text(
-                                "$formattedFiscalYearStartDate - $formattedDateNow",
-                              )
-                            : Text(
-                                "$formattedDateFirstOfThisMonth - $formattedDateNow",
-                              ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            showPopupMenu();
-                          },
-                          icon: const Icon(Icons.filter_alt_outlined),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Production Order Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyProductionExcel(monthData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyProductionPDF(monthData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: screenHeight / 2.67,
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: CircularPercentIndicator(
-                          arcType: ArcType.HALF,
-                          radius: 120.0,
-                          lineWidth: 50.0,
-                          animation: true,
-                          percent: CurrentMonthSalesPercentage / 100,
-                          center: Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 70.0),
-                                child: Text(
-                                  CurrentMonthSalesPercentageStr,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20.0,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                CurrentMonthSalesStr,
-                                style: const TextStyle(fontSize: 14.0),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                "${getMonthName(currentDate!.month)} Goal - $CurrentMonthTargetStr",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                          circularStrokeCap: CircularStrokeCap.butt,
-                          progressColor: Colors.red,
-                          arcBackgroundColor: Colors.grey.shade200,
-                        ),
-                      ),
-                      Positioned.fill(
-                        top: screenHeight / 4.5,
-                        left: screenHeight / 35,
-                        child: SizedBox(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 4.0,
-                                  right: 4.0,
-                                ),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {});
-                                  },
-                                  child: CircularPercentIndicator(
-                                    arcType: ArcType.HALF,
-                                    radius: 55.0,
-                                    lineWidth: 20.0,
-                                    animation: true,
-                                    percent: LastMonthPercentage / 100,
-                                    center: Column(
-                                      children: [
-                                        const SizedBox(height: 30),
-                                        Text(
-                                          LastMonthPercentageStr,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedMonthGoals
-                                                ? 13.0
-                                                : 12.0,
-                                            color: touchedMonthGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          LastMonthSalesStr,
-                                          style: TextStyle(
-                                            fontSize: touchedMonthGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedMonthGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Center(
-                                          child: Text(
-                                            "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: touchedMonthGoals
-                                                  ? 11.0
-                                                  : 10.0,
-                                              color: touchedMonthGoals
-                                                  ? Colors.cyan
-                                                  : Colors.black,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    curve: Curves.linear,
-                                    circularStrokeCap: CircularStrokeCap.butt,
-                                    progressColor: Colors.red,
-                                    arcBackgroundColor: Colors.grey.shade200,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {});
-                                  },
-                                  child: CircularPercentIndicator(
-                                    arcType: ArcType.HALF,
-                                    radius: 55.0,
-                                    lineWidth: 20.0,
-                                    animation: true,
-                                    percent: CurrentQtrPercentage / 100,
-                                    center: Column(
-                                      children: [
-                                        const SizedBox(height: 30),
-                                        Text(
-                                          CurrentQtrPercentageStr,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedQuarterGoals
-                                                ? 13.0
-                                                : 12.0,
-                                            color: touchedQuarterGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          CurrentQtrSalesStr,
-                                          style: TextStyle(
-                                            fontSize: touchedQuarterGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedQuarterGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedQuarterGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedQuarterGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    curve: Curves.linear,
-                                    circularStrokeCap: CircularStrokeCap.butt,
-                                    progressColor: Colors.orange,
-                                    arcBackgroundColor: Colors.grey.shade200,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {});
-                                  },
-                                  child: CircularPercentIndicator(
-                                    arcType: ArcType.HALF,
-                                    radius: 55.0,
-                                    lineWidth: 20.0,
-                                    animation: true,
-                                    percent: YtdPercentage / 100,
-                                    center: Column(
-                                      children: [
-                                        const SizedBox(height: 30),
-                                        Text(
-                                          YtdPercentageStr,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedYTDGoals
-                                                ? 13.0
-                                                : 12.0,
-                                            color: touchedYTDGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          YtdSalesStr,
-                                          style: TextStyle(
-                                            fontSize: touchedYTDGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedYTDGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          "YTD \n($YtdTargetStr)",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedYTDGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedYTDGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    curve: Curves.linear,
-                                    circularStrokeCap: CircularStrokeCap.butt,
-                                    progressColor: Colors.green,
-                                    arcBackgroundColor: Colors.grey.shade200,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Tooltip(
-                        preferBelow: false,
-                        richMessage: WidgetSpan(
-                          child: Column(
-                            children: [
-                              const Text(
-                                "Quarter 1 Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              Column(
-                                children: [
-                                  Text("Target : $Q1TargetStr"),
-                                  Text("Achieved : $Q1SalesStr"),
-                                  Text("Difference : $Q1DiffStr"),
-                                  Text("Percentage : $Q1PercentageStr"),
-                                  Text("Monthly Avg. : $Q1AverageStr"),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withValues(alpha: 0.5),
-                              spreadRadius: 5,
-                              blurRadius: 7,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(4),
-                          ),
-                        ),
-                        showDuration: const Duration(seconds: 7),
-                        triggerMode: TooltipTriggerMode.tap,
-                        child: Row(
+                        Row(
                           children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xff6CCC3F,
-                                ).withValues(alpha: 0.5),
-                                border: const Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
+                            const SizedBox(width: 15),
+                            touchedMonthGoals == true
+                                ? Text(
+                                    "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
+                                  )
+                                : touchedQuarterGoals == true
+                                ? Text(
+                                    "$formattedQuarterStartDate - $formattedQuarterLastDate",
+                                  )
+                                : touchedYTDGoals == true
+                                ? Text(
+                                    "$formattedFiscalYearStartDate - $formattedDateNow",
+                                  )
+                                : Text(
+                                    "$formattedDateFirstOfThisMonth - $formattedDateNow",
                                   ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text(
-                                  "Q1",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              decoration: const BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Q1PercentageStr != ""
-                                    ? Text(Q1PercentageStr)
-                                    : const Text("      "),
-                              ),
-                            ),
                           ],
                         ),
-                      ),
-                      Tooltip(
-                        preferBelow: false,
-                        richMessage: WidgetSpan(
-                          child: Column(
-                            children: [
-                              const Text(
-                                "Quarter 2 Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              Column(
-                                children: [
-                                  Text("Target : $Q2TargetStr"),
-                                  Text("Achieved : $Q2SalesStr"),
-                                  Text("Difference : $Q2DiffStr"),
-                                  Text("Percentage : $Q2PercentageStr"),
-                                  Text("Monthly Avg. : $Q2AverageStr"),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withValues(alpha: 0.5),
-                              spreadRadius: 5,
-                              blurRadius: 7,
-                              offset: const Offset(
-                                0,
-                                3,
-                              ), // changes position of shadow
-                            ),
-                          ],
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(4),
-                          ),
-                        ),
-                        triggerMode: TooltipTriggerMode.tap,
-                        child: Row(
+                        Row(
                           children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFF49136,
-                                ).withValues(alpha: 0.5),
-                                border: const Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text(
-                                  "Q2",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
+                            IconButton(
+                              onPressed: () {
+                                showPopupMenu();
+                              },
+                              icon: const Icon(Icons.filter_alt_outlined),
                             ),
-                            Container(
-                              decoration: const BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Q2PercentageStr != ""
-                                    ? Text(Q2PercentageStr)
-                                    : const Text("      "),
-                              ),
-                            ),
+                            const SizedBox(width: 5),
                           ],
                         ),
-                      ),
-                      Tooltip(
-                        preferBelow: false,
-                        richMessage: WidgetSpan(
-                          child: Column(
-                            children: [
-                              const Text(
-                                "Quarter 3 Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              Column(
-                                children: [
-                                  Text("Target : $Q3TargetStr"),
-                                  Text("Achieved : $Q3SalesStr"),
-                                  Text("Difference : $Q3DiffStr"),
-                                  Text("Percentage : $Q3PercentageStr"),
-                                  Text("Monthly Avg. : $Q3AverageStr"),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withValues(alpha: 0.5),
-                              spreadRadius: 5,
-                              blurRadius: 7,
-                              offset: const Offset(
-                                0,
-                                3,
-                              ), // changes position of shadow
-                            ),
-                          ],
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(4),
-                          ),
-                        ),
-                        triggerMode: TooltipTriggerMode.tap,
-                        child: Row(
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFE92729,
-                                ).withValues(alpha: 0.5),
-                                border: const Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text(
-                                  "Q3",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              decoration: const BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Q3PercentageStr != ""
-                                    ? Text(Q3PercentageStr)
-                                    : const Text("      "),
-                              ),
+                            SizedBox(width: 15),
+                            Text(
+                              "Production Order Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
-                      ),
-                      Tooltip(
-                        preferBelow: false,
-                        richMessage: WidgetSpan(
-                          child: Column(
-                            children: [
-                              const Text(
-                                "Quarter 4 Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              Column(
-                                children: [
-                                  Text("Target : $Q4TargetStr"),
-                                  Text("Achieved : $Q4SalesStr"),
-                                  Text("Difference : $Q4DiffStr"),
-                                  Text("Percentage : $Q4PercentageStr"),
-                                  Text("Monthly Avg. : $Q4AverageStr"),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withValues(alpha: 0.5),
-                              spreadRadius: 5,
-                              blurRadius: 7,
-                              offset: const Offset(
-                                0,
-                                3,
-                              ), // changes position of shadow
-                            ),
-                          ],
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(4),
-                          ),
-                        ),
-                        triggerMode: TooltipTriggerMode.tap,
-                        child: Row(
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF6CCC3F,
-                                ).withValues(alpha: 0.5),
-                                border: const Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateMonthlyProductionExcel(
+                                        monthData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
                                   ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateMonthlyProductionPDF(
+                                        monthData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
                                   ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text(
-                                  "Q4",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              decoration: const BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  right: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  top: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Q4PercentageStr != ""
-                                    ? Text(Q4PercentageStr)
-                                    : const Text("      "),
-                              ),
+                                ];
+                              },
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Month wise\nProduction Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
                       ],
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Months Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyProductionExcel(monthData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyProductionPDF(monthData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _monthWiseProductionAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item-wise\nProduction Orders",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Months Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemProductionExcel(itemWiseData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemProductionPDF(itemWiseData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemWiseProductionOrders(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Branch-wise\nProduction Orders",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Months Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateBranchProductionExcel(
-                                      branchWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateBranchProductionPDF(branchWiseData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _branchWiseProductionOrders(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Group Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupProductionExcel(
-                                      itemGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupProductionPDF(
-                                      itemGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemGroupWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Sub Group Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSubGroupProductionExcel(
-                                      itemSubGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSubGroupProductionPDF(
-                                      itemSubGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemSubGroupWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Order Status Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateOrderStatusProductionExcel(
-                                      statusData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateOrderStatusProductionPDF(
-                                      statusData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      SizedBox(
-                        height: 250,
-                        width: 100,
-                        child: PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback:
-                                  (FlTouchEvent event, pieTouchResponse) {},
-                            ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 1,
-                            centerSpaceRadius: 0,
-                            startDegreeOffset: 180,
-                            sections: showingSections(),
-                          ),
-                        ),
-                      ),
-                      Row(
+                    SizedBox(
+                      height: screenHeight / 2.67,
+                      child: Stack(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // for (final categoryData in receivablesCategoryList.categoryData)
-                                Column(
+                          Center(
+                            child: CircularPercentIndicator(
+                              arcType: ArcType.HALF,
+                              radius: 120.0,
+                              lineWidth: 50.0,
+                              animation: true,
+                              percent: CurrentMonthSalesPercentage / 100,
+                              center: Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 70.0),
+                                    child: Text(
+                                      CurrentMonthSalesPercentageStr,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20.0,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    CurrentMonthSalesStr,
+                                    style: const TextStyle(fontSize: 14.0),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    "${getMonthName(currentDate!.month)} Goal - $CurrentMonthTargetStr",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14.0,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              circularStrokeCap: CircularStrokeCap.butt,
+                              progressColor: Colors.red,
+                              arcBackgroundColor: Colors.grey.shade200,
+                            ),
+                          ),
+                          Positioned.fill(
+                            top: screenHeight / 4.5,
+                            left: screenHeight / 35,
+                            child: SizedBox(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: 4.0,
+                                      right: 4.0,
+                                    ),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {});
+                                      },
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 55.0,
+                                        lineWidth: 20.0,
+                                        animation: true,
+                                        percent: LastMonthPercentage / 100,
+                                        center: Column(
+                                          children: [
+                                            const SizedBox(height: 30),
+                                            Text(
+                                              LastMonthPercentageStr,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedMonthGoals
+                                                    ? 13.0
+                                                    : 12.0,
+                                                color: touchedMonthGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            Text(
+                                              LastMonthSalesStr,
+                                              style: TextStyle(
+                                                fontSize: touchedMonthGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedMonthGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Center(
+                                              child: Text(
+                                                "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: touchedMonthGoals
+                                                      ? 11.0
+                                                      : 10.0,
+                                                  color: touchedMonthGoals
+                                                      ? Colors.cyan
+                                                      : Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.red,
+                                        arcBackgroundColor:
+                                            Colors.grey.shade200,
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {});
+                                      },
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 55.0,
+                                        lineWidth: 20.0,
+                                        animation: true,
+                                        percent: CurrentQtrPercentage / 100,
+                                        center: Column(
+                                          children: [
+                                            const SizedBox(height: 30),
+                                            Text(
+                                              CurrentQtrPercentageStr,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedQuarterGoals
+                                                    ? 13.0
+                                                    : 12.0,
+                                                color: touchedQuarterGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            Text(
+                                              CurrentQtrSalesStr,
+                                              style: TextStyle(
+                                                fontSize: touchedQuarterGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedQuarterGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Text(
+                                              "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedQuarterGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedQuarterGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.orange,
+                                        arcBackgroundColor:
+                                            Colors.grey.shade200,
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {});
+                                      },
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 55.0,
+                                        lineWidth: 20.0,
+                                        animation: true,
+                                        percent: YtdPercentage / 100,
+                                        center: Column(
+                                          children: [
+                                            const SizedBox(height: 30),
+                                            Text(
+                                              YtdPercentageStr,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedYTDGoals
+                                                    ? 13.0
+                                                    : 12.0,
+                                                color: touchedYTDGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            Text(
+                                              YtdSalesStr,
+                                              style: TextStyle(
+                                                fontSize: touchedYTDGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedYTDGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Text(
+                                              "YTD \n($YtdTargetStr)",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: touchedYTDGoals
+                                                    ? 11.0
+                                                    : 10.0,
+                                                color: touchedYTDGoals
+                                                    ? Colors.cyan
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.green,
+                                        arcBackgroundColor:
+                                            Colors.grey.shade200,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    RepaintBoundary(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Tooltip(
+                              preferBelow: false,
+                              richMessage: WidgetSpan(
+                                child: Column(
                                   children: [
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFFFF9F47),
-                                      // color: getCategoryColor(categoryData.categoryId),
+                                    const Text(
+                                      "Quarter 1 Analysis",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF97D7F3),
-                                      // color: getCategoryColor(categoryData.categoryId),
+                                    Column(
+                                      children: [
+                                        Text("Target : $Q1TargetStr"),
+                                        Text("Achieved : $Q1SalesStr"),
+                                        Text("Difference : $Q1DiffStr"),
+                                        Text("Percentage : $Q1PercentageStr"),
+                                        Text("Monthly Avg. : $Q1AverageStr"),
+                                      ],
                                     ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF8F8F8F),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
                                   ],
                                 ),
-                              ],
+                              ),
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withValues(alpha: 0.5),
+                                    spreadRadius: 5,
+                                    blurRadius: 7,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                                color: Colors.white,
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
+                              ),
+                              showDuration: const Duration(seconds: 7),
+                              triggerMode: TooltipTriggerMode.tap,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xff6CCC3F,
+                                      ).withValues(alpha: 0.5),
+                                      border: const Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text(
+                                        "Q1",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Q1PercentageStr != ""
+                                          ? Text(Q1PercentageStr)
+                                          : const Text("      "),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Tooltip(
+                              preferBelow: false,
+                              richMessage: WidgetSpan(
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      "Quarter 2 Analysis",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Column(
+                                      children: [
+                                        Text("Target : $Q2TargetStr"),
+                                        Text("Achieved : $Q2SalesStr"),
+                                        Text("Difference : $Q2DiffStr"),
+                                        Text("Percentage : $Q2PercentageStr"),
+                                        Text("Monthly Avg. : $Q2AverageStr"),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withValues(alpha: 0.5),
+                                    spreadRadius: 5,
+                                    blurRadius: 7,
+                                    offset: const Offset(
+                                      0,
+                                      3,
+                                    ), // changes position of shadow
+                                  ),
+                                ],
+                                color: Colors.white,
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
+                              ),
+                              triggerMode: TooltipTriggerMode.tap,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFFF49136,
+                                      ).withValues(alpha: 0.5),
+                                      border: const Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text(
+                                        "Q2",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Q2PercentageStr != ""
+                                          ? Text(Q2PercentageStr)
+                                          : const Text("      "),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Tooltip(
+                              preferBelow: false,
+                              richMessage: WidgetSpan(
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      "Quarter 3 Analysis",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Column(
+                                      children: [
+                                        Text("Target : $Q3TargetStr"),
+                                        Text("Achieved : $Q3SalesStr"),
+                                        Text("Difference : $Q3DiffStr"),
+                                        Text("Percentage : $Q3PercentageStr"),
+                                        Text("Monthly Avg. : $Q3AverageStr"),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withValues(alpha: 0.5),
+                                    spreadRadius: 5,
+                                    blurRadius: 7,
+                                    offset: const Offset(
+                                      0,
+                                      3,
+                                    ), // changes position of shadow
+                                  ),
+                                ],
+                                color: Colors.white,
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
+                              ),
+                              triggerMode: TooltipTriggerMode.tap,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFFE92729,
+                                      ).withValues(alpha: 0.5),
+                                      border: const Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text(
+                                        "Q3",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Q3PercentageStr != ""
+                                          ? Text(Q3PercentageStr)
+                                          : const Text("      "),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Tooltip(
+                              preferBelow: false,
+                              richMessage: WidgetSpan(
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      "Quarter 4 Analysis",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Column(
+                                      children: [
+                                        Text("Target : $Q4TargetStr"),
+                                        Text("Achieved : $Q4SalesStr"),
+                                        Text("Difference : $Q4DiffStr"),
+                                        Text("Percentage : $Q4PercentageStr"),
+                                        Text("Monthly Avg. : $Q4AverageStr"),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withValues(alpha: 0.5),
+                                    spreadRadius: 5,
+                                    blurRadius: 7,
+                                    offset: const Offset(
+                                      0,
+                                      3,
+                                    ), // changes position of shadow
+                                  ),
+                                ],
+                                color: Colors.white,
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
+                              ),
+                              triggerMode: TooltipTriggerMode.tap,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF6CCC3F,
+                                      ).withValues(alpha: 0.5),
+                                      border: const Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text(
+                                        "Q4",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        right: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.black,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Q4PercentageStr != ""
+                                          ? Text(Q4PercentageStr)
+                                          : const Text("      "),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Month wise\nProduction Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFF97D7F3),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "Actual",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 5),
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFFFF9F47),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "3 Months Avg.",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateMonthlyProductionExcel(
+                                        monthData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateMonthlyProductionPDF(
+                                        monthData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _monthWiseProductionAnalysis(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Item-wise\nProduction Orders",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFF97D7F3),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "Actual",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 5),
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFFFF9F47),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "3 Months Avg.",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateItemProductionExcel(
+                                        itemWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateItemProductionPDF(
+                                        itemWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _itemWiseProductionOrders(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Branch-wise\nProduction Orders",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFF97D7F3),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "Actual",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 5),
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFFFF9F47),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "3 Months Avg.",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateBranchProductionExcel(
+                                        branchWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateBranchProductionPDF(
+                                        branchWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _branchWiseProductionOrders(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Item Group Wise Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateItemGroupProductionExcel(
+                                        itemGroupWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateItemGroupProductionPDF(
+                                        itemGroupWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _itemGroupWiseAnalysis(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Item Sub Group Wise Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateItemSubGroupProductionExcel(
+                                        itemSubGroupWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateItemSubGroupProductionPDF(
+                                        itemSubGroupWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _itemSubGroupWiseAnalysis(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Order Status Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateOrderStatusProductionExcel(
+                                        statusData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateOrderStatusProductionPDF(
+                                        statusData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16.0,
+                        right: 16.0,
+                        bottom: 16.0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          RepaintBoundary(
+                            child: SizedBox(
+                              height: 250,
+                              width: 100,
+                              child: PieChart(
+                                PieChartData(
+                                  pieTouchData: PieTouchData(
+                                    touchCallback:
+                                        (
+                                          FlTouchEvent event,
+                                          pieTouchResponse,
+                                        ) {},
+                                  ),
+                                  borderData: FlBorderData(show: false),
+                                  sectionsSpace: 1,
+                                  centerSpaceRadius: 0,
+                                  startDegreeOffset: 180,
+                                  sections: showingSections(),
+                                ),
+                              ),
                             ),
                           ),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Row(
                             children: [
-                              // for (final categoryData
-                              // in receivablesCategoryList.categoryData)
                               Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Closed",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: getCategoryColor(1),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: getCategoryColor(0),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: getCategoryColor(2),
+                                        ),
+                                        const SizedBox(height: 6),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Open",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Cancelled",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // for (final categoryData
+                                  // in receivablesCategoryList.categoryData)
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      "Closed",
+                                      textAlign: TextAlign.left,
+                                      style: TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      "Open",
+                                      textAlign: TextAlign.left,
+                                      style: TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      "Cancelled",
+                                      textAlign: TextAlign.left,
+                                      style: TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Plant wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Plant wise Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFF97D7F3),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "Actual",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 5),
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFFFF9F47),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "3 Months Avg.",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generatePlantProductionExcel(
+                                        plantWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generatePlantProductionPDF(
+                                        plantWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _plantWiseAnalysis(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Unit wise Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Months Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generatePlantProductionExcel(plantWiseData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generatePlantProductionPDF(plantWiseData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFF97D7F3),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "Actual",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 5),
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFFFF9F47),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "3 Months Avg.",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateUnitProductionExcel(
+                                        unitWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateUnitProductionPDF(
+                                        unitWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
                         ),
                       ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _unitWiseAnalysis(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 15),
+                            Text(
+                              "Shift wise Analysis",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFF97D7F3),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "Actual",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 5),
+                            Container(
+                              height: 8,
+                              width: 8,
+                              color: const Color(0xFFFF9F47),
+                            ),
+                            const SizedBox(width: 5),
+                            const Text(
+                              "3 Months Avg.",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            PopupMenuButton(
+                              onSelected: (value) {},
+                              itemBuilder: (BuildContext bc) {
+                                return [
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateShiftProductionExcel(
+                                        shiftWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                  PopupMenuItem(
+                                    onTap: () async {
+                                      await generateShiftProductionPDF(
+                                        shiftWiseData,
+                                      );
+                                    },
+                                    child: const Text("Download PDF"),
+                                  ),
+                                ];
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: RepaintBoundary(
+                        child: _shiftWiseAnalysis(screenWidth),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                      child: Divider(thickness: 2),
                     ),
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _plantWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Unit wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Months Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateUnitProductionExcel(unitWiseData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateUnitProductionPDF(unitWiseData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _unitWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Shift wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Months Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateShiftProductionExcel(shiftWiseData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateShiftProductionPDF(shiftWiseData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _shiftWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-              ],
-            ),
+              ),
+            ],
           )
         : const Center(child: CircularProgressIndicator());
   }
@@ -5668,22 +4671,12 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     });
   }
 
-  Widget _monthWiseProductionAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _monthWiseProductionAnalysis(double screenWidth) {
     double barChartWidth = 0.0;
     monthData.monthlyData.length > 6
         ? barChartWidth = screenWidth * 1.4
         : barChartWidth = screenWidth;
-    int len = monthData.monthlyData.length;
-    double maxPurchaseAmount = len > 0
-        ? monthData.monthlyData
-              .map(
-                (data) => data.production > data.target
-                    ? data.production
-                    : data.target,
-              )
-              .reduce((a, b) => a > b ? a : b)
-        : 0;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -5691,7 +4684,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: barChartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxPurchaseAmount),
+            maxY: getMaxValue(monthWiseMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -5725,42 +4718,39 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    touchedMonth = monthData
-                        .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
-                        .monthName;
-                    List months = [
-                      'Jan',
-                      'Feb',
-                      'Mar',
-                      'Apr',
-                      'May',
-                      'Jun',
-                      'Jul',
-                      'Aug',
-                      'Sep',
-                      'Oct',
-                      'Nov',
-                      'Dec',
-                    ];
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedMonthIndex = (touchedMonthIndex == 0
-                          ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-                          : 0);
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  touchedMonth = monthData
+                      .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
+                      .monthName;
+                  List months = [
+                    'Jan',
+                    'Feb',
+                    'Mar',
+                    'Apr',
+                    'May',
+                    'Jun',
+                    'Jul',
+                    'Aug',
+                    'Sep',
+                    'Oct',
+                    'Nov',
+                    'Dec',
+                  ];
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedMonthIndex = (touchedMonthIndex == 0
+                        ? months.indexOf(touchedMonth.substring(0, 3)) + 1
+                        : 0);
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -5814,8 +4804,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     );
   }
 
-  Widget _itemWiseProductionOrders() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _itemWiseProductionOrders(double screenWidth) {
     double chartWidth = 0.0;
     int len = itemWiseData.itemWiseData.length;
     if (itemWiseData.itemWiseData.length > 5) {
@@ -5831,7 +4820,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getItemMaxValue(itemWiseData),
+            maxY: getMaxValue(itemWiseMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -5865,28 +4854,25 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItemCode = touchedItemCode == ""
-                          ? itemWiseData
-                                .itemWiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .itemName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedItemCode = touchedItemCode == ""
+                        ? itemWiseData
+                              .itemWiseData[barTouchResponse.spot!.spot.x
+                                  .toInt()]
+                              .itemName
+                        : "";
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -5940,8 +4926,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     );
   }
 
-  Widget _branchWiseProductionOrders() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _branchWiseProductionOrders(double screenWidth) {
     double chartWidth = 0.0;
     int len = branchWiseData.branchWiseData.length;
     if (branchWiseData.branchWiseData.length > 5) {
@@ -5949,15 +4934,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? branchWiseData.branchWiseData
-              .map(
-                (data) => data.productionActual > data.production3Month
-                    ? data.productionActual
-                    : data.production3Month,
-              )
-              .reduce((a, b) => a > b ? a : b)
-        : 0;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -5965,7 +4942,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(branchWiseMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -5999,28 +4976,25 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedBranchName = touchedBranchName == ""
-                          ? branchWiseData
-                                .branchWiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .branchName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedBranchName = touchedBranchName == ""
+                        ? branchWiseData
+                              .branchWiseData[barTouchResponse.spot!.spot.x
+                                  .toInt()]
+                              .branchName
+                        : "";
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -6074,8 +5048,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     );
   }
 
-  Widget _itemGroupWiseAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _itemGroupWiseAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = itemGroupWiseData.itemGroupWiseData.length;
     if (itemGroupWiseData.itemGroupWiseData.length > 5) {
@@ -6083,15 +5056,6 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? itemGroupWiseData.itemGroupWiseData
-              .map(
-                (data) => data.productionActual > data.production3Month
-                    ? data.productionActual
-                    : data.production3Month,
-              )
-              .reduce((a, b) => a > b ? a : b)
-        : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -6099,7 +5063,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(itemGroupMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -6133,28 +5097,25 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItemGroup = touchedItemGroup == ""
-                          ? itemGroupWiseData
-                                .itemGroupWiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .itemGroupName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedItemGroup = touchedItemGroup == ""
+                        ? itemGroupWiseData
+                              .itemGroupWiseData[barTouchResponse.spot!.spot.x
+                                  .toInt()]
+                              .itemGroupName
+                        : "";
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -6208,8 +5169,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     );
   }
 
-  Widget _itemSubGroupWiseAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _itemSubGroupWiseAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = itemSubGroupWiseData.itemSubGroupWiseData.length;
     if (itemSubGroupWiseData.itemSubGroupWiseData.length > 5) {
@@ -6217,15 +5177,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? itemSubGroupWiseData.itemSubGroupWiseData
-              .map(
-                (data) => data.productionActual > data.production3Month
-                    ? data.productionActual
-                    : data.production3Month,
-              )
-              .reduce((a, b) => a > b ? a : b)
-        : 0;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -6233,7 +5185,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(itemSubGroupMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -6267,31 +5219,28 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItemSubGroup = touchedItemSubGroup == ""
-                          ? itemSubGroupWiseData
-                                .itemSubGroupWiseData[barTouchResponse
-                                    .spot!
-                                    .spot
-                                    .x
-                                    .toInt()]
-                                .itemSubGroupName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedItemSubGroup = touchedItemSubGroup == ""
+                        ? itemSubGroupWiseData
+                              .itemSubGroupWiseData[barTouchResponse
+                                  .spot!
+                                  .spot
+                                  .x
+                                  .toInt()]
+                              .itemSubGroupName
+                        : "";
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -6345,8 +5294,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     );
   }
 
-  Widget _plantWiseAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _plantWiseAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = plantWiseData.plantData.length;
     if (plantWiseData.plantData.length > 5) {
@@ -6354,15 +5302,6 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? plantWiseData.plantData
-              .map(
-                (data) => data.productionActual > data.production3Month
-                    ? data.productionActual
-                    : data.production3Month,
-              )
-              .reduce((a, b) => a > b ? a : b)
-        : 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -6370,7 +5309,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(plantWiseMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -6402,28 +5341,24 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedPlant = touchedPlant == ""
-                          ? plantWiseData
-                                .plantData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .plantName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedPlant = touchedPlant == ""
+                        ? plantWiseData
+                              .plantData[barTouchResponse.spot!.spot.x.toInt()]
+                              .plantName
+                        : "";
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -6477,8 +5412,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     );
   }
 
-  Widget _unitWiseAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _unitWiseAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = unitWiseData.unitData.length;
     if (unitWiseData.unitData.length > 5) {
@@ -6486,15 +5420,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? unitWiseData.unitData
-              .map(
-                (data) => data.productionActual > data.production3Month
-                    ? data.productionActual
-                    : data.production3Month,
-              )
-              .reduce((a, b) => a > b ? a : b)
-        : 0;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -6502,7 +5428,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(unitWiseMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -6534,27 +5460,24 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedUnit = touchedUnit == ""
-                          ? unitWiseData
-                                .unitData[barTouchResponse.spot!.spot.x.toInt()]
-                                .unitName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedUnit = touchedUnit == ""
+                        ? unitWiseData
+                              .unitData[barTouchResponse.spot!.spot.x.toInt()]
+                              .unitName
+                        : "";
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(
@@ -6608,8 +5531,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     );
   }
 
-  Widget _shiftWiseAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _shiftWiseAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = shiftWiseData.shiftData.length;
     if (shiftWiseData.shiftData.length > 5) {
@@ -6617,15 +5539,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? shiftWiseData.shiftData
-              .map(
-                (data) => data.productionActual > data.production3Month
-                    ? data.productionActual
-                    : data.production3Month,
-              )
-              .reduce((a, b) => a > b ? a : b)
-        : 0;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
@@ -6633,7 +5547,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         width: chartWidth,
         child: BarChart(
           BarChartData(
-            maxY: getMaxValue(maxValue),
+            maxY: getMaxValue(shiftWiseMaxY),
             titlesData: FlTitlesData(
               show: true,
               leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
@@ -6665,28 +5579,24 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
                 if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedShift = touchedShift == ""
-                          ? shiftWiseData
-                                .shiftData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .shiftName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedBranchName,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedPlant,
-                        touchedUnit,
-                        touchedShift,
-                      );
-                    }
-                  });
+                  if (flTouchEvent is FlTapUpEvent) {
+                    touchedShift = touchedShift == ""
+                        ? shiftWiseData
+                              .shiftData[barTouchResponse.spot!.spot.x.toInt()]
+                              .shiftName
+                        : "";
+                    selectedChart = barTouchResponse.spot!.spot.x;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedItemCode,
+                      touchedBranchName,
+                      touchedItemGroup,
+                      touchedItemSubGroup,
+                      touchedPlant,
+                      touchedUnit,
+                      touchedShift,
+                    );
+                  }
                 }
               },
               touchTooltipData: BarTouchTooltipData(

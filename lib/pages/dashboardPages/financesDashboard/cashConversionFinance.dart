@@ -300,7 +300,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     return formatter.format(DateTime(2000, month));
   }
 
-  Map<String, DateTime> getMonthStartEndDates(int month) {
+  Map<String, DateTime> getMonthStartEndDatesOld(int month) {
     DateTime now = DateTime.now();
 
     int currentYear = now.year;
@@ -322,6 +322,33 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     // Calculate the first and last days of the given month
     DateTime firstDayOfMonth = DateTime(yearForMonth, month, 1);
     DateTime lastDayOfMonth = DateTime(yearForMonth, month + 1, 0);
+
+    return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
+  }
+
+  Map<String, DateTime> getMonthStartEndDates(int month) {
+    DateTime now = DateTime.now();
+
+    int currentYear = now.year;
+
+    /// Normalize 13,14,15 => 1,2,3
+    int actualMonth = month > 12 ? month - 12 : month;
+
+    int yearForMonth;
+
+    if (now.month >= 1 && now.month <= 3) {
+      yearForMonth = (actualMonth >= 4 && actualMonth <= 12)
+          ? currentYear - 1
+          : currentYear;
+    } else {
+      yearForMonth = (actualMonth >= 4 && actualMonth <= 12)
+          ? currentYear
+          : currentYear + 1;
+    }
+
+    DateTime firstDayOfMonth = DateTime(yearForMonth, actualMonth, 1);
+
+    DateTime lastDayOfMonth = DateTime(yearForMonth, actualMonth + 1, 0);
 
     return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
   }
@@ -592,9 +619,15 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     List<CollectionList> collectionList = [];
 
     try {
-      final fromDate = dateFilterFlag
-          ? formatDate(fromDateFilter!)
-          : formatDate(fiscalYearStartDate!);
+      // final fromDate = dateFilterFlag
+      //     ? formatDate(fromDateFilter!)
+      //     : formatDate(fiscalYearStartDate!);
+      final DateTime fromDate = dateFilterFlag
+          ? fromDateFilter!
+          : fiscalYearStartDate!;
+      final prevDate = DateTime(fromDate.year, fromDate.month - 1, 1);
+
+      final prevStart = DateTime(prevDate.year, prevDate.month, 1);
 
       final toDate = dateFilterFlag
           ? formatDate(toDateFilter!)
@@ -602,7 +635,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
       while (true) {
         final body = {
-          "FromDate": fromDate,
+          "FromDate": formatDate(prevStart),
           "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
@@ -1185,9 +1218,14 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         continue;
       }
 
-      final dates = getMonthStartEndDates(i);
-      final start = dates['start']!;
-      final end = dates['end']!;
+      var dates = getMonthStartEndDates(i);
+      final curStart = dates['start']!;
+      final curEnd = dates['end']!;
+
+      /// Previous month directly from current month
+      final prevDate = DateTime(curStart.year, curStart.month - 1, 1);
+      final prevStart = DateTime(prevDate.year, prevDate.month, 1);
+      final prevEnd = DateTime(prevDate.year, prevDate.month + 1, 0);
 
       double calcDSO(
         List<SalesList> salesList,
@@ -1200,28 +1238,68 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
         /// SALES
         for (var s in salesList) {
-          if (s.invoiceDate.isAtLeast(start) && s.invoiceDate.isAtMost(end)) {
+          if (s.invoiceDate.isAtLeast(curStart) &&
+              s.invoiceDate.isAtMost(curEnd)) {
             salesTotal += double.tryParse(s.rowTotal) ?? 0;
           }
         }
+        double prevMthReceivableTotal = 0;
+        double prevMthCollectionTotal = 0;
 
         /// RECEIVABLE
         for (var r in receivableList) {
           final d = parseDate(r.postingDate);
-          if (d.isAtMost(end)) {
-            receivableTotal += double.tryParse(r.balance) ?? 0;
+          final balance = double.tryParse(r.balance) ?? 0;
+
+          /// Current Month
+          if (d.isAtMost(curEnd)) {
+            receivableTotal += balance;
+          }
+
+          /// Previous Month
+          if (d.isAtMost(prevEnd)) {
+            prevMthReceivableTotal += balance;
           }
         }
 
         /// COLLECTION
         for (var c in collectionList) {
           final d = parseDate(c.postingDate);
-          if (d.isAtLeast(start) && d.isAtMost(end)) {
-            collectionTotal += double.tryParse(c.total) ?? 0;
+          final total = double.tryParse(c.total) ?? 0;
+
+          /// Current Month
+          if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
+            collectionTotal += total;
+          }
+
+          /// Previous Month
+          if (d.isAtLeast(prevStart) && d.isAtMost(prevEnd)) {
+            prevMthCollectionTotal += total;
           }
         }
 
-        final avg = (receivableTotal + collectionTotal) / 2;
+        // /// RECEIVABLE
+        // for (var r in receivableList) {
+        //   final d = parseDate(r.postingDate);
+        //   if (d.isAtMost(curEnd)) {
+        //     receivableTotal += double.tryParse(r.balance) ?? 0;
+        //   }
+        // }
+
+        // /// COLLECTION
+        // for (var c in collectionList) {
+        //   final d = parseDate(c.postingDate);
+        //   if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
+        //     collectionTotal += double.tryParse(c.total) ?? 0;
+        //   }
+        // }
+
+        final avg =
+            (prevMthReceivableTotal +
+                prevMthCollectionTotal +
+                receivableTotal +
+                collectionTotal) /
+            2;
         final days = getCompletedDaysInMonth(DateTime.now().year, i);
 
         return salesTotal != 0 ? (avg / salesTotal) * days : 0;
@@ -1250,14 +1328,14 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       double paid = 0;
       for (var c in modeOfPayment) {
         final d = parseDate(c.postingDate);
-        if (d.isAtLeast(start) && d.isAtMost(end)) {
+        if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
           paid += double.tryParse(c.total) ?? 0;
         }
       }
       double payable = 0;
       for (var p in payables) {
         final d = parseDate(p.postingDate);
-        if (d.isAtMost(end)) {
+        if (d.isAtMost(curEnd)) {
           payable += double.tryParse(p.balance) ?? 0;
         }
       }
