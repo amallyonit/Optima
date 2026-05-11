@@ -1595,15 +1595,6 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         actualAmt = (double.tryParse(target.completedQty) ?? 0);
         monthlyProduction += actualAmt;
       }
-      // if (monthlyProduction > 0) {
-      //   month.add(
-      //     MonthlyProductionData(
-      //       monthName: monthName,
-      //       target: monthlyTarget,
-      //       production: monthlyProduction,
-      //     ),
-      //   );
-      // }
       final currentMonth = DateTime.now().month;
 
       /// Convert fiscal loop month
