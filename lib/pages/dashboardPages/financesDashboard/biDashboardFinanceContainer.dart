@@ -167,16 +167,6 @@ class _FinanceBIPageState extends State<FinanceBIPage> {
         pages.add(menuToPageMap[id]["page"]);
       }
     }
-    // Filter the items and pages based on the permission IDs
-    // items = [""]; // Reset items with the first entry for the loader
-    // pages = [const LoaderPage()]; // Reset pages with the loader
-
-    // for (var id in menuIds) {
-    //   if (menuToPageMap.containsKey(id)) {
-    //     items.add(menuToPageMap[id]["title"]);
-    //     pages.add(menuToPageMap[id]["page"]);
-    //   }
-    // }
 
     setState(() {});
   }
@@ -200,7 +190,7 @@ class _FinanceBIPageState extends State<FinanceBIPage> {
         ),
         elevation: 0.0,
         title: const Text(
-          "Finance Dashboard",
+          "BI Dashboard - Finance",
           style: TextStyle(
             color: Colors.blue,
             fontFamily: "Poppins",

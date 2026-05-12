@@ -7,7 +7,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
@@ -25,20 +24,11 @@ class OpenProductionOrderAnalysis extends StatefulWidget {
       _OpenProductionOrderAnalysisState();
 }
 
-class OpenProductionOrderAnalysisProvider with ChangeNotifier {
-  List<ProductionOrderList> _salesList = [];
-  List<ProductionOrderList> get salesList => _salesList;
-  void updatePurchaseList(List<ProductionOrderList> newSalesList) {
-    _salesList = newSalesList;
-    notifyListeners();
-  }
-}
-
 class _OpenProductionOrderAnalysisState
     extends State<OpenProductionOrderAnalysis> {
   late Future<void> loadDataFuture;
   final reportService = ReportService();
-
+  final http.Client client = http.Client();
   late String formattedFiscalYearStartDate;
   late String formattedQuarterStartDate;
   late String formattedQuarterLastDate;
@@ -188,7 +178,6 @@ class _OpenProductionOrderAnalysisState
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
   bool touchedYTDGoals = false;
-  bool showDrillDownChart = false;
   int touchedIndex = -1;
 
   String formatAmount(double amount) {
@@ -1328,13 +1317,9 @@ class _OpenProductionOrderAnalysisState
           "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}BicxoProductionAnalysis';
-        final response = await http.post(
+        final response = await client.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -1359,10 +1344,6 @@ class _OpenProductionOrderAnalysisState
 
       setState(() {
         production = salesList;
-        context.read<OpenProductionOrderAnalysisProvider>().updatePurchaseList(
-          salesList,
-        );
-        production = salesList.toList();
       });
     } catch (e) {
       if (kDebugMode) {
@@ -2780,7 +2761,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'ageing_openproduction_report.xlsx',
       amountColumns: [2],
       addTotalRow: true,
-      reportTitle: 'Open Production - Ageing Analysis',
+      reportTitle: 'Production - Open Ageing Analysis',
     );
   }
 
@@ -2788,7 +2769,7 @@ class _OpenProductionOrderAnalysisState
     AgeingAnalysisList ageingAnalysisList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Ageing Analysis',
+      title: 'Production - Open Ageing Analysis',
       headers: ['Ageing', 'Planned Qty.'],
       rows: ageingAnalysisList.agingData
           .map((e) => [e.group, e.receivableAmount])
@@ -2810,7 +2791,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'item_production_report.xlsx',
       amountColumns: [2, 3],
       addTotalRow: true,
-      reportTitle: 'Open Production - Item Wise Analysis',
+      reportTitle: 'Production - Open Item Wise Analysis',
     );
   }
 
@@ -2818,7 +2799,7 @@ class _OpenProductionOrderAnalysisState
     ItemWiseProductionList itemWiseProductionList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Item Wise Analysis',
+      title: 'Production - Open Item Wise Analysis',
       headers: ['Item Name', 'Production Qty.', 'Monthly Avg.'],
       rows: itemWiseProductionList.itemWiseData
           .map((e) => [e.itemName, e.productionActual, e.production3Month])
@@ -2840,7 +2821,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'itemgroup_open_production_report.xlsx',
       amountColumns: [2, 3],
       addTotalRow: true,
-      reportTitle: 'Open Production - Item Group Wise Analysis',
+      reportTitle: 'Production - Open Item Group Wise Analysis',
     );
   }
 
@@ -2848,7 +2829,7 @@ class _OpenProductionOrderAnalysisState
     ItemGroupWiseProductionList itemGroupWiseProductionList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Item Group Wise Analysis',
+      title: 'Production - Open Item Group Wise Analysis',
       headers: ['Item Group Name', 'Production Qty.', 'Monthly Avg.'],
       rows: itemGroupWiseProductionList.itemGroupWiseData
           .map((e) => [e.itemGroupName, e.productionActual, e.production3Month])
@@ -2872,7 +2853,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'item_subgroup_open_production_report.xlsx',
       amountColumns: [2, 3],
       addTotalRow: true,
-      reportTitle: 'OpenProduction - Item Sub Group Wise Analysis',
+      reportTitle: 'Production - Open Item Sub Group Wise Analysis',
     );
   }
 
@@ -2880,7 +2861,7 @@ class _OpenProductionOrderAnalysisState
     ItemSubGroupWiseProductionList itemSubGroupWiseProductionList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Item Sub Group Wise Analysis',
+      title: 'Production - Open Item Sub Group Wise Analysis',
       headers: ['Item Sub Group Name', 'Production Qty.', 'Monthly Avg.'],
       rows: itemSubGroupWiseProductionList.itemSubGroupWiseData
           .map(
@@ -2904,7 +2885,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'branch_open_production_report.xlsx',
       amountColumns: [2, 3],
       addTotalRow: true,
-      reportTitle: 'Open Production - Branch Wise Analysis',
+      reportTitle: 'Production - Open Branch Wise Analysis',
     );
   }
 
@@ -2912,7 +2893,7 @@ class _OpenProductionOrderAnalysisState
     BranchWiseProductionList branchWiseProductionList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Branch Wise Analysis',
+      title: 'Production - Open Branch Wise Analysis',
       headers: ['Branch Name', 'Production Qty.', 'Monthly Avg.'],
       rows: branchWiseProductionList.branchWiseData
           .map((e) => [e.branchName, e.productionActual, e.production3Month])
@@ -2934,7 +2915,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'plant_open_production_report.xlsx',
       amountColumns: [2, 3],
       addTotalRow: true,
-      reportTitle: 'Open Production - Plant Wise Analysis',
+      reportTitle: 'Production - Open Plant Wise Analysis',
     );
   }
 
@@ -2942,7 +2923,7 @@ class _OpenProductionOrderAnalysisState
     PlantWiseProductionList plantWiseProductionList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Plant Wise Analysis',
+      title: 'Production - Open Plant Wise Analysis',
       headers: ['Plant Name', 'Production Qty.', 'Monthly Avg.'],
       rows: plantWiseProductionList.plantData
           .map((e) => [e.plantName, e.productionActual, e.production3Month])
@@ -2964,7 +2945,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'unit_open_production_report.xlsx',
       amountColumns: [2, 3],
       addTotalRow: true,
-      reportTitle: 'Open Production - Unit Wise Analysis',
+      reportTitle: 'Production - Open Unit Wise Analysis',
     );
   }
 
@@ -2972,7 +2953,7 @@ class _OpenProductionOrderAnalysisState
     UnitWiseProductionList unitWiseProductionList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Unit Wise Analysis',
+      title: 'Production - Open Unit Wise Analysis',
       headers: ['Unit Name', 'Production Qty.', 'Monthly Avg.'],
       rows: unitWiseProductionList.unitData
           .map((e) => [e.unitName, e.productionActual, e.production3Month])
@@ -2994,7 +2975,7 @@ class _OpenProductionOrderAnalysisState
       fileName: 'shift_open_production_report.xlsx',
       amountColumns: [2, 3],
       addTotalRow: true,
-      reportTitle: 'Open Production - Shift Wise Analysis',
+      reportTitle: 'Production - Open Shift Wise Analysis',
     );
   }
 
@@ -3002,7 +2983,7 @@ class _OpenProductionOrderAnalysisState
     ShiftWiseProductionList shiftWiseProductionList,
   ) async {
     await reportService.generatePDF(
-      title: 'Open Production - Shift Wise Analysis',
+      title: 'Production - Open Shift Wise Analysis',
       headers: ['Shift Name', 'Production Qty.', 'Monthly Avg.'],
       rows: shiftWiseProductionList.shiftData
           .map((e) => [e.shiftName, e.productionActual, e.production3Month])
@@ -3024,6 +3005,12 @@ class _OpenProductionOrderAnalysisState
   }
 
   @override
+  void dispose() {
+    client.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final media = MediaQuery.sizeOf(context);
     final screenWidth = media.width;
@@ -3032,556 +3019,539 @@ class _OpenProductionOrderAnalysisState
         ? ListView(
             padding: EdgeInsets.zero,
             children: [
-              SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const SizedBox(width: 15),
-                            touchedMonthGoals == true
-                                ? Text(
-                                    "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
-                                  )
-                                : touchedQuarterGoals == true
-                                ? Text(
-                                    "$formattedQuarterStartDate - $formattedQuarterLastDate",
-                                  )
-                                : touchedYTDGoals == true
-                                ? Text(
-                                    "$formattedFiscalYearStartDate - $formattedDateNow",
-                                  )
-                                : Text(
-                                    "$formattedDateFirstOfThisMonth - $formattedDateNow",
-                                  ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: () {
-                                showPopupMenu();
-                              },
-                              icon: const Icon(Icons.filter_alt_outlined),
-                            ),
-                            const SizedBox(width: 5),
-                          ],
-                        ),
-                      ],
-                    ),
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const SizedBox(width: 15),
+                          touchedMonthGoals == true
+                              ? Text(
+                                  "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
+                                )
+                              : touchedQuarterGoals == true
+                              ? Text(
+                                  "$formattedQuarterStartDate - $formattedQuarterLastDate",
+                                )
+                              : touchedYTDGoals == true
+                              ? Text(
+                                  "$formattedFiscalYearStartDate - $formattedDateNow",
+                                )
+                              : Text(
+                                  "$formattedDateFirstOfThisMonth - $formattedDateNow",
+                                ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              showPopupMenu();
+                            },
+                            icon: const Icon(Icons.filter_alt_outlined),
+                          ),
+                          const SizedBox(width: 5),
+                        ],
+                      ),
+                    ],
+                  ),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Ageing Analysis",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateAgeingOpenProductionExcel(
-                                        ageingAnalysisList,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateAgeingOpenProductionPDF(
-                                        ageingAnalysisList,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _ageingAnalysis(screenWidth),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Item-wise\nProduction Orders",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFF97D7F3),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "Actual",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 5),
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFFFF9F47),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "3 Months Avg.",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateItemOpenProductionExcel(
-                                        itemWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateItemOpenProductionPDF(
-                                        itemWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _itemWiseProductionOrders(screenWidth),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Branch-wise\nProduction Orders",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFF97D7F3),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "Actual",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 5),
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFFFF9F47),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "3 Months Avg.",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateBranchOpenProductionExcel(
-                                        branchWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateBranchOpenProductionPDF(
-                                        branchWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _branchWiseProductionOrders(screenWidth),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Item Group Wise Analysis",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateItemGroupOpenProductionExcel(
-                                        itemGroupWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateItemGroupOpenProductionPDF(
-                                        itemGroupWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _itemGroupWiseAnalysis(screenWidth),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Item Sub Group Wise Analysis",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateItemSubGroupOpenProductionExcel(
-                                        itemSubGroupWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateItemSubGroupOpenProductionPDF(
-                                        itemSubGroupWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _itemSubGroupWiseAnalysis(screenWidth),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Ageing Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateAgeingOpenProductionExcel(
+                                      ageingAnalysisList,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateAgeingOpenProductionPDF(
+                                      ageingAnalysisList,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _ageingAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Item-wise\nProduction Orders",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text("Actual", style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 5),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "3 Months Avg.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateItemOpenProductionExcel(
+                                      itemWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateItemOpenProductionPDF(
+                                      itemWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _itemWiseProductionOrders(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Branch-wise\nProduction Orders",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text("Actual", style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 5),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "3 Months Avg.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateBranchOpenProductionExcel(
+                                      branchWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateBranchOpenProductionPDF(
+                                      branchWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _branchWiseProductionOrders(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Item Group Wise Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateItemGroupOpenProductionExcel(
+                                      itemGroupWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateItemGroupOpenProductionPDF(
+                                      itemGroupWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _itemGroupWiseAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Item Sub Group Wise Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateItemSubGroupOpenProductionExcel(
+                                      itemSubGroupWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateItemSubGroupOpenProductionPDF(
+                                      itemSubGroupWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _itemSubGroupWiseAnalysis(screenWidth),
+                  ),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Plant wise Analysis",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFF97D7F3),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "Actual",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 5),
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFFFF9F47),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "3 Months Avg.",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generatePlantOpenProductionExcel(
-                                        plantWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generatePlantOpenProductionPDF(
-                                        plantWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _plantWiseAnalysis(screenWidth),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Unit wise Analysis",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFF97D7F3),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "Actual",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 5),
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFFFF9F47),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "3 Months Avg.",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateUnitOpenProductionExcel(
-                                        unitWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateUnitOpenProductionPDF(
-                                        unitWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _unitWiseAnalysis(screenWidth),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Shift wise Analysis",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFF97D7F3),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "Actual",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 5),
-                            Container(
-                              height: 8,
-                              width: 8,
-                              color: const Color(0xFFFF9F47),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "3 Months Avg.",
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      generateShiftOpenProductionExcel(
-                                        shiftWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                  PopupMenuItem(
-                                    onTap: () async {
-                                      await generateShiftOpenProductionPDF(
-                                        shiftWiseData,
-                                      );
-                                    },
-                                    child: const Text("Download PDF"),
-                                  ),
-                                ];
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _shiftWiseAnalysis(screenWidth),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                  ],
-                ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Plant wise Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text("Actual", style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 5),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "3 Months Avg.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generatePlantOpenProductionExcel(
+                                      plantWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generatePlantOpenProductionPDF(
+                                      plantWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _plantWiseAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Unit wise Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text("Actual", style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 5),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "3 Months Avg.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateUnitOpenProductionExcel(
+                                      unitWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateUnitOpenProductionPDF(
+                                      unitWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _unitWiseAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Shift wise Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text("Actual", style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 5),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "3 Months Avg.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    generateShiftOpenProductionExcel(
+                                      shiftWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () async {
+                                    await generateShiftOpenProductionPDF(
+                                      shiftWiseData,
+                                    );
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _shiftWiseAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                ],
               ),
             ],
           )
@@ -3598,9 +3568,11 @@ class _OpenProductionOrderAnalysisState
       ],
     ).then((value) {
       if (value == '1') {
-        setState(() {
-          loadDataFuture = removeFilter();
-        });
+        loadDataFuture = removeFilter();
+
+        if (mounted) {
+          setState(() {});
+        }
       }
     });
   }
@@ -3665,7 +3637,6 @@ class _OpenProductionOrderAnalysisState
                                 .group
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
                       loadDataWithFilter(
                         touchedAgingCatg,
                         touchedItemCode,
@@ -3784,7 +3755,6 @@ class _OpenProductionOrderAnalysisState
                                 .itemName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
                       loadDataWithFilter(
                         touchedAgingCatg,
                         touchedItemCode,
@@ -3858,113 +3828,118 @@ class _OpenProductionOrderAnalysisState
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(branchWiseMaxY),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesBranchWiseProductionOrders,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _branchWiseProductionOrdersChartData(
-              branchWiseData.branchWiseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  if (flTouchEvent is FlTapUpEvent) {
-                    touchedBranchName = touchedBranchName == ""
-                        ? branchWiseData
-                              .branchWiseData[barTouchResponse.spot!.spot.x
-                                  .toInt()]
-                              .branchName
-                        : "";
-                    selectedChart = barTouchResponse.spot!.spot.x;
-                    showDrillDownChart = true;
-                    loadDataWithFilter(
-                      touchedAgingCatg,
-                      touchedItemCode,
-                      touchedBranchName,
-                      touchedItemGroup,
-                      touchedItemSubGroup,
-                      touchedPlant,
-                      touchedUnit,
-                      touchedShift,
-                    );
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(branchWiseMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${branchWiseData.branchWiseData[grpIndex].branchName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Planned Qty. : ${formatAmount(branchWiseData.branchWiseData[grpIndex].productionActual)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Monthly Avg. : ${formatAmount(branchWiseData.branchWiseData[grpIndex].production3Month)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesBranchWiseProductionOrders,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _branchWiseProductionOrdersChartData(
+                branchWiseData.branchWiseData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    if (flTouchEvent is FlTapUpEvent) {
+                      touchedBranchName = touchedBranchName == ""
+                          ? branchWiseData
+                                .branchWiseData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .branchName
+                          : "";
+                      selectedChart = barTouchResponse.spot!.spot.x;
+                      loadDataWithFilter(
+                        touchedAgingCatg,
+                        touchedItemCode,
+                        touchedBranchName,
+                        touchedItemGroup,
+                        touchedItemSubGroup,
+                        touchedPlant,
+                        touchedUnit,
+                        touchedShift,
+                      );
+                    }
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${branchWiseData.branchWiseData[grpIndex].branchName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Planned Qty. : ${formatAmount(branchWiseData.branchWiseData[grpIndex].productionActual)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Monthly Avg. : ${formatAmount(branchWiseData.branchWiseData[grpIndex].production3Month)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -4034,7 +4009,6 @@ class _OpenProductionOrderAnalysisState
                                 .itemGroupName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
                       loadDataWithFilter(
                         touchedAgingCatg,
                         touchedItemCode,
@@ -4165,7 +4139,6 @@ class _OpenProductionOrderAnalysisState
                                 .itemSubGroupName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
                       loadDataWithFilter(
                         touchedAgingCatg,
                         touchedItemCode,
@@ -4291,7 +4264,6 @@ class _OpenProductionOrderAnalysisState
                                 .plantName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
                       loadDataWithFilter(
                         touchedAgingCatg,
                         touchedItemCode,
@@ -4416,7 +4388,6 @@ class _OpenProductionOrderAnalysisState
                                 .unitName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
                       loadDataWithFilter(
                         touchedAgingCatg,
                         touchedItemCode,
@@ -4542,7 +4513,6 @@ class _OpenProductionOrderAnalysisState
                                 .shiftName
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
                       loadDataWithFilter(
                         touchedAgingCatg,
                         touchedItemCode,

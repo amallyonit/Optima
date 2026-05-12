@@ -18,9 +18,6 @@ import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/sto
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/summaryOfRawMaterials.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/dayWiseProductionReportwrtMPPresent.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/jobCardEntryForAlternateMaterials.dart';
-import 'package:optima/pages/dashboardPages/productionDashboardBI/openProductionOrderAnalysis.dart';
-import 'package:optima/pages/dashboardPages/productionDashboardBI/productAnalysis.dart';
-import 'package:optima/pages/dashboardPages/productionDashboardBI/produtionOrdersPendingReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/salesOrderVsProductionCompletedReport.dart';
 import 'package:optima/pages/dashboardPages/purchaseDashboard/procurementLeadTimeAnalysis.dart';
 import 'package:optima/pages/dashboardPages/purchaseDashboard/purchasePriceAnalysis.dart';
@@ -127,14 +124,6 @@ class AppProviders {
     ChangeNotifierProvider(
       create: (_) => InventoryListInventoryLevelAnalysisProvider(),
     ),
-    ChangeNotifierProvider(
-      create: (_) => OpenProductionOrderAnalysisProvider(),
-    ),
-    ChangeNotifierProvider(create: (_) => ConsumptionListProvider()),
-    ChangeNotifierProvider(create: (_) => ProductionListProvider()),
-    ChangeNotifierProvider(
-      create: (_) => ProductionOrderSPendingReportProvider(),
-    ),
     ChangeNotifierProvider(create: (_) => SalesOrderVsProductionProvider()),
     ChangeNotifierProvider(create: (_) => DayWiseProductionwrtMPProvider()),
     ChangeNotifierProvider(create: (_) => JobCardEntryProvider()),
@@ -154,7 +143,6 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => CashConversionSalesProvider()),
     ChangeNotifierProvider(create: (_) => CashConversionCollectionProvider()),
     ChangeNotifierProvider(create: (_) => NotificationListProvider()),
-    ChangeNotifierProvider(create: (_) => PendingOrderExcelProvider()),
     ChangeNotifierProvider(create: (_) => MonthlyDebtorAgingProvider()),
     ChangeNotifierProvider(create: (_) => MonthlyCollectionListProvider()),
     ChangeNotifierProvider(create: (_) => DailyCostingSalesProvider()),

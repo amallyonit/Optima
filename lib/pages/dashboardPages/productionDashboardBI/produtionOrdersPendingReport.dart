@@ -1,27 +1,18 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
+import '../ReportService.dart';
 
 class ProductionOrdersPendingReport extends StatefulWidget {
   const ProductionOrdersPendingReport({super.key});
@@ -31,64 +22,6 @@ class ProductionOrdersPendingReport extends StatefulWidget {
       _ProductionOrdersPendingReportState();
 }
 
-late Future<void> loadDataFuture;
-
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
-int currentQuarter = 0;
-
-DailyOrderQtyAnalysisList dailyData = DailyOrderQtyAnalysisList(dailyData: []);
-HospitalWiseAnalysisList hospitalData = HospitalWiseAnalysisList(
-  hospitalData: [],
-);
-ProductWiseAnalysisList productData = ProductWiseAnalysisList(productData: []);
-PriorityWiseAnalysisList priorityList = PriorityWiseAnalysisList(
-  priorityData: [],
-);
-
-List<SODetailsList> pendingProduction = [];
-List<PendingOrderList> pendingOrders = [];
-List<Users> usersList = [];
-
-double orderedQtyHeader = 0;
-double pendingQtyHeader = 0;
-double dispatchedQtyHeader = 0;
-
-bool chartDataLoaded = false;
-String touchedDay = "";
-String touchedItem = "";
-String touchedHospital = "";
-
-class ProductionOrderSPendingReportProvider with ChangeNotifier {
-  List<SODetailsList> _soList = [];
-  List<SODetailsList> get soList => _soList;
-  void updateSalesOrder(List<SODetailsList> newSalesOrderList) {
-    _soList = newSalesOrderList;
-    notifyListeners();
-  }
-}
-
-class PendingOrderExcelProvider with ChangeNotifier {
-  List<PendingOrderList> _soList = [];
-  List<PendingOrderList> get soList => _soList;
-  void updateSalesOrder(List<PendingOrderList> newSalesOrderList) {
-    _soList = newSalesOrderList;
-    notifyListeners();
-  }
-}
-
 class _ProductionOrdersPendingReportState
     extends State<ProductionOrdersPendingReport> {
   bool touchedMonthGoals = false;
@@ -96,6 +29,94 @@ class _ProductionOrdersPendingReportState
   bool touchedYTDGoals = false;
   bool showDrillDownChart = false;
   int touchedIndex = -1;
+  late Future<void> loadDataFuture;
+  final reportService = ReportService();
+  DateTime? currentDate;
+  DateTime? currentMonthFromDate;
+  DateTime? currentMonthToDate;
+  DateTime? lastMonthFromDate;
+  DateTime? lastMonthToDate;
+  DateTime? currentQuarterFromDate;
+  DateTime? currentQuarterToDate;
+  DateTime? lastQuarterFromDate;
+  DateTime? lastQuarterToDate;
+  DateTime? fiscalYearStartDate;
+  DateTime? prevFiscalYearStartDate;
+  DateTime? prevFiscalYearEndDate;
+  String financialYear = "";
+  String prevFinancialYear = "";
+  int currentQuarter = 0;
+
+  DailyOrderQtyAnalysisList dailyData = DailyOrderQtyAnalysisList(
+    dailyData: [],
+  );
+  HospitalWiseAnalysisList hospitalData = HospitalWiseAnalysisList(
+    hospitalData: [],
+  );
+  ProductWiseAnalysisList productData = ProductWiseAnalysisList(
+    productData: [],
+  );
+  PriorityWiseAnalysisList priorityList = PriorityWiseAnalysisList(
+    priorityData: [],
+  );
+
+  List<SODetailsList> pendingProduction = [];
+  List<PendingOrderList> pendingOrders = [];
+  List<Users> usersList = [];
+
+  double orderedQtyHeader = 0;
+  double pendingQtyHeader = 0;
+  double dispatchedQtyHeader = 0;
+
+  bool chartDataLoaded = false;
+  String touchedDay = "";
+  String touchedItem = "";
+  String touchedHospital = "";
+
+  final http.Client client = http.Client();
+  late String formattedFiscalYearStartDate;
+  late String formattedQuarterStartDate;
+  late String formattedQuarterLastDate;
+  late String formattedDateNow;
+  late String formattedDateFirstOfLastMonth;
+  late String formattedDateLastOfLastMonth;
+  late String formattedDateFirstOfThisMonth;
+
+  double dailyMaxY = 0;
+  double hospitalMaxY = 0;
+  double productMaxY = 0;
+
+  void prepareFormattedDates() {
+    final formatter = DateFormat('dd/MM/yy');
+
+    formattedFiscalYearStartDate = fiscalYearStartDate != null
+        ? formatter.format(fiscalYearStartDate!)
+        : '';
+
+    formattedQuarterStartDate = currentQuarterFromDate != null
+        ? formatter.format(currentQuarterFromDate!)
+        : '';
+
+    formattedQuarterLastDate = currentQuarterToDate != null
+        ? formatter.format(currentQuarterToDate!)
+        : '';
+
+    formattedDateNow = currentDate != null
+        ? formatter.format(currentDate!)
+        : '';
+
+    formattedDateFirstOfLastMonth = lastMonthFromDate != null
+        ? formatter.format(lastMonthFromDate!)
+        : '';
+
+    formattedDateLastOfLastMonth = lastMonthToDate != null
+        ? formatter.format(lastMonthToDate!)
+        : '';
+
+    formattedDateFirstOfThisMonth = currentMonthFromDate != null
+        ? formatter.format(currentMonthFromDate!)
+        : '';
+  }
 
   double getMaxValue(double maxValue) {
     double divVal = 0;
@@ -137,6 +158,41 @@ class _ProductionOrdersPendingReportState
     return maxY;
   }
 
+  void prepareMaxValues() {
+    /// DAY WISE
+    dailyMaxY = dailyData.dailyData.isNotEmpty
+        ? dailyData.dailyData
+              .map(
+                (data) => data.orderedQty > data.dispatchedQty
+                    ? data.orderedQty
+                    : data.dispatchedQty,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    /// HOSPITAL WISE
+    hospitalMaxY = hospitalData.hospitalData.isNotEmpty
+        ? hospitalData.hospitalData
+              .map(
+                (data) => data.orderedQty > data.dispatchedQty
+                    ? data.orderedQty
+                    : data.dispatchedQty,
+              )
+              .reduce((a, b) => a > b ? a : b) // Find the max value
+        : 0;
+
+    /// PRODUCT WISE
+    productMaxY = productData.productData.isNotEmpty
+        ? productData.productData
+              .map(
+                (data) => data.orderedQty > data.dispatchedQty
+                    ? data.orderedQty
+                    : data.dispatchedQty,
+              )
+              .reduce((a, b) => a > b ? a : b) // Find the max value
+        : 0;
+  }
+
   String formatAmount(double amount) {
     if (amount >= 10000000) {
       // Amount in crores
@@ -150,19 +206,6 @@ class _ProductionOrdersPendingReportState
     }
   }
 
-  double convertAmount(double amount) {
-    if (amount >= 10000000) {
-      // Amount in crores
-      return double.parse((amount / 10000000).toStringAsFixed(2));
-    } else if (amount >= 100000) {
-      // Amount in lakhs
-      return double.parse((amount / 100000).toStringAsFixed(2));
-    } else {
-      // Amount in thousands
-      return double.parse((amount / 1000).toStringAsFixed(2));
-    }
-  }
-
   Color getCategoryColor(int categoryId) {
     switch (categoryId) {
       case 0:
@@ -173,16 +216,6 @@ class _ProductionOrdersPendingReportState
         return const Color(0xFF6CCC3F);
       default:
         return const Color(0xFF6CCC3F);
-    }
-  }
-
-  String formatFinanceAmount(double amount) {
-    if (amount >= 1000000000) {
-      return "${(amount / 1000000000).toStringAsFixed(2)} B";
-    } else if (amount >= 1000000) {
-      return "${(amount / 1000000).toStringAsFixed(2)} M";
-    } else {
-      return '${(amount / 1000).toStringAsFixed(2)} K';
     }
   }
 
@@ -276,15 +309,19 @@ class _ProductionOrdersPendingReportState
       case 1:
         currentQuarterFromDate = DateTime(now.year, 4, 1);
         currentQuarterToDate = DateTime(now.year, 6, 30);
+        break;
       case 2:
         currentQuarterFromDate = DateTime(now.year, 7, 1);
         currentQuarterToDate = DateTime(now.year, 9, 30);
+        break;
       case 3:
         currentQuarterFromDate = DateTime(now.year, 10, 1);
         currentQuarterToDate = DateTime(now.year, 12, 31);
+        break;
       case 4:
         currentQuarterFromDate = DateTime(now.year, 1, 1);
         currentQuarterToDate = DateTime(now.year, 3, 31);
+        break;
       default:
         throw Error();
     }
@@ -311,6 +348,11 @@ class _ProductionOrdersPendingReportState
   String formatDate(DateTime date) {
     final formatter = DateFormat('yyyyMMdd');
     return formatter.format(date);
+  }
+
+  final DateFormat appDateFormat = DateFormat('dd/MM/yyyy');
+  DateTime parseAppDate(String date) {
+    return appDateFormat.parse(date);
   }
 
   Map<String, DateTime> getMonthStartEndDates(int month) {
@@ -431,8 +473,8 @@ class _ProductionOrdersPendingReportState
 
       final sectionData = PieChartSectionData(
         color: getCategoryColor(categoryData.priorityId),
-        value: categoryData.priorityPercentage,
-        title: '${categoryData.priorityPercentage.toStringAsFixed(2)} %',
+        value: categoryData.priorityPercentage.abs(),
+        title: '${categoryData.priorityPercentage.abs().toStringAsFixed(2)} %',
         radius: radius,
         titleStyle: TextStyle(
           fontSize: fontSize,
@@ -448,79 +490,79 @@ class _ProductionOrdersPendingReportState
   List<BarChartGroupData> _dailyOrderQtyChartData(
     List<DailyOrderQtyAnalysisData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.orderedQty,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.dispatchedQty,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.orderedQty,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.dispatchedQty,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _hospitalWiseAnalysisChartData(
     List<HospitalWiseAnalysisData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.orderedQty,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.dispatchedQty,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.orderedQty,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.dispatchedQty,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   List<BarChartGroupData> _productWiseQtyAnalysisChartData(
     List<ProductWiseAnalysisData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.orderedQty,
-                  show: true,
-                  color: const Color(0xFFFF9F47),
-                ),
-                color: const Color(0xFF97D7F3),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.dispatchedQty,
-                width: 30,
-              ),
-            ],
+    return List.generate(data.length, (index) {
+      final chartData = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            backDrawRodData: BackgroundBarChartRodData(
+              fromY: 0,
+              toY: chartData.orderedQty,
+              show: true,
+              color: const Color(0xFFFF9F47),
+            ),
+            color: const Color(0xFF97D7F3),
+            borderRadius: BorderRadius.zero,
+            toY: chartData.dispatchedQty,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      );
+    });
   }
 
   Future<void> _loadPendingProductionOrders(
@@ -541,13 +583,9 @@ class _ProductionOrdersPendingReportState
           "sapToken": DataManager.readSapToken(),
         };
         const apiUrl = '${ApiHelper.baseUrl}CRM_SOList';
-        final response = await http.post(
+        final response = await client.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -571,26 +609,10 @@ class _ProductionOrdersPendingReportState
       } while (fetchedCount == limit);
 
       setState(() {
-        context.read<ProductionOrderSPendingReportProvider>().updateSalesOrder(
-          soDetailList,
-        );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          pendingProduction = soDetailList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          pendingProduction = soDetailList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          pendingProduction = soDetailList.toList();
-        } else {
-          pendingProduction = soDetailList.toList();
-        }
+        pendingProduction = soDetailList.toList();
 
         var productSalesList = pendingProduction.where((target) {
-          DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
+          DateTime invoiceDate = parseAppDate(target.poDate);
           return invoiceDate.isAtLeast(fiscalYearStartDate!) &&
               invoiceDate.isAtMost(currentDate!);
         });
@@ -637,7 +659,7 @@ class _ProductionOrdersPendingReportState
         var body = {"WareHouse": "BANGALWH"};
         const apiUrl = '${ApiHelper.baseUrl}GetProductionOrderPending';
 
-        final response = await http.post(
+        final response = await client.post(
           Uri.parse(apiUrl),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
@@ -662,23 +684,7 @@ class _ProductionOrdersPendingReportState
       } while (fetchedCount == limit);
 
       setState(() {
-        context.read<PendingOrderExcelProvider>().updateSalesOrder(
-          soDetailList,
-        );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          pendingOrders = soDetailList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          pendingOrders = soDetailList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          pendingOrders = soDetailList.toList();
-        } else {
-          pendingOrders = soDetailList.toList();
-        }
+        pendingOrders = soDetailList.toList();
       });
     } catch (e) {
       if (mounted) {
@@ -693,46 +699,50 @@ class _ProductionOrdersPendingReportState
   }
 
   Future<void> _loadDailyOrderQtyAnalysis() async {
-    List<DailyOrderQtyAnalysisData> dataList = [];
-    String date = "";
-    double dispatchedQty = 0;
-    double orderedQty = 0;
-    double pendingQty = 0;
+    Map<String, DailyOrderQtyAnalysisData> groupedData = {};
+
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       DateTime.now().month,
     );
+
     var todayTarget = pendingProduction.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.poDate);
+      DateTime dueon = parseAppDate(target.poDate);
+
       return dueon.isAtLeast(monthDates['start']!) &&
           dueon.isAtMost(monthDates['end']!);
     });
-    Set<String> processedDates = {};
-    for (var target in todayTarget.toList()) {
-      if (!processedDates.contains(target.poDate)) {
-        String poDate = target.poDate;
-        date = poDate;
-        double ordered = double.tryParse(target.orderQuantity) ?? 0;
-        orderedQty += ordered;
-        double dispatched = double.tryParse(target.dispatchQuantity) ?? 0;
-        dispatchedQty += dispatched;
-        double pending = double.tryParse(target.pendingQuantity) ?? 0;
-        pendingQty += pending;
-        dataList.add(
-          DailyOrderQtyAnalysisData(
-            date: date,
-            orderedQty: orderedQty,
-            dispatchedQty: dispatchedQty,
-            pendingQty: pendingQty,
-          ),
+
+    for (var target in todayTarget) {
+      final date = target.poDate;
+
+      final ordered = double.tryParse(target.orderQuantity) ?? 0;
+
+      final dispatched = double.tryParse(target.dispatchQuantity) ?? 0;
+
+      final pending = double.tryParse(target.pendingQuantity) ?? 0;
+
+      if (groupedData.containsKey(date)) {
+        final existing = groupedData[date]!;
+
+        groupedData[date] = DailyOrderQtyAnalysisData(
+          date: existing.date,
+          orderedQty: existing.orderedQty + ordered,
+          dispatchedQty: existing.dispatchedQty + dispatched,
+          pendingQty: existing.pendingQty + pending,
         );
-        processedDates.add(target.poDate);
+      } else {
+        groupedData[date] = DailyOrderQtyAnalysisData(
+          date: date,
+          orderedQty: ordered,
+          dispatchedQty: dispatched,
+          pendingQty: pending,
+        );
       }
     }
-    date = "";
-    orderedQty = 0;
-    dispatchedQty = 0;
-    pendingQty = 0;
-    dailyData = DailyOrderQtyAnalysisList(dailyData: dataList);
+
+    dailyData = DailyOrderQtyAnalysisList(
+      dailyData: groupedData.values.toList(),
+    );
   }
 
   Future<void> _loadHospitalWiseAnalysis(
@@ -749,13 +759,13 @@ class _ProductionOrdersPendingReportState
         DateTime.now().month,
       );
       productSalesList = pendingProduction.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
+        DateTime invoiceDate = parseAppDate(target.poDate);
         return (invoiceDate.isAtLeast(monthDates['start']!) &&
             invoiceDate.isAtMost(monthDates['end']!));
       });
     } else {
       productSalesList = pendingProduction.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
+        DateTime invoiceDate = parseAppDate(target.poDate);
         return (invoiceDate.isAtLeast(
               DateFormat('dd/MM/yyyy').parse(selectedDay),
             ) &&
@@ -763,7 +773,7 @@ class _ProductionOrdersPendingReportState
       });
     }
     productSalesList = filterProductionList(
-      productSalesList.cast<SODetailsList>().toList(),
+      List<SODetailsList>.from(productSalesList),
       itemCode: itemCode,
       hospitalCode: hospitalCode,
     );
@@ -814,13 +824,13 @@ class _ProductionOrdersPendingReportState
         DateTime.now().month,
       );
       productSalesList = pendingProduction.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
+        DateTime invoiceDate = parseAppDate(target.poDate);
         return (invoiceDate.isAtLeast(monthDates['start']!) &&
             invoiceDate.isAtMost(monthDates['end']!));
       });
     } else {
       productSalesList = pendingProduction.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
+        DateTime invoiceDate = parseAppDate(target.poDate);
         return (invoiceDate.isAtLeast(
               DateFormat('dd/MM/yyyy').parse(selectedDay),
             ) &&
@@ -829,7 +839,7 @@ class _ProductionOrdersPendingReportState
     }
 
     productSalesList = filterProductionList(
-      productSalesList.cast<SODetailsList>().toList(),
+      List<SODetailsList>.from(productSalesList),
       itemCode: itemCode,
       hospitalCode: hospitalCode,
     );
@@ -880,13 +890,13 @@ class _ProductionOrdersPendingReportState
         DateTime.now().month,
       );
       productSalesList = pendingProduction.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
+        DateTime invoiceDate = parseAppDate(target.poDate);
         return (invoiceDate.isAtLeast(monthDates['start']!) &&
             invoiceDate.isAtMost(monthDates['end']!));
       });
     } else {
       productSalesList = pendingProduction.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.poDate);
+        DateTime invoiceDate = parseAppDate(target.poDate);
         return (invoiceDate.isAtLeast(
               DateFormat('dd/MM/yyyy').parse(selectedDay),
             ) &&
@@ -895,7 +905,7 @@ class _ProductionOrdersPendingReportState
     }
 
     productSalesList = filterProductionList(
-      productSalesList.cast<SODetailsList>().toList(),
+      List<SODetailsList>.from(productSalesList),
       itemCode: itemCode,
       hospitalCode: hospitalCode,
     );
@@ -960,6 +970,11 @@ class _ProductionOrdersPendingReportState
     await _loadProductWiseAnalysis("", "", "");
     await _loadPriorityWiseAnalysis("", "", "");
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   List<SODetailsList> filterProductionList(
@@ -992,10 +1007,16 @@ class _ProductionOrdersPendingReportState
     touchedYTDGoals = false;
     clearVariables();
     LoadDates();
+    prepareFormattedDates();
     await _loadHospitalWiseAnalysis("", "", "");
     await _loadProductWiseAnalysis("", "", "");
     await _loadPriorityWiseAnalysis("", "", "");
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> loadDataWithFilter(
@@ -1005,10 +1026,16 @@ class _ProductionOrdersPendingReportState
   ) async {
     clearVariablesForFilter();
     LoadDates();
+    prepareFormattedDates();
     await _loadHospitalWiseAnalysis(selectedDay, hospitalCode, itemCode);
     await _loadProductWiseAnalysis(selectedDay, hospitalCode, itemCode);
     await _loadPriorityWiseAnalysis(selectedDay, hospitalCode, itemCode);
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void clearVariables() {
@@ -1032,1253 +1059,702 @@ class _ProductionOrdersPendingReportState
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateDailyOrderExcel(
     DailyOrderQtyAnalysisList dailyOrderQtyAnalysisList,
   ) async {
-    double totalOrderedQty = 0, totalDispatchedQty = 0, totalPendingQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Date', 'Ordered Qty.', 'Dispatched Qty.', 'Pending Qty.']),
-      );
-      for (var dailyData in dailyOrderQtyAnalysisList.dailyData) {
-        sheet.appendRow(
-          toCellRow([
-            dailyData.date,
-            dailyData.orderedQty,
-            dailyData.dispatchedQty,
-            dailyData.pendingQty,
-          ]),
-        );
-        totalOrderedQty += dailyData.orderedQty;
-        totalDispatchedQty += dailyData.dispatchedQty;
-        totalPendingQty += dailyData.pendingQty;
-      }
-      sheet.appendRow(
-        toCellRow([
-          "Total",
-          totalOrderedQty,
-          totalDispatchedQty,
-          totalPendingQty,
-        ]),
-      );
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('daily_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'DailyProduction',
+      headers: ['Date', 'Ordered Qty.', 'Dispatched Qty.', 'Pending Qty.'],
+      rows: dailyOrderQtyAnalysisList.dailyData
+          .map((e) => [e.date, e.orderedQty, e.dispatchedQty, e.pendingQty])
+          .toList(),
+      fileName: 'daily_order_report.xlsx',
+      amountColumns: [2, 3, 4],
+      addTotalRow: true,
+      reportTitle: 'Production - Daily Production Analysis',
+    );
   }
 
   Future<void> generateDailyOrderPDF(
     DailyOrderQtyAnalysisList dailyOrderQtyAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Daily Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Date',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ordered Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Dispatched Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Pending Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var dailyData in dailyOrderQtyAnalysisList.dailyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        dailyData.date,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        dailyData.orderedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        dailyData.dispatchedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        dailyData.pendingQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'DailyProduction',
+      headers: ['Date', 'Ordered Qty.', 'Dispatched Qty.', 'Pending Qty.'],
+      rows: dailyOrderQtyAnalysisList.dailyData
+          .map((e) => [e.date, e.orderedQty, e.dispatchedQty, e.pendingQty])
+          .toList(),
+      fileName: 'daily_order_report.pdf',
+      amountColumns: [2, 3, 4],
+    );
   }
 
   Future<void> generateHospitalwiseOrderExcel(
     HospitalWiseAnalysisList hospitalWiseAnalysisList,
   ) async {
-    double totalOrderedQty = 0, totalDispatchedQty = 0, totalPendingQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Hospital Name',
-          'Ordered Qty.',
-          'Dispatched Qty.',
-          'Pending Qty.',
-        ]),
-      );
-      for (var data in hospitalWiseAnalysisList.hospitalData) {
-        sheet.appendRow(
-          toCellRow([
-            data.hospitalName,
-            data.orderedQty,
-            data.dispatchedQty,
-            data.pendingQty,
-          ]),
-        );
-        totalOrderedQty += data.orderedQty;
-        totalDispatchedQty += data.dispatchedQty;
-        totalPendingQty += data.pendingQty;
-      }
-      sheet.appendRow(
-        toCellRow([
-          "Total",
-          totalOrderedQty,
-          totalDispatchedQty,
-          totalPendingQty,
-        ]),
-      );
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('hospitalwise_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/hospitalwise_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'HospitalWiseProduction',
+      headers: ['Hospital', 'Ordered Qty.', 'Dispatched Qty.', 'Pending Qty.'],
+      rows: hospitalWiseAnalysisList.hospitalData
+          .map(
+            (e) => [
+              e.hospitalName,
+              e.orderedQty,
+              e.dispatchedQty,
+              e.pendingQty,
+            ],
+          )
+          .toList(),
+      fileName: 'hospitalwise_order_report.xlsx',
+      amountColumns: [2, 3, 4],
+      addTotalRow: true,
+      reportTitle: 'Production - Hospital Wise Production Analysis',
+    );
   }
 
   Future<void> generateHospitalwiseOrderPDF(
     HospitalWiseAnalysisList hospitalWiseAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Hospitalwise Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Hospital Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ordered Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Dispatched Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Pending Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in hospitalWiseAnalysisList.hospitalData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.hospitalName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.orderedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.dispatchedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.pendingQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/hospital_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'HospitalWiseProduction',
+      headers: ['Hospital', 'Ordered Qty.', 'Dispatched Qty.', 'Pending Qty.'],
+      rows: hospitalWiseAnalysisList.hospitalData
+          .map(
+            (e) => [
+              e.hospitalName,
+              e.orderedQty,
+              e.dispatchedQty,
+              e.pendingQty,
+            ],
+          )
+          .toList(),
+      fileName: 'hospitalwise_order_report.pdf',
+      amountColumns: [2, 3, 4],
+    );
   }
 
   Future<void> generateProductwiseOrderExcel(
     ProductWiseAnalysisList productWiseAnalysisList,
   ) async {
-    double totalOrderedQty = 0, totalDispatchedQty = 0, totalPendingQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Product Name',
-          'Ordered Qty.',
-          'Dispatched Qty.',
-          'Pending Qty.',
-        ]),
-      );
-      for (var data in productWiseAnalysisList.productData) {
-        sheet.appendRow(
-          toCellRow([
-            data.productName,
-            data.orderedQty,
-            data.dispatchedQty,
-            data.pendingQty,
-          ]),
-        );
-        totalOrderedQty += data.orderedQty;
-        totalDispatchedQty += data.dispatchedQty;
-        totalPendingQty += data.pendingQty;
-      }
-      sheet.appendRow(
-        toCellRow([
-          "Total",
-          totalOrderedQty,
-          totalDispatchedQty,
-          totalPendingQty,
-        ]),
-      );
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('productwise_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/productwise_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ProductWiseProduction',
+      headers: ['Product', 'Ordered Qty.', 'Dispatched Qty.', 'Pending Qty.'],
+      rows: productWiseAnalysisList.productData
+          .map(
+            (e) => [e.productName, e.orderedQty, e.dispatchedQty, e.pendingQty],
+          )
+          .toList(),
+      fileName: 'productwise_order_report.xlsx',
+      amountColumns: [2, 3, 4],
+      addTotalRow: true,
+      reportTitle: 'Production - Product Wise Production Analysis',
+    );
   }
 
   Future<void> generateProductwiseOrderPDF(
     ProductWiseAnalysisList productWiseAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Productwise Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Product Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Ordered Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Dispatched Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Pending Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in productWiseAnalysisList.productData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.productName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.orderedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.dispatchedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.pendingQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/product_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ProductWiseProduction',
+      headers: ['Product', 'Ordered Qty.', 'Dispatched Qty.', 'Pending Qty.'],
+      rows: productWiseAnalysisList.productData
+          .map(
+            (e) => [e.productName, e.orderedQty, e.dispatchedQty, e.pendingQty],
+          )
+          .toList(),
+      fileName: 'productwise_order_report.pdf',
+      amountColumns: [2, 3, 4],
+    );
   }
 
   Future<void> generatePrioritywiseOrderExcel(
     PriorityWiseAnalysisList priorityWiseAnalysisList,
   ) async {
-    double totalPriorityQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Priority', 'Priority Qty.', 'Priority %']));
-      for (var data in priorityWiseAnalysisList.priorityData) {
-        sheet.appendRow(
-          toCellRow([
-            data.priorityName,
-            data.priorityQty,
-            data.priorityPercentage,
-          ]),
-        );
-        totalPriorityQty += data.priorityQty;
-      }
-      sheet.appendRow(toCellRow(["Total", totalPriorityQty, ""]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('prioritywise_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/prioritywise_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'PriorityWiseProduction',
+      headers: ['Priority', 'Priority Qty.', 'Priority %'],
+      rows: priorityWiseAnalysisList.priorityData
+          .map((e) => [e.priorityName, e.priorityQty, e.priorityPercentage])
+          .toList(),
+      fileName: 'prioritywise_order_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Priority Wise Production Analysis',
+    );
   }
 
   Future<void> generatePrioritywiseOrderPDF(
     PriorityWiseAnalysisList priorityWiseAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Prioritywise Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Priority',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Priority Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Priority %.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in priorityWiseAnalysisList.priorityData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.priorityName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.priorityQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.priorityPercentage.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/priority_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'PriorityWiseProduction',
+      headers: ['Priority', 'Priority Qty.', 'Priority %'],
+      rows: priorityWiseAnalysisList.priorityData
+          .map((e) => [e.priorityName, e.priorityQty, e.priorityPercentage])
+          .toList(),
+      fileName: 'prioritywise_order_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generatePendingOrderExcel() async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Sl.No',
-          'PO No.',
-          'PO Date',
-          'Hospital Name',
-          'ItemCode',
-          'ItemName',
-          'Ordered Qty',
-          'Dispatched Qty',
-          'BangStock',
-          'RajStock',
-          'Pending Qty',
-          'Box Qty',
-          'Item MRP',
-          'Order Priority',
-        ]),
-      );
-      for (var element in pendingOrders) {
-        sheet.appendRow(
-          toCellRow([
-            element.SlNo,
-            element.PoNo,
-            element.PoDate,
-            element.HospitalName,
-            element.ItemCode,
-            element.ItemName,
-            element.OrderedQty,
-            element.DespatchedQty,
-            element.BangStock,
-            element.RajStock,
-            element.PendingQty,
-            element.BoxQty,
-            element.ItemMrp,
-            element.OrderPriority,
-          ]),
-        );
-        // totalOrderedQty += dailyData.orderedQty;
-        // totalDispatchedQty += dailyData.dispatchedQty;
-        // totalPendingQty += dailyData.pendingQty;
-      }
-      // sheet.appendRow(toCellRow(
-      //     ["Total", totalOrderedQty, totalDispatchedQty, totalPendingQty]);
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('pendingOrders.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/pendingOrders.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'PendingOrderProduction',
+      headers: [
+        'Sl.No',
+        'PO No.',
+        'PO Date',
+        'Hospital Name',
+        'ItemCode',
+        'ItemName',
+        'Ordered Qty',
+        'Dispatched Qty',
+        'BangStock',
+        'RajStock',
+        'Pending Qty',
+        'Box Qty',
+        'Item MRP',
+        'Order Priority',
+      ],
+      rows: pendingOrders
+          .map(
+            (element) => [
+              element.SlNo,
+              element.PoNo,
+              element.PoDate,
+              element.HospitalName,
+              element.ItemCode,
+              element.ItemName,
+              element.OrderedQty,
+              element.DespatchedQty,
+              element.BangStock,
+              element.RajStock,
+              element.PendingQty,
+              element.BoxQty,
+              element.ItemMrp,
+              element.OrderPriority,
+            ],
+          )
+          .toList(),
+      fileName: 'production_pending_order_report.xlsx',
+      amountColumns: [7, 8, 9, 10, 11, 12],
+      addTotalRow: true,
+      reportTitle: 'Production - Pending Order Analysis',
+    );
   }
 
   @override
   void initState() {
     super.initState();
     LoadDates();
+    prepareFormattedDates();
     if (isUserLoggedIn && isBiDashboardStart) {
       loadDataFuture = loadData("");
     }
   }
 
   @override
+  void dispose() {
+    client.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    String formattedFiscalYearStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(fiscalYearStartDate!);
-    String formattedQuarterStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterFromDate!);
-    String formattedQuarterLastDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterToDate!);
-    String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
-    return chartDataLoaded == true
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        touchedMonthGoals == true
-                            ? Text(
-                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
-                              )
-                            : touchedQuarterGoals == true
-                            ? Text(
-                                "$formattedQuarterStartDate - $formattedQuarterLastDate",
-                              )
-                            : touchedYTDGoals == true
-                            ? Text(
-                                "$formattedFiscalYearStartDate - $formattedDateNow",
-                              )
-                            : Text(
-                                "$formattedDateFirstOfThisMonth - $formattedDateNow",
-                              ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            showPopupMenu();
-                          },
-                          icon: const Icon(Icons.filter_alt_outlined),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+    final media = MediaQuery.sizeOf(context);
+    final screenWidth = media.width;
+    return chartDataLoaded
+        ? ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF49136),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Total Order Quantity: ${formatAmount(orderedQtyHeader)}',
+                      Row(
+                        children: [
+                          const SizedBox(width: 15),
+                          touchedMonthGoals == true
+                              ? Text(
+                                  "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
+                                )
+                              : touchedQuarterGoals == true
+                              ? Text(
+                                  "$formattedQuarterStartDate - $formattedQuarterLastDate",
+                                )
+                              : touchedYTDGoals == true
+                              ? Text(
+                                  "$formattedFiscalYearStartDate - $formattedDateNow",
+                                )
+                              : Text(
+                                  "$formattedDateFirstOfThisMonth - $formattedDateNow",
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Dispatched Quantity: ${formatAmount(dispatchedQtyHeader)}',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF78E25D),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Total Pending Quantity: ${formatAmount(pendingQtyHeader)}',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Center(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xff2ca9df),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
-                      ),
-                      onPressed: () {
-                        generatePendingOrderExcel();
-                      },
-                      child: const SizedBox(
-                        width: 400,
-                        child: Center(
-                          child: Text(
-                            "Download Pending Orders For Production",
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Daily Order\nQty Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "Ordered Qty.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "Dispatched Qty.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(width: 5),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateDailyOrderExcel(dailyData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateDailyOrderPDF(dailyData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _dailyOrderQtyAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Priority wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generatePrioritywiseOrderExcel(
-                                      priorityList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generatePrioritywiseOrderPDF(priorityList);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      SizedBox(
-                        height: 250,
-                        width: 100,
-                        child: PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback:
-                                  (FlTouchEvent event, pieTouchResponse) {},
-                            ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 1,
-                            centerSpaceRadius: 0,
-                            startDegreeOffset: 180,
-                            sections: showingSections(),
-                          ),
-                        ),
+                        ],
                       ),
                       Row(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // for (final categoryData in receivablesCategoryList.categoryData)
-                                Column(
-                                  children: [
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF78E25D),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF97D7F3),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFFFF9F47),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
-                                ),
-                              ],
+                          IconButton(
+                            onPressed: () {
+                              showPopupMenu();
+                            },
+                            icon: const Icon(Icons.filter_alt_outlined),
+                          ),
+                          const SizedBox(width: 5),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF49136),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total Order Quantity: ${formatAmount(orderedQtyHeader)}',
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // for (final categoryData
-                              // in receivablesCategoryList.categoryData)
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Low",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF97D7F3),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
                               ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Medium",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Dispatched Quantity: ${formatAmount(dispatchedQtyHeader)}',
+                                  ),
+                                ],
                               ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "High",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF78E25D),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
                               ),
-                            ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total Pending Quantity: ${formatAmount(pendingQtyHeader)}',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Center(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xff2ca9df),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5.0),
+                          ),
+                        ),
+                        onPressed: () {
+                          generatePendingOrderExcel();
+                        },
+                        child: const SizedBox(
+                          width: 400,
+                          child: Center(
+                            child: Text(
+                              "Download Pending Orders For Production",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Daily Order\nQty Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Ordered Qty.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Dispatched Qty.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 5),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
+                                    generateDailyOrderExcel(dailyData);
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
+                                    generateDailyOrderPDF(dailyData);
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
                           ),
                         ],
                       ),
                     ],
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _dailyOrderQtyAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Priority wise Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
+                                    generatePrioritywiseOrderExcel(
+                                      priorityList,
+                                    );
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
+                                    generatePrioritywiseOrderPDF(priorityList);
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 16.0,
+                      right: 16.0,
+                      bottom: 16.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Hospital Wise\nAnalysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        SizedBox(
+                          height: 250,
+                          width: 100,
+                          child: PieChart(
+                            PieChartData(
+                              pieTouchData: PieTouchData(
+                                touchCallback:
+                                    (FlTouchEvent event, pieTouchResponse) {},
+                              ),
+                              borderData: FlBorderData(show: false),
+                              sectionsSpace: 1,
+                              centerSpaceRadius: 0,
+                              startDegreeOffset: 180,
+                              sections: showingSections(),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Column(
+                                    children: [
+                                      Container(
+                                        height: 8,
+                                        width: 16,
+                                        color: const Color(0xFF78E25D),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        height: 8,
+                                        width: 16,
+                                        color: const Color(0xFF97D7F3),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        height: 8,
+                                        width: 16,
+                                        color: const Color(0xFFFF9F47),
+                                      ),
+                                      const SizedBox(height: 6),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    "Low",
+                                    textAlign: TextAlign.left,
+                                    style: TextStyle(fontSize: 10),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    "Medium",
+                                    textAlign: TextAlign.left,
+                                    style: TextStyle(fontSize: 10),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    "High",
+                                    textAlign: TextAlign.left,
+                                    style: TextStyle(fontSize: 10),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "Ordered Qty.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "Dispatched Qty.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(width: 5),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Hospital Wise\nAnalysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Ordered Qty.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Dispatched Qty.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 5),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
                                     generateHospitalwiseOrderExcel(
                                       hospitalData,
                                     );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
                                     generateHospitalwiseOrderPDF(hospitalData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _hospitalWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Product Wise\nQty Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFFF9F47),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "Ordered Qty.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "Dispatched Qty.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(width: 5),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _hospitalWiseAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Product Wise\nQty Analysis",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Ordered Qty.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF97D7F3),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Dispatched Qty.",
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 5),
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
                                     generateProductwiseOrderExcel(productData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
                                     generateProductwiseOrderPDF(productData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _productWiseQtyAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-              ],
-            ),
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: _productWiseQtyAnalysis(screenWidth),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                ],
+              ),
+            ],
           )
         : const Center(child: CircularProgressIndicator());
   }
@@ -2300,8 +1776,7 @@ class _ProductionOrdersPendingReportState
     });
   }
 
-  Widget _dailyOrderQtyAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _dailyOrderQtyAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = dailyData.dailyData.length;
     if (len > 5) {
@@ -2309,55 +1784,50 @@ class _ProductionOrdersPendingReportState
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? dailyData.dailyData
-              .map(
-                (data) => data.orderedQty > data.dispatchedQty
-                    ? data.orderedQty
-                    : data.dispatchedQty,
-              ) // Compare salesAmount and monthsAvg
-              .reduce((a, b) => a > b ? a : b) // Find the max value
-        : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(dailyMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesDailyOrderQtyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesDailyOrderQtyAnalysis,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _dailyOrderQtyChartData(dailyData.dailyData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _dailyOrderQtyChartData(dailyData.dailyData),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedDay = touchedDay == ""
                           ? dailyData
@@ -2366,68 +1836,68 @@ class _ProductionOrdersPendingReportState
                                 .date
                           : "";
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedDay,
                         touchedHospital,
                         touchedItem,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    "${dailyData.dailyData[grpIndex].date}\n",
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Ordered Qty: ${formatAmount(dailyData.dailyData[grpIndex].orderedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Dispatched Qty: ${formatAmount(dailyData.dailyData[grpIndex].dispatchedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Pending Qty: ${formatAmount(dailyData.dailyData[grpIndex].pendingQty)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      "${dailyData.dailyData[grpIndex].date}\n",
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Ordered Qty: ${formatAmount(dailyData.dailyData[grpIndex].orderedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Dispatched Qty: ${formatAmount(dailyData.dailyData[grpIndex].dispatchedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Pending Qty: ${formatAmount(dailyData.dailyData[grpIndex].pendingQty)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -2435,8 +1905,7 @@ class _ProductionOrdersPendingReportState
     );
   }
 
-  Widget _hospitalWiseAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _hospitalWiseAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = hospitalData.hospitalData.length;
     if (len > 5) {
@@ -2444,57 +1913,52 @@ class _ProductionOrdersPendingReportState
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? hospitalData.hospitalData
-              .map(
-                (data) => data.orderedQty > data.dispatchedQty
-                    ? data.orderedQty
-                    : data.dispatchedQty,
-              ) // Compare salesAmount and monthsAvg
-              .reduce((a, b) => a > b ? a : b) // Find the max value
-        : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(hospitalMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesHospitalWiseAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesHospitalWiseAnalysis,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _hospitalWiseAnalysisChartData(
-              hospitalData.hospitalData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _hospitalWiseAnalysisChartData(
+                hospitalData.hospitalData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedHospital = touchedHospital == ""
                           ? hospitalData
@@ -2503,68 +1967,68 @@ class _ProductionOrdersPendingReportState
                                 .hospitalName
                           : "";
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedDay,
                         touchedHospital,
                         touchedItem,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    "${hospitalData.hospitalData[grpIndex].hospitalName}\n",
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Ordered Qty: ${formatAmount(hospitalData.hospitalData[grpIndex].orderedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Dispatched Qty: ${formatAmount(hospitalData.hospitalData[grpIndex].dispatchedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Pending Qty: ${formatAmount(hospitalData.hospitalData[grpIndex].pendingQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      "${hospitalData.hospitalData[grpIndex].hospitalName}\n",
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Ordered Qty: ${formatAmount(hospitalData.hospitalData[grpIndex].orderedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Dispatched Qty: ${formatAmount(hospitalData.hospitalData[grpIndex].dispatchedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Pending Qty: ${formatAmount(hospitalData.hospitalData[grpIndex].pendingQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -2572,8 +2036,7 @@ class _ProductionOrdersPendingReportState
     );
   }
 
-  Widget _productWiseQtyAnalysis() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _productWiseQtyAnalysis(double screenWidth) {
     double chartWidth = 0.0;
     int len = productData.productData.length;
     if (len > 5) {
@@ -2581,57 +2044,52 @@ class _ProductionOrdersPendingReportState
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = len > 0
-        ? productData.productData
-              .map(
-                (data) => data.orderedQty > data.dispatchedQty
-                    ? data.orderedQty
-                    : data.dispatchedQty,
-              ) // Compare salesAmount and monthsAvg
-              .reduce((a, b) => a > b ? a : b) // Find the max value
-        : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(productMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesProductWiseQtyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesProductWiseQtyAnalysis,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _productWiseQtyAnalysisChartData(
-              productData.productData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _productWiseQtyAnalysisChartData(
+                productData.productData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItem = touchedItem == ""
                           ? productData
@@ -2640,68 +2098,68 @@ class _ProductionOrdersPendingReportState
                                 .productName
                           : "";
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedDay,
                         touchedHospital,
                         touchedItem,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${productData.productData[grpIndex].productName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Ordered Qty : ${formatAmount(productData.productData[grpIndex].orderedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Dispatched Qty : ${formatAmount(productData.productData[grpIndex].dispatchedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Pending Qty : ${formatAmount(productData.productData[grpIndex].pendingQty)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${productData.productData[grpIndex].productName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Ordered Qty : ${formatAmount(productData.productData[grpIndex].orderedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Dispatched Qty : ${formatAmount(productData.productData[grpIndex].dispatchedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Pending Qty : ${formatAmount(productData.productData[grpIndex].pendingQty)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),

@@ -627,29 +627,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   List<PieChartSectionData> _receivablesCategoryChart() {
     final List<PieChartSectionData> sections = [];
     for (final categoryData in receivablesCategoryList.categoryData) {
-      final isTouched = (categoryData.categoryId) == touchedIndex;
-      final fontSize = touchedIndex >= 1 ? 12.0 : 11.0;
-      final radius = touchedIndex >= 1 ? 80.0 : 75.0;
+      final fontSize = touchedIndex >= 0 ? 12.0 : 11.0;
+      final radius = touchedIndex >= 0 ? 80.0 : 75.0;
       const shadows = [Shadow(color: Colors.black, blurRadius: 2)];
       final sectionData = PieChartSectionData(
         color: getCategoryColor(categoryData.categoryId),
-        value: categoryData.categoryPercentage,
-        title: '${categoryData.categoryPercentage.toStringAsFixed(2)} %',
+        value: categoryData.categoryPercentage.abs(),
+        title: '${categoryData.categoryPercentage.abs().toStringAsFixed(2)} %',
         radius: radius,
-        badgeWidget: isTouched
-            ? Visibility(
-                visible: isTouched,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white30,
-                    border: Border.all(color: Colors.white),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: const Text(""),
-                ),
-              )
-            : null,
         titleStyle: TextStyle(
           fontSize: fontSize,
           color: Colors.black,
@@ -659,34 +644,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       sections.add(sectionData);
     }
     return sections;
-  }
-
-  List<PieChartSectionData> showingSections() {
-    return List.generate(3, (i) {
-      const radius = 80.0;
-      switch (i) {
-        case 0:
-          return PieChartSectionData(
-            color: const Color(0xFF78E25D),
-            value: 40,
-            radius: radius,
-          );
-        case 1:
-          return PieChartSectionData(
-            color: const Color(0xFF97D7F3),
-            value: 30,
-            radius: radius,
-          );
-        case 2:
-          return PieChartSectionData(
-            color: const Color(0xFFFF9F47),
-            value: 30,
-            radius: radius,
-          );
-        default:
-          throw Error();
-      }
-    });
   }
 
   List<BarChartGroupData> _AllReceivableAgingChartData(
@@ -2041,15 +1998,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateReceivablesExcel(AllReceivablesFinanceList list) async {
     await reportService.generateExcel(
       sheetName: 'Receivables',
@@ -3099,7 +3047,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   Widget build(BuildContext context) {
     DateTime currentDate = DateTime.now();
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
-    return chartDataLoadedReceivables == true
+    return chartDataLoadedReceivables
         ? SingleChildScrollView(
             child: Column(
               children: [
@@ -3604,26 +3552,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                               PieChartData(
                                 pieTouchData: PieTouchData(
                                   touchCallback:
-                                      (FlTouchEvent event, pieTouchResponse) {
-                                        setState(() {
-                                          if (!event
-                                                  .isInterestedForInteractions ||
-                                              pieTouchResponse == null ||
-                                              pieTouchResponse.touchedSection ==
-                                                  null) {
-                                            touchedIndex = -1;
-                                            return;
-                                          }
-                                          touchedIndex = pieTouchResponse
-                                              .touchedSection!
-                                              .touchedSectionIndex;
-                                        });
-                                      },
+                                      (FlTouchEvent event, pieTouchResponse) {},
                                 ),
                                 borderData: FlBorderData(show: false),
                                 sectionsSpace: 1,
                                 centerSpaceRadius: 0,
-                                startDegreeOffset: 180,
+                                startDegreeOffset: 360,
                                 sections: _receivablesCategoryChart(),
                               ),
                             ),

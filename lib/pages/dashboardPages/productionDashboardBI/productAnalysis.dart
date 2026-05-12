@@ -1,5 +1,4 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -7,20 +6,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
+import '../ReportService.dart';
 
 class ProductAnalysis extends StatefulWidget {
   const ProductAnalysis({super.key});
@@ -29,92 +20,81 @@ class ProductAnalysis extends StatefulWidget {
   State<ProductAnalysis> createState() => _ProductAnalysisState();
 }
 
-late Future<void> loadDataFuture;
-
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
-int currentQuarter = 0;
-
-List<ConsumptionList> consumptionList = [];
-List<ProductionList> productionList = [];
-
-ProductionVsConsumptionProductionList productionData =
-    ProductionVsConsumptionProductionList(productionData: []);
-ProductionVsConsumptionConsumptionList consumptionData =
-    ProductionVsConsumptionConsumptionList(consumptionData: []);
-ItemWiseProductionProductAnalysisList itemWiseData =
-    ItemWiseProductionProductAnalysisList(itemWiseData: []);
-ItemWiseConsumptionProductAnalysisList itemWiseConsumptionData =
-    ItemWiseConsumptionProductAnalysisList(itemWiseConsumptionData: []);
-ItemGroupWiseProductionProductAnalysisList itemGroupWiseProductionData =
-    ItemGroupWiseProductionProductAnalysisList(itemGroupWiseData: []);
-ItemGroupWiseConsumptionProductAnalysisList itemGroupWiseConsumptionData =
-    ItemGroupWiseConsumptionProductAnalysisList(
-      itemGroupWiseConsumptionData: [],
-    );
-ItemSubGroupWiseProductionProductAnalysisList itemSubGroupWiseProductionData =
-    ItemSubGroupWiseProductionProductAnalysisList(
-      itemSubGroupWiseProductionData: [],
-    );
-ItemSubGroupWiseConsumptionProductAnalysisList itemSubGroupWiseConsumptionData =
-    ItemSubGroupWiseConsumptionProductAnalysisList(
-      itemSubGroupWiseConsumptionData: [],
-    );
-WarehouseWiseProductionList warehouseProductionList =
-    WarehouseWiseProductionList(warehouseWiseProductionData: []);
-WarehouseWiseConsumptionList warehouseConsumptionList =
-    WarehouseWiseConsumptionList(warehouseWiseConsumptionData: []);
-
-double productionValueHeader = 0;
-double productionQuantityHeader = 0;
-double consumptionValueHeader = 0;
-double consumptionQuantityHeader = 0;
-
-bool chartDataLoaded = false;
-int touchedMonthIndex = 0;
-String touchedMonth = "";
-String touchedItemCode = "";
-String touchedItemGroup = "";
-String touchedItemSubGroup = "";
-String touchedWarehouse = "";
-double selectedChart = 0;
-
-class ConsumptionListProvider with ChangeNotifier {
-  List<ConsumptionList> _salesList = [];
-  List<ConsumptionList> get salesList => _salesList;
-  void updateConsumptionList(List<ConsumptionList> newSalesList) {
-    _salesList = newSalesList;
-    notifyListeners();
-  }
-}
-
-class ProductionListProvider with ChangeNotifier {
-  List<ProductionList> _salesList = [];
-  List<ProductionList> get salesList => _salesList;
-  void updateProductionList(List<ProductionList> newSalesList) {
-    _salesList = newSalesList;
-    notifyListeners();
-  }
-}
-
 class _ProductAnalysisState extends State<ProductAnalysis> {
+  late Future<void> loadDataFuture;
+  final reportService = ReportService();
+  DateTime? currentDate;
+  DateTime? currentMonthFromDate;
+  DateTime? currentMonthToDate;
+  DateTime? lastMonthFromDate;
+  DateTime? lastMonthToDate;
+  DateTime? currentQuarterFromDate;
+  DateTime? currentQuarterToDate;
+  DateTime? lastQuarterFromDate;
+  DateTime? lastQuarterToDate;
+  DateTime? fiscalYearStartDate;
+  DateTime? prevFiscalYearStartDate;
+  DateTime? prevFiscalYearEndDate;
+  String financialYear = "";
+  String prevFinancialYear = "";
+  int currentQuarter = 0;
+
+  List<ConsumptionList> consumptionList = [];
+  List<ProductionList> productionList = [];
+
+  ProductionVsConsumptionProductionList productionData =
+      ProductionVsConsumptionProductionList(productionData: []);
+  ProductionVsConsumptionConsumptionList consumptionData =
+      ProductionVsConsumptionConsumptionList(consumptionData: []);
+  ItemWiseProductionProductAnalysisList itemWiseData =
+      ItemWiseProductionProductAnalysisList(itemWiseData: []);
+  ItemWiseConsumptionProductAnalysisList itemWiseConsumptionData =
+      ItemWiseConsumptionProductAnalysisList(itemWiseConsumptionData: []);
+  ItemGroupWiseProductionProductAnalysisList itemGroupWiseProductionData =
+      ItemGroupWiseProductionProductAnalysisList(itemGroupWiseData: []);
+  ItemGroupWiseConsumptionProductAnalysisList itemGroupWiseConsumptionData =
+      ItemGroupWiseConsumptionProductAnalysisList(
+        itemGroupWiseConsumptionData: [],
+      );
+  ItemSubGroupWiseProductionProductAnalysisList itemSubGroupWiseProductionData =
+      ItemSubGroupWiseProductionProductAnalysisList(
+        itemSubGroupWiseProductionData: [],
+      );
+  ItemSubGroupWiseConsumptionProductAnalysisList
+  itemSubGroupWiseConsumptionData =
+      ItemSubGroupWiseConsumptionProductAnalysisList(
+        itemSubGroupWiseConsumptionData: [],
+      );
+  WarehouseWiseProductionList warehouseProductionList =
+      WarehouseWiseProductionList(warehouseWiseProductionData: []);
+  WarehouseWiseConsumptionList warehouseConsumptionList =
+      WarehouseWiseConsumptionList(warehouseWiseConsumptionData: []);
+
+  double productionValueHeader = 0;
+  double productionQuantityHeader = 0;
+  double consumptionValueHeader = 0;
+  double consumptionQuantityHeader = 0;
+
+  bool chartDataLoaded = false;
+  int touchedMonthIndex = 0;
+  String touchedMonth = "";
+  String touchedItemCode = "";
+  String touchedItemGroup = "";
+  String touchedItemSubGroup = "";
+  String touchedWarehouse = "";
+  double selectedChart = 0;
+
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
   bool touchedYTDGoals = false;
   bool showDrillDownChart = false;
   int touchedIndex = -1;
+
+  double monthWiseMaxY = 0;
+  double itemWiseMaxY = 0;
+  double itemGroupMaxY = 0;
+  double itemSubGroupMaxY = 0;
+  double warehouseWiseMaxY = 0;
 
   String formatAmount(double amount) {
     if (amount >= 10000000) {
@@ -139,29 +119,6 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     } else {
       // Amount in thousands
       return double.parse((amount / 1000).toStringAsFixed(2));
-    }
-  }
-
-  Color getCategoryColor(int categoryId) {
-    switch (categoryId) {
-      case 0:
-        return const Color(0xFF97D7F3);
-      case 1:
-        return const Color(0xFFF49136);
-      case 2:
-        return const Color(0xFF6CCC3F);
-      default:
-        return const Color(0xFF6CCC3F);
-    }
-  }
-
-  String formatFinanceAmount(double amount) {
-    if (amount >= 1000000000) {
-      return "${(amount / 1000000000).toStringAsFixed(2)} B";
-    } else if (amount >= 1000000) {
-      return "${(amount / 1000000).toStringAsFixed(2)} M";
-    } else {
-      return '${(amount / 1000).toStringAsFixed(2)} K';
     }
   }
 
@@ -730,7 +687,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
   }
 
   Future<void> _loadProductionList(String userName, String userLevel) async {
-    const int limit = 100000;
+    const int limit = 10000;
     int index = 0;
     int fetchedCount = 0;
     int monthIndex = currentDate!.month;
@@ -786,9 +743,6 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       // Update state
       setState(() {
         productionList = salesList;
-
-        // Notify the provider
-        context.read<ProductionListProvider>().updateProductionList(salesList);
       });
 
       // Filter the production list by date
@@ -820,7 +774,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
   }
 
   Future<void> _loadConsumptionList(String userName, String userLevel) async {
-    const int limit = 100000;
+    const int limit = 10000;
     int index = 0;
     int fetchedCount = 0;
     int monthIndex = currentDate!.month;
@@ -877,11 +831,6 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       setState(() {
         // Update consumptionList based on user level
         consumptionList = salesList;
-
-        // Notify the provider
-        context.read<ConsumptionListProvider>().updateConsumptionList(
-          salesList,
-        );
       });
 
       // Filter the consumption list by date
@@ -914,7 +863,6 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
 
   Future<void> _loadProductionVsConsumptionProductionGraph() async {
     List<ProductionVsConsumptionProductionData> monthlyDataList = [];
-    // int currentYear = DateTime.now().year;
 
     // Group data by month/year while parsing only once
     Map<String, double> monthlyProductionQty = {};
@@ -1835,6 +1783,86 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     );
   }
 
+  void prepareMaxValues() {
+    /// MONTH WISE
+    monthWiseMaxY = 0;
+    if (productionData.productionData.isNotEmpty ||
+        consumptionData.consumptionData.isNotEmpty) {
+      List<double> allValues = [
+        ...productionData.productionData.map((data) => data.productionQty),
+        ...consumptionData.consumptionData.map((data) => data.consumptionQty),
+      ];
+
+      monthWiseMaxY = allValues.reduce((a, b) => a > b ? a : b);
+    }
+
+    /// ITEM WISE
+    itemWiseMaxY = 0;
+    if (itemWiseData.itemWiseData.isNotEmpty ||
+        itemWiseConsumptionData.itemWiseConsumptionData.isNotEmpty) {
+      List<double> allValues = [
+        ...itemWiseData.itemWiseData.map((data) => data.productionQty),
+        ...itemWiseConsumptionData.itemWiseConsumptionData.map(
+          (data) => data.consumptionQty,
+        ),
+      ];
+
+      itemWiseMaxY = allValues.reduce((a, b) => a > b ? a : b);
+    }
+
+    /// ITEM GROUP WISE
+    itemGroupMaxY = 0;
+    if (itemGroupWiseProductionData.itemGroupWiseData.isNotEmpty ||
+        itemGroupWiseConsumptionData.itemGroupWiseConsumptionData.isNotEmpty) {
+      List<double> allValues = [
+        ...itemGroupWiseConsumptionData.itemGroupWiseConsumptionData.map(
+          (data) => data.consumptionQty,
+        ),
+        ...itemGroupWiseProductionData.itemGroupWiseData.map(
+          (data) => data.productionQty,
+        ),
+      ];
+
+      itemGroupMaxY = allValues.reduce((a, b) => a > b ? a : b);
+    }
+
+    /// ITEM SUB GROUP WISE
+    itemSubGroupMaxY = 0;
+    if (itemSubGroupWiseProductionData
+            .itemSubGroupWiseProductionData
+            .isNotEmpty ||
+        itemSubGroupWiseConsumptionData
+            .itemSubGroupWiseConsumptionData
+            .isNotEmpty) {
+      List<double> allValues = [
+        ...itemSubGroupWiseProductionData.itemSubGroupWiseProductionData.map(
+          (data) => data.productionQty,
+        ),
+        ...itemSubGroupWiseConsumptionData.itemSubGroupWiseConsumptionData.map(
+          (data) => data.consumptionQty,
+        ),
+      ];
+
+      itemSubGroupMaxY = allValues.reduce((a, b) => a > b ? a : b);
+    }
+
+    /// WAREHOUSE WISE
+    warehouseWiseMaxY = 0;
+    if (warehouseProductionList.warehouseWiseProductionData.isNotEmpty ||
+        warehouseConsumptionList.warehouseWiseConsumptionData.isNotEmpty) {
+      List<double> allValues = [
+        ...warehouseProductionList.warehouseWiseProductionData.map(
+          (data) => data.productionQty,
+        ),
+        ...warehouseConsumptionList.warehouseWiseConsumptionData.map(
+          (data) => data.consumptionQty,
+        ),
+      ];
+
+      warehouseWiseMaxY = allValues.reduce((a, b) => a > b ? a : b);
+    }
+  }
+
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
@@ -1855,6 +1883,11 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     await _loadWarehouseWiseWiseProductionGraph(0, "", "", "", "");
     await _loadWarehouseWiseWiseConsumptionGraph(0, "", "", "", "");
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   List<ProductionList> filterProductionList(
@@ -1932,6 +1965,11 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     await _loadWarehouseWiseWiseProductionGraph(0, "", "", "", "");
     await _loadWarehouseWiseWiseConsumptionGraph(0, "", "", "", "");
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> loadDataWithFilter(
@@ -2000,6 +2038,11 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       warehouseCode,
     );
     chartDataLoaded = true;
+    prepareMaxValues();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void clearVariables() {
@@ -2071,61 +2114,31 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateMonthlyProductionVsConsumtionExcel(
     ProductionVsConsumptionProductionList monthlyProductionList,
     ProductionVsConsumptionConsumptionList monthlyConsumptionList,
   ) async {
-    double totalProduction = 0;
-    double totalConsumption = 0;
     Map<String, double> consumptionMap = {
       for (var data in monthlyConsumptionList.consumptionData)
         data.monthName: data.consumptionQty,
     };
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Production', 'Consumption']));
-      for (var monthlyData in monthlyProductionList.productionData) {
-        sheet.appendRow(
-          toCellRow([
-            monthlyData.monthName,
-            monthlyData.productionQty,
-            consumptionMap[monthlyData.monthName] ?? 0.0,
-          ]),
-        );
-        totalProduction += monthlyData.productionQty;
-        totalConsumption += consumptionMap[monthlyData.monthName] ?? 0.0;
-      }
-      sheet.appendRow(toCellRow(["", totalProduction, totalConsumption]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'monthly_production_consumption_report.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/monthly_production_consumption_report.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ProductionVsConsumptionAnalysis',
+      headers: ['Month', 'Production', 'Consumption'],
+      rows: monthlyProductionList.productionData
+          .map(
+            (e) => [
+              e.monthName,
+              e.productionQty,
+              consumptionMap[e.monthName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_production_consumption_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Monthly Production Vs Consumption Analysis',
+    );
   }
 
   Future<void> generateMonthlyProductionVsConsumtionPDF(
@@ -2136,153 +2149,48 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       for (var data in monthlyConsumptionList.consumptionData)
         data.monthName: data.consumptionQty,
     };
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Production Vs Consumption Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Production',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Consumption',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var monthlyData in monthlyProductionList.productionData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        monthlyData.monthName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.productionQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (consumptionMap[monthlyData.monthName] ?? 0.0)
-                            .toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/monthly_production_consumption_report.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ProductionVsConsumptionAnalysis',
+      headers: ['Month', 'Production', 'Consumption'],
+      rows: monthlyProductionList.productionData
+          .map(
+            (e) => [
+              e.monthName,
+              e.productionQty,
+              consumptionMap[e.monthName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_production_consumption_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateItemwiseProductionVsConsumtionExcel(
     ItemWiseProductionProductAnalysisList productionList,
     ItemWiseConsumptionProductAnalysisList consumptionList,
   ) async {
-    double totalProduction = 0;
-    double totalConsumption = 0;
     Map<String, double> consumptionMap = {
       for (var data in consumptionList.itemWiseConsumptionData)
         data.itemName: data.consumptionQty,
     };
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Product Name', 'Production', 'Consumption']));
-      for (var data in productionList.itemWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            data.itemName,
-            data.productionQty,
-            consumptionMap[data.itemName] ?? 0.0,
-          ]),
-        );
-        totalProduction += data.productionQty;
-        totalConsumption += consumptionMap[data.itemName] ?? 0.0;
-      }
-      sheet.appendRow(toCellRow(["", totalProduction, totalConsumption]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'itemwise_production_consumption_report.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/itemwise_production_consumption_report.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemWiseProductionVsConsumptionAnalysis',
+      headers: ['Product Name', 'Production', 'Consumption'],
+      rows: productionList.itemWiseData
+          .map(
+            (e) => [
+              e.itemName,
+              e.productionQty,
+              consumptionMap[e.itemName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'itemwise_production_consumption_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Item Wise Production Vs Consumption Analysis',
+    );
   }
 
   Future<void> generateItemwiseProductionVsConsumtionPDF(
@@ -2293,159 +2201,24 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       for (var data in consumptionList.itemWiseConsumptionData)
         data.itemName: data.consumptionQty,
     };
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Itemwise Production Vs Consumption Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Product Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Production',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Consumption',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in productionList.itemWiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.itemName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.productionQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (consumptionMap[data.itemName] ?? 0.0).toStringAsFixed(
-                          2,
-                        ),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/itemwise_production_consumption_report.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ItemWiseProductionVsConsumptionAnalysis',
+      headers: ['Product Name', 'Production', 'Consumption'],
+      rows: productionList.itemWiseData
+          .map(
+            (e) => [
+              e.itemName,
+              e.productionQty,
+              consumptionMap[e.itemName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'itemwise_production_consumption_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
-  Future<void> generateItemgroupwiseProductionVsConsumtionExcel(
-    ItemGroupWiseProductionProductAnalysisList productionList,
-    ItemGroupWiseConsumptionProductAnalysisList consumptionList,
-  ) async {
-    double totalProduction = 0;
-    double totalConsumption = 0;
-    Map<String, double> consumptionMap = {
-      for (var data in consumptionList.itemGroupWiseConsumptionData)
-        data.itemGroupName: data.consumptionQty,
-    };
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Product Group', 'Production', 'Consumption']),
-      );
-      for (var data in productionList.itemGroupWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            data.itemGroupName,
-            data.productionQty,
-            consumptionMap[data.itemGroupName] ?? 0.0,
-          ]),
-        );
-        totalProduction += data.productionQty;
-        totalConsumption += consumptionMap[data.itemGroupName] ?? 0.0;
-      }
-      sheet.appendRow(toCellRow(["", totalProduction, totalConsumption]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'itemgroupwise_production_consumption_report.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/itemgrouowise_production_consumption_report.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateItemgroupwiseProductionVsConsumtionPDF(
+  Future<void> generateItemGroupwiseProductionVsConsumtionExcel(
     ItemGroupWiseProductionProductAnalysisList productionList,
     ItemGroupWiseConsumptionProductAnalysisList consumptionList,
   ) async {
@@ -2453,158 +2226,80 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       for (var data in consumptionList.itemGroupWiseConsumptionData)
         data.itemGroupName: data.consumptionQty,
     };
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Item Groupwise Production Vs Consumption Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Product Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Production',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Consumption',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in productionList.itemGroupWiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.itemGroupName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.productionQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (consumptionMap[data.itemGroupName] ?? 0.0)
-                            .toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/itemgroupwise_production_consumption_report.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemGroupWiseProductionVsConsumptionAnalysis',
+      headers: ['Product Group', 'Production', 'Consumption'],
+      rows: productionList.itemGroupWiseData
+          .map(
+            (e) => [
+              e.itemGroupName,
+              e.productionQty,
+              consumptionMap[e.itemGroupName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'itemgroupwise_production_consumption_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle:
+          'Production - Item Group Wise Production Vs Consumption Analysis',
+    );
   }
 
-  Future<void> generateItemSubgroupwiseProductionVsConsumtionExcel(
+  Future<void> generateItemGroupwiseProductionVsConsumtionPDF(
+    ItemGroupWiseProductionProductAnalysisList productionList,
+    ItemGroupWiseConsumptionProductAnalysisList consumptionList,
+  ) async {
+    Map<String, double> consumptionMap = {
+      for (var data in consumptionList.itemGroupWiseConsumptionData)
+        data.itemGroupName: data.consumptionQty,
+    };
+    await reportService.generatePDF(
+      title: 'ItemGroupWiseProductionVsConsumptionAnalysis',
+      headers: ['Product Group', 'Production', 'Consumption'],
+      rows: productionList.itemGroupWiseData
+          .map(
+            (e) => [
+              e.itemGroupName,
+              e.productionQty,
+              consumptionMap[e.itemGroupName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'itemgroupwise_production_consumption_report.pdf',
+      amountColumns: [2, 3],
+    );
+  }
+
+  Future<void> generateItemSubGroupwiseProductionVsConsumtionExcel(
     ItemSubGroupWiseProductionProductAnalysisList productionList,
     ItemSubGroupWiseConsumptionProductAnalysisList consumptionList,
   ) async {
-    double totalProduction = 0;
-    double totalConsumption = 0;
     Map<String, double> consumptionMap = {
       for (var data in consumptionList.itemSubGroupWiseConsumptionData)
         data.itemSubGroupName: data.consumptionQty,
     };
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Product Sub Group', 'Production', 'Consumption']),
-      );
-      for (var data in productionList.itemSubGroupWiseProductionData) {
-        sheet.appendRow(
-          toCellRow([
-            data.itemSubGroupName,
-            data.productionQty,
-            consumptionMap[data.itemSubGroupName] ?? 0.0,
-          ]),
-        );
-        totalProduction += data.productionQty;
-        totalConsumption += consumptionMap[data.itemSubGroupName] ?? 0.0;
-      }
-      sheet.appendRow(toCellRow(["", totalProduction, totalConsumption]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'item_subgroupwise_production_consumption_report.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/item_subgrouowise_production_consumption_report.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemSubGroupWiseProductionVsConsumptionAnalysis',
+      headers: ['Product Sub Group', 'Production', 'Consumption'],
+      rows: productionList.itemSubGroupWiseProductionData
+          .map(
+            (e) => [
+              e.itemSubGroupName,
+              e.productionQty,
+              consumptionMap[e.itemSubGroupName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'itemsubgroupwise_production_consumption_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle:
+          'Production - Item Sub Group Wise Production Vs Consumption Analysis',
+    );
   }
 
-  Future<void> generateItemSubgroupwiseProductionVsConsumtionPDF(
+  Future<void> generateItemSubGroupwiseProductionVsConsumtionPDF(
     ItemSubGroupWiseProductionProductAnalysisList productionList,
     ItemSubGroupWiseConsumptionProductAnalysisList consumptionList,
   ) async {
@@ -2612,153 +2307,49 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       for (var data in consumptionList.itemSubGroupWiseConsumptionData)
         data.itemSubGroupName: data.consumptionValue,
     };
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Item Sub-Groupwise Production Vs Consumption Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Product Sub Group',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Production',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Consumption',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in productionList.itemSubGroupWiseProductionData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.itemSubGroupName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.productionQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (consumptionMap[data.itemSubGroupName] ?? 0.0)
-                            .toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/itemsubgroupwise_production_consumption_report.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ItemSubGroupWiseProductionVsConsumptionAnalysis',
+      headers: ['Product Sub Group', 'Production', 'Consumption'],
+      rows: productionList.itemSubGroupWiseProductionData
+          .map(
+            (e) => [
+              e.itemSubGroupName,
+              e.productionQty,
+              consumptionMap[e.itemSubGroupName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'itemsubgroupwise_production_consumption_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateWarehousewiseProductionVsConsumtionExcel(
     WarehouseWiseProductionList productionList,
     WarehouseWiseConsumptionList consumptionList,
   ) async {
-    double totalProduction = 0;
-    double totalConsumption = 0;
     Map<String, double> consumptionMap = {
       for (var data in consumptionList.warehouseWiseConsumptionData)
         data.warehouseName: data.consumptionQty,
     };
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Warehouse', 'Production', 'Consumption']));
-      for (var data in productionList.warehouseWiseProductionData) {
-        sheet.appendRow(
-          toCellRow([
-            data.warehouseName,
-            data.productionQty,
-            consumptionMap[data.warehouseName] ?? 0.0,
-          ]),
-        );
-        totalProduction += data.productionQty;
-        totalConsumption += consumptionMap[data.warehouseName] ?? 0.0;
-      }
-      sheet.appendRow(toCellRow(["", totalProduction, totalConsumption]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'warehousewise_production_consumption_report.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/warehousewise_production_consumption_report.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'WarehouseWiseProductionVsConsumptionAnalysis',
+      headers: ['Warehouse', 'Production', 'Consumption'],
+      rows: productionList.warehouseWiseProductionData
+          .map(
+            (e) => [
+              e.warehouseName,
+              e.productionQty,
+              consumptionMap[e.warehouseName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'warehousewise_production_consumption_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle:
+          'Production - Warehouse Wise Production Vs Consumption Analysis',
+    );
   }
 
   Future<void> generateWarehousewiseProductionVsConsumtionPDF(
@@ -2769,105 +2360,21 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
       for (var data in consumptionList.warehouseWiseConsumptionData)
         data.warehouseName: data.consumptionQty,
     };
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Warehousewise Production Vs Consumption Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Warehouse',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Production',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Consumption',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in productionList.warehouseWiseProductionData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.warehouseName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.productionQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (consumptionMap[data.warehouseName] ?? 0.0)
-                            .toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/warehousewise_production_consumption_report.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'WarehouseWiseProductionVsConsumptionAnalysis',
+      headers: ['Warehouse', 'Production', 'Consumption'],
+      rows: productionList.warehouseWiseProductionData
+          .map(
+            (e) => [
+              e.warehouseName,
+              e.productionQty,
+              consumptionMap[e.warehouseName] ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'warehousewise_production_consumption_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   @override
@@ -2881,377 +2388,396 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.sizeOf(context);
+    final screenWidth = media.width;
     String formattedQuarterStartDate = DateFormat(
       'dd/MM/yy',
     ).format(currentQuarterFromDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        Text("$formattedQuarterStartDate - $formattedDateNow"),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            showPopupMenu();
-                          },
-                          icon: const Icon(Icons.filter_alt_outlined),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+        ? ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF49136),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
+                      Row(
+                        children: [
+                          const SizedBox(width: 15),
+                          Text(
+                            "$formattedQuarterStartDate - $formattedDateNow",
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Production Value: ${formatAmount(productionValueHeader)}',
-                                ),
-                                Text(
-                                  'Production Quantity: ${formatAmount(productionQuantityHeader)}',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              showPopupMenu();
+                            },
+                            icon: const Icon(Icons.filter_alt_outlined),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Consumption Value: ${formatAmount(consumptionValueHeader)}',
-                                ),
-                                Text(
-                                  'Consumption Quantity: ${formatAmount(consumptionQuantityHeader)}',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                          const SizedBox(width: 5),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Production vs Consumption - Monthly",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF49136),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Production Value: ${formatAmount(productionValueHeader)}',
+                                  ),
+                                  Text(
+                                    'Production Quantity: ${formatAmount(productionQuantityHeader)}',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF97D7F3),
+                              border: Border.all(color: Colors.transparent),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Consumption Value: ${formatAmount(consumptionValueHeader)}',
+                                  ),
+                                  Text(
+                                    'Consumption Quantity: ${formatAmount(consumptionQuantityHeader)}',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyProductionVsConsumtionExcel(
-                                      productionData,
-                                      consumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyProductionVsConsumtionPDF(
-                                      productionData,
-                                      consumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Production vs Consumption - Monthly",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateMonthlyProductionVsConsumtionExcel(
+                                        productionData,
+                                        consumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateMonthlyProductionVsConsumtionPDF(
+                                        productionData,
+                                        consumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: RepaintBoundary(
+                      child: _productionVsConsumptionMonthly(screenWidth),
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _productionVsConsumptionMonthly(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Production vs Consumption - Item Wise",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Production vs Consumption - Item Wise",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateItemwiseProductionVsConsumtionExcel(
+                                        itemWiseData,
+                                        itemWiseConsumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateItemwiseProductionVsConsumtionPDF(
+                                        itemWiseData,
+                                        itemWiseConsumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: RepaintBoundary(
+                      child: _productionVsConsumptionItemWise(screenWidth),
                     ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemwiseProductionVsConsumtionExcel(
-                                      itemWiseData,
-                                      itemWiseConsumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemwiseProductionVsConsumtionPDF(
-                                      itemWiseData,
-                                      itemWiseConsumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Production vs Consumption - Item Group Wise",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateItemGroupwiseProductionVsConsumtionExcel(
+                                        itemGroupWiseProductionData,
+                                        itemGroupWiseConsumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateItemGroupwiseProductionVsConsumtionPDF(
+                                        itemGroupWiseProductionData,
+                                        itemGroupWiseConsumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: RepaintBoundary(
+                      child: _productionVsConsumptionItemGroupWise(screenWidth),
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _productionVsConsumptionItemWise(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Production vs Consumption - Item Group Wise",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Production vs Consumption \n- Item Sub-Group Wise",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateItemSubGroupwiseProductionVsConsumtionExcel(
+                                        itemSubGroupWiseProductionData,
+                                        itemSubGroupWiseConsumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateItemSubGroupwiseProductionVsConsumtionPDF(
+                                        itemSubGroupWiseProductionData,
+                                        itemSubGroupWiseConsumptionData,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: RepaintBoundary(
+                      child: _productionVsConsumptionItemSubGroupWise(
+                        screenWidth,
+                      ),
                     ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemgroupwiseProductionVsConsumtionExcel(
-                                      itemGroupWiseProductionData,
-                                      itemGroupWiseConsumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemgroupwiseProductionVsConsumtionPDF(
-                                      itemGroupWiseProductionData,
-                                      itemGroupWiseConsumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          SizedBox(width: 15),
+                          Text(
+                            "Production vs Consumption - Warehouse Wise",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          PopupMenuButton(
+                            onSelected: (value) {},
+                            itemBuilder: (BuildContext bc) {
+                              return [
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateWarehousewiseProductionVsConsumtionExcel(
+                                        warehouseProductionList,
+                                        warehouseConsumptionList,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download Excel"),
+                                ),
+                                PopupMenuItem(
+                                  onTap: () {
+                                    setState(() {
+                                      generateWarehousewiseProductionVsConsumtionPDF(
+                                        warehouseProductionList,
+                                        warehouseConsumptionList,
+                                      );
+                                    });
+                                  },
+                                  child: const Text("Download PDF"),
+                                ),
+                              ];
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: RepaintBoundary(
+                      child: _productionVsConsumptionWarehouseWise(screenWidth),
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _productionVsConsumptionItemGroupWise(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Production vs Consumption \n- Item Sub-Group Wise",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSubgroupwiseProductionVsConsumtionExcel(
-                                      itemSubGroupWiseProductionData,
-                                      itemSubGroupWiseConsumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSubgroupwiseProductionVsConsumtionPDF(
-                                      itemSubGroupWiseProductionData,
-                                      itemSubGroupWiseConsumptionData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _productionVsConsumptionItemSubGroupWise(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Production vs Consumption - Warehouse Wise",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateWarehousewiseProductionVsConsumtionExcel(
-                                      warehouseProductionList,
-                                      warehouseConsumptionList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateWarehousewiseProductionVsConsumtionPDF(
-                                      warehouseProductionList,
-                                      warehouseConsumptionList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _productionVsConsumptionWarehouseWise(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-              ],
-            ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                    child: Divider(thickness: 2),
+                  ),
+                ],
+              ),
+            ],
           )
         : const Center(child: CircularProgressIndicator());
   }
@@ -3273,7 +2799,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     });
   }
 
-  Widget _productionVsConsumptionMonthly() {
+  Widget _productionVsConsumptionMonthly(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = productionData.productionData.length;
@@ -3282,60 +2808,53 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = 0;
-    if (productionData.productionData.isNotEmpty ||
-        consumptionData.consumptionData.isNotEmpty) {
-      // Combine the productionData and consumptionData values into a single list
-      List<double> allValues = [
-        ...productionData.productionData.map((data) => data.productionQty),
-        ...consumptionData.consumptionData.map((data) => data.consumptionQty),
-      ];
-      // Find the maximum value from the combined list
-      maxValue = allValues.reduce((a, b) => a > b ? a : b);
-    }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(monthWiseMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesProductionVsConsumptionProduction,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesProductionVsConsumptionProduction,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _productionVsConsumptionMonthlyChartData(
-              productionData.productionData,
-              consumptionData.consumptionData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _productionVsConsumptionMonthlyChartData(
+                productionData.productionData,
+                consumptionData.consumptionData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     touchedMonth = productionData
                         .productionData[barTouchResponse.spot!.spot.x.toInt()]
                         .monthName;
@@ -3359,7 +2878,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                           : 0);
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedMonthIndex,
                         touchedItemCode,
                         touchedItemGroup,
@@ -3367,60 +2886,61 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                         touchedWarehouse,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  // Retrieve both Production and Consumption data for the current month
-                  String monthName =
-                      productionData.productionData[grpIndex].monthName;
-                  double production =
-                      productionData.productionData[grpIndex].productionQty;
-                  double consumption =
-                      consumptionData.consumptionData[grpIndex].consumptionQty;
-
-                  // Create the tooltip content with both values
-                  return BarTooltipItem(
-                    "$monthName\n", // Display the month name
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: "Production : ${formatAmount(production)}\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text: "Consumption : ${formatAmount(consumption)}",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    // Retrieve both Production and Consumption data for the current month
+                    String monthName =
+                        productionData.productionData[grpIndex].monthName;
+                    double production =
+                        productionData.productionData[grpIndex].productionQty;
+                    double consumption = consumptionData
+                        .consumptionData[grpIndex]
+                        .consumptionQty;
+
+                    // Create the tooltip content with both values
+                    return BarTooltipItem(
+                      "$monthName\n", // Display the month name
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: "Production : ${formatAmount(production)}\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "Consumption : ${formatAmount(consumption)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -3428,7 +2948,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     );
   }
 
-  Widget _productionVsConsumptionItemWise() {
+  Widget _productionVsConsumptionItemWise(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = itemWiseData.itemWiseData.length;
@@ -3437,66 +2957,57 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = 0;
-    if (itemWiseData.itemWiseData.isNotEmpty ||
-        itemWiseConsumptionData.itemWiseConsumptionData.isNotEmpty) {
-      // Combine the productionData and consuData values into a single list
-      List<double> allValues = [
-        ...itemWiseData.itemWiseData.map((data) => data.productionQty),
-        ...itemWiseConsumptionData.itemWiseConsumptionData.map(
-          (data) => data.consumptionQty,
-        ),
-      ];
-      // Find the maximum value from the combined list
-      maxValue = allValues.reduce((a, b) => a > b ? a : b);
-    }
     Map<String, ItemWiseConsumptionProductAnalysisData> consumptionMap = {
       for (var data in itemWiseConsumptionData.itemWiseConsumptionData)
         data.itemName: data,
     };
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(itemWiseMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemWiseProduction,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemWiseProduction,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _productionVsConsumptionItemWiseChartData(
-              itemWiseData.itemWiseData,
-              itemWiseConsumptionData.itemWiseConsumptionData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _productionVsConsumptionItemWiseChartData(
+                itemWiseData.itemWiseData,
+                itemWiseConsumptionData.itemWiseConsumptionData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItemCode = touchedItemCode == ""
                           ? itemWiseData
@@ -3506,7 +3017,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedMonthIndex,
                         touchedItemCode,
                         touchedItemGroup,
@@ -3514,60 +3025,60 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                         touchedWarehouse,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  // Retrieve both Production and Consumption data for the current month
-                  String itemName =
-                      itemWiseData.itemWiseData[grpIndex].itemName;
-                  double production =
-                      itemWiseData.itemWiseData[grpIndex].productionQty;
-                  double consumption =
-                      consumptionMap[itemName]?.consumptionQty ?? 0.0;
-
-                  // Create the tooltip content with both values
-                  return BarTooltipItem(
-                    "$itemName\n", // Display the month name
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: "Production : ${formatAmount(production)}\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text: "Consumption : ${formatAmount(consumption)}",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    // Retrieve both Production and Consumption data for the current month
+                    String itemName =
+                        itemWiseData.itemWiseData[grpIndex].itemName;
+                    double production =
+                        itemWiseData.itemWiseData[grpIndex].productionQty;
+                    double consumption =
+                        consumptionMap[itemName]?.consumptionQty ?? 0.0;
+
+                    // Create the tooltip content with both values
+                    return BarTooltipItem(
+                      "$itemName\n", // Display the month name
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: "Production : ${formatAmount(production)}\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "Consumption : ${formatAmount(consumption)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -3575,7 +3086,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     );
   }
 
-  Widget _productionVsConsumptionItemGroupWise() {
+  Widget _productionVsConsumptionItemGroupWise(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = itemGroupWiseProductionData.itemGroupWiseData.length;
@@ -3584,70 +3095,58 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = 0;
-    if (itemGroupWiseProductionData.itemGroupWiseData.isNotEmpty ||
-        itemGroupWiseConsumptionData.itemGroupWiseConsumptionData.isNotEmpty) {
-      // Combine the productionData and consumptionData values into a single list
-      List<double> allValues = [
-        ...itemGroupWiseConsumptionData.itemGroupWiseConsumptionData.map(
-          (data) => data.consumptionQty,
-        ),
-        ...itemGroupWiseProductionData.itemGroupWiseData.map(
-          (data) => data.productionQty,
-        ),
-      ];
-
-      // Find the maximum value from the combined list
-      maxValue = allValues.reduce((a, b) => a > b ? a : b);
-    }
     Map<String, ItemGroupWiseConsumptionProductAnalysisData> consumptionMap = {
       for (var data
           in itemGroupWiseConsumptionData.itemGroupWiseConsumptionData)
         data.itemGroupName: data,
     };
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(itemGroupMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemGroupWiseProduction,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemGroupWiseProduction,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _productionVsConsumptionItemGroupWiseChartData(
-              itemGroupWiseProductionData.itemGroupWiseData,
-              itemGroupWiseConsumptionData.itemGroupWiseConsumptionData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _productionVsConsumptionItemGroupWiseChartData(
+                itemGroupWiseProductionData.itemGroupWiseData,
+                itemGroupWiseConsumptionData.itemGroupWiseConsumptionData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItemGroup = touchedItemGroup == ""
                           ? itemGroupWiseProductionData
@@ -3657,7 +3156,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedMonthIndex,
                         touchedItemCode,
                         touchedItemGroup,
@@ -3665,62 +3164,62 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                         touchedWarehouse,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  // Retrieve both Production and Consumption data for the current month
-                  String groupName = itemGroupWiseProductionData
-                      .itemGroupWiseData[grpIndex]
-                      .itemGroupName;
-                  double production = itemGroupWiseProductionData
-                      .itemGroupWiseData[grpIndex]
-                      .productionQty;
-                  double consumption =
-                      consumptionMap[groupName]?.consumptionQty ?? 0.0;
-
-                  // Create the tooltip content with both values
-                  return BarTooltipItem(
-                    "$groupName\n",
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: "Production : ${formatAmount(production)}\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text: "Consumption : ${formatAmount(consumption)}",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    // Retrieve both Production and Consumption data for the current month
+                    String groupName = itemGroupWiseProductionData
+                        .itemGroupWiseData[grpIndex]
+                        .itemGroupName;
+                    double production = itemGroupWiseProductionData
+                        .itemGroupWiseData[grpIndex]
+                        .productionQty;
+                    double consumption =
+                        consumptionMap[groupName]?.consumptionQty ?? 0.0;
+
+                    // Create the tooltip content with both values
+                    return BarTooltipItem(
+                      "$groupName\n",
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: "Production : ${formatAmount(production)}\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "Consumption : ${formatAmount(consumption)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -3728,7 +3227,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     );
   }
 
-  Widget _productionVsConsumptionItemSubGroupWise() {
+  Widget _productionVsConsumptionItemSubGroupWise(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len =
@@ -3738,74 +3237,60 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = 0;
-    if (itemSubGroupWiseProductionData
-            .itemSubGroupWiseProductionData
-            .isNotEmpty ||
-        itemSubGroupWiseConsumptionData
-            .itemSubGroupWiseConsumptionData
-            .isNotEmpty) {
-      // Combine the productionData and consumptionData values into a single list
-      List<double> allValues = [
-        ...itemSubGroupWiseProductionData.itemSubGroupWiseProductionData.map(
-          (data) => data.productionQty,
-        ),
-        ...itemSubGroupWiseConsumptionData.itemSubGroupWiseConsumptionData.map(
-          (data) => data.consumptionQty,
-        ),
-      ];
-      // Find the maximum value from the combined list
-      maxValue = allValues.reduce((a, b) => a > b ? a : b);
-    }
+
     Map<String, ItemSubGroupWiseConsumptionProductAnalysisData>
     consumptionMap = {
       for (var data
           in itemSubGroupWiseConsumptionData.itemSubGroupWiseConsumptionData)
         data.itemSubGroupName: data,
     };
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(itemSubGroupMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemSubGroupWiseProduction,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemSubGroupWiseProduction,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _productionVsConsumptionItemSubGroupWiseChartData(
-              itemSubGroupWiseProductionData.itemSubGroupWiseProductionData,
-              itemSubGroupWiseConsumptionData.itemSubGroupWiseConsumptionData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _productionVsConsumptionItemSubGroupWiseChartData(
+                itemSubGroupWiseProductionData.itemSubGroupWiseProductionData,
+                itemSubGroupWiseConsumptionData.itemSubGroupWiseConsumptionData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedItemSubGroup = touchedItemSubGroup == ""
                           ? itemSubGroupWiseProductionData
@@ -3818,7 +3303,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedMonthIndex,
                         touchedItemCode,
                         touchedItemGroup,
@@ -3826,62 +3311,62 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                         touchedWarehouse,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  // Retrieve both Production and Consumption data for the current month
-                  String itemSubGroupName = itemSubGroupWiseProductionData
-                      .itemSubGroupWiseProductionData[grpIndex]
-                      .itemSubGroupName;
-                  double production = itemSubGroupWiseProductionData
-                      .itemSubGroupWiseProductionData[grpIndex]
-                      .productionQty;
-                  double consumption =
-                      consumptionMap[itemSubGroupName]?.consumptionQty ?? 0.0;
-
-                  // Create the tooltip content with both values
-                  return BarTooltipItem(
-                    "$itemSubGroupName\n",
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: "Production : ${formatAmount(production)}\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text: "Consumption : ${formatAmount(consumption)}",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    // Retrieve both Production and Consumption data for the current month
+                    String itemSubGroupName = itemSubGroupWiseProductionData
+                        .itemSubGroupWiseProductionData[grpIndex]
+                        .itemSubGroupName;
+                    double production = itemSubGroupWiseProductionData
+                        .itemSubGroupWiseProductionData[grpIndex]
+                        .productionQty;
+                    double consumption =
+                        consumptionMap[itemSubGroupName]?.consumptionQty ?? 0.0;
+
+                    // Create the tooltip content with both values
+                    return BarTooltipItem(
+                      "$itemSubGroupName\n",
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: "Production : ${formatAmount(production)}\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "Consumption : ${formatAmount(consumption)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -3889,7 +3374,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     );
   }
 
-  Widget _productionVsConsumptionWarehouseWise() {
+  Widget _productionVsConsumptionWarehouseWise(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = warehouseProductionList.warehouseWiseProductionData.length;
@@ -3898,64 +3383,54 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
     } else {
       chartWidth = screenWidth;
     }
-    double maxValue = 0;
-    if (warehouseProductionList.warehouseWiseProductionData.isNotEmpty ||
-        warehouseConsumptionList.warehouseWiseConsumptionData.isNotEmpty) {
-      // Combine the productionData and consumptionData values into a single list
-      List<double> allValues = [
-        ...warehouseProductionList.warehouseWiseProductionData.map(
-          (data) => data.productionQty,
-        ),
-        ...warehouseConsumptionList.warehouseWiseConsumptionData.map(
-          (data) => data.consumptionQty,
-        ),
-      ];
-      // Find the maximum value from the combined list
-      maxValue = allValues.reduce((a, b) => a > b ? a : b);
-    }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(warehouseWiseMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesWarehouseWiseProductionAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesWarehouseWiseProductionAnalysis,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _productionVsConsumptionWarehouseWiseChartData(
-              warehouseProductionList.warehouseWiseProductionData,
-              warehouseConsumptionList.warehouseWiseConsumptionData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+              barGroups: _productionVsConsumptionWarehouseWiseChartData(
+                warehouseProductionList.warehouseWiseProductionData,
+                warehouseConsumptionList.warehouseWiseConsumptionData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
                       touchedWarehouse = touchedWarehouse == ""
                           ? warehouseProductionList
@@ -3968,7 +3443,7 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                           : "";
                       selectedChart = barTouchResponse.spot!.spot.x;
                       showDrillDownChart = true;
-                      loadDataWithFilter(
+                      await loadDataWithFilter(
                         touchedMonthIndex,
                         touchedItemCode,
                         touchedItemGroup,
@@ -3976,68 +3451,68 @@ class _ProductAnalysisState extends State<ProductAnalysis> {
                         touchedWarehouse,
                       );
                     }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  // Retrieve both Production and Consumption data for the current month
-                  String warehouseName = warehouseProductionList
-                      .warehouseWiseProductionData[grpIndex]
-                      .warehouseName;
-                  warehouseName == ""
-                      ? warehouseConsumptionList
-                            .warehouseWiseConsumptionData[grpIndex]
-                            .warehouseName
-                      : warehouseName;
-                  double production = warehouseProductionList
-                      .warehouseWiseProductionData[grpIndex]
-                      .productionQty;
-                  double consumption = warehouseConsumptionList
-                      .warehouseWiseConsumptionData[grpIndex]
-                      .consumptionQty;
-
-                  // Create the tooltip content with both values
-                  return BarTooltipItem(
-                    "$warehouseName\n",
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: "Production : ${formatAmount(production)}\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text: "Consumption : ${formatAmount(consumption)}",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
+                  }
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    // Retrieve both Production and Consumption data for the current month
+                    String warehouseName = warehouseProductionList
+                        .warehouseWiseProductionData[grpIndex]
+                        .warehouseName;
+                    warehouseName == ""
+                        ? warehouseConsumptionList
+                              .warehouseWiseConsumptionData[grpIndex]
+                              .warehouseName
+                        : warehouseName;
+                    double production = warehouseProductionList
+                        .warehouseWiseProductionData[grpIndex]
+                        .productionQty;
+                    double consumption = warehouseConsumptionList
+                        .warehouseWiseConsumptionData[grpIndex]
+                        .consumptionQty;
+
+                    // Create the tooltip content with both values
+                    return BarTooltipItem(
+                      "$warehouseName\n",
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: "Production : ${formatAmount(production)}\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "Consumption : ${formatAmount(consumption)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
