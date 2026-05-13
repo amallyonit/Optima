@@ -5,7 +5,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-// import 'package:optima/pages/dashboardPages/financesDashboard/receivablesFinance.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:provider/provider.dart';
@@ -132,9 +131,21 @@ double selectedChart = 0;
 
 List<String> selectedSalesData = [];
 
-final List<String> categories = ['Category', 'Supplier', 'Date'];
+final List<String> categories = [
+  'Category',
+  'Supplier',
+  'Due/Overdue',
+  'Advance/Payables',
+  'Date',
+];
 
-List<List<String>> filterOptions = [listOfCategory, listOfSupplier, []];
+List<List<String>> filterOptions = [
+  listOfCategory,
+  listOfSupplier,
+  ['Not Dues', 'Overdue'],
+  ['Advance', 'Payables'],
+  [],
+];
 
 List<List<bool>> selectedFinanceReceivablesOptions = [];
 
@@ -2361,23 +2372,73 @@ class _PayableFinanceState extends State<PayableFinance> {
       _loadAdvanceVendors(),
       _loadCapitalVendors(),
     ]);
-    filterOptions = [listOfCategory, listOfSupplier, []];
-
-    savedFinanceReceivablesOptions = filterOptions
-        .map((options) => List<bool>.filled(options.length, false))
-        .toList();
+    refreshPayablesFilterOptions();
 
     if (savedFinanceReceivablesOptionsTemp.isEmpty) {
-      savedFinanceReceivablesOptions = filterOptions
-          .map((options) => List<bool>.filled(options.length, false))
-          .toList();
+      savedFinanceReceivablesOptions = emptyPayablesFilterSelection();
     } else {
-      savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
+      savedFinanceReceivablesOptions = normalizePayablesFilterSelection(
+        savedFinanceReceivablesOptionsTemp,
+      );
     }
+    selectedFinanceReceivablesOptions = normalizePayablesFilterSelection(
+      savedFinanceReceivablesOptions,
+    );
     if (mounted) {
       await applyPayablesVariables();
       chartDataLoadedPayables = true;
     }
+  }
+
+  void refreshPayablesFilterOptions() {
+    filterOptions = [
+      listOfCategory,
+      listOfSupplier,
+      ['Not Dues', 'Overdue'],
+      ['Advance', 'Payables'],
+      [],
+    ];
+  }
+
+  List<List<bool>> emptyPayablesFilterSelection() {
+    return filterOptions
+        .map((options) => List<bool>.filled(options.length, false))
+        .toList();
+  }
+
+  List<List<bool>> normalizePayablesFilterSelection(
+    List<List<bool>> selection,
+  ) {
+    final normalized = emptyPayablesFilterSelection();
+    for (
+      var catIndex = 0;
+      catIndex < filterOptions.length && catIndex < selection.length;
+      catIndex++
+    ) {
+      for (
+        var optionIndex = 0;
+        optionIndex < filterOptions[catIndex].length &&
+            optionIndex < selection[catIndex].length;
+        optionIndex++
+      ) {
+        normalized[catIndex][optionIndex] = selection[catIndex][optionIndex];
+      }
+    }
+    return normalized;
+  }
+
+  Map<String, double> payableVendorBalances(Iterable<PayablesList> rows) {
+    final balances = <String, double>{};
+    for (final row in rows) {
+      balances[row.vendorCode] =
+          (balances[row.vendorCode] ?? 0) + row.balanceParsed;
+    }
+    return balances;
+  }
+
+  bool isAdvanceVendor(String vendorCode) {
+    final vendorBalances = payableVendorBalances(payablesListMaster);
+    return (vendorBalances[vendorCode] ?? 0) > 0;
   }
 
   Future<void> loadDataWithFilter(
@@ -2481,6 +2542,19 @@ class _PayableFinanceState extends State<PayableFinance> {
         .map((e) => e.key)
         .toList();
 
+    final selectedDueOptions = (allCategoriesState['Due/Overdue'] ?? {}).entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    final selectedAdvancePayables =
+        (allCategoriesState['Advance/Payables'] ?? {}).entries
+            .where((e) => e.value)
+            .map((e) => e.key)
+            .toList();
+
+    final vendorBalances = payableVendorBalances(payablesListMaster);
+
     list = list.where((p) {
       final matchCategory =
           selectedCategories.isEmpty ||
@@ -2488,6 +2562,18 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       final matchSupplier =
           selectedSuppliers.isEmpty || selectedSuppliers.contains(p.vendorName);
+
+      final isNotDue = p.ageingBrackets == 'Future';
+      final matchDue =
+          selectedDueOptions.isEmpty ||
+          (selectedDueOptions.contains('Not Dues') && isNotDue) ||
+          (selectedDueOptions.contains('Overdue') && !isNotDue);
+
+      final isAdvance = (vendorBalances[p.vendorCode] ?? 0) > 0;
+      final matchAdvancePayables =
+          selectedAdvancePayables.isEmpty ||
+          (selectedAdvancePayables.contains('Advance') && isAdvance) ||
+          (selectedAdvancePayables.contains('Payables') && !isAdvance);
 
       // ---------- Touch Filters ----------
 
@@ -2505,6 +2591,8 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       return matchCategory &&
           matchSupplier &&
+          matchDue &&
+          matchAdvancePayables &&
           matchPayable &&
           matchSupplierTouch &&
           matchCategoryTouch &&
@@ -2922,12 +3010,13 @@ class _PayableFinanceState extends State<PayableFinance> {
   void initState() {
     super.initState();
     clearVariables();
-    filterOptions = [listOfCategory, listOfSupplier, []];
+    refreshPayablesFilterOptions();
 
-    selectedFinanceReceivablesOptions = filterOptions
-        .map((options) => List<bool>.filled(options.length, false))
-        .toList();
+    selectedFinanceReceivablesOptions = emptyPayablesFilterSelection();
 
+    savedFinanceReceivablesOptions = normalizePayablesFilterSelection(
+      savedFinanceReceivablesOptions,
+    );
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     LoadDates();
     if (isUserLoggedIn && isBiDashboardStart) {
@@ -4944,6 +5033,9 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   void showFilterBottomSheet(BuildContext context) {
+    int selectedCategoryIndex = 0;
+    String filterSearchText = "";
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -4951,10 +5043,23 @@ class _PayableFinanceState extends State<PayableFinance> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
       ),
       builder: (context) {
-        int selectedCategoryIndex = 0;
-
         return StatefulBuilder(
           builder: (context, setState) {
+            final isSearchableFilter =
+                categories[selectedCategoryIndex] == 'Supplier';
+            final visibleFilterIndexes =
+                List<int>.generate(
+                  filterOptions[selectedCategoryIndex].length,
+                  (index) => index,
+                ).where((index) {
+                  if (!isSearchableFilter || filterSearchText.trim().isEmpty) {
+                    return true;
+                  }
+                  return filterOptions[selectedCategoryIndex][index]
+                      .toLowerCase()
+                      .contains(filterSearchText.trim().toLowerCase());
+                }).toList();
+
             return Container(
               height: MediaQuery.of(context).size.height * 0.9,
               padding: const EdgeInsets.all(16.0),
@@ -4993,6 +5098,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                 onTap: () {
                                   setState(() {
                                     selectedCategoryIndex = index;
+                                    filterSearchText = "";
                                   });
                                 },
                               );
@@ -5006,36 +5112,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                               Expanded(
                                 child:
                                     selectedCategoryIndex ==
-                                        categories.length -
-                                            1 // "Date" index
+                                        categories.indexOf('Date')
                                     ? Column(
                                         children: [
-                                          // ListTile(
-                                          //   title: const Text("From Date"),
-                                          //   subtitle: Text(fromDateFilter !=
-                                          //           null
-                                          //       ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
-                                          //       : formatDateString(
-                                          //           fiscalYearStartDate!)),
-                                          //   trailing: const Icon(
-                                          //       Icons.calendar_today),
-                                          //   onTap: () async {
-                                          //     final picked =
-                                          //         await showDatePicker(
-                                          //       context: context,
-                                          //       initialDate: fromDateFilter ??
-                                          //           DateTime.now(),
-                                          //       firstDate: fiscalYearStartDate!,
-                                          //       lastDate: currentDate!,
-                                          //     );
-                                          //     if (picked != null) {
-                                          //       setState(() {
-                                          //         fromDateFilter = picked;
-                                          //         dateFilterFlag = true;
-                                          //       });
-                                          //     }
-                                          //   },
-                                          // ),
                                           ListTile(
                                             title: const Text("To Date"),
                                             subtitle: Text(
@@ -5069,57 +5148,79 @@ class _PayableFinanceState extends State<PayableFinance> {
                                           ),
                                         ],
                                       )
-                                    : ListView.builder(
-                                        itemCount:
-                                            filterOptions[selectedCategoryIndex]
-                                                .length,
-                                        itemBuilder: (context, index) {
-                                          return CheckboxListTile(
-                                            title: Text(
-                                              filterOptions[selectedCategoryIndex][index],
+                                    : Column(
+                                        children: [
+                                          if (isSearchableFilter)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8.0,
+                                              ),
+                                              child: TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                      prefixIcon: Icon(
+                                                        Icons.search,
+                                                      ),
+                                                      hintText:
+                                                          'Search supplier',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                      isDense: true,
+                                                    ),
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    filterSearchText = value;
+                                                  });
+                                                },
+                                              ),
                                             ),
-                                            value:
-                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
-                                            onChanged: (bool? value) {
-                                              setState(() {
-                                                if (value == true) {
-                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
-                                                      true;
-                                                } else {
-                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
-                                                      false;
-                                                }
-                                                // savedFinanceReceivablesOptionsTemp =
-                                                //     savedFinanceReceivablesOptions;
-                                                savedFinanceReceivablesOptionsTemp =
-                                                    savedFinanceReceivablesOptions
-                                                        .map(
-                                                          (e) =>
-                                                              List<bool>.from(
-                                                                e,
-                                                              ),
-                                                        )
-                                                        .toList();
-                                                if (savedFinanceReceivablesOptions
-                                                    .isEmpty) {
-                                                  savedFinanceReceivablesOptionsTemp =
-                                                      savedFinanceReceivablesOptions
-                                                          .map(
-                                                            (e) =>
-                                                                List<bool>.from(
-                                                                  e,
-                                                                ),
-                                                          )
-                                                          .toList();
-                                                }
-                                                savedFinanceReceivablesOptions =
-                                                    selectedFinanceReceivablesOptions;
-                                              });
-
-                                              // your checkbox logic
-                                            },
-                                          );
-                                        },
+                                          Expanded(
+                                            child: ListView.builder(
+                                              itemCount:
+                                                  visibleFilterIndexes.length,
+                                              itemBuilder: (context, index) {
+                                                final optionIndex =
+                                                    visibleFilterIndexes[index];
+                                                return CheckboxListTile(
+                                                  title: Text(
+                                                    filterOptions[selectedCategoryIndex][optionIndex],
+                                                  ),
+                                                  value:
+                                                      savedFinanceReceivablesOptions[selectedCategoryIndex][optionIndex],
+                                                  onChanged: (bool? value) {
+                                                    setState(() {
+                                                      selectedFinanceReceivablesOptions[selectedCategoryIndex][optionIndex] =
+                                                          value == true;
+                                                      savedFinanceReceivablesOptionsTemp =
+                                                          savedFinanceReceivablesOptions
+                                                              .map(
+                                                                (e) =>
+                                                                    List<
+                                                                      bool
+                                                                    >.from(e),
+                                                              )
+                                                              .toList();
+                                                      if (savedFinanceReceivablesOptions
+                                                          .isEmpty) {
+                                                        savedFinanceReceivablesOptionsTemp =
+                                                            savedFinanceReceivablesOptions
+                                                                .map(
+                                                                  (e) =>
+                                                                      List<
+                                                                        bool
+                                                                      >.from(e),
+                                                                )
+                                                                .toList();
+                                                      }
+                                                      savedFinanceReceivablesOptions =
+                                                          selectedFinanceReceivablesOptions;
+                                                    });
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
                                       ),
                               ),
                               Row(

@@ -14,7 +14,6 @@ import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
-import 'package:path_provider/path_provider.dart';
 import '../ReportService.dart';
 
 class ReceivablesFinance extends StatefulWidget {
@@ -146,6 +145,7 @@ bool showingOfficeData = true;
 int selectedCheckbox = 1;
 
 List<String> selectedSalesData = [];
+List<String> listOfCustomer = [];
 
 final List<String> categories = [
   'Sales Data',
@@ -157,6 +157,7 @@ final List<String> categories = [
   'Due/Overdue',
   'Advance/Receivables',
   'Date',
+  'Customer',
 ];
 
 List<List<String>> filterOptions = [
@@ -169,6 +170,7 @@ List<List<String>> filterOptions = [
   ['Not Dues', 'Overdue'],
   ['Advance', 'Receivables'],
   [],
+  listOfCustomer,
 ];
 
 List<List<bool>> selectedFinanceReceivablesOptions = [];
@@ -1794,6 +1796,108 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
   }
 
+  bool _matchesDueFilter(DebtorsAgingList row, List<String> selectedOptions) {
+    if (selectedOptions.isEmpty) return true;
+
+    final futureAmount = double.tryParse(row.future) ?? 0;
+    final isNotDue = row.ageingBrackets == 'Future' || futureAmount != 0;
+
+    return (selectedOptions.contains("Not Dues") && isNotDue) ||
+        (selectedOptions.contains("Overdue") && !isNotDue);
+  }
+
+  bool _matchesAdvanceFilter(
+    DebtorsAgingList row,
+    List<String> selectedOptions,
+    Map<String, double> customerBalances,
+  ) {
+    if (selectedOptions.isEmpty) return true;
+
+    final customerBalance = customerBalances[row.customerName] ?? 0;
+    final isAdvance = customerBalance < 0;
+
+    return (selectedOptions.contains("Advance") && isAdvance) ||
+        (selectedOptions.contains("Receivables") && !isAdvance);
+  }
+
+  Map<String, double> _customerBalances(Iterable<DebtorsAgingList> rows) {
+    final balances = <String, double>{};
+    for (final row in rows) {
+      balances[row.customerName] =
+          (balances[row.customerName] ?? 0) +
+          (double.tryParse(row.balance) ?? 0);
+    }
+    return balances;
+  }
+
+  double _boundedPercentage(double numerator, double denominator) {
+    if (numerator == 0 || denominator == 0) return 0;
+
+    final percentage = ((numerator.abs() / denominator.abs()) * 100);
+    if (percentage.isNaN || percentage.isInfinite) return 0;
+
+    return percentage.clamp(0, 100).ceilToDouble();
+  }
+
+  double _percentIndicatorValue(double percentage) {
+    if (percentage.isNaN || percentage.isInfinite) return 0;
+    return (percentage / 100).clamp(0, 1).toDouble();
+  }
+
+  void _refreshFilterOptions() {
+    filterOptions = [
+      ['OFFICE - Drs.', 'NH GROUP. - Drs.', 'Sales Team'],
+      ['Hospital', 'Distributor', 'Other'],
+      ['Credit Note', 'Invoice', 'Journal', 'Receipt'],
+      listOfRSM,
+      listOfASM,
+      listOfTSM,
+      ['Not Dues', 'Overdue'],
+      ['Advance', 'Receivables'],
+      [],
+      listOfCustomer,
+    ];
+  }
+
+  void _loadCustomerFilterOptions(Iterable<DebtorsAgingList> rows) {
+    final customers =
+        rows
+            .map((row) => row.customerName.trim())
+            .where((name) => name.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    if (customers.isNotEmpty) {
+      listOfCustomer = customers;
+    }
+  }
+
+  List<List<bool>> _emptyFilterSelection() {
+    return filterOptions
+        .map((options) => List<bool>.filled(options.length, false))
+        .toList();
+  }
+
+  List<List<bool>> _normalizeFilterSelection(List<List<bool>> selection) {
+    final normalized = _emptyFilterSelection();
+    for (
+      var catIndex = 0;
+      catIndex < filterOptions.length && catIndex < selection.length;
+      catIndex++
+    ) {
+      for (
+        var optionIndex = 0;
+        optionIndex < filterOptions[catIndex].length &&
+            optionIndex < selection[catIndex].length;
+        optionIndex++
+      ) {
+        normalized[catIndex][optionIndex] = selection[catIndex][optionIndex];
+      }
+    }
+    return normalized;
+  }
+
   Future<void> _loadCollectionTarget(
     String userName,
     String userLevel,
@@ -1898,9 +2002,16 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         'Advance/Receivables',
       ).entries.where((e) => e.value).map((e) => e.key).toList();
 
+      final trueCustomerOptions = getCategory(
+        'Customer',
+      ).entries.where((e) => e.value).map((e) => e.key).toList();
+
       // -------------------------------
       // 3. Single-pass filtering (FAST)
       // -------------------------------
+      _loadCustomerFilterOptions(targetList);
+      _refreshFilterOptions();
+      final customerBalances = _customerBalances(targetList);
       final List<DebtorsAgingList> filtered = [];
 
       for (final person in targetList) {
@@ -1946,28 +2057,21 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           continue;
         }
 
-        // Due / Overdue
-        if (trueDueOptions.isNotEmpty) {
-          if (trueDueOptions.contains("Not Dues") && person.future != "0") {
-            continue;
-          }
-
-          if (trueDueOptions.contains("Overdue") && person.future == "0") {
-            continue;
-          }
+        if (!_matchesDueFilter(person, trueDueOptions)) {
+          continue;
         }
 
-        // Advance / Receivables
-        if (trueAdvanceOptions.isNotEmpty) {
-          if (trueAdvanceOptions.contains("Advance") &&
-              person.paymentTerms != "Advance") {
-            continue;
-          }
+        if (!_matchesAdvanceFilter(
+          person,
+          trueAdvanceOptions,
+          customerBalances,
+        )) {
+          continue;
+        }
 
-          if (trueAdvanceOptions.contains("Receivables") &&
-              person.paymentTerms == "Advance") {
-            continue;
-          }
+        if (trueCustomerOptions.isNotEmpty &&
+            !trueCustomerOptions.contains(person.customerName)) {
+          continue;
         }
 
         filtered.add(person);
@@ -2468,24 +2572,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     // -------------------------------
     // 4. Percentages
     // -------------------------------
-    receivablePercentage = 0;
-    if (overDue != 0 && receivablesAmount != 0) {
-      receivablePercentage = double.parse(
-        ((overDue / receivablesAmount) * 100).toStringAsFixed(2),
-      ).ceilToDouble();
-    }
-    if (receivablePercentage > 100) receivablePercentage = 100;
+    receivablePercentage = _boundedPercentage(overDue, receivablesAmount);
 
-    netReceivablePercentage = 0;
-    if (advance != 0 && netReceivables != 0) {
-      netReceivablePercentageLocal = double.parse(
-        ((advance / netReceivables) * 100).toStringAsFixed(2),
-      ).ceilToDouble();
-    }
-    if (netReceivablePercentageLocal > 100) netReceivablePercentageLocal = 100;
-    if (netReceivablePercentageLocal.isNegative) {
-      netReceivablePercentageLocal = netReceivablePercentageLocal.abs();
-    }
+    netReceivablePercentageLocal = _boundedPercentage(advance, netReceivables);
     // -------------------------------
     // 5. Update UI
     // -------------------------------
@@ -2505,24 +2594,17 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
       grossReceivablesStr = formatAmount(grossReceivables.abs());
 
-      filterOptions = [
-        ['OFFICE - Drs.', 'NH GROUP. - Drs.', 'Sales Team'],
-        ['Hospital', 'Distributor', 'Other'],
-        ['Credit Note', 'Invoice', 'Journal', 'Receipt'],
-        listOfRSM,
-        listOfASM,
-        listOfTSM,
-        ['Not Dues', 'Overdue'],
-        ['Advance', 'Receivables'],
-        [],
-      ];
+      _loadCustomerFilterOptions(targetAPIData);
+      _refreshFilterOptions();
 
       savedFinanceReceivablesOptions =
           savedFinanceReceivablesOptionsTemp.isEmpty
-          ? filterOptions
-                .map((options) => List<bool>.filled(options.length, false))
-                .toList()
-          : savedFinanceReceivablesOptionsTemp;
+          ? _emptyFilterSelection()
+          : _normalizeFilterSelection(savedFinanceReceivablesOptionsTemp);
+
+      selectedFinanceReceivablesOptions = _normalizeFilterSelection(
+        savedFinanceReceivablesOptions,
+      );
 
       chartDataLoadedReceivables = true;
     });
@@ -2769,9 +2851,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         salesPerson,
       ),
     ]);
-    if (receivablesCategoryList.categoryData.isEmpty) {
-      await _loadCustomerCategoryWise();
-    }
+    await _loadCustomerCategoryWise();
 
     await applyFinanceReceivablesVariables();
     setState(() {
@@ -2884,9 +2964,16 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       'Advance/Receivables',
     ).entries.where((e) => e.value).map((e) => e.key).toList();
 
+    final trueCustomerOptions = getCategory(
+      'Customer',
+    ).entries.where((e) => e.value).map((e) => e.key).toList();
+
     // -------------------------------
     // 2. Single-pass filtering (FAST)
     // -------------------------------
+    _loadCustomerFilterOptions(targetAPIData);
+    _refreshFilterOptions();
+    final customerBalances = _customerBalances(targetAPIData);
     final List<DebtorsAgingList> filtered = [];
 
     for (final trgt in targetAPIData) {
@@ -2932,28 +3019,17 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         continue;
       }
 
-      // Due / Overdue
-      if (trueDueOptions.isNotEmpty) {
-        if (trueDueOptions.contains("Not Dues") && trgt.future != "0") {
-          continue;
-        }
-
-        if (trueDueOptions.contains("Overdue") && trgt.future == "0") {
-          continue;
-        }
+      if (!_matchesDueFilter(trgt, trueDueOptions)) {
+        continue;
       }
 
-      // Advance / Receivables
-      if (trueAdvanceOptions.isNotEmpty) {
-        if (trueAdvanceOptions.contains("Advance") &&
-            trgt.paymentTerms != "Advance") {
-          continue;
-        }
+      if (!_matchesAdvanceFilter(trgt, trueAdvanceOptions, customerBalances)) {
+        continue;
+      }
 
-        if (trueAdvanceOptions.contains("Receivables") &&
-            trgt.paymentTerms == "Advance") {
-          continue;
-        }
+      if (trueCustomerOptions.isNotEmpty &&
+          !trueCustomerOptions.contains(trgt.customerName)) {
+        continue;
       }
 
       filtered.add(trgt);
@@ -3019,22 +3095,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       fromDateFilter = fiscalYearStartDate;
     }
 
-    filterOptions = [
-      ['OFFICE - Drs.', 'NH GROUP. - Drs.', 'Sales Team'],
-      ['Hospital', 'Distributor', 'Other'],
-      ['Credit Note', 'Invoice', 'Journal', 'Receipt'],
-      listOfRSM,
-      listOfASM,
-      listOfTSM,
-      ['Not Dues', 'Overdue'],
-      ['Advance', 'Receivables'],
-      [],
-    ];
+    _refreshFilterOptions();
 
-    selectedFinanceReceivablesOptions = filterOptions
-        .map((options) => List<bool>.filled(options.length, false))
-        .toList();
-
+    selectedFinanceReceivablesOptions = _emptyFilterSelection();
+    savedFinanceReceivablesOptions = _normalizeFilterSelection(
+      savedFinanceReceivablesOptions,
+    );
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
   }
 
@@ -3127,7 +3193,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 radius: 75.0,
                                 lineWidth: 30.0,
                                 animation: true,
-                                percent: receivablePercentage / 100,
+                                percent: _percentIndicatorValue(
+                                  receivablePercentage,
+                                ),
                                 curve: Curves.linear,
                                 circularStrokeCap: CircularStrokeCap.butt,
                                 progressColor: const Color(0xFF2CA9DF),
@@ -3207,7 +3275,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 radius: 75.0,
                                 lineWidth: 30.0,
                                 animation: true,
-                                percent: netReceivablePercentage / 100,
+                                percent: _percentIndicatorValue(
+                                  netReceivablePercentage,
+                                ),
                                 curve: Curves.linear,
                                 circularStrokeCap: CircularStrokeCap.butt,
                                 progressColor: const Color(0xFF2CA9DF),
@@ -4948,6 +5018,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   }
 
   void showFilterBottomSheet(BuildContext context) {
+    String filterSearchText = "";
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -4957,6 +5029,21 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final isSearchableFilter =
+                categories[selectedCategoryIndex] == 'Customer';
+            final visibleFilterIndexes =
+                List<int>.generate(
+                  filterOptions[selectedCategoryIndex].length,
+                  (index) => index,
+                ).where((index) {
+                  if (!isSearchableFilter || filterSearchText.trim().isEmpty) {
+                    return true;
+                  }
+                  return filterOptions[selectedCategoryIndex][index]
+                      .toLowerCase()
+                      .contains(filterSearchText.trim().toLowerCase());
+                }).toList();
+
             return Container(
               height: MediaQuery.of(context).size.height * 0.9,
               padding: const EdgeInsets.all(16.0),
@@ -4993,6 +5080,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                 onTap: () {
                                   setState(() {
                                     selectedCategoryIndex = index;
+                                    filterSearchText = "";
                                   });
                                 },
                               );
@@ -5007,8 +5095,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                               Expanded(
                                 child:
                                     selectedCategoryIndex ==
-                                        categories.length -
-                                            1 // "Date" index
+                                        categories.indexOf('Date')
                                     ? Column(
                                         children: [
                                           ListTile(
@@ -5044,47 +5131,72 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                           ),
                                         ],
                                       )
-                                    : ListView.builder(
-                                        itemCount:
-                                            filterOptions[selectedCategoryIndex]
-                                                .length,
-                                        itemBuilder: (context, index) {
-                                          return CheckboxListTile(
-                                            title: Text(
-                                              filterOptions[selectedCategoryIndex][index],
+                                    : Column(
+                                        children: [
+                                          if (isSearchableFilter)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8.0,
+                                              ),
+                                              child: TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                      prefixIcon: Icon(
+                                                        Icons.search,
+                                                      ),
+                                                      hintText:
+                                                          'Search customer',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                      isDense: true,
+                                                    ),
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    filterSearchText = value;
+                                                  });
+                                                },
+                                              ),
                                             ),
-                                            value:
-                                                (selectedCategoryIndex <
-                                                        savedFinanceReceivablesOptions
-                                                            .length &&
-                                                    index <
-                                                        savedFinanceReceivablesOptions[selectedCategoryIndex]
-                                                            .length)
-                                                ? savedFinanceReceivablesOptions[selectedCategoryIndex][index]
-                                                : false,
-                                            onChanged: (bool? value) {
-                                              setState(() {
-                                                if (value == true) {
-                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
-                                                      true;
-                                                } else {
-                                                  selectedFinanceReceivablesOptions[selectedCategoryIndex][index] =
-                                                      false;
-                                                }
-                                                savedFinanceReceivablesOptionsTemp =
-                                                    savedFinanceReceivablesOptions;
-                                                if (savedFinanceReceivablesOptions
-                                                    .isEmpty) {
-                                                  savedFinanceReceivablesOptionsTemp =
-                                                      savedFinanceReceivablesOptions;
-                                                }
-                                                savedFinanceReceivablesOptions =
-                                                    selectedFinanceReceivablesOptions;
-                                              });
-                                              // your checkbox logic
-                                            },
-                                          );
-                                        },
+                                          Expanded(
+                                            child: ListView.builder(
+                                              itemCount:
+                                                  visibleFilterIndexes.length,
+                                              itemBuilder: (context, index) {
+                                                final optionIndex =
+                                                    visibleFilterIndexes[index];
+                                                return CheckboxListTile(
+                                                  title: Text(
+                                                    filterOptions[selectedCategoryIndex][optionIndex],
+                                                  ),
+                                                  value:
+                                                      (selectedCategoryIndex <
+                                                              savedFinanceReceivablesOptions
+                                                                  .length &&
+                                                          optionIndex <
+                                                              savedFinanceReceivablesOptions[selectedCategoryIndex]
+                                                                  .length)
+                                                      ? savedFinanceReceivablesOptions[selectedCategoryIndex][optionIndex]
+                                                      : false,
+                                                  onChanged: (bool? value) {
+                                                    setState(() {
+                                                      selectedFinanceReceivablesOptions[selectedCategoryIndex][optionIndex] =
+                                                          value == true;
+                                                      savedFinanceReceivablesOptionsTemp =
+                                                          savedFinanceReceivablesOptions;
+                                                      if (savedFinanceReceivablesOptions
+                                                          .isEmpty) {
+                                                        savedFinanceReceivablesOptionsTemp =
+                                                            savedFinanceReceivablesOptions;
+                                                      }
+                                                      savedFinanceReceivablesOptions =
+                                                          selectedFinanceReceivablesOptions;
+                                                    });
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
                                       ),
                               ),
                               Row(
@@ -5136,6 +5248,19 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                             optionsState;
                                       }
 
+                                      final selectedCustomers =
+                                          (allCategoriesState['Customer'] ?? {})
+                                              .entries
+                                              .where((entry) => entry.value)
+                                              .map((entry) => entry.key)
+                                              .toList();
+                                      final customerFilter =
+                                          touchedCustomer.isNotEmpty
+                                          ? touchedCustomer
+                                          : selectedCustomers.length == 1
+                                          ? selectedCustomers.first
+                                          : "";
+
                                       Navigator.pop(context);
 
                                       selectedSalesData = selectedFilterOptions;
@@ -5149,7 +5274,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         touchedReceivables,
                                         touchedNetReceivables,
                                         touchedAdvance,
-                                        touchedCustomer,
+                                        customerFilter,
                                         touchedRegionalManager,
                                         touchedSalesManager,
                                         touchedSalesPerson,
