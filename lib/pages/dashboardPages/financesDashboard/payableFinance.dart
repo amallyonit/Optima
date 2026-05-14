@@ -5,7 +5,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1008,12 +1007,25 @@ class _PayableFinanceState extends State<PayableFinance> {
     double notDueLocal = 0;
     DateTime normalize(DateTime d) => DateTime(d.year, d.month, d.day);
 
+    final selectedAdvancePayables =
+        (allCategoriesState['Advance/Payables'] ?? {}).entries
+            .where((e) => e.value)
+            .map((e) => e.key)
+            .toList();
     final currentDateLocal = normalize(currentDate!);
+    final vendorBalances = payableVendorBalances(payablesList);
 
     for (var target in payablesList) {
+      final isAdvance = (vendorBalances[target.vendorCode] ?? 0) > 0;
       final postingDate = normalize(target.postingDateParsed);
       if (postingDate.isAfter(currentDateLocal)) continue;
+      if (selectedAdvancePayables.contains('Advance') && !isAdvance) {
+        continue;
+      }
 
+      if (selectedAdvancePayables.contains('Payables') && isAdvance) {
+        continue;
+      }
       final balance = target.balanceParsed;
       final future = target.ageingBrackets;
 
@@ -1021,6 +1033,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         if (future != 'Future') {
           overDueLocal += balance;
         }
+
         netPayableSum += balance;
       }
 
@@ -1059,6 +1072,97 @@ class _PayableFinanceState extends State<PayableFinance> {
         advanceStr = formatAmount(advance);
         payableAdvanceStr = formatAmount(payables.abs() - advance);
 
+        payableAdvancePercentage = payableAdvancePercentageLocal;
+
+        netPayable = netPayableSum;
+        netPayableStr = formatAmount(netPayable.abs());
+
+        overDue = overDueLocal;
+        notDue = notDueLocal;
+
+        overDueStr = formatAmount(overDue.abs());
+        notDueStr = formatAmount(notDue.abs());
+
+        netPayablePercentage = netPayablePercentageLocal;
+      });
+    }
+  }
+
+  Future<void> applyPayablesVariablesCorrupted() async {
+    // Single-pass calculation
+    double netPayableSum = 0;
+    double overDueLocal = 0;
+    double notDueLocal = 0;
+    DateTime normalize(DateTime d) => DateTime(d.year, d.month, d.day);
+
+    final currentDateLocal = normalize(currentDate!);
+    // final vendorBalances = payableVendorBalances(payablesList);
+    for (var target in payablesList) {
+      final postingDate = normalize(target.postingDateParsed);
+
+      if (postingDate.isAfter(currentDateLocal)) continue;
+
+      final balance = target.balanceParsed;
+      final future = target.ageingBrackets;
+
+      // Gross payable rows are negative
+      if (balance < 0) {
+        final payableBalance = balance.abs();
+        if (!postingDate.isAfter(currentDateLocal)) {
+          if (future != 'Future') {
+            overDueLocal += payableBalance;
+          }
+          // Right gauge base = overdue only
+          netPayableSum += payableBalance;
+        }
+
+        if (future == 'Future') {
+          notDueLocal += payableBalance;
+        }
+      }
+    }
+
+    // Safe calculations
+
+    int payableAdvancePercentageLocal = 0;
+    if (payables > 0) {
+      payableAdvancePercentageLocal = ((advance / payables) * 100).ceil();
+
+      if (payableAdvancePercentageLocal < 0) {
+        payableAdvancePercentageLocal = 0;
+      }
+
+      if (payableAdvancePercentageLocal > 100) {
+        payableAdvancePercentageLocal = 100;
+      }
+    } else {
+      payableAdvancePercentageLocal = 0;
+    }
+
+    int netPayablePercentageLocal = 0;
+
+    if (netPayableSum > 0 && overDueLocal > 0) {
+      netPayablePercentageLocal = ((overDueLocal / netPayableSum) * 100).ceil();
+
+      // Safety clamp
+      if (netPayablePercentageLocal < 0) {
+        netPayablePercentageLocal = 0;
+      }
+
+      if (netPayablePercentageLocal > 100) {
+        netPayablePercentageLocal = 100;
+      }
+    } else {
+      netPayablePercentageLocal = 0;
+    }
+
+    // FINAL UI UPDATE
+    if (mounted) {
+      setState(() {
+        payableStr = formatAmount(payables);
+        advanceStr = formatAmount(advance);
+        // payableAdvanceStr = formatAmount(payables - advance);
+        payableAdvanceStr = formatAmount(overDueLocal - advance);
         payableAdvancePercentage = payableAdvancePercentageLocal;
 
         netPayable = netPayableSum;
@@ -1394,14 +1498,21 @@ class _PayableFinanceState extends State<PayableFinance> {
       final tVendorGroupLower = t.vendorGroup.toLowerCase();
       final tDocumentTypeLower = t.documentType.toLowerCase();
       final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
-      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
 
-      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      final vendorIsAdvance = isAdvanceVendor(t.vendorCode);
+      if (fAdvance.isNotEmpty && !vendorIsAdvance) {
         continue;
       }
-      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      if (fPayable.isNotEmpty && vendorIsAdvance) {
         continue;
       }
+      // final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
+      // if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      //   continue;
+      // }
+      // if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      //   continue;
+      // }
 
       if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
         continue;
@@ -1610,18 +1721,25 @@ class _PayableFinanceState extends State<PayableFinance> {
       final dueOn = df.parse(t.postingDate);
       if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) return false;
 
-      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
       final tVendorNameLower = t.vendorName.toLowerCase();
       final tVendorGroupLower = t.vendorGroup.toLowerCase();
       final tDocumentTypeLower = t.documentType.toLowerCase();
       final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
 
-      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      final vendorIsAdvance = isAdvanceVendor(t.vendorCode);
+      if (fAdvance.isNotEmpty && !vendorIsAdvance) {
         return false;
       }
-      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      if (fPayable.isNotEmpty && vendorIsAdvance) {
         return false;
       }
+      // final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
+      // if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      //   return false;
+      // }
+      // if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      //   return false;
+      // }
 
       if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) return false;
       if (fSupCat.isNotEmpty && tVendorGroupLower != fSupCat) return false;
@@ -1664,7 +1782,7 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       double totalBalance = 0;
 
-      // 🔥 Net per vendor (same as _loadSupplierAnalysis)
+      // Net per vendor (same as _loadSupplierAnalysis)
       for (var r in rows) {
         totalBalance += double.tryParse(r.balance) ?? 0;
       }
@@ -1730,8 +1848,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     double tmpAdvance = 0;
     double tmpPayables = 0;
 
-    final fPayable = payable.toLowerCase();
-    final fAdvance = advancePaid.toLowerCase();
     final fSupplier = supplier.toLowerCase();
     final fSupCat = supplierCategory.toLowerCase();
     final fDocType = documentType.toLowerCase();
@@ -1750,18 +1866,10 @@ class _PayableFinanceState extends State<PayableFinance> {
         continue;
       }
 
-      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
       final tVendorNameLower = t.vendorName.toLowerCase();
       final tVendorGroupLower = t.vendorGroup.toLowerCase();
       final tDocumentTypeLower = t.documentType.toLowerCase();
       final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
-
-      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
-        continue;
-      }
-      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
-        continue;
-      }
 
       if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
         continue;
@@ -1791,6 +1899,13 @@ class _PayableFinanceState extends State<PayableFinance> {
     }
 
     final List<SupplierAnalysisPayablesData> customerWiseDataList = [];
+
+    final selectedAdvancePayables =
+        (allCategoriesState['Advance/Payables'] ?? {}).entries
+            .where((e) => e.value)
+            .map((e) => e.key)
+            .toList();
+
     balanceByVendor.forEach((code, sum) {
       customerWiseDataList.add(
         SupplierAnalysisPayablesData(
@@ -1798,10 +1913,18 @@ class _PayableFinanceState extends State<PayableFinance> {
           balance: sum * -1,
         ),
       );
-      if (sum > 0) {
-        tmpAdvance += sum;
+      if (selectedAdvancePayables.isEmpty) {
+        if (sum > 0) {
+          tmpAdvance += sum;
+        }
+        tmpPayables += netPayablesByVendor[code] ?? 0.0;
+      } else {
+        if (sum > 0 && selectedAdvancePayables.contains('Advance')) {
+          tmpAdvance += sum;
+        } else {
+          tmpPayables += netPayablesByVendor[code] ?? 0.0;
+        }
       }
-      tmpPayables += netPayablesByVendor[code] ?? 0.0;
     });
 
     customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
@@ -1846,20 +1969,27 @@ class _PayableFinanceState extends State<PayableFinance> {
         continue;
       }
 
-      final targetAgeingBracketsLower = target.ageingBrackets.toLowerCase();
       final targetVendorNameLower = target.vendorName.toLowerCase();
       final targetVendorGroupLower = target.vendorGroup.toLowerCase();
       final targetDocumentTypeLower = target.documentType.toLowerCase();
       final targetBpSubGroupLower = target.bpSubGroup.toLowerCase();
 
-      if (fPayable.isNotEmpty &&
-          !targetAgeingBracketsLower.contains(fPayable)) {
+      final vendorIsAdvance = isAdvanceVendor(target.vendorCode);
+      if (fAdvance.isNotEmpty && !vendorIsAdvance) {
         continue;
       }
-      if (fAdvance.isNotEmpty &&
-          !targetAgeingBracketsLower.contains(fAdvance)) {
+      if (fPayable.isNotEmpty && vendorIsAdvance) {
         continue;
       }
+
+      // final tAgeingBracketsLower = target.ageingBrackets.toLowerCase();
+      // if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      //   continue;
+      // }
+      // if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      //   continue;
+      // }
+
       if (fSupplier.isNotEmpty && targetVendorNameLower != fSupplier) {
         continue;
       }
@@ -1933,9 +2063,22 @@ class _PayableFinanceState extends State<PayableFinance> {
       final dueOn = df.parse(t.postingDate);
       if (!dueOn.isAtMost(currentMonthToDate!)) continue;
 
-      final dd = t.ageingBrackets.toLowerCase();
-      if (fPayable.isNotEmpty && !dd.contains(fPayable)) continue;
-      if (fAdvance.isNotEmpty && !dd.contains(fAdvance)) continue;
+      final vendorIsAdvance = isAdvanceVendor(t.vendorCode);
+      if (fAdvance.isNotEmpty && !vendorIsAdvance) {
+        continue;
+      }
+      if (fPayable.isNotEmpty && vendorIsAdvance) {
+        continue;
+      }
+
+      // final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
+      // if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      //   continue;
+      // }
+      // if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      //   continue;
+      // }
+
       if (fSupplier.isNotEmpty && t.vendorName.toLowerCase() != fSupplier) {
         continue;
       }
@@ -1993,18 +2136,27 @@ class _PayableFinanceState extends State<PayableFinance> {
       final dueOn = df.parse(t.postingDate);
       if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) continue;
 
-      final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
       final tVendorNameLower = t.vendorName.toLowerCase();
       final tVendorGroupLower = t.vendorGroup.toLowerCase();
       final tDocumentTypeLower = t.documentType.toLowerCase();
       final tBpSubGroupLower = t.bpSubGroup.toLowerCase();
 
-      if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      final vendorIsAdvance = isAdvanceVendor(t.vendorCode);
+      if (fAdvance.isNotEmpty && !vendorIsAdvance) {
         continue;
       }
-      if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      if (fPayable.isNotEmpty && vendorIsAdvance) {
         continue;
       }
+
+      // final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
+      // if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
+      //   continue;
+      // }
+      // if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
+      //   continue;
+      // }
+
       if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
         continue;
       }
@@ -2645,15 +2797,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generatePayablesExcel(PayablesGraphList list) async {
     await reportService.generateExcel(
       sheetName: 'Payables',
@@ -3134,7 +3277,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                         radius: 75.0,
                         lineWidth: 30.0,
                         animation: true,
-                        percent: netPayablePercentage / 100,
+                        // percent: netPayablePercentage / 100,
+                        percent: ((netPayablePercentage / 100).clamp(
+                          0.0,
+                          1.0,
+                        )).toDouble(),
                         curve: Curves.linear,
                         circularStrokeCap: CircularStrokeCap.butt,
                         progressColor: const Color(0xFF2CA9DF),
@@ -3207,7 +3354,11 @@ class _PayableFinanceState extends State<PayableFinance> {
                         radius: 75.0,
                         lineWidth: 30.0,
                         animation: true,
-                        percent: payableAdvancePercentage / 100,
+                        // percent: payableAdvancePercentage / 100,
+                        percent: ((payableAdvancePercentage / 100).clamp(
+                          0.0,
+                          1.0,
+                        )).toDouble(),
                         curve: Curves.linear,
                         circularStrokeCap: CircularStrokeCap.butt,
                         progressColor: const Color(0xFF2CA9DF),
