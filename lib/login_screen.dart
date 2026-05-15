@@ -263,12 +263,11 @@ class LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _showBiometricDialog(String email, String password) async {
-    final biometrics = await auth.getAvailableBiometrics();
-    if (biometrics.isEmpty) {
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
       return;
     }
-
-    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+    final biometrics = await auth.getAvailableBiometrics();
+    if (biometrics.isEmpty) {
       return;
     }
 

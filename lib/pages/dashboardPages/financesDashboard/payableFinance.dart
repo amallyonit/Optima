@@ -38,6 +38,7 @@ List<PayablesList> collectionList = [];
 
 double payableDouble = 0.0;
 double payables = 0.0;
+double actualAdvance = 0.0;
 String payableStr = "";
 double advance = 0.0;
 String advanceStr = "";
@@ -1042,6 +1043,15 @@ class _PayableFinanceState extends State<PayableFinance> {
       }
     }
 
+    if (selectedAdvancePayables.contains('Payables')) {
+      netPayableSum += actualAdvance;
+      overDueLocal += actualAdvance;
+    }
+    if (selectedAdvancePayables.contains('Advance') && actualAdvance > 0) {
+      netPayableSum = 0;
+      overDueLocal = 0;
+      notDueLocal = 0;
+    }
     // Safe calculations
 
     int payableAdvancePercentageLocal = 0;
@@ -1072,97 +1082,6 @@ class _PayableFinanceState extends State<PayableFinance> {
         advanceStr = formatAmount(advance);
         payableAdvanceStr = formatAmount(payables.abs() - advance);
 
-        payableAdvancePercentage = payableAdvancePercentageLocal;
-
-        netPayable = netPayableSum;
-        netPayableStr = formatAmount(netPayable.abs());
-
-        overDue = overDueLocal;
-        notDue = notDueLocal;
-
-        overDueStr = formatAmount(overDue.abs());
-        notDueStr = formatAmount(notDue.abs());
-
-        netPayablePercentage = netPayablePercentageLocal;
-      });
-    }
-  }
-
-  Future<void> applyPayablesVariablesCorrupted() async {
-    // Single-pass calculation
-    double netPayableSum = 0;
-    double overDueLocal = 0;
-    double notDueLocal = 0;
-    DateTime normalize(DateTime d) => DateTime(d.year, d.month, d.day);
-
-    final currentDateLocal = normalize(currentDate!);
-    // final vendorBalances = payableVendorBalances(payablesList);
-    for (var target in payablesList) {
-      final postingDate = normalize(target.postingDateParsed);
-
-      if (postingDate.isAfter(currentDateLocal)) continue;
-
-      final balance = target.balanceParsed;
-      final future = target.ageingBrackets;
-
-      // Gross payable rows are negative
-      if (balance < 0) {
-        final payableBalance = balance.abs();
-        if (!postingDate.isAfter(currentDateLocal)) {
-          if (future != 'Future') {
-            overDueLocal += payableBalance;
-          }
-          // Right gauge base = overdue only
-          netPayableSum += payableBalance;
-        }
-
-        if (future == 'Future') {
-          notDueLocal += payableBalance;
-        }
-      }
-    }
-
-    // Safe calculations
-
-    int payableAdvancePercentageLocal = 0;
-    if (payables > 0) {
-      payableAdvancePercentageLocal = ((advance / payables) * 100).ceil();
-
-      if (payableAdvancePercentageLocal < 0) {
-        payableAdvancePercentageLocal = 0;
-      }
-
-      if (payableAdvancePercentageLocal > 100) {
-        payableAdvancePercentageLocal = 100;
-      }
-    } else {
-      payableAdvancePercentageLocal = 0;
-    }
-
-    int netPayablePercentageLocal = 0;
-
-    if (netPayableSum > 0 && overDueLocal > 0) {
-      netPayablePercentageLocal = ((overDueLocal / netPayableSum) * 100).ceil();
-
-      // Safety clamp
-      if (netPayablePercentageLocal < 0) {
-        netPayablePercentageLocal = 0;
-      }
-
-      if (netPayablePercentageLocal > 100) {
-        netPayablePercentageLocal = 100;
-      }
-    } else {
-      netPayablePercentageLocal = 0;
-    }
-
-    // FINAL UI UPDATE
-    if (mounted) {
-      setState(() {
-        payableStr = formatAmount(payables);
-        advanceStr = formatAmount(advance);
-        // payableAdvanceStr = formatAmount(payables - advance);
-        payableAdvanceStr = formatAmount(overDueLocal - advance);
         payableAdvancePercentage = payableAdvancePercentageLocal;
 
         netPayable = netPayableSum;
@@ -1405,28 +1324,21 @@ class _PayableFinanceState extends State<PayableFinance> {
     AgingSummary summary = AgingSummary();
     double balance = 0;
     var overDueDays = 0;
-    for (var element
-        in collectionTargetList /*.where((element) => double.tryParse(element.future)! <= 0)*/ ) {
+    for (var element in collectionTargetList) {
       overDueDays = int.tryParse(element.dueDays.replaceAll(' Days', '')) ?? 0;
       balance = double.tryParse(element.balance) ?? 0;
       if (balance < 0) {}
       if (overDueDays <= 30) {
-        // summary.a0to30DaysTotal += (balance);
         summary.a0to30DaysTotal += double.tryParse(element.a0to30Days)!;
       } else if (overDueDays >= 31 && overDueDays <= 60) {
-        // summary.a31to60DaysTotal += balance;
         summary.a31to60DaysTotal += double.tryParse(element.a31to60Days)!;
       } else if (overDueDays >= 61 && overDueDays <= 90) {
-        // summary.a61to90DaysTotal += balance;
         summary.a61to90DaysTotal += double.tryParse(element.a61to90Days)!;
       } else if (overDueDays >= 91 && overDueDays <= 180) {
-        // summary.a91to180DaysTotal += balance;
         summary.a91to180DaysTotal += double.tryParse(element.a91to180Days)!;
       } else if (overDueDays >= 181) {
-        // summary.a181DaysTotal += balance;
         summary.a181DaysTotal += double.tryParse(element.a181Days)!;
       }
-      // summary.afutureTotal += balance;
       summary.afutureTotal += double.tryParse(element.future)!;
     }
     return summary;
@@ -1919,14 +1831,18 @@ class _PayableFinanceState extends State<PayableFinance> {
         }
         tmpPayables += netPayablesByVendor[code] ?? 0.0;
       } else {
-        if (sum > 0 && selectedAdvancePayables.contains('Advance')) {
-          tmpAdvance += sum;
+        if (selectedAdvancePayables.contains('Advance')) {
+          if (sum > 0) {
+            tmpAdvance += sum;
+          }
         } else {
           tmpPayables += netPayablesByVendor[code] ?? 0.0;
         }
       }
     });
-
+    if (selectedAdvancePayables.contains('Payables')) {
+      tmpPayables = tmpPayables + actualAdvance;
+    }
     customerWiseDataList.sort((a, b) => b.balance.compareTo(a.balance));
 
     supplierList = SupplierAnalysisPayablesList(
@@ -1939,6 +1855,9 @@ class _PayableFinanceState extends State<PayableFinance> {
     setState(() {
       advance = tmpAdvance;
       payables = tmpPayables;
+      if (selectedAdvancePayables.isEmpty) {
+        actualAdvance = tmpAdvance;
+      }
     });
   }
 
@@ -2601,6 +2520,9 @@ class _PayableFinanceState extends State<PayableFinance> {
     String? documentType,
     String? bpGroup,
   ) async {
+    setState(() {
+      chartDataLoadedPayables = false;
+    });
     clearVariablesForFilter();
     LoadDates();
     payablesList = payablesListMaster;
@@ -2674,10 +2596,12 @@ class _PayableFinanceState extends State<PayableFinance> {
     allCategoriesState.forEach((category, options) {
       options.updateAll((key, value) => false);
     });
-    loadDataFuture = loadData("");
-    setState(() {
-      chartDataLoadedPayables = false;
-    });
+    await loadData("");
+    if (mounted) {
+      setState(() {
+        chartDataLoadedPayables = true;
+      });
+    }
   }
 
   List<PayablesList> applyFilters() {
@@ -2765,6 +2689,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     setState(() {
       advance = 0.00;
       payables = 0.00;
+      actualAdvance = 0;
       chartDataLoadedPayables = false;
       payableGraphList = PayablesGraphList(agingData: []);
       advancePaidList = AdvancePaidToSupplierPayablesList(agingData: []);
@@ -3064,10 +2989,11 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   Future<void> filterChartFunction() async {
-    // Step 1: show loading
-    setState(() {
-      chartDataLoadedPayables = false;
-    });
+    // await Future.delayed(const Duration(milliseconds: 100));
+    // // Step 1: show loading
+    // setState(() {
+    //   chartDataLoadedPayables = false;
+    // });
 
     // Step 2: reset base list
     payablesList = applyFilters();
@@ -3177,7 +3103,7 @@ class _PayableFinanceState extends State<PayableFinance> {
   @override
   Widget build(BuildContext context) {
     DateTime currentDate = DateTime.now();
-    selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
+    // selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoadedPayables == true
         ? SingleChildScrollView(
             child: Column(
@@ -5186,7 +5112,10 @@ class _PayableFinanceState extends State<PayableFinance> {
   void showFilterBottomSheet(BuildContext context) {
     int selectedCategoryIndex = 0;
     String filterSearchText = "";
-
+    // restore previous selections ONLY when opening sheet
+    selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions
+        .map((e) => List<bool>.from(e))
+        .toList();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -5195,7 +5124,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       ),
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, modalSetState) {
             final isSearchableFilter =
                 categories[selectedCategoryIndex] == 'Supplier';
             final visibleFilterIndexes =
@@ -5247,7 +5176,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                 title: Text(categories[index]),
                                 selected: selectedCategoryIndex == index,
                                 onTap: () {
-                                  setState(() {
+                                  modalSetState(() {
                                     selectedCategoryIndex = index;
                                     filterSearchText = "";
                                   });
@@ -5290,7 +5219,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                     lastDate: currentDate!,
                                                   );
                                               if (picked != null) {
-                                                setState(() {
+                                                modalSetState(() {
                                                   toDateFilter = picked;
                                                   dateFilterFlag = true;
                                                 });
@@ -5319,7 +5248,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                       isDense: true,
                                                     ),
                                                 onChanged: (value) {
-                                                  setState(() {
+                                                  modalSetState(() {
                                                     filterSearchText = value;
                                                   });
                                                 },
@@ -5339,9 +5268,33 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                   value:
                                                       savedFinanceReceivablesOptions[selectedCategoryIndex][optionIndex],
                                                   onChanged: (bool? value) {
-                                                    setState(() {
+                                                    modalSetState(() {
+                                                      final currentCategory =
+                                                          categories[selectedCategoryIndex];
+
+                                                      final isSingleSelect =
+                                                          currentCategory ==
+                                                              'Advance/Payables' ||
+                                                          currentCategory ==
+                                                              'Due/Overdue';
+
+                                                      if (isSingleSelect &&
+                                                          value == true) {
+                                                        for (
+                                                          int i = 0;
+                                                          i <
+                                                              selectedFinanceReceivablesOptions[selectedCategoryIndex]
+                                                                  .length;
+                                                          i++
+                                                        ) {
+                                                          selectedFinanceReceivablesOptions[selectedCategoryIndex][i] =
+                                                              false;
+                                                        }
+                                                      }
+
                                                       selectedFinanceReceivablesOptions[selectedCategoryIndex][optionIndex] =
                                                           value == true;
+
                                                       savedFinanceReceivablesOptionsTemp =
                                                           savedFinanceReceivablesOptions
                                                               .map(
@@ -5351,6 +5304,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                                     >.from(e),
                                                               )
                                                               .toList();
+
                                                       if (savedFinanceReceivablesOptions
                                                           .isEmpty) {
                                                         savedFinanceReceivablesOptionsTemp =
@@ -5363,6 +5317,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                                 )
                                                                 .toList();
                                                       }
+
                                                       savedFinanceReceivablesOptions =
                                                           selectedFinanceReceivablesOptions;
                                                     });
@@ -5384,7 +5339,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                       minimumSize: const Size(10, 10),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    onPressed: () {
+                                    onPressed: () async {
                                       List<String> selectedFilterOptions = [];
                                       for (
                                         int i = 0;
@@ -5424,8 +5379,6 @@ class _PayableFinanceState extends State<PayableFinance> {
                                             optionsState;
                                       }
 
-                                      Navigator.pop(context);
-
                                       selectedSalesData = selectedFilterOptions;
 
                                       savedFinanceReceivablesOptionsTemp =
@@ -5434,9 +5387,24 @@ class _PayableFinanceState extends State<PayableFinance> {
                                               .toList();
 
                                       fromFilter = true;
+                                      setState(() {
+                                        chartDataLoadedPayables = false;
+                                      });
 
-                                      loadDataFuture = filterChartFunction();
-                                      setState(() {});
+                                      Navigator.pop(context);
+
+                                      Future.delayed(
+                                        const Duration(milliseconds: 300),
+                                        () async {
+                                          if (!mounted) return;
+
+                                          setState(() {
+                                            chartDataLoadedPayables = false;
+                                          });
+
+                                          await filterChartFunction();
+                                        },
+                                      );
                                     },
                                     child: const Padding(
                                       padding: EdgeInsets.all(8.0),
@@ -5454,21 +5422,18 @@ class _PayableFinanceState extends State<PayableFinance> {
                                       padding: EdgeInsets.zero,
                                     ),
                                     onPressed: () {
-                                      chartDataLoadedPayables = false;
                                       fromFilter = false;
                                       savedFinanceReceivablesOptionsTemp
                                           .clear();
                                       setState(() {
-                                        chartDataLoadedPayables = false;
                                         loadDataFuture = removeFilter();
                                         Navigator.pop(context);
-                                        chartDataLoadedPayables = false;
                                       });
                                     },
                                     child: const Padding(
                                       padding: EdgeInsets.all(8.0),
                                       child: Text(
-                                        'Clear Filter',
+                                        'Remove Filter',
                                         style: TextStyle(
                                           color: Color(0xff2ca9df),
                                         ),

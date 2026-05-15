@@ -5231,7 +5231,9 @@ class PendingOrderList {
 }
 
 class MonthlyCollectionReportData {
+  final String regionalManager;
   final String salesManager;
+  final String salesPerson;
   double targetMonth;
   double weekOneCommitted;
   double weekOneReceived;
@@ -5244,7 +5246,9 @@ class MonthlyCollectionReportData {
   double weekFiveCommitted;
   double weekFiveReceived;
   MonthlyCollectionReportData({
+    required this.regionalManager,
     required this.salesManager,
+    required this.salesPerson,
     required this.targetMonth,
     required this.weekOneCommitted,
     required this.weekOneReceived,
