@@ -5243,8 +5243,6 @@ class MonthlyCollectionReportData {
   double weekThreeReceived;
   double weekFourCommitted;
   double weekFourReceived;
-  double weekFiveCommitted;
-  double weekFiveReceived;
   MonthlyCollectionReportData({
     required this.regionalManager,
     required this.salesManager,
@@ -5258,8 +5256,6 @@ class MonthlyCollectionReportData {
     required this.weekThreeReceived,
     required this.weekFourCommitted,
     required this.weekFourReceived,
-    required this.weekFiveCommitted,
-    required this.weekFiveReceived,
   });
 }
 

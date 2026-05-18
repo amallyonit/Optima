@@ -15,6 +15,7 @@ import 'package:optima/classes/leads.dart';
 import '../ReportService.dart';
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 
 class MonthlyCollectionReport extends StatefulWidget {
   const MonthlyCollectionReport({super.key});
@@ -105,6 +106,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
 
   DateTime? fromDateFilter;
   DateTime? toDateFilter;
+  DateTime selectedMonth = DateTime.now();
   bool dateFilterFlag = false;
 
   bool fromFilter = false;
@@ -452,32 +454,19 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   }
 
   List<Map<String, DateTime>> getWeeksOfCurrentMonth() {
-    DateTime now = DateTime.now();
+    DateTime now = selectedMonth;
+
     int year = now.year;
     int month = now.month;
 
-    // Get the first and last day of the month
-    DateTime firstDay = DateTime(year, month, 1);
-    DateTime lastDay = DateTime(year, month + 1, 0); // Last day of the month
+    DateTime lastDay = DateTime(year, month + 1, 0);
 
-    List<Map<String, DateTime>> weeks = [];
-
-    DateTime startOfWeek = firstDay;
-    while (startOfWeek.isBefore(lastDay) ||
-        startOfWeek.isAtSameMomentAs(lastDay)) {
-      DateTime endOfWeek = startOfWeek.add(
-        Duration(days: 6 - startOfWeek.weekday + 1),
-      );
-      if (endOfWeek.isAfter(lastDay)) {
-        endOfWeek = lastDay;
-      }
-
-      weeks.add({"start": startOfWeek, "end": endOfWeek});
-
-      startOfWeek = endOfWeek.add(const Duration(days: 1));
-    }
-
-    return weeks;
+    return [
+      {"start": DateTime(year, month, 1), "end": DateTime(year, month, 7)},
+      {"start": DateTime(year, month, 8), "end": DateTime(year, month, 15)},
+      {"start": DateTime(year, month, 16), "end": DateTime(year, month, 23)},
+      {"start": DateTime(year, month, 24), "end": lastDay},
+    ];
   }
 
   double getPercentage(double? value, double? total) {
@@ -518,8 +507,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
           weekThreeReceived: 0,
           weekFourCommitted: 0,
           weekFourReceived: 0,
-          weekFiveCommitted: 0,
-          weekFiveReceived: 0,
         ),
       );
 
@@ -547,9 +534,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               break;
             case 3:
               entry.weekFourCommitted += double.tryParse(d.commitment) ?? 0;
-              break;
-            case 4:
-              entry.weekFiveCommitted += double.tryParse(d.commitment) ?? 0;
               break;
           }
         }
@@ -582,9 +566,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             case 3:
               entry.weekFourReceived += value;
               break;
-            case 4:
-              entry.weekFiveReceived += value;
-              break;
           }
         }
       }
@@ -596,15 +577,13 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             a.weekOneReceived +
             a.weekTwoReceived +
             a.weekThreeReceived +
-            a.weekFourReceived +
-            a.weekFiveReceived;
+            a.weekFourReceived;
 
         final bReceived =
             b.weekOneReceived +
             b.weekTwoReceived +
             b.weekThreeReceived +
-            b.weekFourReceived +
-            b.weekFiveReceived;
+            b.weekFourReceived;
 
         final aDefault = a.targetMonth - aReceived;
         final bDefault = b.targetMonth - bReceived;
@@ -641,8 +620,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
           weekThreeReceived: 0,
           weekFourCommitted: 0,
           weekFourReceived: 0,
-          weekFiveCommitted: 0,
-          weekFiveReceived: 0,
         ),
       );
 
@@ -670,9 +647,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               break;
             case 3:
               entry.weekFourCommitted += double.tryParse(d.commitment) ?? 0;
-              break;
-            case 4:
-              entry.weekFiveCommitted += double.tryParse(d.commitment) ?? 0;
               break;
           }
         }
@@ -705,9 +679,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             case 3:
               entry.weekFourReceived += value;
               break;
-            case 4:
-              entry.weekFiveReceived += value;
-              break;
           }
         }
       }
@@ -719,15 +690,13 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             a.weekOneReceived +
             a.weekTwoReceived +
             a.weekThreeReceived +
-            a.weekFourReceived +
-            a.weekFiveReceived;
+            a.weekFourReceived;
 
         final bReceived =
             b.weekOneReceived +
             b.weekTwoReceived +
             b.weekThreeReceived +
-            b.weekFourReceived +
-            b.weekFiveReceived;
+            b.weekFourReceived;
 
         final aDefault = a.targetMonth - aReceived;
         final bDefault = b.targetMonth - bReceived;
@@ -764,8 +733,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
           weekThreeReceived: 0,
           weekFourCommitted: 0,
           weekFourReceived: 0,
-          weekFiveCommitted: 0,
-          weekFiveReceived: 0,
         ),
       );
 
@@ -793,9 +760,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               break;
             case 3:
               entry.weekFourCommitted += double.tryParse(d.commitment) ?? 0;
-              break;
-            case 4:
-              entry.weekFiveCommitted += double.tryParse(d.commitment) ?? 0;
               break;
           }
         }
@@ -828,9 +792,6 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             case 3:
               entry.weekFourReceived += value;
               break;
-            case 4:
-              entry.weekFiveReceived += value;
-              break;
           }
         }
       }
@@ -842,15 +803,13 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             a.weekOneReceived +
             a.weekTwoReceived +
             a.weekThreeReceived +
-            a.weekFourReceived +
-            a.weekFiveReceived;
+            a.weekFourReceived;
 
         final bReceived =
             b.weekOneReceived +
             b.weekTwoReceived +
             b.weekThreeReceived +
-            b.weekFourReceived +
-            b.weekFiveReceived;
+            b.weekFourReceived;
 
         final aDefault = a.targetMonth - aReceived;
         final bDefault = b.targetMonth - bReceived;
@@ -862,6 +821,8 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   }
 
   Future<void> generateTsmMonthlyCollectionExcel() async {
+    final weeks = getWeeksOfCurrentMonth();
+
     await reportService.generateExcel(
       sheetName: 'TsmMonthlyCollection',
       headers: [
@@ -869,21 +830,18 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         'Month Target',
         'Total Committed',
         'Total Received',
-        'Week One Committed',
-        'Week One Received',
-        'Week One % Received',
-        'Week Two Committed',
-        'Week Two Received',
-        'Week Two % Received',
-        'Week Three Committed',
-        'Week Three Received',
-        'Week Three % Received',
-        'Week Four Committed',
-        'Week Four Received',
-        'Week Four % Received',
-        'Week Five Committed',
-        'Week Five Received',
-        'Week Five % Received',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} % Received',
       ],
       rows: tsmData.weeklyData
           .map(
@@ -893,13 +851,11 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekOneCommitted +
                   e.weekTwoCommitted +
                   e.weekThreeCommitted +
-                  e.weekFourCommitted +
-                  e.weekFiveCommitted,
+                  e.weekFourCommitted,
               e.weekOneReceived +
                   e.weekTwoReceived +
                   e.weekThreeReceived +
-                  e.weekFourReceived +
-                  e.weekFiveReceived,
+                  e.weekFourReceived,
               e.weekOneCommitted,
               e.weekOneReceived,
               getPercentage(e.weekOneCommitted, e.weekOneReceived),
@@ -912,20 +868,18 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekFourCommitted,
               e.weekFourReceived,
               getPercentage(e.weekFourCommitted, e.weekFourReceived),
-              e.weekFiveCommitted,
-              e.weekFiveReceived,
-              getPercentage(e.weekFiveCommitted, e.weekFiveReceived),
             ],
           )
           .toList(),
       fileName: 'tsm_monthly_collection.xlsx',
-      amountColumns: [2],
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
       addTotalRow: true,
       reportTitle: 'Finance - TSM Monthly Collection Analysis',
     );
   }
 
   Future<void> generateAsmMonthlyCollectionExcel() async {
+    final weeks = getWeeksOfCurrentMonth();
     await reportService.generateExcel(
       sheetName: 'AsmMonthlyCollection',
       headers: [
@@ -933,21 +887,18 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         'Month Target',
         'Total Committed',
         'Total Received',
-        'Week One Committed',
-        'Week One Received',
-        'Week One % Received',
-        'Week Two Committed',
-        'Week Two Received',
-        'Week Two % Received',
-        'Week Three Committed',
-        'Week Three Received',
-        'Week Three % Received',
-        'Week Four Committed',
-        'Week Four Received',
-        'Week Four % Received',
-        'Week Five Committed',
-        'Week Five Received',
-        'Week Five % Received',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} % Received',
       ],
       rows: asmData.weeklyData
           .map(
@@ -957,13 +908,11 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekOneCommitted +
                   e.weekTwoCommitted +
                   e.weekThreeCommitted +
-                  e.weekFourCommitted +
-                  e.weekFiveCommitted,
+                  e.weekFourCommitted,
               e.weekOneReceived +
                   e.weekTwoReceived +
                   e.weekThreeReceived +
-                  e.weekFourReceived +
-                  e.weekFiveReceived,
+                  e.weekFourReceived,
               e.weekOneCommitted,
               e.weekOneReceived,
               getPercentage(e.weekOneCommitted, e.weekOneReceived),
@@ -976,20 +925,18 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekFourCommitted,
               e.weekFourReceived,
               getPercentage(e.weekFourCommitted, e.weekFourReceived),
-              e.weekFiveCommitted,
-              e.weekFiveReceived,
-              getPercentage(e.weekFiveCommitted, e.weekFiveReceived),
             ],
           )
           .toList(),
       fileName: 'asm_monthly_collection.xlsx',
-      amountColumns: [2],
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
       addTotalRow: true,
       reportTitle: 'Finance - ASM Monthly Collection Analysis',
     );
   }
 
   Future<void> generateRsmMonthlyCollectionExcel() async {
+    final weeks = getWeeksOfCurrentMonth();
     await reportService.generateExcel(
       sheetName: 'MonthlyRsmCollection',
       headers: [
@@ -997,21 +944,18 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         'Month Target',
         'Total Committed',
         'Total Received',
-        'Week One Committed',
-        'Week One Received',
-        'Week One % Received',
-        'Week Two Committed',
-        'Week Two Received',
-        'Week Two % Received',
-        'Week Three Committed',
-        'Week Three Received',
-        'Week Three % Received',
-        'Week Four Committed',
-        'Week Four Received',
-        'Week Four % Received',
-        'Week Five Committed',
-        'Week Five Received',
-        'Week Five % Received',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} % Received',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Committed',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Received',
+        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} % Received',
       ],
       rows: rsmData.weeklyData
           .map(
@@ -1021,13 +965,11 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekOneCommitted +
                   e.weekTwoCommitted +
                   e.weekThreeCommitted +
-                  e.weekFourCommitted +
-                  e.weekFiveCommitted,
+                  e.weekFourCommitted,
               e.weekOneReceived +
                   e.weekTwoReceived +
                   e.weekThreeReceived +
-                  e.weekFourReceived +
-                  e.weekFiveReceived,
+                  e.weekFourReceived,
               e.weekOneCommitted,
               e.weekOneReceived,
               getPercentage(e.weekOneCommitted, e.weekOneReceived),
@@ -1040,14 +982,11 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekFourCommitted,
               e.weekFourReceived,
               getPercentage(e.weekFourCommitted, e.weekFourReceived),
-              e.weekFiveCommitted,
-              e.weekFiveReceived,
-              getPercentage(e.weekFiveCommitted, e.weekFiveReceived),
             ],
           )
           .toList(),
       fileName: 'rsm_monthly_collection_.xlsx',
-      amountColumns: [2],
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
       addTotalRow: true,
       reportTitle: 'Finance - RSM Monthly Collection Analysis',
     );
@@ -1149,8 +1088,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                     chartData.weekOneReceived +
                     chartData.weekTwoReceived +
                     chartData.weekThreeReceived +
-                    chartData.weekFourReceived +
-                    chartData.weekFiveReceived,
+                    chartData.weekFourReceived,
                 width: 15,
               ),
               BarChartRodData(
@@ -1166,8 +1104,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                     chartData.weekOneCommitted +
                     chartData.weekTwoCommitted +
                     chartData.weekThreeCommitted +
-                    chartData.weekFourCommitted +
-                    chartData.weekFiveCommitted,
+                    chartData.weekFourCommitted,
                 width: 15,
               ),
             ],
@@ -1191,8 +1128,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                     chartData.weekOneReceived +
                     chartData.weekTwoReceived +
                     chartData.weekThreeReceived +
-                    chartData.weekFourReceived +
-                    chartData.weekFiveReceived,
+                    chartData.weekFourReceived,
                 width: 15,
               ),
               BarChartRodData(
@@ -1208,8 +1144,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                     chartData.weekOneCommitted +
                     chartData.weekTwoCommitted +
                     chartData.weekThreeCommitted +
-                    chartData.weekFourCommitted +
-                    chartData.weekFiveCommitted,
+                    chartData.weekFourCommitted,
                 width: 15,
               ),
             ],
@@ -1233,8 +1168,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                     chartData.weekOneReceived +
                     chartData.weekTwoReceived +
                     chartData.weekThreeReceived +
-                    chartData.weekFourReceived +
-                    chartData.weekFiveReceived,
+                    chartData.weekFourReceived,
                 width: 15,
               ),
               BarChartRodData(
@@ -1250,8 +1184,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                     chartData.weekOneCommitted +
                     chartData.weekTwoCommitted +
                     chartData.weekThreeCommitted +
-                    chartData.weekFourCommitted +
-                    chartData.weekFiveCommitted,
+                    chartData.weekFourCommitted,
                 width: 15,
               ),
             ],
@@ -1263,6 +1196,20 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   String formatDateString(DateTime date) {
     final formatter = DateFormat('dd/MM/yyyy');
     return formatter.format(date);
+  }
+
+  bool isCurrentMonth(DateTime date) {
+    final now = DateTime.now();
+
+    return now.month == date.month && now.year == date.year;
+  }
+
+  DateTime getMonthStartDate(DateTime date) {
+    return DateTime(date.year, date.month, 1);
+  }
+
+  DateTime getMonthEndDate(DateTime date) {
+    return DateTime(date.year, date.month + 1, 0);
   }
 
   Future<void> removeFilter() async {
@@ -1391,24 +1338,77 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               child: Column(
                 children: [
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 15),
-                          child: dateFilterFlag
-                              ? Text(
-                                  "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
-                                  overflow: TextOverflow.ellipsis,
-                                )
-                              : Text(
-                                  "${formatDateString(currentMonthFromDate!)} - ${formatDateString(currentDate!)}",
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isCurrentMonth(selectedMonth)
+                                ? "${formatDateString(getMonthStartDate(selectedMonth))} - ${formatDateString(DateTime.now())}"
+                                : "${formatDateString(getMonthStartDate(selectedMonth))} - ${formatDateString(getMonthEndDate(selectedMonth))}",
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            final picked = await showMonthPicker(
+                              context: context,
+                              initialDate: selectedMonth,
+                              firstDate: DateTime(2023),
+                              lastDate: DateTime.now(),
+                            );
+
+                            if (picked != null) {
+                              selectedMonth = picked;
+
+                              fromDateFilter = getMonthStartDate(selectedMonth);
+
+                              toDateFilter = isCurrentMonth(selectedMonth)
+                                  ? DateTime.now()
+                                  : getMonthEndDate(selectedMonth);
+
+                              dateFilterFlag = true;
+
+                              clearVariables();
+
+                              setState(() {});
+
+                              await loadData("");
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_month, size: 18),
+
+                                const SizedBox(width: 8),
+
+                                Text(
+                                  DateFormat('MMM yyyy').format(selectedMonth),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Card(
@@ -1665,7 +1665,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                         children: <TextSpan>[
                           TextSpan(
                             text:
-                                'Monthly Received: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneReceived + tsmData.weeklyData[grpIndex].weekTwoReceived + tsmData.weeklyData[grpIndex].weekThreeReceived + tsmData.weeklyData[grpIndex].weekFourReceived + tsmData.weeklyData[grpIndex].weekFiveReceived)}\n',
+                                'Monthly Received: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneReceived + tsmData.weeklyData[grpIndex].weekTwoReceived + tsmData.weeklyData[grpIndex].weekThreeReceived + tsmData.weeklyData[grpIndex].weekFourReceived)}\n',
                             style: const TextStyle(
                               color: Color(0xFF2CA9DF),
                               fontSize: 12,
@@ -1674,7 +1674,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                           ),
                           TextSpan(
                             text:
-                                'Monthly Committed: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneCommitted + tsmData.weeklyData[grpIndex].weekTwoCommitted + tsmData.weeklyData[grpIndex].weekThreeCommitted + tsmData.weeklyData[grpIndex].weekFourCommitted + tsmData.weeklyData[grpIndex].weekFiveCommitted)}\n',
+                                'Monthly Committed: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneCommitted + tsmData.weeklyData[grpIndex].weekTwoCommitted + tsmData.weeklyData[grpIndex].weekThreeCommitted + tsmData.weeklyData[grpIndex].weekFourCommitted)}\n',
                             style: const TextStyle(
                               color: Color(0xFFFF9F47),
                               fontSize: 12,
@@ -1815,7 +1815,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                         children: <TextSpan>[
                           TextSpan(
                             text:
-                                'Monthly Received: ${formatAmount(asmData.weeklyData[grpIndex].weekOneReceived + asmData.weeklyData[grpIndex].weekTwoReceived + asmData.weeklyData[grpIndex].weekThreeReceived + asmData.weeklyData[grpIndex].weekFourReceived + asmData.weeklyData[grpIndex].weekFiveReceived)}\n',
+                                'Monthly Received: ${formatAmount(asmData.weeklyData[grpIndex].weekOneReceived + asmData.weeklyData[grpIndex].weekTwoReceived + asmData.weeklyData[grpIndex].weekThreeReceived + asmData.weeklyData[grpIndex].weekFourReceived)}\n',
                             style: const TextStyle(
                               color: Color(0xFF2CA9DF),
                               fontSize: 12,
@@ -1824,7 +1824,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                           ),
                           TextSpan(
                             text:
-                                'Monthly Committed: ${formatAmount(asmData.weeklyData[grpIndex].weekOneCommitted + asmData.weeklyData[grpIndex].weekTwoCommitted + asmData.weeklyData[grpIndex].weekThreeCommitted + asmData.weeklyData[grpIndex].weekFourCommitted + asmData.weeklyData[grpIndex].weekFiveCommitted)}\n',
+                                'Monthly Committed: ${formatAmount(asmData.weeklyData[grpIndex].weekOneCommitted + asmData.weeklyData[grpIndex].weekTwoCommitted + asmData.weeklyData[grpIndex].weekThreeCommitted + asmData.weeklyData[grpIndex].weekFourCommitted)}\n',
                             style: const TextStyle(
                               color: Color(0xFFFF9F47),
                               fontSize: 12,
@@ -1965,7 +1965,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                         children: <TextSpan>[
                           TextSpan(
                             text:
-                                'Monthly Received: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneReceived + rsmData.weeklyData[grpIndex].weekTwoReceived + rsmData.weeklyData[grpIndex].weekThreeReceived + rsmData.weeklyData[grpIndex].weekFourReceived + rsmData.weeklyData[grpIndex].weekFiveReceived)}\n',
+                                'Monthly Received: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneReceived + rsmData.weeklyData[grpIndex].weekTwoReceived + rsmData.weeklyData[grpIndex].weekThreeReceived + rsmData.weeklyData[grpIndex].weekFourReceived)}\n',
                             style: const TextStyle(
                               color: Color(0xFF2CA9DF),
                               fontSize: 12,
@@ -1974,7 +1974,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                           ),
                           TextSpan(
                             text:
-                                'Monthly Committed: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneCommitted + rsmData.weeklyData[grpIndex].weekTwoCommitted + rsmData.weeklyData[grpIndex].weekThreeCommitted + rsmData.weeklyData[grpIndex].weekFourCommitted + rsmData.weeklyData[grpIndex].weekFiveCommitted)}\n',
+                                'Monthly Committed: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneCommitted + rsmData.weeklyData[grpIndex].weekTwoCommitted + rsmData.weeklyData[grpIndex].weekThreeCommitted + rsmData.weeklyData[grpIndex].weekFourCommitted)}\n',
                             style: const TextStyle(
                               color: Color(0xFFFF9F47),
                               fontSize: 12,

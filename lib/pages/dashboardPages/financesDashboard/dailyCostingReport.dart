@@ -1,5 +1,5 @@
-// ignore_for_file: file_names, use_build_context_synchronously, non_constant_identifier_names
-// import 'package:optima/excel_helper.dart';
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, file_names, use_build_context_synchronously, non_constant_identifier_names
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
@@ -17,196 +16,17 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
 import '../ReportService.dart';
-
-final reportService = ReportService();
+import 'dart:math';
+import 'dart:ui';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
+import 'package:open_file/open_file.dart';
+import '../report_service_platform.dart';
 
 class DailyCostingReport extends StatefulWidget {
   const DailyCostingReport({super.key});
 
   @override
   State<DailyCostingReport> createState() => _DailyCostingReportState();
-}
-
-late Future<void> loadDataFuture;
-String userLevel = "0";
-List<Users> usersList = [];
-bool chartDataLoadedDailyCosting = false;
-
-DateTime? currentDate;
-DateTime? yearStartDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
-int currentQuarter = 0;
-
-List<DebtorsAgingList> debtorsList = [];
-List<CollectionList> collection = [];
-List<SalesList> sales = [];
-List<SalesList> salesTemp = [];
-List<SODetailsList> soList = [];
-List<SODetailsList> soListTemp = [];
-List<PurchaseList> purchasePrice = [];
-List<PurchaseList> purchasePriceTemp = [];
-List<POList> poListOpen = [];
-List<POList> poListOpenTemp = [];
-List<InventoryList> inventory = [];
-List<InventoryList> inventoryClosing = [];
-List<SalesTargetList> salesTarget = [];
-List<GRNList> grnList = [];
-List<GRNList> grnListTemp = [];
-
-double medicalDeviceTarget = 0;
-double ipdTarget = 0;
-double inventoryTarget = 0;
-double purchaseTarget = 0;
-double cogsTarget = 0;
-double productionTarget = 0;
-
-double monthlySales = 0;
-double medicalDevicesSales = 0;
-double ipdSales = 0;
-double lowVal = 0;
-double mediumVal = 0;
-double highVal = 0;
-double monthlySOvalue = 0;
-double monthlyPurchasePriceSum = 0;
-double monthlyPurchasePriceGrnSum = 0;
-double monthlyPOSum = 0;
-double currentMonthPOSum = 0;
-double lastMonthPOSum = 0;
-double tillLastMonthPOSum = 0;
-double karnatakaPOSum = 0;
-double tamilNaduPOSum = 0;
-double othersPOSum = 0;
-double lessThan30DaysValue = 0;
-double a30to60DaysValue = 0;
-double a60to90DaysValue = 0;
-double a91DaysValue = 0;
-double nearExpiryValue = 0;
-double expiredValue = 0;
-double inventoryOpeningValue = 0;
-double inventoryClosingValue = 0;
-double cogsValue = 0;
-double inventoryAchieved = 0;
-
-MonthlyCollectionReportList weeklyData = MonthlyCollectionReportList(
-  weeklyData: [],
-);
-DailyCostingGraphList dailyCostingData = DailyCostingGraphList(graphData: []);
-DailyCostingGraphList revenueBreakup = DailyCostingGraphList(graphData: []);
-DailyCostingGraphList saleOrderPriorityBreakup = DailyCostingGraphList(
-  graphData: [],
-);
-DailyCostingGraphList saleOrderWarehouseBreakup = DailyCostingGraphList(
-  graphData: [],
-);
-DailyCostingGraphList inventoryAging = DailyCostingGraphList(graphData: []);
-
-DateTime? fromDateFilter;
-DateTime? toDateFilter;
-bool dateFilterFlag = false;
-
-String touchedPriority = "";
-String touchedWarehouse = "";
-
-bool fromFilter = false;
-
-Map<String, Map<String, bool>> allCategoriesState = {};
-
-final List<String> categories = ['Date'];
-
-List<List<String>> filterOptions = [[]];
-
-List<String> selectedSalesData = [];
-
-List<List<bool>> selectedFinanceReceivablesOptions = [];
-
-List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
-
-List<List<bool>> savedFinanceReceivablesOptions = filterOptions
-    .map((options) => List<bool>.filled(options.length, false))
-    .toList();
-
-class DailyCostingSalesProvider with ChangeNotifier {
-  List<SalesList> _salesList = [];
-  List<SalesList> get salesList => _salesList;
-  void updateSalesList(List<SalesList> newList) {
-    _salesList = newList;
-    notifyListeners();
-  }
-}
-
-class DailyCostingSOListProvider with ChangeNotifier {
-  List<SODetailsList> _soList = [];
-  List<SODetailsList> get soList => _soList;
-  void updateSOList(List<SODetailsList> newList) {
-    _soList = newList;
-    notifyListeners();
-  }
-}
-
-class DailyCostingPurchaseProvider with ChangeNotifier {
-  List<PurchaseList> _purchaseList = [];
-  List<PurchaseList> get purchaseList => _purchaseList;
-  void updatePurchaseList(List<PurchaseList> newList) {
-    _purchaseList = newList;
-    notifyListeners();
-  }
-}
-
-class DailyCostingGRNProvider with ChangeNotifier {
-  List<GRNList> _purchaseList = [];
-  List<GRNList> get purchaseList => _purchaseList;
-  void updatePurchaseList(List<GRNList> newList) {
-    _purchaseList = newList;
-    notifyListeners();
-  }
-}
-
-class DailyCostingPOProvider with ChangeNotifier {
-  List<POList> _poList = [];
-  List<POList> get poList => _poList;
-  void updatePOList(List<POList> newList) {
-    _poList = newList;
-    notifyListeners();
-  }
-}
-
-class DailyCostingInventoryProvider with ChangeNotifier {
-  List<InventoryList> _inventoryList = [];
-  List<InventoryList> get inventoryList => _inventoryList;
-  void updateInventoryList(List<InventoryList> newList) {
-    _inventoryList = newList;
-    notifyListeners();
-  }
-}
-
-class DailyCostingInventoryClosingProvider with ChangeNotifier {
-  List<InventoryList> _inventoryList = [];
-  List<InventoryList> get inventoryList => _inventoryList;
-  void updateInventoryList(List<InventoryList> newList) {
-    _inventoryList = newList;
-    notifyListeners();
-  }
-}
-
-class DailyCostingSalesTargetProvider with ChangeNotifier {
-  List<SalesTargetList> _salesTargetList = [];
-  List<SalesTargetList> get salesTargetList => _salesTargetList;
-  void updateSalesTargetList(List<SalesTargetList> newSalesTargetList) {
-    _salesTargetList = newSalesTargetList;
-    notifyListeners();
-  }
 }
 
 // ---- Models used for isolate I/O ----
@@ -227,6 +47,8 @@ class DailyCostingInput {
   final DateTime currentMonthToDate;
   final DateTime lastMonthFromDate;
   final DateTime lastMonthToDate;
+  final DateTime nextMonthFromDate;
+  final DateTime nextMonthToDate;
   final DateTime fiscalYearStartDate;
   final DateTime currentDate;
 
@@ -245,13 +67,14 @@ class DailyCostingInput {
     required this.currentMonthToDate,
     required this.lastMonthFromDate,
     required this.lastMonthToDate,
+    required this.nextMonthFromDate,
+    required this.nextMonthToDate,
     required this.fiscalYearStartDate,
     required this.currentDate,
   });
 }
 
 class DailyCostingResult {
-  // numeric totals
   final double monthlySales;
   final double medicalDevicesSales;
   final double ipdSales;
@@ -260,12 +83,11 @@ class DailyCostingResult {
   final double monthlyPOSum;
   final double currentMonthPOSum;
   final double lastMonthPOSum;
-  final double tillLastMonthPOSum;
+  final double nextMonthPOSum;
   final double inventoryOpeningValue;
   final double inventoryClosingValue;
   final double cogsValue;
   final double inventoryAchieved;
-
   final double monthlySOvalue;
   final double lowVal;
   final double mediumVal;
@@ -274,7 +96,6 @@ class DailyCostingResult {
   final double a30to60DaysValue;
   final double a60to90DaysValue;
   final double a91DaysValue;
-
   final double medicalDeviceTarget;
   final double ipdTarget;
   final double purchaseTarget;
@@ -297,12 +118,11 @@ class DailyCostingResult {
     required this.monthlyPOSum,
     required this.currentMonthPOSum,
     required this.lastMonthPOSum,
-    required this.tillLastMonthPOSum,
+    required this.nextMonthPOSum,
     required this.inventoryOpeningValue,
     required this.inventoryClosingValue,
     required this.cogsValue,
     required this.inventoryAchieved,
-
     required this.monthlySOvalue,
     required this.lowVal,
     required this.mediumVal,
@@ -311,13 +131,11 @@ class DailyCostingResult {
     required this.a30to60DaysValue,
     required this.a60to90DaysValue,
     required this.a91DaysValue,
-
     required this.medicalDeviceTarget,
     required this.ipdTarget,
     required this.purchaseTarget,
     required this.cogsTarget,
     required this.inventoryTarget,
-
     required this.revenueGraph,
     required this.dailyCostingGraph,
     required this.saleOrderPriorityGraph,
@@ -326,6 +144,32 @@ class DailyCostingResult {
   });
 }
 
+double monthlySales = 0;
+double medicalDevicesSales = 0;
+double ipdSales = 0;
+double lowVal = 0;
+double mediumVal = 0;
+double highVal = 0;
+double monthlySOvalue = 0;
+double monthlyPurchasePriceSum = 0;
+double monthlyPurchasePriceGrnSum = 0;
+double monthlyPOSum = 0;
+double currentMonthPOSum = 0;
+double lastMonthPOSum = 0;
+double nextMonthPOSum = 0;
+double karnatakaPOSum = 0;
+double tamilNaduPOSum = 0;
+double othersPOSum = 0;
+double lessThan30DaysValue = 0;
+double a30to60DaysValue = 0;
+double a60to90DaysValue = 0;
+double a91DaysValue = 0;
+double nearExpiryValue = 0;
+double expiredValue = 0;
+double inventoryOpeningValue = 0;
+double inventoryClosingValue = 0;
+double cogsValue = 0;
+double inventoryAchieved = 0;
 // ---- Top-level compute function (runs in isolate) ----
 DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // Helper: convert DateTime to milliseconds for fast comparisons
@@ -333,6 +177,8 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   final int curTo = input.currentMonthToDate.millisecondsSinceEpoch;
   final int lastFrom = input.lastMonthFromDate.millisecondsSinceEpoch;
   final int lastTo = input.lastMonthToDate.millisecondsSinceEpoch;
+  final int nextFrom = input.nextMonthFromDate.millisecondsSinceEpoch;
+  final int nextTo = input.nextMonthToDate.millisecondsSinceEpoch;
 
   // Get current financial year suffix function (same logic as you had)
   String getCurrentFinancialYearSuffix(DateTime now) {
@@ -371,7 +217,6 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   double purchaseTarget = 0;
   double cogsTarget = 0;
   double inventoryTarget = 0;
-  // double productionTarget = 0;
 
   for (final t in input.salesTarget) {
     if (t.financialYear == currentFY) {
@@ -391,9 +236,6 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
           break;
         case "INVENTORY TARGET":
           inventoryTarget = v;
-          break;
-        case "PRODUCTION TARGET":
-          productionTarget = v;
           break;
       }
     }
@@ -506,14 +348,14 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   monthlyPOSum = 0;
   currentMonthPOSum = 0;
   lastMonthPOSum = 0;
-  tillLastMonthPOSum = 0;
+  nextMonthPOSum = 0;
 
   for (final po in input.poListOpen) {
     final pending = double.tryParse(po.pendingValue) ?? 0;
     monthlyPOSum += pending;
     DateTime inv;
     try {
-      inv = DateFormat('dd/MM/yyyy').parse(po.poDate);
+      inv = DateFormat('dd/MM/yyyy').parse(po.expectedTimeofDelivey);
     } catch (_) {
       continue;
     }
@@ -522,8 +364,8 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
       currentMonthPOSum += pending;
     } else if (ms >= lastFrom && ms <= lastTo) {
       lastMonthPOSum += pending;
-    } else if (ms < lastFrom) {
-      tillLastMonthPOSum += pending;
+    } else if (ms >= nextFrom && ms <= nextTo) {
+      nextMonthPOSum += pending;
     }
   }
 
@@ -768,7 +610,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     monthlyPOSum: monthlyPOSum,
     currentMonthPOSum: currentMonthPOSum,
     lastMonthPOSum: lastMonthPOSum,
-    tillLastMonthPOSum: tillLastMonthPOSum,
+    nextMonthPOSum: nextMonthPOSum,
     inventoryOpeningValue: inventoryOpeningValue,
     inventoryClosingValue: inventoryClosingValue,
     cogsValue: cogsValue,
@@ -794,39 +636,166 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   );
 }
 
-List<SalesList> parseSalesList(List<dynamic> data) {
-  return data.map((e) => SalesList.fromJson(e)).toList();
-}
-
-List<SODetailsList> parseSOList(List<dynamic> data) {
-  return data.map((e) => SODetailsList.fromJson(e)).toList();
-}
-
-List<PurchaseList> parsePurchaseList(List<dynamic> data) {
-  return data.map((e) => PurchaseList.fromJson(e)).toList();
-}
-
-List<POList> parsePOList(List<dynamic> data) {
-  return data.map((e) => POList.fromJson(e)).toList();
-}
-
-List<InventoryList> parseInventoryList(List<dynamic> data) {
-  return data.map((e) => InventoryList.fromJson(e)).toList();
-}
-
-List<InventoryList> parseInventoryClosingList(List<dynamic> data) {
-  return data.map((e) => InventoryList.fromJson(e)).toList();
-}
-
-List<SalesTargetList> parseSalesTargetList(List<dynamic> data) {
-  return data.map((e) => SalesTargetList.fromJson(e)).toList();
-}
-
-List<GRNList> parseGRNList(List<dynamic> data) {
-  return data.map((e) => GRNList.fromJson(e)).toList();
-}
-
 class _DailyCostingReportState extends State<DailyCostingReport> {
+  final reportService = ReportService();
+  late Future<void> loadDataFuture;
+  String userLevel = "0";
+  List<Users> usersList = [];
+  bool chartDataLoadedDailyCosting = false;
+
+  DateTime? currentDate;
+  DateTime? yearStartDate;
+  DateTime? currentMonthFromDate;
+  DateTime? currentMonthToDate;
+  DateTime? lastMonthFromDate;
+  DateTime? lastMonthToDate;
+  DateTime? nextMonthFromDate;
+  DateTime? nextMonthToDate;
+  DateTime? currentQuarterFromDate;
+  DateTime? currentQuarterToDate;
+  DateTime? lastQuarterFromDate;
+  DateTime? lastQuarterToDate;
+  DateTime? fiscalYearStartDate;
+  DateTime? prevFiscalYearStartDate;
+  DateTime? prevFiscalYearEndDate;
+  String financialYear = "";
+  String prevFinancialYear = "";
+  int currentQuarter = 0;
+
+  List<DebtorsAgingList> debtorsList = [];
+  List<CollectionList> collection = [];
+  List<SalesList> sales = [];
+  List<SalesList> salesTemp = [];
+  List<SODetailsList> soList = [];
+  List<SODetailsList> soListTemp = [];
+  List<PurchaseList> purchasePrice = [];
+  List<PurchaseList> purchasePriceTemp = [];
+  List<POList> poListOpen = [];
+  List<POList> poListOpenTemp = [];
+  List<InventoryList> inventory = [];
+  List<InventoryList> inventoryClosing = [];
+  List<SalesTargetList> salesTarget = [];
+  List<GRNList> grnList = [];
+  List<GRNList> grnListTemp = [];
+
+  double medicalDeviceTarget = 0;
+  double ipdTarget = 0;
+  double inventoryTarget = 0;
+  double purchaseTarget = 0;
+  double cogsTarget = 0;
+
+  double pendingSalesOrderBranches = 0;
+
+  double highPriorityPendingSO = 0;
+  double mediumPriorityPendingSO = 0;
+  double lowPriorityPendingSO = 0;
+
+  double bangalorePendingSO = 0;
+  double rajapalayamPendingSO = 0;
+  double othersPendingSO = 0;
+  double totalPendingSO = 0;
+
+  double lastMonthPO = 0;
+  double currentMonthPO = 0;
+  double nextMonthPO = 0;
+  double totalPendingPO = 0;
+
+  double stockInTransitValue = 0;
+
+  double inventoryLess30Percent = 0;
+  double inventory30to60Percent = 0;
+  double inventory60to90Percent = 0;
+  double inventoryAbove90Percent = 0;
+  double stockInTransitPercent = 0;
+
+  double cogsPercentage = 0;
+
+  double cashConversionCycleDays = 0;
+
+  double readyToDispatchStock = 0;
+
+  MonthlyCollectionReportList weeklyData = MonthlyCollectionReportList(
+    weeklyData: [],
+  );
+  DailyCostingGraphList dailyCostingData = DailyCostingGraphList(graphData: []);
+  DailyCostingGraphList revenueBreakup = DailyCostingGraphList(graphData: []);
+  DailyCostingGraphList saleOrderPriorityBreakup = DailyCostingGraphList(
+    graphData: [],
+  );
+  DailyCostingGraphList saleOrderWarehouseBreakup = DailyCostingGraphList(
+    graphData: [],
+  );
+  DailyCostingGraphList inventoryAging = DailyCostingGraphList(graphData: []);
+
+  DateTime? fromDateFilter;
+  DateTime? toDateFilter;
+  bool dateFilterFlag = false;
+
+  String touchedPriority = "";
+  String touchedWarehouse = "";
+
+  bool fromFilter = false;
+
+  Map<String, Map<String, bool>> allCategoriesState = {};
+
+  final List<String> categories = ['Date'];
+
+  List<List<String>> filterOptions = [[]];
+
+  List<String> selectedSalesData = [];
+
+  List<List<bool>> selectedFinanceReceivablesOptions = [];
+
+  List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
+
+  late List<List<bool>> savedFinanceReceivablesOptions = filterOptions
+      .map((options) => List<bool>.filled(options.length, false))
+      .toList();
+
+  List<SalesList> parseSalesList(List<dynamic> data) {
+    return data.map((e) => SalesList.fromJson(e)).toList();
+  }
+
+  List<SODetailsList> parseSOList(List<dynamic> data) {
+    return data.map((e) => SODetailsList.fromJson(e)).toList();
+  }
+
+  List<PurchaseList> parsePurchaseList(List<dynamic> data) {
+    return data.map((e) => PurchaseList.fromJson(e)).toList();
+  }
+
+  List<POList> parsePOList(List<dynamic> data) {
+    return data.map((e) => POList.fromJson(e)).toList();
+  }
+
+  List<InventoryList> parseInventoryList(List<dynamic> data) {
+    return data.map((e) => InventoryList.fromJson(e)).toList();
+  }
+
+  List<InventoryList> parseInventoryClosingList(List<dynamic> data) {
+    return data.map((e) => InventoryList.fromJson(e)).toList();
+  }
+
+  List<SalesTargetList> parseSalesTargetList(List<dynamic> data) {
+    return data.map((e) => SalesTargetList.fromJson(e)).toList();
+  }
+
+  List<GRNList> parseGRNList(List<dynamic> data) {
+    return data.map((e) => GRNList.fromJson(e)).toList();
+  }
+
+  final ScrollController _verticalScrollController = ScrollController();
+
+  final ScrollController _dailyCostingHorizontalController = ScrollController();
+
+  final ScrollController _revenueHorizontalController = ScrollController();
+
+  final ScrollController _priorityHorizontalController = ScrollController();
+
+  final ScrollController _warehouseHorizontalController = ScrollController();
+
+  final ScrollController _inventoryHorizontalController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -912,6 +881,16 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
+
+    nextMonthFromDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: 0));
+    nextMonthToDate = addMonth(
+      nextMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
+
     int fiscalYearStartMonth = 4;
     currentQuarter = getCurrentQuarter();
     getLastQuarterDates();
@@ -1435,8 +1414,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       if (!mounted) return;
 
       setState(() {
-        context.read<DailyCostingSalesProvider>().updateSalesList(salesList);
-
         if (sales.isEmpty) {
           sales = salesList;
           salesTemp = salesList;
@@ -1526,8 +1503,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       // UPDATE UI
       setState(() {
-        context.read<DailyCostingSOListProvider>().updateSOList(soDetailList);
-
         // Filter only open SO documents
         soListTemp = soDetailList
             .where((test) => test.soStatus == "Open")
@@ -1625,10 +1600,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         }
 
         purchasePriceTemp = List.from(purchaseList);
-
-        context.read<DailyCostingPurchaseProvider>().updatePurchaseList(
-          purchaseList,
-        );
       });
     } catch (e) {
       if (!mounted) return;
@@ -1711,8 +1682,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       // UPDATE UI
       setState(() {
-        context.read<DailyCostingPOProvider>().updatePOList(poItems);
-
         // Filter open PO only once
         if (poListOpen.isEmpty) {
           final openList = poItems.where((p) {
@@ -1804,10 +1773,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       if (!mounted) return;
 
       setState(() {
-        context.read<DailyCostingInventoryProvider>().updateInventoryList(
-          inventoryList,
-        );
-
         // Assign once per level
         if (inventory.isEmpty) {
           inventory = List.from(inventoryList);
@@ -1894,10 +1859,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       // UPDATE UI
       setState(() {
-        context
-            .read<DailyCostingInventoryClosingProvider>()
-            .updateInventoryList(closingList);
-
         // Assign once for all user levels
         if (inventoryClosing.isEmpty) {
           inventoryClosing = List.from(closingList);
@@ -2000,10 +1961,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       // UPDATE UI
       setState(() {
-        context.read<DailyCostingSalesTargetProvider>().updateSalesTargetList(
-          parsedList,
-        );
-
         salesTarget = List.from(parsedList); // applies to all user levels
       });
     } catch (e) {
@@ -2090,8 +2047,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       if (!mounted) return;
 
       setState(() {
-        context.read<DailyCostingGRNProvider>().updatePurchaseList(grnItems);
-
         // Assign once (same for all user levels)
         if (grnList.isEmpty) {
           grnList = List.from(grnItems);
@@ -2130,6 +2085,8 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       currentMonthToDate: currentMonthToDate!,
       lastMonthFromDate: lastMonthFromDate!,
       lastMonthToDate: lastMonthToDate!,
+      nextMonthFromDate: nextMonthFromDate!,
+      nextMonthToDate: nextMonthToDate!,
       fiscalYearStartDate: fiscalYearStartDate!,
       currentDate: currentDate!,
     );
@@ -2157,7 +2114,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         monthlyPOSum = result.monthlyPOSum;
         currentMonthPOSum = result.currentMonthPOSum;
         lastMonthPOSum = result.lastMonthPOSum;
-        tillLastMonthPOSum = result.tillLastMonthPOSum;
+        nextMonthPOSum = result.nextMonthPOSum;
         inventoryOpeningValue = result.inventoryOpeningValue;
         inventoryClosingValue = result.inventoryClosingValue;
         cogsValue = result.cogsValue;
@@ -2178,6 +2135,52 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         purchaseTarget = result.purchaseTarget;
         cogsTarget = result.cogsTarget;
         inventoryTarget = result.inventoryTarget;
+
+        pendingSalesOrderBranches = monthlySOvalue;
+
+        highPriorityPendingSO = highVal;
+        mediumPriorityPendingSO = mediumVal;
+        lowPriorityPendingSO = lowVal;
+
+        totalPendingSO =
+            highPriorityPendingSO +
+            mediumPriorityPendingSO +
+            lowPriorityPendingSO;
+
+        stockInTransitValue = 0;
+        bangalorePendingSO = 0;
+        rajapalayamPendingSO = 0;
+        othersPendingSO = 0;
+
+        lastMonthPO = 0;
+        currentMonthPO = currentMonthPOSum;
+        nextMonthPO = 0;
+
+        totalPendingPO = lastMonthPO + currentMonthPO + nextMonthPO;
+
+        inventoryLess30Percent = inventoryAchieved == 0
+            ? 0
+            : (lessThan30DaysValue / inventoryAchieved) * 100;
+
+        inventory30to60Percent = inventoryAchieved == 0
+            ? 0
+            : (a30to60DaysValue / inventoryAchieved) * 100;
+
+        inventory60to90Percent = inventoryAchieved == 0
+            ? 0
+            : (a60to90DaysValue / inventoryAchieved) * 100;
+
+        inventoryAbove90Percent = inventoryAchieved == 0
+            ? 0
+            : (a91DaysValue / inventoryAchieved) * 100;
+
+        stockInTransitPercent = 0;
+
+        cogsPercentage = cogsTarget == 0 ? 0 : (cogsValue / cogsTarget) * 100;
+
+        cashConversionCycleDays = 40;
+
+        readyToDispatchStock = 0;
 
         // graphs — replace your graph data lists with the computed ones
         revenueBreakup.graphData = result.revenueGraph;
@@ -2323,6 +2326,303 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     );
   }
 
+  Future<void> generateFormattedDailyCostingReport() async {
+    try {
+      final workbook = xlsio.Workbook();
+      final sheet = workbook.worksheets[0];
+      sheet.name = "Daily Costing";
+
+      sheet.getRangeByIndex(1, 1).columnWidth = 32;
+      sheet.getRangeByIndex(1, 2).columnWidth = 18;
+      sheet.getRangeByIndex(1, 3).columnWidth = 30;
+      sheet.getRangeByIndex(1, 4).columnWidth = 18;
+      sheet.getRangeByIndex(1, 5).columnWidth = 14;
+      sheet.getRangeByIndex(1, 6).columnWidth = 22;
+      sheet.getRangeByIndex(1, 7).columnWidth = 20;
+
+      final borderStyle = xlsio.LineStyle.thin;
+
+      // HEADER STYLE
+      final header = sheet.getRangeByName("A1:G1");
+      header.merge();
+      header.setText("DAILY COSTING DASHBOARD");
+      header.cellStyle.bold = true;
+      header.cellStyle.fontSize = 18;
+      header.cellStyle.hAlign = xlsio.HAlignType.center;
+      header.cellStyle.vAlign = xlsio.VAlignType.center;
+
+      sheet.getRangeByIndex(1, 1).rowHeight = 28;
+
+      // DATE
+      final dateRange = sheet.getRangeByName("A2:G2");
+      dateRange.merge();
+      dateRange.setText("Date : ${formatDateString(currentDate!)}");
+      dateRange.cellStyle.hAlign = xlsio.HAlignType.center;
+      dateRange.cellStyle.bold = true;
+
+      final fyHeader = sheet.getRangeByName("A4:E4");
+      fyHeader.merge();
+      final now = DateTime.now();
+      final int startYear = now.month >= 4 ? now.year : now.year - 1;
+      final int endYear = startYear + 1;
+      final String fyText =
+          "Financial Target for FY "
+          "${startYear.toString().substring(2)}-"
+          "${endYear.toString().substring(2)}";
+
+      fyHeader.setText(fyText);
+      fyHeader.cellStyle.bold = true;
+      fyHeader.cellStyle.backColor = "#D9EAF7";
+      fyHeader.cellStyle.hAlign = xlsio.HAlignType.center;
+      fyHeader.cellStyle.borders.all.lineStyle = borderStyle;
+
+      sheet.getRangeByIndex(5, 1).setText("Particulars");
+      sheet.getRangeByIndex(5, 2).setText("Target");
+      sheet.getRangeByIndex(5, 3).setText("");
+      sheet.getRangeByIndex(5, 4).setText("Achieved");
+      sheet.getRangeByIndex(5, 5).setText("%");
+
+      final headingRange = sheet.getRangeByName("A5:E5");
+      headingRange.cellStyle.bold = true;
+      headingRange.cellStyle.backColor = "#EAF2F8";
+      headingRange.cellStyle.hAlign = xlsio.HAlignType.center;
+      headingRange.cellStyle.borders.all.lineStyle = borderStyle;
+
+      void setDashboardRow({
+        required int row,
+        String? title,
+        dynamic target,
+        dynamic worksheet,
+        dynamic achieved,
+        dynamic percentage,
+        bool red = false,
+      }) {
+        sheet.getRangeByIndex(row, 1).setText(title);
+
+        if (target != null && target != "") {
+          sheet
+              .getRangeByIndex(row, 2)
+              .setNumber(double.tryParse(target.toString()) ?? 0);
+        }
+
+        if (worksheet != null && worksheet != "") {
+          final cell = sheet.getRangeByIndex(row, 3);
+          cell.setText(worksheet);
+          cell.cellStyle.wrapText = true;
+          cell.cellStyle.vAlign = xlsio.VAlignType.center;
+          cell.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+        }
+
+        if (achieved != null && achieved != "") {
+          sheet
+              .getRangeByIndex(row, 4)
+              .setNumber(double.tryParse(achieved.toString()) ?? 0);
+        }
+
+        sheet.getRangeByIndex(row, 5).setText(percentage ?? "");
+
+        final rowRange = sheet.getRangeByIndex(row, 1, row, 5);
+
+        rowRange.cellStyle.borders.all.lineStyle = borderStyle;
+
+        rowRange.cellStyle.vAlign = xlsio.VAlignType.center;
+
+        // COLUMN A - TITLE
+        sheet.getRangeByIndex(row, 1).cellStyle.hAlign = xlsio.HAlignType.left;
+
+        // COLUMN B - TARGET
+        sheet.getRangeByIndex(row, 2).cellStyle.hAlign = xlsio.HAlignType.right;
+
+        // COLUMN C - WORKSHEET
+        sheet.getRangeByIndex(row, 3).cellStyle.hAlign = xlsio.HAlignType.right;
+
+        // COLUMN D - ACHIEVED
+        sheet.getRangeByIndex(row, 4).cellStyle.hAlign = xlsio.HAlignType.right;
+
+        // COLUMN E - PERCENTAGE
+        sheet.getRangeByIndex(row, 5).cellStyle.hAlign =
+            xlsio.HAlignType.center;
+
+        if (red) {
+          sheet.getRangeByIndex(row, 3).cellStyle.fontColor = "#FF0000";
+        }
+      }
+
+      setDashboardRow(
+        row: 6,
+        title: "Revenue",
+        target: ipdTarget + medicalDeviceTarget,
+        worksheet:
+            "Medical Device: ${medicalDevicesSales.toStringAsFixed(2)}\n"
+            "IPD           : ${ipdSales.toStringAsFixed(2)}",
+        achieved: monthlySales,
+        percentage:
+            (((monthlySales /
+                        ((ipdTarget + medicalDeviceTarget) == 0
+                            ? 1
+                            : (ipdTarget + medicalDeviceTarget))) *
+                    100))
+                .toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 7,
+        title: "Pending Sales Orders",
+        target: "",
+        worksheet:
+            "High Priority  : ${highPriorityPendingSO.toStringAsFixed(2)}\n"
+            "Medium Priority: ${mediumPriorityPendingSO.toStringAsFixed(2)}\n"
+            "Low Priority   : ${lowPriorityPendingSO.toStringAsFixed(2)}",
+        achieved: totalPendingSO,
+        percentage: "",
+      );
+
+      setDashboardRow(
+        row: 8,
+        title: "Purchases",
+        target: purchaseTarget,
+        achieved: monthlyPurchasePriceSum,
+        percentage: purchaseTarget == 0
+            ? "0"
+            : ((monthlyPurchasePriceSum / purchaseTarget) * 100)
+                  .toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 9,
+        title: "Pending Purchase Orders",
+        target: "",
+        worksheet:
+            "Last Month   : ${lastMonthPOSum.toStringAsFixed(2)}\n"
+            "Current Month: ${currentMonthPOSum.toStringAsFixed(2)}\n"
+            "Next Month   : ${nextMonthPOSum.toStringAsFixed(2)}",
+        achieved: totalPendingPO,
+        percentage: "",
+      );
+
+      setDashboardRow(
+        row: 10,
+        title: "Closing Stock(Including Stock In Transit)",
+        target: inventoryTarget,
+        worksheet: "",
+        achieved: inventoryAchieved,
+        percentage: inventoryTarget == 0
+            ? "0"
+            : ((inventoryAchieved / inventoryTarget) * 100).toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 11,
+        title: "Inventory Ageing",
+        worksheet: "< 30 Days",
+        achieved: lessThan30DaysValue,
+        percentage: inventoryLess30Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 12,
+        worksheet: "30 - 60 Days",
+        achieved: a30to60DaysValue,
+        percentage: inventory30to60Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 13,
+        worksheet: "60 - 90 Days",
+        achieved: a60to90DaysValue,
+        percentage: inventory60to90Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 14,
+        worksheet: "> 90 Days",
+        achieved: a91DaysValue,
+        percentage: inventoryAbove90Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 15,
+        worksheet: "Stock In Transit",
+        achieved: "0",
+        percentage: 0.toStringAsFixed(2),
+      );
+      final inventoryMerge = sheet.getRangeByName("A11:A15");
+      inventoryMerge.merge();
+      inventoryMerge.setText("Inventory Ageing");
+      inventoryMerge.cellStyle.wrapText = true;
+      inventoryMerge.cellStyle.hAlign = xlsio.HAlignType.left;
+      inventoryMerge.cellStyle.vAlign = xlsio.VAlignType.center;
+      inventoryMerge.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+      setDashboardRow(
+        row: 16,
+        title: "COGS",
+        target: cogsTarget,
+        worksheet: "0.00%",
+        achieved: cogsValue,
+        percentage: cogsPercentage.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 17,
+        title: "Cash Conversion Cycle",
+        worksheet: "Days",
+        achieved: cashConversionCycleDays,
+      );
+
+      setDashboardRow(
+        row: 18,
+        title: "Note:-",
+        worksheet: "Ready To Dispatch Stock(Customer)",
+        achieved: readyToDispatchStock,
+      );
+
+      final pendingHeader = sheet.getRangeByName("F4:G4");
+      pendingHeader.merge();
+      pendingHeader.setText("Pending Sales Orders");
+      pendingHeader.cellStyle.bold = true;
+      pendingHeader.cellStyle.backColor = "#E2EFDA";
+      pendingHeader.cellStyle.hAlign = xlsio.HAlignType.center;
+      pendingHeader.cellStyle.borders.all.lineStyle = borderStyle;
+
+      sheet.getRangeByIndex(5, 6)
+        ..setText("Bangalore: ")
+        ..cellStyle.bold = true;
+      sheet.getRangeByIndex(5, 7).setNumber(karnatakaPOSum);
+      sheet.getRangeByIndex(6, 6)
+        ..setText("Rajapalayam: ")
+        ..cellStyle.bold = true;
+      sheet.getRangeByIndex(6, 7).setNumber(tamilNaduPOSum);
+      sheet.getRangeByIndex(7, 6)
+        ..setText("Others")
+        ..cellStyle.bold = true;
+      sheet.getRangeByIndex(7, 7).setNumber(othersPOSum);
+      sheet.getRangeByIndex(8, 6)
+        ..setText("Total")
+        ..cellStyle.bold = true;
+      sheet.getRangeByIndex(8, 7).setNumber(totalPendingPO);
+      final pendingRange = sheet.getRangeByName("F5:G8");
+      pendingRange.cellStyle.borders.all.lineStyle = borderStyle;
+
+      // ---------------- SAVE ----------------
+      final bytes = List<int>.from(workbook.saveAsStream());
+      workbook.dispose();
+
+      if (kIsWeb) {
+        downloadExcelWeb("daily_costing.xlsx", bytes);
+      } else {
+        final dir = await getStorageDirectory();
+        final file = File('$dir/daily_costing.xlsx');
+        await file.writeAsBytes(bytes, flush: true);
+        OpenFile.open(file.path);
+      }
+
+      showBottomToast(context, "Excel exported successfully");
+    } catch (e) {
+      showBottomToast(context, "Excel generation failed: $e");
+    }
+  }
+
   String formatDateString(DateTime date) {
     final formatter = DateFormat('dd/MM/yyyy');
     return formatter.format(date);
@@ -2347,6 +2647,16 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     ).add(const Duration(days: -1));
     lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
     lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
+
+    nextMonthFromDate = addMonth(
+      currentMonthFromDate!,
+      1,
+    ).add(const Duration(days: 0));
+    nextMonthToDate = addMonth(
+      nextMonthFromDate!,
+      1,
+    ).add(const Duration(days: -1));
+
     int fiscalYearStartMonth = 4;
     currentQuarter = getCurrentQuarter();
     getLastQuarterDates();
@@ -2417,7 +2727,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       monthlyPOSum = 0;
       currentMonthPOSum = 0;
       lastMonthPOSum = 0;
-      tillLastMonthPOSum = 0;
+      nextMonthPOSum = 0;
 
       // Inventory Aging
       lessThan30DaysValue = 0;
@@ -2445,20 +2755,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
   Future<void> _dateFilterTarget() async {
     setState(() {
-      context.read<DailyCostingInventoryClosingProvider>().updateInventoryList(
-        inventoryClosing,
-      );
-      context.read<DailyCostingInventoryProvider>().updateInventoryList(
-        inventory,
-      );
-      context.read<DailyCostingPOProvider>().updatePOList(poListOpen);
-      context.read<DailyCostingGRNProvider>().updatePurchaseList(grnList);
-      context.read<DailyCostingPurchaseProvider>().updatePurchaseList(
-        purchasePrice,
-      );
-      context.read<DailyCostingSOListProvider>().updateSOList(soList);
-      context.read<DailyCostingSalesProvider>().updateSalesList(sales);
-
       sales = sales.where((target) {
         DateTime dueon = target.invoiceDate;
         return (dueon.isAtLeast(fromDateFilter!) &&
@@ -2570,187 +2866,271 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   @override
   void dispose() {
     hideLoadingOverlay(); // VERY IMPORTANT
+    _verticalScrollController.dispose();
+
+    _dailyCostingHorizontalController.dispose();
+    _revenueHorizontalController.dispose();
+    _priorityHorizontalController.dispose();
+    _warehouseHorizontalController.dispose();
+    _inventoryHorizontalController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        chartDataLoadedDailyCosting
-            ? SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        scrollbars: false,
+        dragDevices: {
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.touch,
+          PointerDeviceKind.trackpad,
+        },
+      ),
+      child: Stack(
+        children: [
+          chartDataLoadedDailyCosting
+              ? Scrollbar(
+                  controller: _verticalScrollController,
+                  thumbVisibility: true,
+                  radius: const Radius.circular(10),
+                  child: SingleChildScrollView(
+                    controller: _verticalScrollController,
+                    child: Column(
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const SizedBox(width: 15),
-                            dateFilterFlag
-                                ? Text(
-                                    "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
-                                  )
-                                : Text(
-                                    "${formatDateString(currentMonthFromDate!)} - ${formatDateString(currentDate!)}",
-                                  ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () {
-                                      generateDailyCostingReport();
-                                    },
-                                    child: const Row(
-                                      children: [Text("Download Excel")],
-                                    ),
-                                  ),
-                                ];
-                              },
+                            Row(
+                              children: [
+                                const SizedBox(width: 15),
+                                dateFilterFlag
+                                    ? Text(
+                                        "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
+                                      )
+                                    : Text(
+                                        "${formatDateString(currentMonthFromDate!)} - ${formatDateString(currentDate!)}",
+                                      ),
+                              ],
                             ),
                           ],
                         ),
+
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Daily Costing",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      PopupMenuButton(
+                                        tooltip: "Download",
+                                        padding: EdgeInsets.zero,
+                                        itemBuilder: (BuildContext bc) {
+                                          return [
+                                            PopupMenuItem(
+                                              onTap: () {
+                                                generateFormattedDailyCostingReport();
+                                              },
+                                              child: const Text(
+                                                "Download Excel",
+                                              ),
+                                            ),
+                                          ];
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.more_vert,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  SizedBox(
+                                    height: 370,
+                                    child: _dailyCostingGraph(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Revenue",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    height: 370,
+                                    child: _revenueBreakupGraph(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Pending Sales Order - Priority Wise",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    height: 370,
+                                    child: _pendingSalesOrderPriorityGraph(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Pending Sales Order - Warehouse Wise",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    height: 370,
+                                    child: _pendingSalesOrderWarehouseGraph(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Inventory Aging",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    height: 370,
+                                    child: _inventoryAgingGraph(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(10, 2, 8, 0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Daily Costing",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _dailyCostingGraph(),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Revenue",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _revenueBreakupGraph(),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Pending Sales Order - Priority Wise",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _pendingSalesOrderPriorityGraph(),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Pending Sales Order - Warehouse Wise",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _pendingSalesOrderWarehouseGraph(),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(10, 16, 8, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Inventory Aging",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: _inventoryAgingGraph(),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                  ],
-                ),
-              )
-            : const SizedBox.shrink(),
-        // Overlay Loader (if active)
-        if (_loadingOverlay != null) const SizedBox.shrink(),
-      ],
+                  ),
+                )
+              : const SizedBox.shrink(),
+          // Overlay Loader (if active)
+          if (_loadingOverlay != null) const SizedBox.shrink(),
+        ],
+      ),
     );
   }
 
@@ -2759,7 +3139,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     double chartWidth = 0.0;
     int len = dailyCostingData.graphData.length;
     if (len > 5) {
-      chartWidth = screenWidth + (80 * len);
+      chartWidth = max(screenWidth * 0.45, len * 90);
     } else {
       chartWidth = screenWidth;
     }
@@ -2793,104 +3173,122 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesMonthlyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _monthlyAnalysisChartData(dailyCostingData.graphData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {}
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _dailyCostingHorizontalController,
+      thumbVisibility: true,
+      // thickness: 5,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _dailyCostingHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 360,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: chartMaxY,
+                minY: chartMinY,
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesMonthlyAnalysis,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${dailyCostingData.graphData[grpIndex].name}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _monthlyAnalysisChartData(
+                  dailyCostingData.graphData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {}
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Target: ${formatAmount(dailyCostingData.graphData[grpIndex].target)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${dailyCostingData.graphData[grpIndex].name}\n',
+                        const TextStyle(
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Achievement: ${formatAmount(dailyCostingData.graphData[grpIndex].achievement)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Percentage: ${dailyCostingData.graphData[grpIndex].percentage}\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF78E25D),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                'Target: ${formatAmount(dailyCostingData.graphData[grpIndex].target)}\n',
+                            style: const TextStyle(
+                              color: Color(0xFF2CA9DF),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'Achievement: ${formatAmount(dailyCostingData.graphData[grpIndex].achievement)}\n',
+                            style: const TextStyle(
+                              color: Color(0xFFFF9F47),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'Percentage: ${dailyCostingData.graphData[grpIndex].percentage}\n',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF78E25D),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -2903,7 +3301,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     double chartWidth = 0.0;
     int len = revenueBreakup.graphData.length;
     if (len > 5) {
-      chartWidth = screenWidth + (80 * len);
+      chartWidth = max(screenWidth * 0.45, len * 90);
     } else {
       chartWidth = screenWidth;
     }
@@ -2912,103 +3310,119 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
               .map((data) => data.achievement)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesRevenueBreakup,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _revenueBreakupChartData(revenueBreakup.graphData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {}
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _revenueHorizontalController,
+      thumbVisibility: true,
+      // thickness: 5,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _revenueHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 360,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesRevenueBreakup,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${revenueBreakup.graphData[grpIndex].name}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _revenueBreakupChartData(revenueBreakup.graphData),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {}
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Target: ${formatAmount(revenueBreakup.graphData[grpIndex].target)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${revenueBreakup.graphData[grpIndex].name}\n',
+                        const TextStyle(
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Achievement: ${formatAmount(revenueBreakup.graphData[grpIndex].achievement)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Percentage: ${revenueBreakup.graphData[grpIndex].percentage}\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF78E25D),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                'Target: ${formatAmount(revenueBreakup.graphData[grpIndex].target)}\n',
+                            style: const TextStyle(
+                              color: Color(0xFF2CA9DF),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'Achievement: ${formatAmount(revenueBreakup.graphData[grpIndex].achievement)}\n',
+                            style: const TextStyle(
+                              color: Color(0xFFFF9F47),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'Percentage: ${revenueBreakup.graphData[grpIndex].percentage}\n',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF78E25D),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -3021,7 +3435,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     double chartWidth = 0.0;
     int len = saleOrderPriorityBreakup.graphData.length;
     if (len > 5) {
-      chartWidth = screenWidth + (80 * len);
+      chartWidth = max(screenWidth * 0.45, len * 90);
     } else {
       chartWidth = screenWidth;
     }
@@ -3030,99 +3444,115 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
               .map((data) => data.achievement)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesSalesOrderPriority,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _pendingSalesOrderChartData(
-              saleOrderPriorityBreakup.graphData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedPriority = touchedPriority == ""
-                          ? saleOrderPriorityBreakup
-                                .graphData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .name
-                          : "";
-                      touchedPriority = touchedPriority.replaceAll(
-                        " Priority",
-                        "",
-                      );
-                      loadDataWithFilter(touchedPriority, touchedWarehouse);
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _priorityHorizontalController,
+      thumbVisibility: true,
+      // thickness: 5,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _priorityHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 360,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesSalesOrderPriority,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${saleOrderPriorityBreakup.graphData[grpIndex].name}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _pendingSalesOrderChartData(
+                  saleOrderPriorityBreakup.graphData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedPriority = touchedPriority == ""
+                              ? saleOrderPriorityBreakup
+                                    .graphData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .name
+                              : "";
+                          touchedPriority = touchedPriority.replaceAll(
+                            " Priority",
+                            "",
+                          );
+                          loadDataWithFilter(touchedPriority, touchedWarehouse);
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Value: ${formatAmount(saleOrderPriorityBreakup.graphData[grpIndex].achievement)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47),
-                          fontSize: 12,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${saleOrderPriorityBreakup.graphData[grpIndex].name}\n',
+                        const TextStyle(
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                'Value: ${formatAmount(saleOrderPriorityBreakup.graphData[grpIndex].achievement)}\n',
+                            style: const TextStyle(
+                              color: Color(0xFFFF9F47),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -3135,7 +3565,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     double chartWidth = 0.0;
     int len = saleOrderWarehouseBreakup.graphData.length;
     if (len > 5) {
-      chartWidth = screenWidth + (80 * len);
+      chartWidth = max(screenWidth * 0.45, len * 90);
     } else {
       chartWidth = screenWidth;
     }
@@ -3144,95 +3574,111 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
               .map((data) => data.achievement)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesSalesOrderWarehouse,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _pendingSalesOrderWarehouseChartData(
-              saleOrderWarehouseBreakup.graphData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedWarehouse = touchedWarehouse == ""
-                          ? saleOrderWarehouseBreakup
-                                .graphData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .name
-                          : "";
-                      loadDataWithFilter(touchedPriority, touchedWarehouse);
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _warehouseHorizontalController,
+      thumbVisibility: true,
+      // thickness: 5,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _warehouseHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 360,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesSalesOrderWarehouse,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${saleOrderWarehouseBreakup.graphData[grpIndex].name}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _pendingSalesOrderWarehouseChartData(
+                  saleOrderWarehouseBreakup.graphData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedWarehouse = touchedWarehouse == ""
+                              ? saleOrderWarehouseBreakup
+                                    .graphData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .name
+                              : "";
+                          loadDataWithFilter(touchedPriority, touchedWarehouse);
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Value: ${formatAmount(saleOrderWarehouseBreakup.graphData[grpIndex].achievement)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47),
-                          fontSize: 12,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${saleOrderWarehouseBreakup.graphData[grpIndex].name}\n',
+                        const TextStyle(
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                'Value: ${formatAmount(saleOrderWarehouseBreakup.graphData[grpIndex].achievement)}\n',
+                            style: const TextStyle(
+                              color: Color(0xFFFF9F47),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -3245,7 +3691,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     double chartWidth = 0.0;
     int len = inventoryAging.graphData.length;
     if (len > 5) {
-      chartWidth = screenWidth + (80 * len);
+      chartWidth = max(screenWidth * 0.45, len * 90);
     } else {
       chartWidth = screenWidth;
     }
@@ -3254,85 +3700,101 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
               .map((data) => data.achievement)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesInventoryAging,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _inventoryAgingChartData(inventoryAging.graphData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {}
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _inventoryHorizontalController,
+      thumbVisibility: true,
+      // thickness: 5,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _inventoryHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 360,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesInventoryAging,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${inventoryAging.graphData[grpIndex].name}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _inventoryAgingChartData(inventoryAging.graphData),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {}
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Value: ${formatAmount(inventoryAging.graphData[grpIndex].achievement)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47),
-                          fontSize: 12,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${inventoryAging.graphData[grpIndex].name}\n',
+                        const TextStyle(
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                'Value: ${formatAmount(inventoryAging.graphData[grpIndex].achievement)}\n',
+                            style: const TextStyle(
+                              color: Color(0xFFFF9F47),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),

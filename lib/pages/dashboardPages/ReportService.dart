@@ -7,11 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
-// ignore: deprecated_member_use, avoid_web_libraries_in_flutter
-// import 'dart:html' as html;
 import 'report_service_platform.dart';
 import '../../api_helper.dart';
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_downloader/flutter_downloader.dart';
@@ -437,26 +434,6 @@ class ReportService {
         }
       }
 
-      // for (int i = 0; i < rows.length; i++) {
-      //   final rowIndex = i + 5;
-
-      //   for (int j = 0; j < rows[i].length; j++) {
-      //     final cell = sheet.getRangeByIndex(rowIndex, j + 1);
-
-      //     final value = rows[i][j];
-
-      //     // Try to convert numeric strings → number
-      //     final numValue = double.tryParse(value.toString());
-
-      //     if (numValue != null) {
-      //       cell.setNumber(numValue);
-      //       cell.cellStyle.hAlign = xlsio.HAlignType.right;
-      //     } else {
-      //       cell.setText(value.toString());
-      //     }
-      //   }
-      // }
-
       int totalRows = rows.length + 4;
       if (addTotalRow) {
         totalRows += 1;
@@ -618,27 +595,4 @@ class ReportService {
       openFileFromNotification: true,
     );
   }
-
-  // void _downloadExcelWeb(String fileName, List<int> bytes) {
-  //   final blob = html.Blob([
-  //     Uint8List.fromList(bytes),
-  //   ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  //   final url = html.Url.createObjectUrlFromBlob(blob);
-  //   Future.delayed(const Duration(milliseconds: 100), () {
-  //     html.AnchorElement(href: url)
-  //       ..setAttribute("download", fileName)
-  //       ..target = "_blank"
-  //       ..click();
-  //     html.Url.revokeObjectUrl(url);
-  //   });
-  // }
-
-  // void _downloadPDFWeb(String fileName, List<int> bytes) {
-  //   final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
-  //   final url = html.Url.createObjectUrlFromBlob(blob);
-  //   html.AnchorElement(href: url)
-  //     ..download = fileName
-  //     ..click();
-  //   html.Url.revokeObjectUrl(url);
-  // }
 }

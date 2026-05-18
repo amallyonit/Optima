@@ -33,7 +33,6 @@ import '../leadstages/stagethreeentry.dart';
 import '../leadstages/stagetwoentry.dart';
 import '../pages/customerdatapage.dart';
 import '../pages/dashboardPages/financesDashboard/customerCollectionAnalysis.dart';
-import '../pages/dashboardPages/financesDashboard/dailyCostingReport.dart';
 import '../pages/dashboardPages/financesDashboard/monthlyCollectionReport.dart';
 import '../pages/dashboardPages/financesDashboard/productMarginReport.dart';
 import '../pages/dashboardPages/financesDashboard/vendorPayment.dart';
@@ -145,11 +144,6 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => NotificationListProvider()),
     ChangeNotifierProvider(create: (_) => MonthlyDebtorAgingProvider()),
     ChangeNotifierProvider(create: (_) => MonthlyCollectionListProvider()),
-    ChangeNotifierProvider(create: (_) => DailyCostingSalesProvider()),
-    ChangeNotifierProvider(create: (_) => DailyCostingSOListProvider()),
-    ChangeNotifierProvider(create: (_) => DailyCostingPurchaseProvider()),
-    ChangeNotifierProvider(create: (_) => DailyCostingPOProvider()),
-    ChangeNotifierProvider(create: (_) => DailyCostingInventoryProvider()),
     ChangeNotifierProvider(create: (_) => ActualPayableProvider()),
     ChangeNotifierProvider(create: (_) => InventoryMonthlyPLProvider()),
     ChangeNotifierProvider(create: (_) => InventoryClosingMonthlyPLProvider()),
@@ -167,15 +161,9 @@ class AppProviders {
     ChangeNotifierProvider(
       create: (_) => CollectionAnalysisCustomerDashboardTargetProvider(),
     ),
-    ChangeNotifierProvider(create: (_) => DailyCostingSalesTargetProvider()),
-    ChangeNotifierProvider(
-      create: (_) => DailyCostingInventoryClosingProvider(),
-    ),
     ChangeNotifierProvider(create: (_) => VendorPaymentProvider()),
     ChangeNotifierProvider(create: (_) => VendorPayableProvider()),
     ChangeNotifierProvider(create: (_) => PayableTrialBalanceProvider()),
-    ChangeNotifierProvider(create: (_) => DailyCostingGRNProvider()),
-    // ChangeNotifierProvider(create: (_) => MSIProductionReportsProvider()),
     ChangeNotifierProvider(
       create: (_) => CashConversionActualPayableProvider(),
     ),
