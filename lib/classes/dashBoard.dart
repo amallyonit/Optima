@@ -6190,3 +6190,53 @@ class CombinedMonthData {
     required this.invoiceNos,
   });
 }
+
+class StockInTransitList {
+  final String documentDate;
+  final String documentNo;
+  final String customerCode;
+  final String customerName;
+  final String itemNo;
+  final String itemDescription;
+  final String quantity;
+  final String price;
+  final String lineTotal;
+  final String totalTax;
+  final String totalAmount;
+  final String fromWarehouse;
+  final String toWarehouse;
+
+  StockInTransitList({
+    required this.documentDate,
+    required this.documentNo,
+    required this.customerCode,
+    required this.customerName,
+    required this.itemNo,
+    required this.itemDescription,
+    required this.quantity,
+    required this.price,
+    required this.lineTotal,
+    required this.totalTax,
+    required this.totalAmount,
+    required this.fromWarehouse,
+    required this.toWarehouse,
+  });
+
+  factory StockInTransitList.fromJson(Map<String, dynamic> json) {
+    return StockInTransitList(
+      documentDate: json["DocumentDate"] ?? "",
+      documentNo: json["DocumentNo"] ?? "",
+      customerCode: json["CustomerCode"] ?? "",
+      customerName: json["CustomerName"] ?? "",
+      itemNo: json["ItemNo"] ?? "",
+      itemDescription: json["ItemDescription"] ?? "",
+      quantity: json["Quantity"]?.toString() ?? "0",
+      price: json["Price"]?.toString() ?? "0",
+      lineTotal: json["LineTotal"]?.toString() ?? "0",
+      totalTax: json["TotalTax"]?.toString() ?? "0",
+      totalAmount: json["TotalAmount"]?.toString() ?? "0",
+      fromWarehouse: json["FromWarehouse"] ?? "",
+      toWarehouse: json["ToWarehouse"] ?? "",
+    );
+  }
+}

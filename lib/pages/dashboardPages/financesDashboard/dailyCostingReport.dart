@@ -34,7 +34,7 @@ class DailyCostingInput {
   final String priority;
   final String warehouse;
 
-  final List<SalesList> sales; // your existing models
+  final List<SalesList> sales;
   final List<SODetailsList> soList;
   final List<PurchaseList> purchasePrice;
   final List<GRNList> grnList;
@@ -42,6 +42,7 @@ class DailyCostingInput {
   final List<InventoryList> inventory;
   final List<InventoryList> inventoryClosing;
   final List<SalesTargetList> salesTarget;
+  final List<StockInTransitList> stockList;
 
   final DateTime currentMonthFromDate;
   final DateTime currentMonthToDate;
@@ -71,6 +72,7 @@ class DailyCostingInput {
     required this.nextMonthToDate,
     required this.fiscalYearStartDate,
     required this.currentDate,
+    required this.stockList,
   });
 }
 
@@ -84,6 +86,9 @@ class DailyCostingResult {
   final double currentMonthPOSum;
   final double lastMonthPOSum;
   final double nextMonthPOSum;
+  final double karnatakaPOSum;
+  final double tamilnaduPOSum;
+  final double otherbranchPOSum;
   final double inventoryOpeningValue;
   final double inventoryClosingValue;
   final double cogsValue;
@@ -101,7 +106,8 @@ class DailyCostingResult {
   final double purchaseTarget;
   final double cogsTarget;
   final double inventoryTarget;
-
+  final double stockInTransitValue;
+  final double readyToDispatchStock;
   // the graph arrays (your DailyCostingGraphData type)
   final List<DailyCostingGraphData> revenueGraph;
   final List<DailyCostingGraphData> dailyCostingGraph;
@@ -119,6 +125,9 @@ class DailyCostingResult {
     required this.currentMonthPOSum,
     required this.lastMonthPOSum,
     required this.nextMonthPOSum,
+    required this.karnatakaPOSum,
+    required this.tamilnaduPOSum,
+    required this.otherbranchPOSum,
     required this.inventoryOpeningValue,
     required this.inventoryClosingValue,
     required this.cogsValue,
@@ -141,6 +150,8 @@ class DailyCostingResult {
     required this.saleOrderPriorityGraph,
     required this.saleOrderWarehouseGraph,
     required this.inventoryAgingGraph,
+    required this.stockInTransitValue,
+    required this.readyToDispatchStock,
   });
 }
 
@@ -170,6 +181,8 @@ double inventoryOpeningValue = 0;
 double inventoryClosingValue = 0;
 double cogsValue = 0;
 double inventoryAchieved = 0;
+double stockInTransitValue = 0;
+double readyToDispatchStock = 0;
 // ---- Top-level compute function (runs in isolate) ----
 DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // Helper: convert DateTime to milliseconds for fast comparisons
@@ -431,6 +444,26 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
       nearExpiryValue +
       expiredValue;
 
+  // Stock in transit
+  stockInTransitValue = 0;
+  for (final stk in input.stockList) {
+    final stkValue = double.tryParse(stk.lineTotal) ?? 0;
+    stockInTransitValue += stkValue;
+  }
+
+  //Ready to dispatch
+  double pendingQty = 0, pendingVal = 0, warehouseQty = 0;
+  readyToDispatchStock = 0;
+  for (final so in filteredSO) {
+    pendingQty = double.tryParse(so.pendingQuantity) ?? 0;
+    if (pendingQty == 0) continue;
+    pendingVal = double.tryParse(so.pendingValue) ?? 0;
+    warehouseQty = double.tryParse(so.warehouseQty) ?? 0;
+    if (pendingQty <= warehouseQty) {
+      readyToDispatchStock += pendingVal;
+    }
+  }
+
   // Build graph data lists (Your DailyCostingGraphData assumed constructor fields)
   final revenueGraph = <DailyCostingGraphData>[];
   revenueGraph.add(
@@ -611,6 +644,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     currentMonthPOSum: currentMonthPOSum,
     lastMonthPOSum: lastMonthPOSum,
     nextMonthPOSum: nextMonthPOSum,
+    karnatakaPOSum: karnatakaPOSum,
+    tamilnaduPOSum: tamilNaduPOSum,
+    otherbranchPOSum: othersPOSum,
     inventoryOpeningValue: inventoryOpeningValue,
     inventoryClosingValue: inventoryClosingValue,
     cogsValue: cogsValue,
@@ -633,6 +669,8 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     saleOrderPriorityGraph: saleOrderPriorityGraph,
     saleOrderWarehouseGraph: saleOrderWarehouseGraph,
     inventoryAgingGraph: inventoryAgingGraph,
+    stockInTransitValue: stockInTransitValue,
+    readyToDispatchStock: readyToDispatchStock,
   );
 }
 
@@ -662,6 +700,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   String prevFinancialYear = "";
   int currentQuarter = 0;
 
+  List<StockInTransitList> stockInTransitList = [];
   List<DebtorsAgingList> debtorsList = [];
   List<CollectionList> collection = [];
   List<SalesList> sales = [];
@@ -677,6 +716,16 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   List<SalesTargetList> salesTarget = [];
   List<GRNList> grnList = [];
   List<GRNList> grnListTemp = [];
+  List<ModeOfPaymentList> modeOfPayment = [];
+  List<PaymentAnalysisList> payables = [];
+  List<MonthlyCogsData> monthlyCogsList = [];
+  DailyAnalysisExpensesList purchaseMonthlyData = DailyAnalysisExpensesList(
+    dailyData: [],
+  );
+  CashConversionGraphList monthlyAnalysisData = CashConversionGraphList(
+    monthData: [],
+  );
+  List<MonthlyInventoryData> monthWiseInventory = [];
 
   double medicalDeviceTarget = 0;
   double ipdTarget = 0;
@@ -700,19 +749,18 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   double nextMonthPO = 0;
   double totalPendingPO = 0;
 
-  double stockInTransitValue = 0;
-
   double inventoryLess30Percent = 0;
   double inventory30to60Percent = 0;
   double inventory60to90Percent = 0;
   double inventoryAbove90Percent = 0;
   double stockInTransitPercent = 0;
+  double stockInTransitValue = 0;
 
   double cogsPercentage = 0;
+  double cogsTargetPercentage = 0;
 
   double cashConversionCycleDays = 0;
-
-  double readyToDispatchStock = 0;
+  double currentCashConversionCycleDays = 0;
 
   MonthlyCollectionReportList weeklyData = MonthlyCollectionReportList(
     weeklyData: [],
@@ -751,6 +799,16 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   late List<List<bool>> savedFinanceReceivablesOptions = filterOptions
       .map((options) => List<bool>.filled(options.length, false))
       .toList();
+
+  List<StockInTransitList> parseStockList(List<dynamic>? data) {
+    if (data == null) {
+      return [];
+    }
+    return data
+        .where((e) => e != null)
+        .map((e) => StockInTransitList.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 
   List<SalesList> parseSalesList(List<dynamic> data) {
     return data.map((e) => SalesList.fromJson(e)).toList();
@@ -833,22 +891,26 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   Map<String, DateTime> getMonthStartEndDates(int month) {
     DateTime now = DateTime.now();
 
-    int currentYear = now.year - 1;
+    int currentYear = now.year;
+
+    /// Normalize 13,14,15 => 1,2,3
+    int actualMonth = month > 12 ? month - 12 : month;
 
     int yearForMonth;
+
     if (now.month >= 1 && now.month <= 3) {
-      yearForMonth = (month >= 4 && month <= 12)
+      yearForMonth = (actualMonth >= 4 && actualMonth <= 12)
           ? currentYear - 1
           : currentYear;
     } else {
-      // If the call is happening in Apr–Dec
-      yearForMonth = (month >= 4 && month <= 12)
+      yearForMonth = (actualMonth >= 4 && actualMonth <= 12)
           ? currentYear
           : currentYear + 1;
     }
 
-    DateTime firstDayOfMonth = DateTime(yearForMonth, month, 1);
-    DateTime lastDayOfMonth = DateTime(yearForMonth, month + 1, 0);
+    DateTime firstDayOfMonth = DateTime(yearForMonth, actualMonth, 1);
+
+    DateTime lastDayOfMonth = DateTime(yearForMonth, actualMonth + 1, 0);
 
     return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
   }
@@ -1329,6 +1391,15 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       await _loadInventoryClosing(userName, userLevel);
       await _loadSalesTarget(userName, userLevel);
       await _loadGRN(userName, userLevel);
+      await _loadStockInTransitList(userName, userLevel);
+      await _loadCollectionTarget(userName, userLevel);
+      await _loadCollection(userName, userLevel);
+      await _loadPayables(userName, userLevel);
+      await _loadModeOfPayment(userName, userLevel);
+      await _loadMonthlyInventory(userName, userLevel);
+      await _loadMonthlyAnalysisPurchase();
+      await _loadMonthlySalesBarCashConversionChartData(userName, userLevel);
+
       await _loadDailyCostingReport("", "");
 
       if (!mounted) return;
@@ -1338,6 +1409,205 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     } catch (e) {
       hideLoadingOverlay(); // avoid stuck overlay
       showBottomToast(context, "Failed: $e");
+    }
+  }
+
+  Future<void> _loadPayables(String UserName, String UserLevel) async {
+    int index = 0;
+    const int limit = 10000;
+
+    List<PaymentAnalysisList> payablesList = [];
+
+    try {
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        const apiUrl = '${ApiHelper.baseUrl}BicxoCreditorsAgingList';
+
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode != 200) break;
+
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => PaymentAnalysisList.fromJson(item))
+            .toList();
+
+        payablesList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        payables = payablesList;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadCollectionTarget(String UserName, String UserLevel) async {
+    int index = 0;
+    const int limit = 10000;
+    List<DebtorsAgingList> targetList = [];
+
+    try {
+      while (true) {
+        final body = {
+          "FromDate": dateFilterFlag
+              ? formatDate(fromDateFilter!)
+              : formatDate(fiscalYearStartDate!),
+          "ToDate": dateFilterFlag
+              ? formatDate(toDateFilter!)
+              : formatDate(currentDate!),
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        const apiUrl = '${ApiHelper.baseUrl}Bicxo_DebtorsAgingList';
+
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode != 200) break;
+
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => DebtorsAgingList.fromJson(item))
+            .toList();
+
+        targetList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        debtorsList = targetList;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadCollection(String UserName, String UserLevel) async {
+    int index = 0;
+    const int limit = 10000;
+
+    List<CollectionList> collectionList = [];
+
+    try {
+      final DateTime fromDate = dateFilterFlag
+          ? fromDateFilter!
+          : fiscalYearStartDate!;
+      final prevDate = DateTime(fromDate.year, fromDate.month - 1, 1);
+
+      final prevStart = DateTime(prevDate.year, prevDate.month, 1);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": formatDate(prevStart),
+          "ToDate": toDate,
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        const apiUrl = '${ApiHelper.baseUrl}CRMCollectionAnalysisList';
+
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode != 200) break;
+
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => CollectionList.fromJson(item))
+            .toList();
+
+        collectionList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        collection = collectionList;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
     }
   }
 
@@ -2066,11 +2336,91 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     }
   }
 
+  Future<void> _loadStockInTransitList(
+    String userName,
+    String userLevel,
+  ) async {
+    int index = 0;
+    const int limit = 10000;
+    int fetchedCount = 0;
+
+    List<StockInTransitList> stkList = [];
+
+    const apiUrl = '${ApiHelper.baseUrl}CRM_StockTransitReport';
+
+    try {
+      do {
+        final body = {
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        http.Response? response;
+
+        // Retry logic
+        for (int retry = 0; retry < 3; retry++) {
+          try {
+            response = await http
+                .post(
+                  Uri.parse(apiUrl),
+                  headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+                  body: jsonEncode(body),
+                )
+                .timeout(const Duration(seconds: 25));
+
+            if (response.statusCode == 200) break;
+            if (response.statusCode == 502 || response.statusCode == 504) {
+              await Future.delayed(const Duration(seconds: 2));
+              continue;
+            }
+            break;
+          } catch (_) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+        }
+
+        if (response!.statusCode == 200) {
+          final jsonMap = jsonDecode(response.body);
+          final data = jsonMap["responseData"] ?? [];
+
+          if (data == null || (data is List && data.isEmpty)) {
+            fetchedCount = 0;
+          } else {
+            final parsed = parseStockList(data);
+            stkList.addAll(parsed);
+            fetchedCount = parsed.length;
+            index++;
+          }
+        } else {
+          fetchedCount = 0;
+        }
+      } while (fetchedCount == limit);
+
+      // UPDATE UI
+      if (!mounted) return;
+
+      setState(() {
+        if (stkList.isEmpty) {
+          stockInTransitList = stkList;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Stock in transit load failed: $e")),
+      );
+    }
+  }
+
   Future<void> _loadDailyCostingReport(
     String priority,
     String warehouse,
   ) async {
     final input = DailyCostingInput(
+      stockList: stockInTransitList,
       priority: priority,
       warehouse: warehouse,
       sales: sales,
@@ -2129,6 +2479,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         a30to60DaysValue = result.a30to60DaysValue;
         a60to90DaysValue = result.a60to90DaysValue;
         a91DaysValue = result.a91DaysValue;
+        stockInTransitValue = result.stockInTransitValue;
 
         medicalDeviceTarget = result.medicalDeviceTarget;
         ipdTarget = result.ipdTarget;
@@ -2147,10 +2498,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
             mediumPriorityPendingSO +
             lowPriorityPendingSO;
 
-        stockInTransitValue = 0;
-        bangalorePendingSO = 0;
-        rajapalayamPendingSO = 0;
-        othersPendingSO = 0;
+        bangalorePendingSO = result.karnatakaPOSum;
+        rajapalayamPendingSO = result.tamilnaduPOSum;
+        othersPendingSO = result.otherbranchPOSum;
 
         lastMonthPO = 0;
         currentMonthPO = currentMonthPOSum;
@@ -2174,13 +2524,18 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
             ? 0
             : (a91DaysValue / inventoryAchieved) * 100;
 
-        stockInTransitPercent = 0;
+        stockInTransitPercent = inventoryAchieved == 0
+            ? 0
+            : (stockInTransitValue / inventoryAchieved) * 100;
 
         cogsPercentage = cogsTarget == 0 ? 0 : (cogsValue / cogsTarget) * 100;
+        cogsTargetPercentage = cogsTarget == 0
+            ? 0
+            : (cogsTarget / (medicalDeviceTarget + ipdTarget)) * 100;
 
-        cashConversionCycleDays = 40;
+        cashConversionCycleDays = currentCashConversionCycleDays;
 
-        readyToDispatchStock = 0;
+        readyToDispatchStock = result.readyToDispatchStock;
 
         // graphs — replace your graph data lists with the computed ones
         revenueBreakup.graphData = result.revenueGraph;
@@ -2323,6 +2678,515 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       highlightNegative: true,
 
       amountColumns: [2, 3, 4], // Target, Achievement, %
+    );
+  }
+
+  double getCompletedDaysInMonth(int year, int monthNumber) {
+    DateTime now = DateTime.now();
+    bool isCurrentMonth = (now.year == year && now.month == monthNumber);
+
+    if (isCurrentMonth) {
+      // Return the number of completed days in current month (excluding today if needed)
+      return now.day
+          .toDouble(); // or (now.day - 1).toDouble() if you mean "completed" as excluding today
+    } else {
+      // Return the full number of days in the given month
+      return DateTime(year, monthNumber + 1, 0).day.toDouble();
+    }
+  }
+
+  Future<void> _loadModeOfPayment(String UserName, String UserLevel) async {
+    int index = 0;
+    const int limit = 10000;
+
+    List<ModeOfPaymentList> modeOfPaymentList = [];
+
+    try {
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      while (true) {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        const apiUrl = '${ApiHelper.baseUrl}BicxoPaymentAnalysisList';
+
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode != 200) break;
+
+        final responseJson = jsonDecode(response.body);
+        final data = responseJson['responseData'] as List?;
+
+        if (data == null || data.isEmpty) break;
+
+        final newList = data
+            .map((item) => ModeOfPaymentList.fromJson(item))
+            .where((e) => e.vendorGroup.isNotEmpty)
+            .toList();
+
+        modeOfPaymentList.addAll(newList);
+
+        if (newList.length < limit) break;
+
+        index++;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        modeOfPayment = modeOfPaymentList;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
+    }
+  }
+
+  int _lastDayOfMonth(int year, int month) {
+    final nextMonth = (month < 12)
+        ? DateTime(year, month + 1, 1)
+        : DateTime(year + 1, 1, 1);
+    return nextMonth.subtract(const Duration(days: 1)).day;
+  }
+
+  Future<List<InventoryList>> _fetchInventoryForDate(DateTime toDate) async {
+    int index = 0;
+    const int limit = 10000;
+
+    List<InventoryList> allItems = [];
+
+    final formattedToDate = DateFormat('yyyyMMdd').format(toDate);
+
+    int retryCount = 0;
+    const maxRetry = 2;
+
+    while (true) {
+      final body = {
+        "ToDate": formattedToDate,
+        "Index": index.toString(),
+        "Limit": limit.toString(),
+        "sapToken": DataManager.readSapToken(),
+      };
+
+      const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      // 🔁 retry logic (safe)
+      if (response.statusCode == 504 && retryCount < maxRetry) {
+        retryCount++;
+        await Future.delayed(const Duration(seconds: 1));
+        continue;
+      }
+
+      if (response.statusCode != 200) break;
+
+      retryCount = 0;
+
+      final responseJson = jsonDecode(response.body);
+      final data = responseJson['responseData'] as List?;
+
+      if (data == null || data.isEmpty) break;
+
+      final items = data.map((e) => InventoryList.fromJson(e)).toList();
+
+      allItems.addAll(items);
+
+      if (items.length < limit) break;
+
+      index++;
+    }
+
+    return allItems;
+  }
+
+  Future<List<MonthlyInventoryData>> _loadMonthlyInventory(
+    String userName,
+    String userLevel,
+  ) async {
+    final now = DateTime.now();
+    final fyStartYear = (now.month >= 4) ? now.year : now.year - 1;
+    final marchDate = DateTime(fyStartYear, 3, _lastDayOfMonth(fyStartYear, 3));
+    final endDate = DateTime(
+      now.year,
+      now.month,
+      _lastDayOfMonth(now.year, now.month),
+    );
+
+    List<MonthlyInventoryData> result = [];
+    DateTime cursor = marchDate;
+
+    while (!cursor.isAfter(endDate)) {
+      final monthData = await _fetchInventoryForDate(cursor);
+      final label = DateFormat('MMM yyyy').format(cursor);
+      result.add(MonthlyInventoryData(monthYear: label, inventory: monthData));
+
+      final nextMonth = cursor.month < 12
+          ? DateTime(cursor.year, cursor.month + 1, 1)
+          : DateTime(cursor.year + 1, 1, 1);
+      cursor = DateTime(
+        nextMonth.year,
+        nextMonth.month,
+        _lastDayOfMonth(nextMonth.year, nextMonth.month),
+      );
+    }
+    monthWiseInventory = result;
+    return result;
+  }
+
+  Future<void> _loadMonthlySalesBarCashConversionChartData(
+    String userName,
+    String userLevel,
+  ) async {
+    List<CashConversionGraphData> soDataList = [];
+
+    final now = DateTime.now();
+    final int fiscalIndex = (now.month < 4) ? now.month + 12 : now.month;
+
+    final dateFormat = DateFormat('dd/MM/yyyy');
+
+    DateTime parseDate(String d) => dateFormat.parse(d);
+
+    /// STEP 1: Pre-group (NO repeated where)
+    final salesMap = {
+      "NH": <SalesList>[],
+      "OFFICE": <SalesList>[],
+      "SALES": <SalesList>[],
+    };
+
+    for (var s in sales) {
+      if (s.salesManager == "NH GROUP. - Drs.") {
+        salesMap["NH"]!.add(s);
+      } else if (s.salesManager == "OFFICE - Drs.") {
+        salesMap["OFFICE"]!.add(s);
+      } else {
+        salesMap["SALES"]!.add(s);
+      }
+    }
+
+    List filterByManager(List list, String key) {
+      return list.where((e) {
+        if (key == "NH") return e.salesManager == "NH GROUP. - Drs.";
+        if (key == "OFFICE") return e.salesManager == "OFFICE - Drs.";
+        return e.salesManager != "NH GROUP. - Drs." &&
+            e.salesManager != "OFFICE - Drs.";
+      }).toList();
+    }
+
+    final receivablesMap = {
+      "NH": filterByManager(debtorsList, "NH"),
+      "OFFICE": filterByManager(debtorsList, "OFFICE"),
+      "SALES": filterByManager(debtorsList, "SALES"),
+    };
+
+    final collectionMap = {
+      "NH": filterByManager(collection, "NH"),
+      "OFFICE": filterByManager(collection, "OFFICE"),
+      "SALES": filterByManager(collection, "SALES"),
+    };
+
+    /// STEP 2: Month Loop
+    for (int i = 4; i <= 15; i++) {
+      final monthName = getMonthName(i);
+
+      if (i > fiscalIndex) {
+        soDataList.add(
+          CashConversionGraphData(
+            monthName: monthName,
+            dsoDaysSales: 0,
+            dsoDaysNH: 0,
+            dsoDaysOffice: 0,
+            dsoAllDays: 0,
+            payableDays: 0,
+            inventoryDays: 0,
+          ),
+        );
+        continue;
+      }
+
+      var dates = getMonthStartEndDates(i);
+      final curStart = dates['start']!;
+      final curEnd = dates['end']!;
+
+      /// Previous month directly from current month
+      final prevDate = DateTime(curStart.year, curStart.month - 1, 1);
+      final prevStart = DateTime(prevDate.year, prevDate.month, 1);
+      final prevEnd = DateTime(prevDate.year, prevDate.month + 1, 0);
+
+      double calcDSO(
+        List<SalesList> salesList,
+        List receivableList,
+        List collectionList,
+      ) {
+        double salesTotal = 0;
+        double receivableTotal = 0;
+        double collectionTotal = 0;
+
+        /// SALES
+        for (var s in salesList) {
+          if (s.invoiceDate.isAtLeast(curStart) &&
+              s.invoiceDate.isAtMost(curEnd)) {
+            salesTotal += double.tryParse(s.rowTotal) ?? 0;
+          }
+        }
+        double prevMthReceivableTotal = 0;
+        double prevMthCollectionTotal = 0;
+
+        /// RECEIVABLE
+        for (var r in receivableList) {
+          final d = parseDate(r.postingDate);
+          final balance = double.tryParse(r.balance) ?? 0;
+
+          /// Current Month
+          if (d.isAtMost(curEnd)) {
+            receivableTotal += balance;
+          }
+
+          /// Previous Month
+          if (d.isAtMost(prevEnd)) {
+            prevMthReceivableTotal += balance;
+          }
+        }
+
+        /// COLLECTION
+        for (var c in collectionList) {
+          final d = parseDate(c.postingDate);
+          final total = double.tryParse(c.total) ?? 0;
+
+          /// Current Month
+          if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
+            collectionTotal += total;
+          }
+
+          /// Previous Month
+          if (d.isAtLeast(prevStart) && d.isAtMost(prevEnd)) {
+            prevMthCollectionTotal += total;
+          }
+        }
+
+        final avg =
+            (prevMthReceivableTotal +
+                prevMthCollectionTotal +
+                receivableTotal +
+                collectionTotal) /
+            2;
+        final days = getCompletedDaysInMonth(DateTime.now().year, i);
+
+        return salesTotal != 0 ? (avg / salesTotal) * days : 0;
+      }
+
+      /// STEP 3: Calculate DSO
+      final dsoNH = calcDSO(
+        salesMap["NH"]!,
+        receivablesMap["NH"]!,
+        collectionMap["NH"]!,
+      );
+
+      final dsoOffice = calcDSO(
+        salesMap["OFFICE"]!,
+        receivablesMap["OFFICE"]!,
+        collectionMap["OFFICE"]!,
+      );
+
+      final dsoSales = calcDSO(
+        salesMap["SALES"]!,
+        receivablesMap["SALES"]!,
+        collectionMap["SALES"]!,
+      );
+
+      /// STEP 4: Payables & Paid
+      double paid = 0;
+      for (var c in modeOfPayment) {
+        final d = parseDate(c.postingDate);
+        if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
+          paid += double.tryParse(c.total) ?? 0;
+        }
+      }
+      double payable = 0;
+      for (var p in payables) {
+        final d = parseDate(p.postingDate);
+        if (d.isAtMost(curEnd)) {
+          payable += double.tryParse(p.balance) ?? 0;
+        }
+      }
+
+      /// STEP 5: Inventory
+      final cogsIndex = i - 4;
+
+      final cogsData = (cogsIndex >= 0 && cogsIndex < monthlyCogsList.length)
+          ? monthlyCogsList[cogsIndex]
+          : MonthlyCogsData(
+              monthYear: monthName,
+              openingStock: 0,
+              purchases: 0,
+              closingStock: 0,
+              cogs: 0,
+            );
+
+      double avgInventory = (cogsData.openingStock + cogsData.closingStock) / 2;
+
+      double inventoryDays = cogsData.cogs != 0
+          ? (avgInventory / cogsData.cogs) *
+                getCompletedDaysInMonth(DateTime.now().year, i)
+          : 0;
+
+      payable = payable.abs();
+      final avg = (payable + paid) / 2;
+      final days = getCompletedDaysInMonth(DateTime.now().year, i);
+
+      payable = payable != 0 ? (avg / cogsData.cogs) * days : 0;
+
+      final totalDSO = dsoNH + dsoSales + dsoOffice;
+
+      soDataList.add(
+        CashConversionGraphData(
+          monthName: monthName,
+          dsoDaysSales: dsoSales.roundToDouble(),
+          dsoDaysNH: dsoNH.roundToDouble(),
+          dsoDaysOffice: dsoOffice.roundToDouble(),
+          dsoAllDays: totalDSO.roundToDouble(),
+          payableDays: payable.abs().roundToDouble(),
+          inventoryDays: inventoryDays.roundToDouble(),
+        ),
+      );
+    }
+
+    /// STEP 6: Graph Selection
+    monthlyAnalysisData = CashConversionGraphList(monthData: soDataList);
+
+    int displayIndex;
+
+    displayIndex = DateTime.now().month - 4;
+
+    displayIndex = displayIndex.clamp(0, soDataList.length - 1);
+
+    currentCashConversionCycleDays = double.parse(
+      ((soDataList[displayIndex].dsoAllDays +
+                  soDataList[displayIndex].inventoryDays) -
+              soDataList[displayIndex].payableDays)
+          .toStringAsFixed(0),
+    );
+  }
+
+  List<MonthlyCogsData> calculateMonthlyCogs({
+    required List<MonthlyInventoryData> inventoryList,
+    required List<DailyAnalysisExpensesData> purchaseMonthlyData,
+  }) {
+    final List<MonthlyCogsData> cogsList = [];
+
+    if (inventoryList.length < 2) return cogsList;
+
+    double sumInventory(List inventory) {
+      return inventory.fold<double>(
+        0.0,
+        (sum, item) => sum + (double.tryParse(item.totalValue) ?? 0.0),
+      );
+    }
+
+    for (int i = 1; i < inventoryList.length; i++) {
+      final current = inventoryList[i];
+      final previous = inventoryList[i - 1];
+
+      final String monthYear = current.monthYear;
+
+      final double openingStock = sumInventory(previous.inventory);
+      final double closingStock = sumInventory(current.inventory);
+
+      double purchases = 0.0;
+      if (i - 1 < purchaseMonthlyData.length) {
+        purchases = purchaseMonthlyData[i - 1].balance;
+      }
+
+      final double cogs = openingStock + purchases - closingStock;
+
+      cogsList.add(
+        MonthlyCogsData(
+          monthYear: monthYear,
+          openingStock: openingStock,
+          purchases: purchases,
+          closingStock: closingStock,
+          cogs: cogs,
+        ),
+      );
+    }
+
+    return cogsList;
+  }
+
+  Future<void> _loadMonthlyAnalysisPurchase() async {
+    final List<DailyAnalysisExpensesData> groupWiseDataList = [];
+
+    final records = grnList;
+
+    final startDate = dateFilterFlag ? fromDateFilter! : fiscalYearStartDate!;
+    final endDate = dateFilterFlag ? toDateFilter! : currentDate!;
+
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    final monthFormat = DateFormat('MM/yyyy');
+
+    /// Single pass: filter + group
+    final Map<String, double> monthlyBalanceMap = {};
+
+    for (var record in records) {
+      final invoiceDate = dateFormat.parse(record.grnDate);
+
+      if (!invoiceDate.isAtLeast(startDate) || !invoiceDate.isAtMost(endDate)) {
+        continue;
+      }
+
+      final key = monthFormat.format(invoiceDate);
+
+      final balance = double.tryParse(record.rowTotal) ?? 0.0;
+
+      monthlyBalanceMap[key] = (monthlyBalanceMap[key] ?? 0.0) + balance;
+    }
+
+    /// Ensure chronological order (important)
+    final sortedKeys = monthlyBalanceMap.keys.toList()
+      ..sort((a, b) {
+        final d1 = DateFormat('MM/yyyy').parse(a);
+        final d2 = DateFormat('MM/yyyy').parse(b);
+        return d1.compareTo(d2);
+      });
+
+    for (var key in sortedKeys) {
+      groupWiseDataList.add(
+        DailyAnalysisExpensesData(balance: monthlyBalanceMap[key]!, date: key),
+      );
+    }
+
+    purchaseMonthlyData = DailyAnalysisExpensesList(
+      dailyData: groupWiseDataList,
+    );
+
+    monthlyCogsList = calculateMonthlyCogs(
+      inventoryList: monthWiseInventory,
+      purchaseMonthlyData: purchaseMonthlyData.dailyData,
     );
   }
 
@@ -2492,16 +3356,42 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         row: 9,
         title: "Pending Purchase Orders",
         target: "",
-        worksheet:
-            "Last Month   : ${lastMonthPOSum.toStringAsFixed(2)}\n"
-            "Current Month: ${currentMonthPOSum.toStringAsFixed(2)}\n"
-            "Next Month   : ${nextMonthPOSum.toStringAsFixed(2)}",
-        achieved: totalPendingPO,
+        worksheet: "Last Month   : ",
+        achieved: lastMonthPOSum.toStringAsFixed(2),
         percentage: "",
       );
-
       setDashboardRow(
         row: 10,
+        target: "",
+        worksheet: "Current Month: ",
+        achieved: currentMonthPOSum.toStringAsFixed(2),
+        percentage: "",
+      );
+      setDashboardRow(
+        row: 11,
+        target: "",
+        worksheet: "Next Month   : ",
+        achieved: nextMonthPOSum.toStringAsFixed(2),
+        percentage: "",
+      );
+      setDashboardRow(
+        row: 12,
+        target: "",
+        worksheet: "Total        : ",
+        achieved: (lastMonthPOSum + currentMonthPOSum + nextMonthPOSum)
+            .toStringAsFixed(2),
+        percentage: "",
+      );
+      final pendingPoMerge = sheet.getRangeByName("A9:A12");
+      pendingPoMerge.merge();
+      pendingPoMerge.setText("Pending Purchase Orders");
+      pendingPoMerge.cellStyle.wrapText = true;
+      pendingPoMerge.cellStyle.hAlign = xlsio.HAlignType.left;
+      pendingPoMerge.cellStyle.vAlign = xlsio.VAlignType.center;
+      pendingPoMerge.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+      setDashboardRow(
+        row: 13,
         title: "Closing Stock(Including Stock In Transit)",
         target: inventoryTarget,
         worksheet: "",
@@ -2512,7 +3402,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       );
 
       setDashboardRow(
-        row: 11,
+        row: 14,
         title: "Inventory Ageing",
         worksheet: "< 30 Days",
         achieved: lessThan30DaysValue,
@@ -2520,33 +3410,33 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       );
 
       setDashboardRow(
-        row: 12,
+        row: 15,
         worksheet: "30 - 60 Days",
         achieved: a30to60DaysValue,
         percentage: inventory30to60Percent.toStringAsFixed(2),
       );
 
       setDashboardRow(
-        row: 13,
+        row: 16,
         worksheet: "60 - 90 Days",
         achieved: a60to90DaysValue,
         percentage: inventory60to90Percent.toStringAsFixed(2),
       );
 
       setDashboardRow(
-        row: 14,
+        row: 17,
         worksheet: "> 90 Days",
         achieved: a91DaysValue,
         percentage: inventoryAbove90Percent.toStringAsFixed(2),
       );
 
       setDashboardRow(
-        row: 15,
+        row: 18,
         worksheet: "Stock In Transit",
         achieved: "0",
         percentage: 0.toStringAsFixed(2),
       );
-      final inventoryMerge = sheet.getRangeByName("A11:A15");
+      final inventoryMerge = sheet.getRangeByName("A13:A18");
       inventoryMerge.merge();
       inventoryMerge.setText("Inventory Ageing");
       inventoryMerge.cellStyle.wrapText = true;
@@ -2555,26 +3445,25 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       inventoryMerge.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
 
       setDashboardRow(
-        row: 16,
+        row: 19,
         title: "COGS",
         target: cogsTarget,
-        worksheet: "0.00%",
+        worksheet: "${cogsTargetPercentage.toStringAsFixed(0)}%",
         achieved: cogsValue,
         percentage: cogsPercentage.toStringAsFixed(2),
       );
 
       setDashboardRow(
-        row: 17,
+        row: 20,
         title: "Cash Conversion Cycle",
-        worksheet: "Days",
-        achieved: cashConversionCycleDays,
+        worksheet: "${cashConversionCycleDays.toStringAsFixed(0)} Days",
       );
 
       setDashboardRow(
-        row: 18,
+        row: 21,
         title: "Note:-",
         worksheet: "Ready To Dispatch Stock(Customer)",
-        achieved: readyToDispatchStock,
+        achieved: readyToDispatchStock.toStringAsFixed(2),
       );
 
       final pendingHeader = sheet.getRangeByName("F4:G4");
@@ -2588,19 +3477,23 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       sheet.getRangeByIndex(5, 6)
         ..setText("Bangalore: ")
         ..cellStyle.bold = true;
-      sheet.getRangeByIndex(5, 7).setNumber(karnatakaPOSum);
+      sheet.getRangeByIndex(5, 7).setNumber(bangalorePendingSO);
       sheet.getRangeByIndex(6, 6)
         ..setText("Rajapalayam: ")
         ..cellStyle.bold = true;
-      sheet.getRangeByIndex(6, 7).setNumber(tamilNaduPOSum);
+      sheet.getRangeByIndex(6, 7).setNumber(rajapalayamPendingSO);
       sheet.getRangeByIndex(7, 6)
         ..setText("Others")
         ..cellStyle.bold = true;
-      sheet.getRangeByIndex(7, 7).setNumber(othersPOSum);
+      sheet.getRangeByIndex(7, 7).setNumber(othersPendingSO);
       sheet.getRangeByIndex(8, 6)
         ..setText("Total")
         ..cellStyle.bold = true;
-      sheet.getRangeByIndex(8, 7).setNumber(totalPendingPO);
+      sheet
+          .getRangeByIndex(8, 7)
+          .setNumber(
+            bangalorePendingSO + rajapalayamPendingSO + othersPendingSO,
+          );
       final pendingRange = sheet.getRangeByName("F5:G8");
       pendingRange.cellStyle.borders.all.lineStyle = borderStyle;
 

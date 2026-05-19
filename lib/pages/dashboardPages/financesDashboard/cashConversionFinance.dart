@@ -49,6 +49,7 @@ List<MonthlyInventoryData> monthWiseInventory = [];
 CashConversionGraphList monthlyAnalysisData = CashConversionGraphList(
   monthData: [],
 );
+
 DSOGraphList graphData = DSOGraphList(monthData: []);
 DailyAnalysisExpensesList purchaseMonthlyData = DailyAnalysisExpensesList(
   dailyData: [],
@@ -1672,7 +1673,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   Future<void> loadData(String selectedUser) async {
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
     final userName = selectedUser == ""
         ? prefs.getString('userName') ?? ''
         : selectedUser;
