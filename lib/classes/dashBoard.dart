@@ -6240,3 +6240,34 @@ class StockInTransitList {
     );
   }
 }
+
+class CustomerCommitmentSummary {
+  String customerCode;
+  String customerName;
+  double totalOutstanding;
+  double totalCommitment;
+
+  CustomerCommitmentSummary({
+    required this.customerCode,
+    required this.customerName,
+    required this.totalOutstanding,
+    this.totalCommitment = 0,
+  });
+}
+
+class CustomerWeekCommitment {
+  String customerCode;
+
+  double week1;
+  double week2;
+  double week3;
+  double week4;
+
+  CustomerWeekCommitment({
+    required this.customerCode,
+    this.week1 = 0,
+    this.week2 = 0,
+    this.week3 = 0,
+    this.week4 = 0,
+  });
+}

@@ -131,7 +131,7 @@ class _FinanceBIPageState extends State<FinanceBIPage> {
       0: {"title": "", "page": () => const LoaderPage()},
       6: {"title": "Receivables", "page": () => const ReceivablesFinance()},
       7: {"title": "Payables", "page": () => const PayableFinance()},
-      8: {"title": "Cash Flow", "page": () => const CashFlowFinance()},
+      8: {"title": "Inflow/Outflow", "page": () => const CashFlowFinance()},
       9: {"title": "Expenses", "page": () => const ExpensesFinance()},
       10: {"title": "Monthly \nP&L", "page": () => const MonthlyPLFinance()},
       11: {
