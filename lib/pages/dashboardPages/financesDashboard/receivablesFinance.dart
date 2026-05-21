@@ -1,6 +1,7 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -3106,780 +3107,1129 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _receivablesHorizontalController.dispose();
+    _netReceivablesHorizontalController.dispose();
+    _advanceFromCustomersHorizontalController.dispose();
+    _customerAnalysisHorizontalController.dispose();
+    _regionalManagerAnalysisHorizontalController.dispose();
+    _salesManagerAnalysisHorizontalController.dispose();
+    _salesPersonAnalysisHorizontalController.dispose();
     super.dispose();
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _receivablesHorizontalController = ScrollController();
+  final ScrollController _netReceivablesHorizontalController =
+      ScrollController();
+  final ScrollController _advanceFromCustomersHorizontalController =
+      ScrollController();
+  final ScrollController _customerAnalysisHorizontalController =
+      ScrollController();
+  final ScrollController _regionalManagerAnalysisHorizontalController =
+      ScrollController();
+  final ScrollController _salesManagerAnalysisHorizontalController =
+      ScrollController();
+  final ScrollController _salesPersonAnalysisHorizontalController =
+      ScrollController();
 
   @override
   Widget build(BuildContext context) {
     DateTime currentDate = DateTime.now();
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
-    return chartDataLoadedReceivables
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        scrollbars: false,
+        dragDevices: {
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.touch,
+          PointerDeviceKind.trackpad,
+        },
+      ),
+      child: Stack(
+        children: [
+          chartDataLoadedReceivables
+              ? Scrollbar(
+                  controller: _verticalScrollController,
+                  thumbVisibility: true,
+                  radius: const Radius.circular(10),
+                  child: SingleChildScrollView(
+                    controller: _verticalScrollController,
+                    child: Column(
                       children: [
-                        const SizedBox(width: 15),
-                        dateFilterFlag
-                            ? Text(
-                                "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
-                              )
-                            : Text(
-                                "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate)}",
-                              ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            showFilterBottomSheet(context);
-                          },
-                          icon: const Icon(Icons.filter_alt_outlined),
-                        ),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            PopupMenuButton(
-                              onSelected: (value) {},
-                              itemBuilder: (BuildContext bc) {
-                                return [
-                                  PopupMenuItem(
-                                    onTap: () {
-                                      setState(() {
-                                        generateAllReceivablesExcel();
-                                      });
-                                    },
-                                    child: const Text("Download Excel"),
-                                  ),
-                                ];
-                              },
+                            Row(
+                              children: [
+                                const SizedBox(width: 15),
+                                dateFilterFlag
+                                    ? Text(
+                                        "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}",
+                                      )
+                                    : Text(
+                                        "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate)}",
+                                      ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () {
+                                    showFilterBottomSheet(context);
+                                  },
+                                  icon: const Icon(Icons.filter_alt_outlined),
+                                ),
+                                Row(
+                                  children: [
+                                    PopupMenuButton(
+                                      onSelected: (value) {},
+                                      itemBuilder: (BuildContext bc) {
+                                        return [
+                                          PopupMenuItem(
+                                            onTap: () {
+                                              setState(() {
+                                                generateAllReceivablesExcel();
+                                              });
+                                            },
+                                            child: const Text("Download Excel"),
+                                          ),
+                                        ];
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-                Visibility(
-                  visible: getSelectedFiltersText(allCategoriesState) != "",
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(
-                      child: Text(
-                        "Selected Filters: ${getSelectedFiltersText(allCategoriesState)}",
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        child: Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 4.0,
-                                right: 4.0,
-                              ),
-                              child: CircularPercentIndicator(
-                                arcType: ArcType.HALF,
-                                radius: 75.0,
-                                lineWidth: 30.0,
-                                animation: true,
-                                percent: _percentIndicatorValue(
-                                  receivablePercentage,
+                        Visibility(
+                          visible:
+                              getSelectedFiltersText(allCategoriesState) != "",
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Center(
+                              child: Text(
+                                "Selected Filters: ${getSelectedFiltersText(allCategoriesState)}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                curve: Curves.linear,
-                                circularStrokeCap: CircularStrokeCap.butt,
-                                progressColor: const Color(0xFF2CA9DF),
-                                arcBackgroundColor: const Color(0xFF97D7F3),
-                                center: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                child: Row(
                                   children: [
-                                    const SizedBox(height: 70),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "Receivables: $receivablesAmountStr",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11.0,
-                                            color: Colors.black,
-                                          ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 4.0,
+                                        right: 4.0,
+                                      ),
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 75.0,
+                                        lineWidth: 30.0,
+                                        animation: true,
+                                        percent: _percentIndicatorValue(
+                                          receivablePercentage,
                                         ),
-                                      ],
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: const Color(0xFF2CA9DF),
+                                        arcBackgroundColor: const Color(
+                                          0xFF97D7F3,
+                                        ),
+                                        center: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const SizedBox(height: 70),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Receivables: $receivablesAmountStr",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  height: 10,
+                                                  width: 10,
+                                                  color: const Color(
+                                                    0xFF2CA9DF,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  "Over Due $overDueStr",
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  height: 10,
+                                                  width: 10,
+                                                  color: const Color(
+                                                    0xFFB8ECFF,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  "Not Due $notDueStr",
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                    const SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          height: 10,
-                                          width: 10,
-                                          color: const Color(0xFF2CA9DF),
+                                    const SizedBox(width: 30),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 4.0,
+                                        right: 4.0,
+                                      ),
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 75.0,
+                                        lineWidth: 30.0,
+                                        animation: true,
+                                        percent: _percentIndicatorValue(
+                                          netReceivablePercentage,
                                         ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          "Over Due $overDueStr",
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: const Color(0xFF2CA9DF),
+                                        arcBackgroundColor: const Color(
+                                          0xFF97D7F3,
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          height: 10,
-                                          width: 10,
-                                          color: const Color(0xFFB8ECFF),
+                                        center: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const SizedBox(height: 70),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Net Receivables: $netReceivablesStr",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  height: 10,
+                                                  width: 10,
+                                                  color: const Color(
+                                                    0xFF2CA9DF,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  "Advance $advanceStr",
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  height: 10,
+                                                  width: 10,
+                                                  color: const Color(
+                                                    0xFF97D7F3,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  "Receivables $grossReceivablesStr",
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          "Not Due $notDueStr",
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 30),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 4.0,
-                                right: 4.0,
-                              ),
-                              child: CircularPercentIndicator(
-                                arcType: ArcType.HALF,
-                                radius: 75.0,
-                                lineWidth: 30.0,
-                                animation: true,
-                                percent: _percentIndicatorValue(
-                                  netReceivablePercentage,
-                                ),
-                                curve: Curves.linear,
-                                circularStrokeCap: CircularStrokeCap.butt,
-                                progressColor: const Color(0xFF2CA9DF),
-                                arcBackgroundColor: const Color(0xFF97D7F3),
-                                center: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const SizedBox(height: 70),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "Net Receivables: $netReceivablesStr",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          height: 10,
-                                          width: 10,
-                                          color: const Color(0xFF2CA9DF),
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          "Advance $advanceStr",
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          height: 10,
-                                          width: 10,
-                                          color: const Color(0xFF97D7F3),
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          "Receivables $grossReceivablesStr",
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-
-                Visibility(
-                  visible: allReceivablesFinanceList.agingData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Receivables",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateReceivablesExcel(
-                                          allReceivablesFinanceList,
-                                        );
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateReceivablesPDF(
-                                          allReceivablesFinanceList,
-                                        );
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _receivables(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Visibility(
-                  visible: receivablesFinanceList.agingData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Net Receivables",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateNetReceivablesExcel(
-                                          receivablesFinanceList,
-                                        );
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateNetReceivablesPDF(
-                                          receivablesFinanceList,
-                                        );
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _netReceivables(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Visibility(
-                  visible: advanceCustomerList.agingData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Advance From Customers",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateAdvanceExcel(
-                                          advanceCustomerList,
-                                        );
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateAdvancePDF(
-                                          advanceCustomerList,
-                                        );
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _advanceFromCustomers(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Visibility(
-                  visible: customerAnalysisFinanceList.customerData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Customer Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateCustomerAnalysisExcel(
-                                          customerAnalysisFinanceList,
-                                        );
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateCustomerAnalysisPDF(
-                                          customerAnalysisFinanceList,
-                                        );
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _customerAnalysis(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Column(
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 15),
-                            Text(
-                              "Customer Category wise Analysis",
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
+                        const Padding(
+                          padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                          child: Divider(thickness: 2),
                         ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 16.0,
-                        right: 16.0,
-                        bottom: 16.0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          SizedBox(
-                            height: 250,
-                            width: 100,
-                            child: PieChart(
-                              PieChartData(
-                                pieTouchData: PieTouchData(
-                                  touchCallback:
-                                      (FlTouchEvent event, pieTouchResponse) {},
-                                ),
-                                borderData: FlBorderData(show: false),
-                                sectionsSpace: 1,
-                                centerSpaceRadius: 0,
-                                startDegreeOffset: 360,
-                                sections: _receivablesCategoryChart(),
+
+                        Visibility(
+                          visible:
+                              allReceivablesFinanceList.agingData.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2.0),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Column(
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Container(
-                                          height: 8,
-                                          width: 16,
-                                          color: const Color(0xFFFF9F47),
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Receivables",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          height: 8,
-                                          width: 16,
-                                          color: const Color(0xFF97D7F3),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateReceivablesExcel(
+                                                        allReceivablesFinanceList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateReceivablesPDF(
+                                                        allReceivablesFinanceList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          height: 8,
-                                          width: 16,
-                                          color: const Color(0xFF78E25D),
-                                        ),
-                                        const SizedBox(height: 6),
                                       ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _receivables(),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // for (final categoryData
-                                  // in receivablesCategoryList.categoryData)
-                                  Padding(
-                                    padding: EdgeInsets.only(left: 8.0),
-                                    child: Text(
-                                      "Distributor",
-                                      textAlign: TextAlign.left,
-                                      style: TextStyle(fontSize: 10),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsets.only(left: 8.0),
-                                    child: Text(
-                                      "Hospital",
-                                      textAlign: TextAlign.left,
-                                      style: TextStyle(fontSize: 10),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsets.only(left: 8.0),
-                                    child: Text(
-                                      "Other",
-                                      textAlign: TextAlign.left,
-                                      style: TextStyle(fontSize: 10),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
-                        ],
-                      ),
+                        ),
+
+                        Visibility(
+                          visible: receivablesFinanceList.agingData.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Net Receivables",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateNetReceivablesExcel(
+                                                        receivablesFinanceList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateNetReceivablesPDF(
+                                                        receivablesFinanceList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _netReceivables(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible: advanceCustomerList.agingData.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Advance From Customers",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateAdvanceExcel(
+                                                        advanceCustomerList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateAdvancePDF(
+                                                        advanceCustomerList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _advanceFromCustomers(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible: customerAnalysisFinanceList
+                              .customerData
+                              .isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Customer Analysis",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateCustomerAnalysisExcel(
+                                                        customerAnalysisFinanceList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateCustomerAnalysisPDF(
+                                                        customerAnalysisFinanceList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _customerAnalysis(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible:
+                              receivablesCategoryList.categoryData.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Customer Category wise Analysis",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                        bottom: 16.0,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          SizedBox(
+                                            height: 250,
+                                            width: 100,
+                                            child: PieChart(
+                                              PieChartData(
+                                                pieTouchData: PieTouchData(
+                                                  touchCallback:
+                                                      (
+                                                        FlTouchEvent event,
+                                                        pieTouchResponse,
+                                                      ) {},
+                                                ),
+                                                borderData: FlBorderData(
+                                                  show: false,
+                                                ),
+                                                sectionsSpace: 1,
+                                                centerSpaceRadius: 0,
+                                                startDegreeOffset: 360,
+                                                sections:
+                                                    _receivablesCategoryChart(),
+                                              ),
+                                            ),
+                                          ),
+                                          Row(
+                                            children: [
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 2.0,
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Column(
+                                                      children: [
+                                                        Container(
+                                                          height: 8,
+                                                          width: 16,
+                                                          color: const Color(
+                                                            0xFFFF9F47,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                        Container(
+                                                          height: 8,
+                                                          width: 16,
+                                                          color: const Color(
+                                                            0xFF97D7F3,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                        Container(
+                                                          height: 8,
+                                                          width: 16,
+                                                          color: const Color(
+                                                            0xFF78E25D,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                      left: 8.0,
+                                                    ),
+                                                    child: Text(
+                                                      "Distributor",
+                                                      textAlign: TextAlign.left,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                      left: 8.0,
+                                                    ),
+                                                    child: Text(
+                                                      "Hospital",
+                                                      textAlign: TextAlign.left,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                      left: 8.0,
+                                                    ),
+                                                    child: Text(
+                                                      "Other",
+                                                      textAlign: TextAlign.left,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible: rsmwiseCollectionList.rsmwiseData.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Regional Manager Analysis",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateRegionalManagerExcel(
+                                                        rsmwiseCollectionList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateRegionalManagerPDF(
+                                                        rsmwiseCollectionList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _regionalManagerAnalysis(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible: asmwiseCollectionList.asmwiseData.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Sales Manager Analysis",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateSalesManagerExcel(
+                                                        asmwiseCollectionList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateSalesManagerPDF(
+                                                        asmwiseCollectionList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _salesManagerAnalysis(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible: tsmwiseCollectionList.tsmwiseData.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Sales Person Analysis",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateSalesPersonExcel(
+                                                        tsmwiseCollectionList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateSalesPersonPDF(
+                                                        tsmwiseCollectionList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _salesPersonAnalysis(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                      child: Divider(thickness: 2),
-                    ),
-                  ],
-                ),
-
-                Visibility(
-                  visible: rsmwiseCollectionList.rsmwiseData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Regional Manager Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateRegionalManagerExcel(
-                                          rsmwiseCollectionList,
-                                        );
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateRegionalManagerPDF(
-                                          rsmwiseCollectionList,
-                                        );
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _regionalManagerAnalysis(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
                   ),
-                ),
-
-                Visibility(
-                  visible: asmwiseCollectionList.asmwiseData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Sales Manager Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateSalesManagerExcel(
-                                          asmwiseCollectionList,
-                                        );
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateSalesManagerPDF(
-                                          asmwiseCollectionList,
-                                        );
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _salesManagerAnalysis(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Visibility(
-                  visible: tsmwiseCollectionList.tsmwiseData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Sales Person Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateSalesPersonExcel(
-                                          tsmwiseCollectionList,
-                                        );
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () async {
-                                        await generateSalesPersonPDF(
-                                          tsmwiseCollectionList,
-                                        );
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _salesPersonAnalysis(),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          )
-        : const Center(child: CircularProgressIndicator());
+                )
+              : const Center(child: CircularProgressIndicator()),
+        ],
+      ),
+    );
   }
 
   showPopupMenu() {
@@ -3907,166 +4257,181 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               .map((data) => data.agingGroupTotal)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: screenWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesReceivableAging,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _AllReceivableAgingChartData(
-              allReceivablesFinanceList.agingData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedReceivables = touchedReceivables == ""
-                          ? allReceivablesFinanceList
-                                .agingData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .agingGroup
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedReceivables,
-                        touchedNetReceivables,
-                        touchedAdvance,
-                        touchedCustomer,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesPerson,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _receivablesHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _receivablesHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: screenWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesReceivableAging,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _AllReceivableAgingChartData(
+                  allReceivablesFinanceList.agingData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedReceivables = touchedReceivables == ""
+                              ? allReceivablesFinanceList
+                                    .agingData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .agingGroup
+                              : "";
+                          selectedChart = barTouchResponse.spot!.spot.x;
+                          showDrillDownChart = true;
+                          loadDataWithFilter(
+                            touchedReceivables,
+                            touchedNetReceivables,
+                            touchedAdvance,
+                            touchedCustomer,
+                            touchedRegionalManager,
+                            touchedSalesManager,
+                            touchedSalesPerson,
+                          );
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            '${allReceivablesFinanceList.agingData[0].agingGroup} :'
-                            ' ${(formatAmount(allReceivablesFinanceList.agingData[0].agingGroupTotal))} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '',
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${allReceivablesFinanceList.agingData[1].agingGroup} '
-                            ': ${(formatAmount(allReceivablesFinanceList.agingData[1].agingGroupTotal))}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${allReceivablesFinanceList.agingData[2].agingGroup} '
-                            ': ${(formatAmount(allReceivablesFinanceList.agingData[2].agingGroupTotal))} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${allReceivablesFinanceList.agingData[3].agingGroup} '
-                            ':${(formatAmount(allReceivablesFinanceList.agingData[3].agingGroupTotal))}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${allReceivablesFinanceList.agingData[4].agingGroup} '
-                            ': ${(formatAmount(allReceivablesFinanceList.agingData[4].agingGroupTotal))}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${allReceivablesFinanceList.agingData[5].agingGroup} '
-                            ': ${(formatAmount(allReceivablesFinanceList.agingData[5].agingGroupTotal))}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Total'
-                            ': ${formatAmount((allReceivablesFinanceList.agingData[5].agingGroupTotal + allReceivablesFinanceList.agingData[4].agingGroupTotal + allReceivablesFinanceList.agingData[3].agingGroupTotal + allReceivablesFinanceList.agingData[2].agingGroupTotal + allReceivablesFinanceList.agingData[1].agingGroupTotal + allReceivablesFinanceList.agingData[0].agingGroupTotal))} ',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                '${allReceivablesFinanceList.agingData[0].agingGroup} :'
+                                ' ${(formatAmount(allReceivablesFinanceList.agingData[0].agingGroupTotal))} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${allReceivablesFinanceList.agingData[1].agingGroup} '
+                                ': ${(formatAmount(allReceivablesFinanceList.agingData[1].agingGroupTotal))}\n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${allReceivablesFinanceList.agingData[2].agingGroup} '
+                                ': ${(formatAmount(allReceivablesFinanceList.agingData[2].agingGroupTotal))} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${allReceivablesFinanceList.agingData[3].agingGroup} '
+                                ':${(formatAmount(allReceivablesFinanceList.agingData[3].agingGroupTotal))}\n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${allReceivablesFinanceList.agingData[4].agingGroup} '
+                                ': ${(formatAmount(allReceivablesFinanceList.agingData[4].agingGroupTotal))}\n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${allReceivablesFinanceList.agingData[5].agingGroup} '
+                                ': ${(formatAmount(allReceivablesFinanceList.agingData[5].agingGroupTotal))}\n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'Total'
+                                ': ${formatAmount((allReceivablesFinanceList.agingData[5].agingGroupTotal + allReceivablesFinanceList.agingData[4].agingGroupTotal + allReceivablesFinanceList.agingData[3].agingGroupTotal + allReceivablesFinanceList.agingData[2].agingGroupTotal + allReceivablesFinanceList.agingData[1].agingGroupTotal + allReceivablesFinanceList.agingData[0].agingGroupTotal))} ',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -4082,166 +4447,181 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               .map((data) => data.agingGroupTotal)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: screenWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesNetReceivableAging,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _netReceivableAgingChartData(
-              receivablesFinanceList.agingData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedNetReceivables = touchedNetReceivables == ""
-                          ? receivablesFinanceList
-                                .agingData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .agingGroup
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedReceivables,
-                        touchedNetReceivables,
-                        touchedAdvance,
-                        touchedCustomer,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesPerson,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _netReceivablesHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _netReceivablesHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: screenWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesNetReceivableAging,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _netReceivableAgingChartData(
+                  receivablesFinanceList.agingData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedNetReceivables = touchedNetReceivables == ""
+                              ? receivablesFinanceList
+                                    .agingData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .agingGroup
+                              : "";
+                          selectedChart = barTouchResponse.spot!.spot.x;
+                          showDrillDownChart = true;
+                          loadDataWithFilter(
+                            touchedReceivables,
+                            touchedNetReceivables,
+                            touchedAdvance,
+                            touchedCustomer,
+                            touchedRegionalManager,
+                            touchedSalesManager,
+                            touchedSalesPerson,
+                          );
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            '${receivablesFinanceList.agingData[0].agingGroup} :'
-                            ' ${formatAmount(receivablesFinanceList.agingData[0].agingGroupTotal)} \n ',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '',
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesFinanceList.agingData[1].agingGroup} '
-                            ': ${formatAmount(receivablesFinanceList.agingData[1].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesFinanceList.agingData[2].agingGroup} '
-                            ':  ${formatAmount(receivablesFinanceList.agingData[2].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesFinanceList.agingData[3].agingGroup} '
-                            ':  ${formatAmount(receivablesFinanceList.agingData[3].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesFinanceList.agingData[4].agingGroup} '
-                            ':  ${formatAmount(receivablesFinanceList.agingData[4].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesFinanceList.agingData[5].agingGroup} '
-                            ':  ${formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Total'
-                            ': ${(formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal + receivablesFinanceList.agingData[4].agingGroupTotal + receivablesFinanceList.agingData[3].agingGroupTotal + receivablesFinanceList.agingData[2].agingGroupTotal + receivablesFinanceList.agingData[1].agingGroupTotal + receivablesFinanceList.agingData[0].agingGroupTotal))} ',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                '${receivablesFinanceList.agingData[0].agingGroup} :'
+                                ' ${formatAmount(receivablesFinanceList.agingData[0].agingGroupTotal)} \n ',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${receivablesFinanceList.agingData[1].agingGroup} '
+                                ': ${formatAmount(receivablesFinanceList.agingData[1].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${receivablesFinanceList.agingData[2].agingGroup} '
+                                ':  ${formatAmount(receivablesFinanceList.agingData[2].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${receivablesFinanceList.agingData[3].agingGroup} '
+                                ':  ${formatAmount(receivablesFinanceList.agingData[3].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${receivablesFinanceList.agingData[4].agingGroup} '
+                                ':  ${formatAmount(receivablesFinanceList.agingData[4].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${receivablesFinanceList.agingData[5].agingGroup} '
+                                ':  ${formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'Total'
+                                ': ${(formatAmount(receivablesFinanceList.agingData[5].agingGroupTotal + receivablesFinanceList.agingData[4].agingGroupTotal + receivablesFinanceList.agingData[3].agingGroupTotal + receivablesFinanceList.agingData[2].agingGroupTotal + receivablesFinanceList.agingData[1].agingGroupTotal + receivablesFinanceList.agingData[0].agingGroupTotal))} ',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),

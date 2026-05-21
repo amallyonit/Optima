@@ -108,6 +108,7 @@ class DailyCostingResult {
   final double inventoryTarget;
   final double stockInTransitValue;
   final double readyToDispatchStock;
+  final double interBranchPendingSoSum;
   // the graph arrays (your DailyCostingGraphData type)
   final List<DailyCostingGraphData> revenueGraph;
   final List<DailyCostingGraphData> dailyCostingGraph;
@@ -152,6 +153,7 @@ class DailyCostingResult {
     required this.inventoryAgingGraph,
     required this.stockInTransitValue,
     required this.readyToDispatchStock,
+    required this.interBranchPendingSoSum,
   });
 }
 
@@ -171,6 +173,7 @@ double nextMonthPOSum = 0;
 double karnatakaPOSum = 0;
 double tamilNaduPOSum = 0;
 double othersPOSum = 0;
+double interBranchPendingSoSum = 0;
 double lessThan30DaysValue = 0;
 double a30to60DaysValue = 0;
 double a60to90DaysValue = 0;
@@ -310,6 +313,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   karnatakaPOSum = 0;
   tamilNaduPOSum = 0;
   othersPOSum = 0;
+  interBranchPendingSoSum = 0;
 
   for (final so in filteredSO) {
     final pending = double.tryParse(so.pendingValue) ?? 0;
@@ -324,6 +328,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
       tamilNaduPOSum += pending;
     } else {
       othersPOSum += pending;
+    }
+    if (so.bpGroup == "AH GROUP") {
+      interBranchPendingSoSum += pending;
     }
   }
 
@@ -344,7 +351,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
 
   // GRN sum in current month
   monthlyPurchasePriceGrnSum = 0;
-  for (final g in input.grnList) {
+  for (final g in input.grnList.where((e) => e.itemSubGroup != "Sutures")) {
     DateTime inv;
     try {
       inv = DateFormat('dd/MM/yyyy').parse(g.grnDate);
@@ -671,6 +678,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     inventoryAgingGraph: inventoryAgingGraph,
     stockInTransitValue: stockInTransitValue,
     readyToDispatchStock: readyToDispatchStock,
+    interBranchPendingSoSum: interBranchPendingSoSum,
   );
 }
 
@@ -2492,6 +2500,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         highPriorityPendingSO = highVal;
         mediumPriorityPendingSO = mediumVal;
         lowPriorityPendingSO = lowVal;
+        interBranchPendingSoSum = result.interBranchPendingSoSum;
 
         totalPendingSO =
             highPriorityPendingSO +
@@ -2629,7 +2638,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       ["  Low Priority", "", safeNum(lowVal), ""],
       ["  Medium Priority", "", safeNum(mediumVal), ""],
       ["  High Priority", "", safeNum(highVal), ""],
-
       ["", "", "", ""],
 
       // ===== PURCHASE =====
@@ -3336,7 +3344,8 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         worksheet:
             "High Priority  : ${highPriorityPendingSO.toStringAsFixed(2)}\n"
             "Medium Priority: ${mediumPriorityPendingSO.toStringAsFixed(2)}\n"
-            "Low Priority   : ${lowPriorityPendingSO.toStringAsFixed(2)}",
+            "Low Priority   : ${lowPriorityPendingSO.toStringAsFixed(2)}\n"
+            "Inter Branch   : ${interBranchPendingSoSum.toStringAsFixed(2)}",
         achieved: totalPendingSO,
         percentage: "",
       );
@@ -3611,7 +3620,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       tamilNaduPOSum = 0;
       othersPOSum = 0;
       monthlySOvalue = 0;
-
+      interBranchPendingSoSum = 0;
       // Purchase & GRN
       monthlyPurchasePriceSum = 0;
       monthlyPurchasePriceGrnSum = 0;
@@ -4069,7 +4078,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     return Scrollbar(
       controller: _dailyCostingHorizontalController,
       thumbVisibility: true,
-      // thickness: 5,
       radius: const Radius.circular(10),
       notificationPredicate: (_) => true,
       child: SingleChildScrollView(

@@ -1354,7 +1354,14 @@ class _CustomerCollectionAnalysisState
 
   Future<void> loadSavedCustomerCommitment() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final userID = prefs.getString('userId') ?? '';
+      final userJwtToken = prefs.getString('userJwtToken') ?? '';
+      final userMailID = prefs.getString('userMailID') ?? '';
       final body = {
+        'UserID': userID,
+        'UserJwtToken': userJwtToken,
+        'UsermailID': userMailID,
         "commitmentMonth": selectedCommitmentMonth.month,
         "commitmentYear": selectedCommitmentMonth.year,
       };
