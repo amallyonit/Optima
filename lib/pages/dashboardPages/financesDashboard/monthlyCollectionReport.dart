@@ -92,6 +92,10 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   double nearExpiryValue = 0;
   double expiredValue = 0;
 
+  MonthlyCollectionReportList customerData = MonthlyCollectionReportList(
+    weeklyData: [],
+  );
+
   MonthlyCollectionReportList asmData = MonthlyCollectionReportList(
     weeklyData: [],
   );
@@ -117,6 +121,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
 
   final ScrollController _mainScrollController = ScrollController();
 
+  final ScrollController _horizontalCustomerController = ScrollController();
   final ScrollController _horizontalRsmController = ScrollController();
   final ScrollController _horizontalAsmController = ScrollController();
   final ScrollController _horizontalTsmController = ScrollController();
@@ -294,6 +299,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     await _loadTSMCollectionBarChartData();
     await _loadASMCollectionBarChartData();
     await _loadRSMCollectionBarChartData();
+    await _loadCustomerCollectionBarChartData();
     setState(() {
       chartDataLoadedMonthlyCollection = true;
     });
@@ -307,18 +313,12 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     List<DebtorsAgingList> targetList = [];
 
     try {
-      // compute once
-      final fromDate = dateFilterFlag
-          ? formatDate(fromDateFilter!)
-          : formatDate(fiscalYearStartDate!);
-
       final toDate = dateFilterFlag
           ? formatDate(toDateFilter!)
-          : formatDate(currentDate!);
+          : formatDate(currentMonthToDate!);
 
       do {
         final body = {
-          "FromDate": fromDate,
           "ToDate": toDate,
           "Index": index,
           "Limit": limit,
@@ -714,9 +714,13 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     final Map<String, MonthlyCollectionReportData> rsmMap = {};
 
     // Process Debtors (commitment + balance)
+
     for (var d in debtorsList) {
       final date = dateFormat.parse(d.dueon);
       final rsm = d.regionalManager;
+      final expPayDate = d.expectedPayment.toString().trim().isNotEmpty
+          ? dateFormat.tryParse(d.expectedPayment)
+          : null;
 
       final entry = rsmMap.putIfAbsent(
         rsm,
@@ -745,22 +749,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       }
 
       // Weekly commitment
-      for (int i = 0; i < weeks.length; i++) {
-        if (date.isAtLeast(weeks[i]['start']!) &&
-            date.isAtMost(weeks[i]['end']!)) {
-          switch (i) {
-            case 0:
-              entry.weekOneCommitted += double.tryParse(d.commitment) ?? 0;
-              break;
-            case 1:
-              entry.weekTwoCommitted += double.tryParse(d.commitment) ?? 0;
-              break;
-            case 2:
-              entry.weekThreeCommitted += double.tryParse(d.commitment) ?? 0;
-              break;
-            case 3:
-              entry.weekFourCommitted += double.tryParse(d.commitment) ?? 0;
-              break;
+      if (expPayDate != null) {
+        for (int i = 0; i < weeks.length; i++) {
+          if (expPayDate.isAtLeast(weeks[i]['start']!) &&
+              expPayDate.isAtMost(weeks[i]['end']!)) {
+            switch (i) {
+              case 0:
+                entry.weekOneCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+              case 1:
+                entry.weekTwoCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+              case 2:
+                entry.weekThreeCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+              case 3:
+                entry.weekFourCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+            }
           }
         }
       }
@@ -820,6 +826,128 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     rsmData = MonthlyCollectionReportList(weeklyData: rsmwiseDataList);
   }
 
+  Future<void> _loadCustomerCollectionBarChartData() async {
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    final weeks = getWeeksOfCurrentMonth();
+
+    final Map<String, MonthlyCollectionReportData> customerMap = {};
+
+    // Process Debtors (commitment + balance)
+
+    for (var d in debtorsList) {
+      final date = dateFormat.parse(d.dueon);
+      final customer = d.customerName;
+      final expPayDate = d.expectedPayment.toString().trim().isNotEmpty
+          ? dateFormat.tryParse(d.expectedPayment)
+          : null;
+
+      final entry = customerMap.putIfAbsent(
+        customer,
+        () => MonthlyCollectionReportData(
+          customerName: customer,
+          regionalManager: "",
+          salesManager: "",
+          salesPerson: "",
+          targetMonth: 0,
+          weekOneCommitted: 0,
+          weekOneReceived: 0,
+          weekTwoCommitted: 0,
+          weekTwoReceived: 0,
+          weekThreeCommitted: 0,
+          weekThreeReceived: 0,
+          weekFourCommitted: 0,
+          weekFourReceived: 0,
+        ),
+      );
+
+      // Target calculation
+      if (date.isAtMost(currentDate!)) {
+        entry.targetMonth += double.tryParse(d.commitment) ?? 0;
+      }
+      if (date.isAtMost(currentMonthToDate!)) {
+        entry.targetMonth += double.tryParse(d.balance) ?? 0;
+      }
+
+      // Weekly commitment
+      if (expPayDate != null) {
+        for (int i = 0; i < weeks.length; i++) {
+          if (expPayDate.isAtLeast(weeks[i]['start']!) &&
+              expPayDate.isAtMost(weeks[i]['end']!)) {
+            switch (i) {
+              case 0:
+                entry.weekOneCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+              case 1:
+                entry.weekTwoCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+              case 2:
+                entry.weekThreeCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+              case 3:
+                entry.weekFourCommitted += double.tryParse(d.commitment) ?? 0;
+                break;
+            }
+          }
+        }
+      }
+    }
+
+    // Process Collections (received)
+    for (var c in collection) {
+      final date = dateFormat.parse(c.postingDate);
+      final customer = c.regionalManager;
+
+      final entry = customerMap[customer];
+      if (entry == null) continue;
+
+      for (int i = 0; i < weeks.length; i++) {
+        if (date.isAtLeast(weeks[i]['start']!) &&
+            date.isAtMost(weeks[i]['end']!)) {
+          final value = double.tryParse(c.total) ?? 0;
+
+          switch (i) {
+            case 0:
+              entry.weekOneReceived += value;
+              break;
+            case 1:
+              entry.weekTwoReceived += value;
+              break;
+            case 2:
+              entry.weekThreeReceived += value;
+              break;
+            case 3:
+              entry.weekFourReceived += value;
+              break;
+          }
+        }
+      }
+    }
+
+    final customerwiseDataList = customerMap.values.toList()
+      ..sort((a, b) {
+        final aReceived =
+            a.weekOneReceived +
+            a.weekTwoReceived +
+            a.weekThreeReceived +
+            a.weekFourReceived;
+
+        final bReceived =
+            b.weekOneReceived +
+            b.weekTwoReceived +
+            b.weekThreeReceived +
+            b.weekFourReceived;
+
+        final aDefault = a.targetMonth - aReceived;
+        final bDefault = b.targetMonth - bReceived;
+
+        return bDefault.compareTo(aDefault);
+      });
+
+    customerData = MonthlyCollectionReportList(
+      weeklyData: customerwiseDataList,
+    );
+  }
+
   Future<void> generateTsmMonthlyCollectionExcel() async {
     final weeks = getWeeksOfCurrentMonth();
 
@@ -828,36 +956,30 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       headers: [
         'Sales Person',
         'Month Target',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} % Received',
         'Total Committed',
         'Total Received',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} % Received',
+        '${DateFormat('MMM').format(weeks[3]['end']!)} %',
       ],
       rows: tsmData.weeklyData
           .map(
             (e) => [
               e.salesPerson,
               e.targetMonth,
-              e.weekOneCommitted +
-                  e.weekTwoCommitted +
-                  e.weekThreeCommitted +
-                  e.weekFourCommitted,
-              e.weekOneReceived +
-                  e.weekTwoReceived +
-                  e.weekThreeReceived +
-                  e.weekFourReceived,
-              e.weekOneCommitted,
-              e.weekOneReceived,
               getPercentage(e.weekOneCommitted, e.weekOneReceived),
               e.weekTwoCommitted,
               e.weekTwoReceived,
@@ -868,6 +990,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekFourCommitted,
               e.weekFourReceived,
               getPercentage(e.weekFourCommitted, e.weekFourReceived),
+              e.weekOneCommitted +
+                  e.weekTwoCommitted +
+                  e.weekThreeCommitted +
+                  e.weekFourCommitted,
+              e.weekOneReceived +
+                  e.weekTwoReceived +
+                  e.weekThreeReceived +
+                  e.weekFourReceived,
+              getPercentage(
+                e.weekOneCommitted +
+                    e.weekTwoCommitted +
+                    e.weekThreeCommitted +
+                    e.weekFourCommitted,
+                e.weekOneReceived +
+                    e.weekTwoReceived +
+                    e.weekThreeReceived +
+                    e.weekFourReceived,
+              ),
             ],
           )
           .toList(),
@@ -885,36 +1025,30 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       headers: [
         'Sales Manager',
         'Month Target',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} % Received',
         'Total Committed',
         'Total Received',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} % Received',
+        '${DateFormat('MMM').format(weeks[3]['end']!)} %',
       ],
       rows: asmData.weeklyData
           .map(
             (e) => [
               e.salesManager,
               e.targetMonth,
-              e.weekOneCommitted +
-                  e.weekTwoCommitted +
-                  e.weekThreeCommitted +
-                  e.weekFourCommitted,
-              e.weekOneReceived +
-                  e.weekTwoReceived +
-                  e.weekThreeReceived +
-                  e.weekFourReceived,
-              e.weekOneCommitted,
-              e.weekOneReceived,
               getPercentage(e.weekOneCommitted, e.weekOneReceived),
               e.weekTwoCommitted,
               e.weekTwoReceived,
@@ -925,6 +1059,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekFourCommitted,
               e.weekFourReceived,
               getPercentage(e.weekFourCommitted, e.weekFourReceived),
+              e.weekOneCommitted +
+                  e.weekTwoCommitted +
+                  e.weekThreeCommitted +
+                  e.weekFourCommitted,
+              e.weekOneReceived +
+                  e.weekTwoReceived +
+                  e.weekThreeReceived +
+                  e.weekFourReceived,
+              getPercentage(
+                e.weekOneCommitted +
+                    e.weekTwoCommitted +
+                    e.weekThreeCommitted +
+                    e.weekFourCommitted,
+                e.weekOneReceived +
+                    e.weekTwoReceived +
+                    e.weekThreeReceived +
+                    e.weekFourReceived,
+              ),
             ],
           )
           .toList(),
@@ -942,34 +1094,30 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       headers: [
         'Regional Manager',
         'Month Target',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} % Received',
         'Total Committed',
         'Total Received',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[0]['start']!)} - ${DateFormat('dd/MM').format(weeks[0]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[1]['start']!)} - ${DateFormat('dd/MM').format(weeks[1]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[2]['start']!)} - ${DateFormat('dd/MM').format(weeks[2]['end']!)} % Received',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Committed',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} Received',
-        '${DateFormat('dd/MM').format(weeks[3]['start']!)} - ${DateFormat('dd/MM').format(weeks[3]['end']!)} % Received',
+        '${DateFormat('MMM').format(weeks[3]['end']!)} %',
       ],
       rows: rsmData.weeklyData
           .map(
             (e) => [
               e.regionalManager,
               e.targetMonth,
-              e.weekOneCommitted +
-                  e.weekTwoCommitted +
-                  e.weekThreeCommitted +
-                  e.weekFourCommitted,
-              e.weekOneReceived +
-                  e.weekTwoReceived +
-                  e.weekThreeReceived +
-                  e.weekFourReceived,
               e.weekOneCommitted,
               e.weekOneReceived,
               getPercentage(e.weekOneCommitted, e.weekOneReceived),
@@ -982,6 +1130,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
               e.weekFourCommitted,
               e.weekFourReceived,
               getPercentage(e.weekFourCommitted, e.weekFourReceived),
+              e.weekOneCommitted +
+                  e.weekTwoCommitted +
+                  e.weekThreeCommitted +
+                  e.weekFourCommitted,
+              e.weekOneReceived +
+                  e.weekTwoReceived +
+                  e.weekThreeReceived +
+                  e.weekFourReceived,
+              getPercentage(
+                e.weekOneCommitted +
+                    e.weekTwoCommitted +
+                    e.weekThreeCommitted +
+                    e.weekFourCommitted,
+                e.weekOneReceived +
+                    e.weekTwoReceived +
+                    e.weekThreeReceived +
+                    e.weekFourReceived,
+              ),
             ],
           )
           .toList(),
@@ -989,6 +1155,77 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
       addTotalRow: true,
       reportTitle: 'Finance - RSM Monthly Collection Analysis',
+    );
+  }
+
+  Future<void> generateCustomerMonthlyCollectionExcel() async {
+    final weeks = getWeeksOfCurrentMonth();
+    await reportService.generateExcel(
+      sheetName: 'MonthlyCustomerCollection',
+      headers: [
+        'Customer Name',
+        'Month Target',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[0]['start']!)}-${DateFormat('dd MMM').format(weeks[0]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[1]['start']!)}-${DateFormat('dd MMM').format(weeks[1]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[2]['start']!)}-${DateFormat('dd MMM').format(weeks[2]['end']!)} % Received',
+
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Committed',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} Received',
+        '${DateFormat('dd').format(weeks[3]['start']!)}-${DateFormat('dd MMM').format(weeks[3]['end']!)} % Received',
+        'Total Committed',
+        'Total Received',
+        '${DateFormat('MMM').format(weeks[3]['end']!)} %',
+      ],
+      rows: customerData.weeklyData
+          .map(
+            (e) => [
+              e.customerName,
+              e.targetMonth,
+              e.weekOneCommitted,
+              e.weekOneReceived,
+              getPercentage(e.weekOneCommitted, e.weekOneReceived),
+              e.weekTwoCommitted,
+              e.weekTwoReceived,
+              getPercentage(e.weekTwoCommitted, e.weekTwoReceived),
+              e.weekThreeCommitted,
+              e.weekThreeReceived,
+              getPercentage(e.weekThreeCommitted, e.weekThreeReceived),
+              e.weekFourCommitted,
+              e.weekFourReceived,
+              getPercentage(e.weekFourCommitted, e.weekFourReceived),
+              e.weekOneCommitted +
+                  e.weekTwoCommitted +
+                  e.weekThreeCommitted +
+                  e.weekFourCommitted,
+              e.weekOneReceived +
+                  e.weekTwoReceived +
+                  e.weekThreeReceived +
+                  e.weekFourReceived,
+              getPercentage(
+                e.weekOneCommitted +
+                    e.weekTwoCommitted +
+                    e.weekThreeCommitted +
+                    e.weekFourCommitted,
+                e.weekOneReceived +
+                    e.weekTwoReceived +
+                    e.weekThreeReceived +
+                    e.weekFourReceived,
+              ),
+            ],
+          )
+          .toList(),
+      fileName: 'customer_monthly_collection_.xlsx',
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      addTotalRow: true,
+      reportTitle: 'Finance - Customer Monthly Collection Analysis',
     );
   }
 
@@ -1021,7 +1258,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
 
       text = mData[value.toInt()].salesPerson;
       return Padding(
-        padding: const EdgeInsets.only(top: 4.0),
+        padding: const EdgeInsets.only(top: 14.0),
         child: Transform.rotate(
           angle: -0.5,
           child: Text(text, style: const TextStyle(fontSize: 12)),
@@ -1043,7 +1280,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       text = mData[value.toInt()].salesManager;
       // text = mData.elementAt(value.toInt()).salesManager;
       return Padding(
-        padding: const EdgeInsets.only(top: 4.0),
+        padding: const EdgeInsets.only(top: 14.0),
         child: Transform.rotate(
           angle: -0.5,
           child: Text(text, style: const TextStyle(fontSize: 12)),
@@ -1064,10 +1301,40 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
 
       text = mData[value.toInt()].regionalManager;
       return Padding(
-        padding: const EdgeInsets.only(top: 4.0),
+        padding: const EdgeInsets.only(top: 14.0),
         child: Transform.rotate(
           angle: -0.5,
           child: Text(text, style: const TextStyle(fontSize: 12)),
+        ),
+      );
+    },
+  );
+
+  SideTitles get _bottomTitlesCustomerAnalysis => SideTitles(
+    reservedSize: 70,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<MonthlyCollectionReportData> mData = customerData.weeklyData;
+      if (value.toInt() >= mData.length) {
+        return const SizedBox();
+      }
+
+      text = mData[value.toInt()].customerName!;
+
+      return Padding(
+        padding: const EdgeInsets.only(top: 14.0),
+        child: Transform.rotate(
+          angle: -0.5,
+          child: SizedBox(
+            width: 80,
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
         ),
       );
     },
@@ -1154,6 +1421,46 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   }
 
   List<BarChartGroupData> _monthlyRsmAnalysisChartData(
+    List<MonthlyCollectionReportData> data,
+  ) {
+    return data
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
+              BarChartRodData(
+                color: const Color(0xFF2CA9DF),
+                borderRadius: BorderRadius.zero,
+                toY:
+                    chartData.weekOneReceived +
+                    chartData.weekTwoReceived +
+                    chartData.weekThreeReceived +
+                    chartData.weekFourReceived,
+                width: 15,
+              ),
+              BarChartRodData(
+                color: Colors.green,
+                borderRadius: BorderRadius.zero,
+                toY: chartData.targetMonth,
+                width: 15,
+              ),
+              BarChartRodData(
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+                toY:
+                    chartData.weekOneCommitted +
+                    chartData.weekTwoCommitted +
+                    chartData.weekThreeCommitted +
+                    chartData.weekFourCommitted,
+                width: 15,
+              ),
+            ],
+          ),
+        )
+        .toList();
+  }
+
+  List<BarChartGroupData> _monthlyCustomerAnalysisChartData(
     List<MonthlyCollectionReportData> data,
   ) {
     return data
@@ -1318,6 +1625,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
 
   @override
   void dispose() {
+    _horizontalCustomerController.dispose();
     _horizontalRsmController.dispose();
     _mainScrollController.dispose();
     _horizontalAsmController.dispose();
@@ -1550,6 +1858,53 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                       ),
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  "Customer Analysis",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                PopupMenuButton(
+                                  padding: EdgeInsets.zero,
+                                  itemBuilder: (BuildContext bc) {
+                                    return [
+                                      PopupMenuItem(
+                                        onTap: () {
+                                          generateCustomerMonthlyCollectionExcel();
+                                        },
+                                        child: const Text("Download Excel"),
+                                      ),
+                                    ];
+                                  },
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            _monthlyCustomerAnalysis(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1601,103 +1956,109 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                 ? 420
                 : 350,
             width: chartWidth,
-            child: BarChart(
-              BarChartData(
-                groupsSpace: screenWidth > 1000 ? 28 : 16,
-                maxY: getMaxValue(maxAmount),
-                titlesData: FlTitlesData(
-                  show: true,
-                  leftTitles: AxisTitles(
-                    sideTitles: _leftTitles,
-                    axisNameSize: 14,
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-                  bottomTitles: AxisTitles(
-                    sideTitles: _bottomTitlesTsmAnalysis,
-                    axisNameSize: 20,
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  checkToShowHorizontalLine: (value) => value % 10 == 0,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.shade400.withValues(alpha: 0.5),
-                    strokeWidth: 1.2,
-                  ),
-                  drawVerticalLine: false,
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                  ),
-                ),
-                barGroups: _monthlyTsmAnalysisChartData(tsmData.weeklyData),
-                barTouchData: BarTouchData(
-                  allowTouchBarBackDraw: true,
-                  touchCallback: (flTouchEvent, barTouchResponse) async {
-                    if (barTouchResponse != null &&
-                        barTouchResponse.spot != null) {}
-                  },
-                  touchTooltipData: BarTouchTooltipData(
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                    tooltipPadding: const EdgeInsets.all(12),
-                    maxContentWidth: 200,
-                    tooltipBorder: const BorderSide(
-                      width: 2.0,
-                      color: Colors.black12,
-                      style: BorderStyle.none,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: BarChart(
+                BarChartData(
+                  groupsSpace: screenWidth > 1000 ? 28 : 16,
+                  maxY: getMaxValue(maxAmount),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    leftTitles: AxisTitles(
+                      sideTitles: _leftTitles,
+                      axisNameSize: 14,
                     ),
-                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                      return BarTooltipItem(
-                        '${tsmData.weeklyData[grpIndex].salesPerson}-'
-                        '${getMonthName(DateTime.now().month)}\n',
-                        const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        children: <TextSpan>[
-                          TextSpan(
-                            text:
-                                'Monthly Received: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneReceived + tsmData.weeklyData[grpIndex].weekTwoReceived + tsmData.weeklyData[grpIndex].weekThreeReceived + tsmData.weeklyData[grpIndex].weekFourReceived)}\n',
-                            style: const TextStyle(
-                              color: Color(0xFF2CA9DF),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                'Monthly Committed: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneCommitted + tsmData.weeklyData[grpIndex].weekTwoCommitted + tsmData.weeklyData[grpIndex].weekThreeCommitted + tsmData.weeklyData[grpIndex].weekFourCommitted)}\n',
-                            style: const TextStyle(
-                              color: Color(0xFFFF9F47),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                'Target: ${formatAmount(tsmData.weeklyData[grpIndex].targetMonth)}',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                        textAlign: TextAlign.start,
-                      );
-                    },
-                    getTooltipColor: (group) => Colors.white,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                    bottomTitles: AxisTitles(
+                      sideTitles: _bottomTitlesTsmAnalysis,
+                      axisNameSize: 20,
+                    ),
                   ),
-                  handleBuiltInTouches: true,
-                  touchExtraThreshold: const EdgeInsets.all(10),
+                  gridData: FlGridData(
+                    show: true,
+                    checkToShowHorizontalLine: (value) => value % 10 == 0,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.shade400.withValues(alpha: 0.5),
+                      strokeWidth: 1.2,
+                    ),
+                    drawVerticalLine: false,
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey.shade400,
+                        width: 0.7,
+                      ),
+                      top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    ),
+                  ),
+                  barGroups: _monthlyTsmAnalysisChartData(tsmData.weeklyData),
+                  barTouchData: BarTouchData(
+                    allowTouchBarBackDraw: true,
+                    touchCallback: (flTouchEvent, barTouchResponse) async {
+                      if (barTouchResponse != null &&
+                          barTouchResponse.spot != null) {}
+                    },
+                    touchTooltipData: BarTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      tooltipPadding: const EdgeInsets.all(12),
+                      maxContentWidth: 200,
+                      tooltipBorder: const BorderSide(
+                        width: 2.0,
+                        color: Colors.black12,
+                        style: BorderStyle.none,
+                      ),
+                      getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                        return BarTooltipItem(
+                          '${tsmData.weeklyData[grpIndex].salesPerson}-'
+                          '${getMonthName(DateTime.now().month)}\n',
+                          const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          children: <TextSpan>[
+                            TextSpan(
+                              text:
+                                  'Monthly Received: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneReceived + tsmData.weeklyData[grpIndex].weekTwoReceived + tsmData.weeklyData[grpIndex].weekThreeReceived + tsmData.weeklyData[grpIndex].weekFourReceived)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFF2CA9DF),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Monthly Committed: ${formatAmount(tsmData.weeklyData[grpIndex].weekOneCommitted + tsmData.weeklyData[grpIndex].weekTwoCommitted + tsmData.weeklyData[grpIndex].weekThreeCommitted + tsmData.weeklyData[grpIndex].weekFourCommitted)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFFFF9F47),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Target: ${formatAmount(tsmData.weeklyData[grpIndex].targetMonth)}',
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                          textAlign: TextAlign.start,
+                        );
+                      },
+                      getTooltipColor: (group) => Colors.white,
+                    ),
+                    handleBuiltInTouches: true,
+                    touchExtraThreshold: const EdgeInsets.all(10),
+                  ),
                 ),
               ),
             ),
@@ -1751,103 +2112,109 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                 ? 420
                 : 350,
             width: chartWidth,
-            child: BarChart(
-              BarChartData(
-                groupsSpace: screenWidth > 1000 ? 28 : 16,
-                maxY: getMaxValue(maxAmount),
-                titlesData: FlTitlesData(
-                  show: true,
-                  leftTitles: AxisTitles(
-                    sideTitles: _leftTitles,
-                    axisNameSize: 14,
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-                  bottomTitles: AxisTitles(
-                    sideTitles: _bottomTitlesAsmAnalysis,
-                    axisNameSize: 20,
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  checkToShowHorizontalLine: (value) => value % 10 == 0,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.shade400.withValues(alpha: 0.5),
-                    strokeWidth: 1.2,
-                  ),
-                  drawVerticalLine: false,
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                  ),
-                ),
-                barGroups: _monthlyAsmAnalysisChartData(asmData.weeklyData),
-                barTouchData: BarTouchData(
-                  allowTouchBarBackDraw: true,
-                  touchCallback: (flTouchEvent, barTouchResponse) async {
-                    if (barTouchResponse != null &&
-                        barTouchResponse.spot != null) {}
-                  },
-                  touchTooltipData: BarTouchTooltipData(
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                    tooltipPadding: const EdgeInsets.all(12),
-                    maxContentWidth: 200,
-                    tooltipBorder: const BorderSide(
-                      width: 2.0,
-                      color: Colors.black12,
-                      style: BorderStyle.none,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: BarChart(
+                BarChartData(
+                  groupsSpace: screenWidth > 1000 ? 28 : 16,
+                  maxY: getMaxValue(maxAmount),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    leftTitles: AxisTitles(
+                      sideTitles: _leftTitles,
+                      axisNameSize: 14,
                     ),
-                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                      return BarTooltipItem(
-                        '${asmData.weeklyData[grpIndex].salesManager}-'
-                        '${getMonthName(DateTime.now().month)}\n',
-                        const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        children: <TextSpan>[
-                          TextSpan(
-                            text:
-                                'Monthly Received: ${formatAmount(asmData.weeklyData[grpIndex].weekOneReceived + asmData.weeklyData[grpIndex].weekTwoReceived + asmData.weeklyData[grpIndex].weekThreeReceived + asmData.weeklyData[grpIndex].weekFourReceived)}\n',
-                            style: const TextStyle(
-                              color: Color(0xFF2CA9DF),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                'Monthly Committed: ${formatAmount(asmData.weeklyData[grpIndex].weekOneCommitted + asmData.weeklyData[grpIndex].weekTwoCommitted + asmData.weeklyData[grpIndex].weekThreeCommitted + asmData.weeklyData[grpIndex].weekFourCommitted)}\n',
-                            style: const TextStyle(
-                              color: Color(0xFFFF9F47),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                'Target: ${formatAmount(asmData.weeklyData[grpIndex].targetMonth)}',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                        textAlign: TextAlign.start,
-                      );
-                    },
-                    getTooltipColor: (group) => Colors.white,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                    bottomTitles: AxisTitles(
+                      sideTitles: _bottomTitlesAsmAnalysis,
+                      axisNameSize: 20,
+                    ),
                   ),
-                  handleBuiltInTouches: true,
-                  touchExtraThreshold: const EdgeInsets.all(10),
+                  gridData: FlGridData(
+                    show: true,
+                    checkToShowHorizontalLine: (value) => value % 10 == 0,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.shade400.withValues(alpha: 0.5),
+                      strokeWidth: 1.2,
+                    ),
+                    drawVerticalLine: false,
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey.shade400,
+                        width: 0.7,
+                      ),
+                      top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    ),
+                  ),
+                  barGroups: _monthlyAsmAnalysisChartData(asmData.weeklyData),
+                  barTouchData: BarTouchData(
+                    allowTouchBarBackDraw: true,
+                    touchCallback: (flTouchEvent, barTouchResponse) async {
+                      if (barTouchResponse != null &&
+                          barTouchResponse.spot != null) {}
+                    },
+                    touchTooltipData: BarTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      tooltipPadding: const EdgeInsets.all(12),
+                      maxContentWidth: 200,
+                      tooltipBorder: const BorderSide(
+                        width: 2.0,
+                        color: Colors.black12,
+                        style: BorderStyle.none,
+                      ),
+                      getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                        return BarTooltipItem(
+                          '${asmData.weeklyData[grpIndex].salesManager}-'
+                          '${getMonthName(DateTime.now().month)}\n',
+                          const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          children: <TextSpan>[
+                            TextSpan(
+                              text:
+                                  'Monthly Received: ${formatAmount(asmData.weeklyData[grpIndex].weekOneReceived + asmData.weeklyData[grpIndex].weekTwoReceived + asmData.weeklyData[grpIndex].weekThreeReceived + asmData.weeklyData[grpIndex].weekFourReceived)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFF2CA9DF),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Monthly Committed: ${formatAmount(asmData.weeklyData[grpIndex].weekOneCommitted + asmData.weeklyData[grpIndex].weekTwoCommitted + asmData.weeklyData[grpIndex].weekThreeCommitted + asmData.weeklyData[grpIndex].weekFourCommitted)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFFFF9F47),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Target: ${formatAmount(asmData.weeklyData[grpIndex].targetMonth)}',
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                          textAlign: TextAlign.start,
+                        );
+                      },
+                      getTooltipColor: (group) => Colors.white,
+                    ),
+                    handleBuiltInTouches: true,
+                    touchExtraThreshold: const EdgeInsets.all(10),
+                  ),
                 ),
               ),
             ),
@@ -1901,103 +2268,268 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                 ? 420
                 : 350,
             width: chartWidth,
-            child: BarChart(
-              BarChartData(
-                groupsSpace: screenWidth > 1000 ? 28 : 16,
-                maxY: getMaxValue(maxAmount),
-                titlesData: FlTitlesData(
-                  show: true,
-                  leftTitles: AxisTitles(
-                    sideTitles: _leftTitles,
-                    axisNameSize: 14,
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-                  bottomTitles: AxisTitles(
-                    sideTitles: _bottomTitlesRsmAnalysis,
-                    axisNameSize: 20,
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  checkToShowHorizontalLine: (value) => value % 10 == 0,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.shade400.withValues(alpha: 0.5),
-                    strokeWidth: 1.2,
-                  ),
-                  drawVerticalLine: false,
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                  ),
-                ),
-                barGroups: _monthlyRsmAnalysisChartData(rsmData.weeklyData),
-                barTouchData: BarTouchData(
-                  allowTouchBarBackDraw: true,
-                  touchCallback: (flTouchEvent, barTouchResponse) async {
-                    if (barTouchResponse != null &&
-                        barTouchResponse.spot != null) {}
-                  },
-                  touchTooltipData: BarTouchTooltipData(
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                    tooltipPadding: const EdgeInsets.all(12),
-                    maxContentWidth: 200,
-                    tooltipBorder: const BorderSide(
-                      width: 2.0,
-                      color: Colors.black12,
-                      style: BorderStyle.none,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: BarChart(
+                BarChartData(
+                  groupsSpace: screenWidth > 1000 ? 28 : 16,
+                  maxY: getMaxValue(maxAmount),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    leftTitles: AxisTitles(
+                      sideTitles: _leftTitles,
+                      axisNameSize: 14,
                     ),
-                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                      return BarTooltipItem(
-                        '${rsmData.weeklyData[grpIndex].regionalManager}-'
-                        '${getMonthName(DateTime.now().month)}\n',
-                        const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        children: <TextSpan>[
-                          TextSpan(
-                            text:
-                                'Monthly Received: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneReceived + rsmData.weeklyData[grpIndex].weekTwoReceived + rsmData.weeklyData[grpIndex].weekThreeReceived + rsmData.weeklyData[grpIndex].weekFourReceived)}\n',
-                            style: const TextStyle(
-                              color: Color(0xFF2CA9DF),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                'Monthly Committed: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneCommitted + rsmData.weeklyData[grpIndex].weekTwoCommitted + rsmData.weeklyData[grpIndex].weekThreeCommitted + rsmData.weeklyData[grpIndex].weekFourCommitted)}\n',
-                            style: const TextStyle(
-                              color: Color(0xFFFF9F47),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                'Target: ${formatAmount(rsmData.weeklyData[grpIndex].targetMonth)}',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                        textAlign: TextAlign.start,
-                      );
-                    },
-                    getTooltipColor: (group) => Colors.white,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                    bottomTitles: AxisTitles(
+                      sideTitles: _bottomTitlesRsmAnalysis,
+                      axisNameSize: 20,
+                    ),
                   ),
-                  handleBuiltInTouches: true,
-                  touchExtraThreshold: const EdgeInsets.all(10),
+                  gridData: FlGridData(
+                    show: true,
+                    checkToShowHorizontalLine: (value) => value % 10 == 0,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.shade400.withValues(alpha: 0.5),
+                      strokeWidth: 1.2,
+                    ),
+                    drawVerticalLine: false,
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey.shade400,
+                        width: 0.7,
+                      ),
+                      top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    ),
+                  ),
+                  barGroups: _monthlyRsmAnalysisChartData(rsmData.weeklyData),
+                  barTouchData: BarTouchData(
+                    allowTouchBarBackDraw: true,
+                    touchCallback: (flTouchEvent, barTouchResponse) async {
+                      if (barTouchResponse != null &&
+                          barTouchResponse.spot != null) {}
+                    },
+                    touchTooltipData: BarTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      tooltipPadding: const EdgeInsets.all(12),
+                      maxContentWidth: 200,
+                      tooltipBorder: const BorderSide(
+                        width: 2.0,
+                        color: Colors.black12,
+                        style: BorderStyle.none,
+                      ),
+                      getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                        return BarTooltipItem(
+                          '${rsmData.weeklyData[grpIndex].regionalManager}-'
+                          '${getMonthName(DateTime.now().month)}\n',
+                          const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          children: <TextSpan>[
+                            TextSpan(
+                              text:
+                                  'Monthly Received: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneReceived + rsmData.weeklyData[grpIndex].weekTwoReceived + rsmData.weeklyData[grpIndex].weekThreeReceived + rsmData.weeklyData[grpIndex].weekFourReceived)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFF2CA9DF),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Monthly Committed: ${formatAmount(rsmData.weeklyData[grpIndex].weekOneCommitted + rsmData.weeklyData[grpIndex].weekTwoCommitted + rsmData.weeklyData[grpIndex].weekThreeCommitted + rsmData.weeklyData[grpIndex].weekFourCommitted)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFFFF9F47),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Target: ${formatAmount(rsmData.weeklyData[grpIndex].targetMonth)}',
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                          textAlign: TextAlign.start,
+                        );
+                      },
+                      getTooltipColor: (group) => Colors.white,
+                    ),
+                    handleBuiltInTouches: true,
+                    touchExtraThreshold: const EdgeInsets.all(10),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _monthlyCustomerAnalysis() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double chartWidth = 0.0;
+    int len = customerData.weeklyData.length;
+    final isWebWide = screenWidth > 900;
+
+    final double minBarWidth = isWebWide ? 90 : 70;
+    final double horizontalPadding = isWebWide ? 120 : 40;
+
+    chartWidth = math.max(screenWidth, (len * minBarWidth) + horizontalPadding);
+    double maxAmount = len > 0
+        ? customerData.weeklyData
+              .map((data) => (data.targetMonth))
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+    return Listener(
+      onPointerSignal: (pointerSignal) {
+        if (pointerSignal is PointerScrollEvent) {
+          final newOffset =
+              _horizontalCustomerController.offset +
+              pointerSignal.scrollDelta.dy;
+
+          if (_horizontalCustomerController.hasClients) {
+            _horizontalCustomerController.jumpTo(
+              newOffset.clamp(
+                0,
+                _horizontalCustomerController.position.maxScrollExtent,
+              ),
+            );
+          }
+        }
+      },
+      child: Scrollbar(
+        thumbVisibility: true,
+        controller: _horizontalCustomerController,
+        child: SingleChildScrollView(
+          controller: _horizontalCustomerController,
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            height: screenWidth > 1200
+                ? 520
+                : screenWidth > 800
+                ? 420
+                : 350,
+            width: chartWidth,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: BarChart(
+                BarChartData(
+                  groupsSpace: screenWidth > 1000 ? 28 : 16,
+                  maxY: getMaxValue(maxAmount),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    leftTitles: AxisTitles(
+                      sideTitles: _leftTitles,
+                      axisNameSize: 14,
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                    bottomTitles: AxisTitles(
+                      sideTitles: _bottomTitlesCustomerAnalysis,
+                      axisNameSize: 20,
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    checkToShowHorizontalLine: (value) => value % 10 == 0,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.shade400.withValues(alpha: 0.5),
+                      strokeWidth: 1.2,
+                    ),
+                    drawVerticalLine: false,
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey.shade400,
+                        width: 0.7,
+                      ),
+                      top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    ),
+                  ),
+                  barGroups: _monthlyCustomerAnalysisChartData(
+                    customerData.weeklyData,
+                  ),
+                  barTouchData: BarTouchData(
+                    allowTouchBarBackDraw: true,
+                    touchCallback: (flTouchEvent, barTouchResponse) async {
+                      if (barTouchResponse != null &&
+                          barTouchResponse.spot != null) {}
+                    },
+                    touchTooltipData: BarTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      tooltipPadding: const EdgeInsets.all(12),
+                      maxContentWidth: 200,
+                      tooltipBorder: const BorderSide(
+                        width: 2.0,
+                        color: Colors.black12,
+                        style: BorderStyle.none,
+                      ),
+                      getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                        return BarTooltipItem(
+                          '${customerData.weeklyData[grpIndex].customerName}-'
+                          '${getMonthName(DateTime.now().month)}\n',
+                          const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          children: <TextSpan>[
+                            TextSpan(
+                              text:
+                                  'Monthly Received: ${formatAmount(customerData.weeklyData[grpIndex].weekOneReceived + rsmData.weeklyData[grpIndex].weekTwoReceived + rsmData.weeklyData[grpIndex].weekThreeReceived + rsmData.weeklyData[grpIndex].weekFourReceived)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFF2CA9DF),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Monthly Committed: ${formatAmount(customerData.weeklyData[grpIndex].weekOneCommitted + rsmData.weeklyData[grpIndex].weekTwoCommitted + rsmData.weeklyData[grpIndex].weekThreeCommitted + rsmData.weeklyData[grpIndex].weekFourCommitted)}\n',
+                              style: const TextStyle(
+                                color: Color(0xFFFF9F47),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  'Target: ${formatAmount(customerData.weeklyData[grpIndex].targetMonth)}',
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                          textAlign: TextAlign.start,
+                        );
+                      },
+                      getTooltipColor: (group) => Colors.white,
+                    ),
+                    handleBuiltInTouches: true,
+                    touchExtraThreshold: const EdgeInsets.all(10),
+                  ),
                 ),
               ),
             ),

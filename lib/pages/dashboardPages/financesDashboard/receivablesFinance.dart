@@ -629,23 +629,27 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
   List<PieChartSectionData> _receivablesCategoryChart() {
     final List<PieChartSectionData> sections = [];
+
     for (final categoryData in receivablesCategoryList.categoryData) {
-      final fontSize = touchedIndex >= 0 ? 12.0 : 11.0;
-      final radius = touchedIndex >= 0 ? 80.0 : 75.0;
-      const shadows = [Shadow(color: Colors.black, blurRadius: 2)];
-      final sectionData = PieChartSectionData(
-        color: getCategoryColor(categoryData.categoryId),
-        value: categoryData.categoryPercentage.abs(),
-        title: '${categoryData.categoryPercentage.abs().toStringAsFixed(2)} %',
-        radius: radius,
-        titleStyle: TextStyle(
-          fontSize: fontSize,
-          color: Colors.black,
-          shadows: shadows,
+      final value = categoryData.categoryAmount.abs();
+
+      if (value <= 0) continue;
+
+      sections.add(
+        PieChartSectionData(
+          color: getCategoryColor(categoryData.categoryId),
+          value: value,
+          title: '${categoryData.categoryPercentage.abs().toStringAsFixed(2)}%',
+          radius: 50,
+          titleStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
       );
-      sections.add(sectionData);
     }
+
     return sections;
   }
 
@@ -2168,9 +2172,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           'Commitment',
         ],
         rows: rows,
-        fileName: 'AllReceivablesExcel.xlsx',
-        amountColumns: [8, 12, 22, 24, 25, 26, 27, 28, 29],
-        addTotalRow: false,
+        fileName:
+            '${getSelectedFiltersText(allCategoriesState) != "" ? "${getSelectedFiltersText(allCategoriesState)}_" : "All"}ReceivablesExcel.xlsx',
+        amountColumns: [8, 12, 22, 24, 25, 26, 27, 28, 29, 31],
+        addTotalRow: true,
         reportTitle: 'Finance - Gross Receivables',
       );
     } catch (e) {
@@ -3413,7 +3418,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ),
                         const Padding(
                           padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                          child: Divider(thickness: 2),
                         ),
 
                         Visibility(
@@ -3796,152 +3800,67 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.start,
-                                          children: [
-                                            SizedBox(width: 15),
-                                            Text(
-                                              "Customer Category wise Analysis",
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 16.0,
-                                        right: 16.0,
-                                        bottom: 16.0,
+                                    const Text(
+                                      "Customer Category wise Analysis",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          SizedBox(
-                                            height: 250,
-                                            width: 100,
-                                            child: PieChart(
-                                              PieChartData(
-                                                pieTouchData: PieTouchData(
-                                                  touchCallback:
-                                                      (
-                                                        FlTouchEvent event,
-                                                        pieTouchResponse,
-                                                      ) {},
-                                                ),
-                                                borderData: FlBorderData(
-                                                  show: false,
-                                                ),
-                                                sectionsSpace: 1,
-                                                centerSpaceRadius: 0,
-                                                startDegreeOffset: 360,
-                                                sections:
-                                                    _receivablesCategoryChart(),
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          height: 170,
+                                          width: 170,
+                                          child: PieChart(
+                                            PieChartData(
+                                              sectionsSpace: 2,
+                                              centerSpaceRadius: 40,
+                                              borderData: FlBorderData(
+                                                show: false,
                                               ),
+                                              sections:
+                                                  _receivablesCategoryChart(),
                                             ),
                                           ),
-                                          Row(
+                                        ),
+
+                                        const SizedBox(width: 20),
+                                        SizedBox(
+                                          width: 110,
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 2.0,
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Column(
-                                                      children: [
-                                                        Container(
-                                                          height: 8,
-                                                          width: 16,
-                                                          color: const Color(
-                                                            0xFFFF9F47,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 6,
-                                                        ),
-                                                        Container(
-                                                          height: 8,
-                                                          width: 16,
-                                                          color: const Color(
-                                                            0xFF97D7F3,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 6,
-                                                        ),
-                                                        Container(
-                                                          height: 8,
-                                                          width: 16,
-                                                          color: const Color(
-                                                            0xFF78E25D,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 6,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
+                                              _legendItem(
+                                                const Color(0xFFFF9F47),
+                                                "Distributor",
                                               ),
-                                              const Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                      left: 8.0,
-                                                    ),
-                                                    child: Text(
-                                                      "Distributor",
-                                                      textAlign: TextAlign.left,
-                                                      style: TextStyle(
-                                                        fontSize: 10,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                      left: 8.0,
-                                                    ),
-                                                    child: Text(
-                                                      "Hospital",
-                                                      textAlign: TextAlign.left,
-                                                      style: TextStyle(
-                                                        fontSize: 10,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                      left: 8.0,
-                                                    ),
-                                                    child: Text(
-                                                      "Other",
-                                                      textAlign: TextAlign.left,
-                                                      style: TextStyle(
-                                                        fontSize: 10,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
+                                              const SizedBox(height: 10),
+
+                                              _legendItem(
+                                                const Color(0xFF97D7F3),
+                                                "Hospital",
+                                              ),
+                                              const SizedBox(height: 10),
+
+                                              _legendItem(
+                                                const Color(0xFF78E25D),
+                                                "Other",
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -4247,6 +4166,23 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         });
       }
     });
+  }
+
+  Widget _legendItem(Color color, String text) {
+    return Row(
+      children: [
+        Container(
+          height: 10,
+          width: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(text, style: const TextStyle(fontSize: 12)),
+      ],
+    );
   }
 
   Widget _receivables() {
@@ -4637,166 +4573,181 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
               .map((data) => data.agingGroupTotal)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: screenWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesAdvanceFromCustomer,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _advanceFromCustomerChartData(
-              advanceCustomerList.agingData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedAdvance = touchedAdvance == ""
-                          ? advanceCustomerList
-                                .agingData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .agingGroup
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedReceivables,
-                        touchedNetReceivables,
-                        touchedAdvance,
-                        touchedCustomer,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesPerson,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _advanceFromCustomersHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _advanceFromCustomersHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: screenWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesAdvanceFromCustomer,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _advanceFromCustomerChartData(
+                  advanceCustomerList.agingData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedAdvance = touchedAdvance == ""
+                              ? advanceCustomerList
+                                    .agingData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .agingGroup
+                              : "";
+                          selectedChart = barTouchResponse.spot!.spot.x;
+                          showDrillDownChart = true;
+                          loadDataWithFilter(
+                            touchedReceivables,
+                            touchedNetReceivables,
+                            touchedAdvance,
+                            touchedCustomer,
+                            touchedRegionalManager,
+                            touchedSalesManager,
+                            touchedSalesPerson,
+                          );
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            '${advanceCustomerList.agingData[0].agingGroup} :'
-                            ' ${formatAmount(advanceCustomerList.agingData[0].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '',
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${advanceCustomerList.agingData[1].agingGroup} '
-                            ': ${formatAmount(advanceCustomerList.agingData[1].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${advanceCustomerList.agingData[2].agingGroup} '
-                            ': ${formatAmount(advanceCustomerList.agingData[2].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${advanceCustomerList.agingData[3].agingGroup} '
-                            ': ${formatAmount(advanceCustomerList.agingData[3].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${advanceCustomerList.agingData[4].agingGroup} '
-                            ': ${formatAmount(advanceCustomerList.agingData[4].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${advanceCustomerList.agingData[5].agingGroup} '
-                            ': ${formatAmount(advanceCustomerList.agingData[5].agingGroupTotal)} \n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Total'
-                            ': ${(formatAmount(advanceCustomerList.agingData[5].agingTotal))} ',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text:
+                                '${advanceCustomerList.agingData[0].agingGroup} :'
+                                ' ${formatAmount(advanceCustomerList.agingData[0].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${advanceCustomerList.agingData[1].agingGroup} '
+                                ': ${formatAmount(advanceCustomerList.agingData[1].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${advanceCustomerList.agingData[2].agingGroup} '
+                                ': ${formatAmount(advanceCustomerList.agingData[2].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${advanceCustomerList.agingData[3].agingGroup} '
+                                ': ${formatAmount(advanceCustomerList.agingData[3].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${advanceCustomerList.agingData[4].agingGroup} '
+                                ': ${formatAmount(advanceCustomerList.agingData[4].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${advanceCustomerList.agingData[5].agingGroup} '
+                                ': ${formatAmount(advanceCustomerList.agingData[5].agingGroupTotal)} \n',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'Total'
+                                ': ${(formatAmount(advanceCustomerList.agingData[5].agingTotal))} ',
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -4841,109 +4792,124 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: barChartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesCustomerAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _customerAnalysisChartData(
-              customerAnalysisFinanceList.customerData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedCustomer = touchedCustomer == ""
-                          ? customerAnalysisFinanceList
-                                .customerData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .customerName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedReceivables,
-                        touchedNetReceivables,
-                        touchedAdvance,
-                        touchedCustomer,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesPerson,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _customerAnalysisHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _customerAnalysisHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: barChartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: chartMaxY,
+                minY: chartMinY,
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesCustomerAnalysis,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${customerAnalysisFinanceList.customerData[grpIndex].customerName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _customerAnalysisChartData(
+                  customerAnalysisFinanceList.customerData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedCustomer = touchedCustomer == ""
+                              ? customerAnalysisFinanceList
+                                    .customerData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .customerName
+                              : "";
+                          selectedChart = barTouchResponse.spot!.spot.x;
+                          showDrillDownChart = true;
+                          loadDataWithFilter(
+                            touchedReceivables,
+                            touchedNetReceivables,
+                            touchedAdvance,
+                            touchedCustomer,
+                            touchedRegionalManager,
+                            touchedSalesManager,
+                            touchedSalesPerson,
+                          );
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: formatAmount(
-                          customerAnalysisFinanceList
-                              .customerData[grpIndex]
-                              .collectionAmount,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${customerAnalysisFinanceList.customerData[grpIndex].customerName}\n',
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: formatAmount(
+                              customerAnalysisFinanceList
+                                  .customerData[grpIndex]
+                                  .collectionAmount,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -4990,109 +4956,124 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesRegionalManager,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _regionalManagerAnalysisChartData(
-              rsmwiseCollectionList.rsmwiseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedRegionalManager = touchedRegionalManager == ""
-                          ? rsmwiseCollectionList
-                                .rsmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .rsmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedReceivables,
-                        touchedNetReceivables,
-                        touchedAdvance,
-                        touchedCustomer,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesPerson,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _regionalManagerAnalysisHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _regionalManagerAnalysisHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: chartMaxY,
+                minY: chartMinY,
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesRegionalManager,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${rsmwiseCollectionList.rsmwiseData[grpIndex].rsmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _regionalManagerAnalysisChartData(
+                  rsmwiseCollectionList.rsmwiseData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedRegionalManager = touchedRegionalManager == ""
+                              ? rsmwiseCollectionList
+                                    .rsmwiseData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .rsmName
+                              : "";
+                          selectedChart = barTouchResponse.spot!.spot.x;
+                          showDrillDownChart = true;
+                          loadDataWithFilter(
+                            touchedReceivables,
+                            touchedNetReceivables,
+                            touchedAdvance,
+                            touchedCustomer,
+                            touchedRegionalManager,
+                            touchedSalesManager,
+                            touchedSalesPerson,
+                          );
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: formatAmount(
-                          rsmwiseCollectionList
-                              .rsmwiseData[grpIndex]
-                              .collectionAmount,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${rsmwiseCollectionList.rsmwiseData[grpIndex].rsmName}\n',
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: formatAmount(
+                              rsmwiseCollectionList
+                                  .rsmwiseData[grpIndex]
+                                  .collectionAmount,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -5139,109 +5120,124 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesSalesManager,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _salesManagerAnalysisChartData(
-              asmwiseCollectionList.asmwiseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedSalesManager = touchedSalesManager == ""
-                          ? asmwiseCollectionList
-                                .asmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .asmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedReceivables,
-                        touchedNetReceivables,
-                        touchedAdvance,
-                        touchedCustomer,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesPerson,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _salesManagerAnalysisHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _salesManagerAnalysisHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: chartMaxY,
+                minY: chartMinY,
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesSalesManager,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${asmwiseCollectionList.asmwiseData[grpIndex].asmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _salesManagerAnalysisChartData(
+                  asmwiseCollectionList.asmwiseData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedSalesManager = touchedSalesManager == ""
+                              ? asmwiseCollectionList
+                                    .asmwiseData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .asmName
+                              : "";
+                          selectedChart = barTouchResponse.spot!.spot.x;
+                          showDrillDownChart = true;
+                          loadDataWithFilter(
+                            touchedReceivables,
+                            touchedNetReceivables,
+                            touchedAdvance,
+                            touchedCustomer,
+                            touchedRegionalManager,
+                            touchedSalesManager,
+                            touchedSalesPerson,
+                          );
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: formatAmount(
-                          asmwiseCollectionList
-                              .asmwiseData[grpIndex]
-                              .collectionAmount,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${asmwiseCollectionList.asmwiseData[grpIndex].asmName}\n',
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: formatAmount(
+                              asmwiseCollectionList
+                                  .asmwiseData[grpIndex]
+                                  .collectionAmount,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -5287,109 +5283,124 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesSalesPerson,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _salesPersonAnalysisChartData(
-              tsmwiseCollectionList.tsmwiseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedSalesPerson = touchedSalesPerson == ""
-                          ? tsmwiseCollectionList
-                                .tsmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .tsmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedReceivables,
-                        touchedNetReceivables,
-                        touchedAdvance,
-                        touchedCustomer,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesPerson,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+    return Scrollbar(
+      controller: _salesPersonAnalysisHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _salesPersonAnalysisHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: chartWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: chartMaxY,
+                minY: chartMinY,
+                titlesData: FlTitlesData(
+                  show: true,
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                  bottomTitles: AxisTitles(
+                    sideTitles: _bottomTitlesSalesPerson,
+                    axisNameSize: 20,
+                  ),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${tsmwiseCollectionList.tsmwiseData[grpIndex].tsmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+                barGroups: _salesPersonAnalysisChartData(
+                  tsmwiseCollectionList.tsmwiseData,
+                ),
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+                  touchCallback: (flTouchEvent, barTouchResponse) async {
+                    if (barTouchResponse != null &&
+                        barTouchResponse.spot != null) {
+                      setState(() {
+                        if (flTouchEvent is FlTapUpEvent) {
+                          touchedSalesPerson = touchedSalesPerson == ""
+                              ? tsmwiseCollectionList
+                                    .tsmwiseData[barTouchResponse.spot!.spot.x
+                                        .toInt()]
+                                    .tsmName
+                              : "";
+                          selectedChart = barTouchResponse.spot!.spot.x;
+                          showDrillDownChart = true;
+                          loadDataWithFilter(
+                            touchedReceivables,
+                            touchedNetReceivables,
+                            touchedAdvance,
+                            touchedCustomer,
+                            touchedRegionalManager,
+                            touchedSalesManager,
+                            touchedSalesPerson,
+                          );
+                        }
+                      });
+                    }
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 200,
+                    tooltipBorder: const BorderSide(
+                      width: 2.0,
+                      color: Colors.black12,
+                      style: BorderStyle.none,
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: formatAmount(
-                          tsmwiseCollectionList
-                              .tsmwiseData[grpIndex]
-                              .collectionAmount,
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      return BarTooltipItem(
+                        '${tsmwiseCollectionList.tsmwiseData[grpIndex].tsmName}\n',
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: formatAmount(
+                              tsmwiseCollectionList
+                                  .tsmwiseData[grpIndex]
+                                  .collectionAmount,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.black, //widget.touchedBarColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.start,
+                      );
+                    },
+                    getTooltipColor: (group) => Colors.white,
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
+                  handleBuiltInTouches: true,
+                  touchExtraThreshold: const EdgeInsets.all(10),
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -5559,6 +5570,21 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                                       : false,
                                                   onChanged: (bool? value) {
                                                     setState(() {
+                                                      // Prevent multiple selection for Customer
+                                                      if (categories[selectedCategoryIndex] ==
+                                                              'Customer' &&
+                                                          value == true) {
+                                                        for (
+                                                          int i = 0;
+                                                          i <
+                                                              selectedFinanceReceivablesOptions[selectedCategoryIndex]
+                                                                  .length;
+                                                          i++
+                                                        ) {
+                                                          selectedFinanceReceivablesOptions[selectedCategoryIndex][i] =
+                                                              false;
+                                                        }
+                                                      }
                                                       selectedFinanceReceivablesOptions[selectedCategoryIndex][optionIndex] =
                                                           value == true;
                                                       savedFinanceReceivablesOptionsTemp =

@@ -165,7 +165,7 @@ double mediumVal = 0;
 double highVal = 0;
 double monthlySOvalue = 0;
 double monthlyPurchasePriceSum = 0;
-double monthlyPurchasePriceGrnSum = 0;
+double monthlyPurchasePriceGrnSum = 0.00;
 double monthlyPOSum = 0;
 double currentMonthPOSum = 0;
 double lastMonthPOSum = 0;
@@ -350,8 +350,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   // GRN sum in current month
-  monthlyPurchasePriceGrnSum = 0;
-  for (final g in input.grnList.where((e) => e.itemSubGroup != "Sutures")) {
+  // .where((e) => e.itemSubGroup != "Sutures")  //May be add in future
+  monthlyPurchasePriceGrnSum = 0.00;
+  for (final g in input.grnList) {
     DateTime inv;
     try {
       inv = DateFormat('dd/MM/yyyy').parse(g.grnDate);
@@ -360,7 +361,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     }
     final ms = inv.millisecondsSinceEpoch;
     if (ms >= curFrom && ms <= curTo) {
-      monthlyPurchasePriceGrnSum += (double.tryParse(g.rowTotal) ?? 0);
+      monthlyPurchasePriceGrnSum += (double.tryParse(g.rowTotal) ?? 0.00);
     }
   }
 
@@ -2410,7 +2411,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       if (!mounted) return;
 
       setState(() {
-        if (stkList.isEmpty) {
+        if (stkList.isNotEmpty) {
           stockInTransitList = stkList;
         }
       });
@@ -2591,102 +2592,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     }
 
     return weeks;
-  }
-
-  Future<void> generateDailyCostingReport() async {
-    double safeNum(num? v) => v?.toDouble() ?? 0;
-
-    double safePercent(num? value, num? target) {
-      final v = safeNum(value);
-      final t = safeNum(target);
-      if (t == 0) return 0;
-      return (v / t) * 100;
-    }
-
-    // ================= CALCULATIONS =================
-    double totalTarget = safeNum(medicalDeviceTarget) + safeNum(ipdTarget);
-
-    // ================= HEADERS =================
-    final headers = ["Category", "Target", "Achievement", "%"];
-
-    // ================= ROWS =================
-    final rows = <List<dynamic>>[
-      // ===== REVENUE =====
-      [
-        "Revenue",
-        totalTarget,
-        safeNum(monthlySales),
-        safePercent(monthlySales, totalTarget),
-      ],
-      [
-        "  Medical Devices",
-        safeNum(medicalDeviceTarget),
-        safeNum(medicalDevicesSales),
-        safePercent(medicalDevicesSales, medicalDeviceTarget),
-      ],
-      [
-        "  IPD",
-        safeNum(ipdTarget),
-        safeNum(ipdSales),
-        safePercent(ipdSales, ipdTarget),
-      ],
-
-      ["", "", "", ""],
-
-      // ===== PENDING SALES =====
-      ["Pending Sales Order", "", safeNum(monthlySOvalue), ""],
-      ["  Low Priority", "", safeNum(lowVal), ""],
-      ["  Medium Priority", "", safeNum(mediumVal), ""],
-      ["  High Priority", "", safeNum(highVal), ""],
-      ["", "", "", ""],
-
-      // ===== PURCHASE =====
-      [
-        "Purchases",
-        safeNum(purchaseTarget),
-        safeNum(monthlyPurchasePriceGrnSum),
-        safePercent(monthlyPurchasePriceGrnSum, purchaseTarget),
-      ],
-
-      ["", "", "", ""],
-
-      // ===== INVENTORY =====
-      [
-        "Inventory Aging",
-        safeNum(inventoryTarget),
-        safeNum(inventoryClosingValue),
-        "",
-      ],
-      ["  <30 Days", "", safeNum(lessThan30DaysValue), ""],
-      ["  31-60 Days", "", safeNum(a30to60DaysValue), ""],
-      ["  61-90 Days", "", safeNum(a60to90DaysValue), ""],
-      ["  >90 Days", "", safeNum(a91DaysValue), ""],
-
-      ["", "", "", ""],
-
-      // ===== COGS =====
-      [
-        "COGS",
-        safeNum(cogsTarget),
-        safeNum(cogsValue),
-        safePercent(cogsValue, cogsTarget),
-      ],
-    ];
-
-    // ================= CALL SERVICE =================
-    await reportService.generateExcel(
-      sheetName: "Daily Costing",
-      headers: headers,
-      rows: rows,
-      fileName: "DailyCostingReport.xlsx",
-      reportTitle: "Daily Costing Report",
-
-      enableStyling: true,
-      highlightSections: true,
-      highlightNegative: true,
-
-      amountColumns: [2, 3, 4], // Target, Achievement, %
-    );
   }
 
   double getCompletedDaysInMonth(int year, int monthNumber) {
@@ -3354,10 +3259,10 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         row: 8,
         title: "Purchases",
         target: purchaseTarget,
-        achieved: monthlyPurchasePriceSum,
+        achieved: monthlyPurchasePriceGrnSum.toStringAsFixed(2),
         percentage: purchaseTarget == 0
             ? "0"
-            : ((monthlyPurchasePriceSum / purchaseTarget) * 100)
+            : ((monthlyPurchasePriceGrnSum / purchaseTarget) * 100)
                   .toStringAsFixed(2),
       );
 
@@ -3442,9 +3347,10 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       setDashboardRow(
         row: 18,
         worksheet: "Stock In Transit",
-        achieved: "0",
-        percentage: 0.toStringAsFixed(2),
+        achieved: stockInTransitValue.toStringAsFixed(2),
+        percentage: stockInTransitPercent.toStringAsFixed(2),
       );
+
       final inventoryMerge = sheet.getRangeByName("A13:A18");
       inventoryMerge.merge();
       inventoryMerge.setText("Inventory Ageing");
@@ -3623,7 +3529,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       interBranchPendingSoSum = 0;
       // Purchase & GRN
       monthlyPurchasePriceSum = 0;
-      monthlyPurchasePriceGrnSum = 0;
+      monthlyPurchasePriceGrnSum = 0.00;
 
       // Purchase Order sums
       monthlyPOSum = 0;

@@ -1626,7 +1626,8 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       ],
       fileName: 'cashConversionCycle.xlsx',
       reportTitle: 'Cash Conversion Cycle',
-      addTotalRow: false,
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      addTotalRow: true,
     );
   }
 

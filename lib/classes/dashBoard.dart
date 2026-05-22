@@ -5231,6 +5231,7 @@ class PendingOrderList {
 }
 
 class MonthlyCollectionReportData {
+  String? customerName;
   final String regionalManager;
   final String salesManager;
   final String salesPerson;
@@ -5244,6 +5245,7 @@ class MonthlyCollectionReportData {
   double weekFourCommitted;
   double weekFourReceived;
   MonthlyCollectionReportData({
+    this.customerName,
     required this.regionalManager,
     required this.salesManager,
     required this.salesPerson,
@@ -6224,19 +6226,19 @@ class StockInTransitList {
 
   factory StockInTransitList.fromJson(Map<String, dynamic> json) {
     return StockInTransitList(
-      documentDate: json["DocumentDate"] ?? "",
-      documentNo: json["DocumentNo"] ?? "",
-      customerCode: json["CustomerCode"] ?? "",
-      customerName: json["CustomerName"] ?? "",
-      itemNo: json["ItemNo"] ?? "",
-      itemDescription: json["ItemDescription"] ?? "",
-      quantity: json["Quantity"]?.toString() ?? "0",
-      price: json["Price"]?.toString() ?? "0",
-      lineTotal: json["LineTotal"]?.toString() ?? "0",
-      totalTax: json["TotalTax"]?.toString() ?? "0",
-      totalAmount: json["TotalAmount"]?.toString() ?? "0",
-      fromWarehouse: json["FromWarehouse"] ?? "",
-      toWarehouse: json["ToWarehouse"] ?? "",
+      documentDate: json["documentDate"] ?? "",
+      documentNo: json["documentNo"] ?? "",
+      customerCode: json["customerCode"] ?? "",
+      customerName: json["customerName"] ?? "",
+      itemNo: json["itemNo"] ?? "",
+      itemDescription: json["itemDescription"] ?? "",
+      quantity: json["quantity"]?.toString() ?? "0",
+      price: json["price"]?.toString() ?? "0",
+      lineTotal: json["lineTotal"]?.toString() ?? "0",
+      totalTax: json["totalTax"]?.toString() ?? "0",
+      totalAmount: json["totalAmount"]?.toString() ?? "0",
+      fromWarehouse: json["fromWarehouse"] ?? "",
+      toWarehouse: json["toWarehouse"] ?? "",
     );
   }
 }
