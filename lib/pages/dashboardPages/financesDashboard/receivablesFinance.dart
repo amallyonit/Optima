@@ -58,7 +58,7 @@ AsmwiseCollectionList asmwiseCollectionList = AsmwiseCollectionList(
 RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
   rsmwiseData: [],
 );
-
+List<AdvancePaidCustomerData> advancePaidCustomerList = [];
 final reportService = ReportService();
 
 double Collections = 0;
@@ -561,6 +561,30 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     },
   );
 
+  Widget getAdvancePaidCustomerBottomTitles(double value, TitleMeta meta) {
+    final index = value.toInt();
+
+    if (index >= advancePaidCustomerList.length) {
+      return const SizedBox();
+    }
+
+    final customer = advancePaidCustomerList[index].customerName;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+
+      child: Transform.rotate(
+        angle: -0.5,
+
+        child: Text(
+          customer.length > 10 ? '${customer.substring(0, 10)}...' : customer,
+
+          style: const TextStyle(fontSize: 11),
+        ),
+      ),
+    );
+  }
+
   SideTitles get _bottomTitlesRegionalManager => SideTitles(
     reservedSize: 30,
     showTitles: true,
@@ -731,6 +755,42 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           ),
         )
         .toList();
+  }
+
+  List<BarChartGroupData> _advancePaidCustomerChartData(
+    List<AdvancePaidCustomerData> data,
+    List<String> months,
+  ) {
+    return List.generate(data.length, (index) {
+      final item = data[index];
+
+      return BarChartGroupData(
+        x: index,
+
+        barsSpace: 4,
+
+        barRods: List.generate(months.length, (monthIndex) {
+          final month = months[monthIndex];
+
+          final value = item.monthlyAmounts[month] ?? 0;
+
+          return BarChartRodData(
+            toY: value,
+
+            width: 12,
+
+            borderRadius: BorderRadius.circular(2),
+
+            color: [
+              const Color(0xFF2CA9DF),
+              Colors.green,
+              Colors.orange,
+              Colors.purple,
+            ][monthIndex],
+          );
+        }),
+      );
+    });
   }
 
   List<BarChartGroupData> _regionalManagerAnalysisChartData(
@@ -1351,6 +1411,118 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     customerAnalysisFinanceList = CustomerAnalysisFinanceList(
       customerData: customerWiseDataList,
     );
+  }
+
+  Future<void> _loadAdvancePaidCustomerTrend(
+    String receivableId,
+    String netReceivableId,
+    String advanceId,
+    String customer,
+    String regionalManager,
+    String salesManager,
+    String salesPerson,
+  ) async {
+    advancePaidCustomerList.clear();
+
+    // -----------------------------
+    // 1. Rolling 4 Months
+    // -----------------------------
+
+    final current = currentDate!;
+
+    final months = List.generate(4, (index) {
+      return DateTime(current.year, current.month - (3 - index), 1);
+    });
+
+    // -----------------------------
+    // 2. Initial Filter
+    // -----------------------------
+
+    var filteredCustomers = targetAPIData.where((t) {
+      return t.parsedPostingDate.isAtMost(currentDate!);
+    }).cast<DebtorsAgingList>();
+
+    filteredCustomers = filterCollectionTargetList(
+      filteredCustomers.toList(),
+      usersListForFilter,
+      regionalManager: regionalManager,
+      salesManager: salesManager,
+      salesRep: salesPerson,
+      customer: customer,
+      receivableCatg: receivableId,
+      netReceivableCatg: netReceivableId,
+      advanceCatg: advanceId,
+    );
+
+    // -----------------------------
+    // 3. Unique Customers
+    // -----------------------------
+
+    final customerNames = filteredCustomers.map((e) => e.customerName).toSet();
+
+    // -----------------------------
+    // 4. Prepare Data
+    // -----------------------------
+
+    final Map<String, AdvancePaidCustomerData> customerMap = {};
+
+    for (var custName in customerNames) {
+      // FULL HISTORY OF CUSTOMER
+      final fullRows = targetAPIData.where((e) => e.customerName == custName);
+
+      // ONLY ADVANCE TERM CUSTOMERS
+      final customerRows = targetAPIData.where(
+        (e) => e.customerName == custName,
+      );
+
+      final hasAdvancePaymentTerm = customerRows.any(
+        (e) => (e.paymentTerms).toLowerCase().trim() == 'advance',
+      );
+
+      if (!hasAdvancePaymentTerm) {
+        continue;
+      }
+
+      // -------------------------
+      // Create Entry
+      // -------------------------
+      final monthKeys = months.map((e) => DateFormat('MMM').format(e));
+      final entry = customerMap.putIfAbsent(
+        custName,
+        () => AdvancePaidCustomerData(
+          customerName: custName,
+          monthlyAmounts: {for (var m in monthKeys) m: 0},
+          total: 0,
+        ),
+      );
+
+      // -------------------------
+      // Month Distribution
+      // -------------------------
+      for (var r in fullRows) {
+        final posting = r.parsedPostingDate;
+        final amount = (double.tryParse(r.balance) ?? 0).abs();
+        for (var monthDate in months) {
+          if (posting.year == monthDate.year &&
+              posting.month == monthDate.month) {
+            final key = DateFormat('MMM').format(monthDate);
+
+            entry.monthlyAmounts[key] =
+                (entry.monthlyAmounts[key] ?? 0) + amount;
+
+            entry.total += amount;
+          }
+        }
+      }
+    }
+
+    // -----------------------------
+    // 5. Final List
+    // -----------------------------
+    advancePaidCustomerList = customerMap.values.toList();
+
+    // Highest first
+    advancePaidCustomerList.sort((a, b) => b.total.compareTo(a.total));
   }
 
   Future<void> _loadTSMCollectionBarChartData(
@@ -2093,7 +2265,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .updateTargetList(targetList);
 
         target = filtered;
-        targetAPIData = filtered;
+        targetAPIData =
+            targetList; // Keep full data for export, use filtered for display
+        // targetAPIData = filtered;
       });
     } catch (e) {
       if (mounted) {
@@ -2357,6 +2531,92 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
   }
 
+  Future<void> generateAdvancePaidCustomerTrendExcel(
+    List<AdvancePaidCustomerData> list,
+  ) async {
+    try {
+      final current = currentDate!;
+
+      final months = List.generate(4, (index) {
+        return DateFormat(
+          'MMM',
+        ).format(DateTime(current.year, current.month - (3 - index), 1));
+      });
+
+      await reportService.generateExcel(
+        sheetName: 'AdvancePaidCustomerTrend',
+
+        headers: ['Customer Name', ...months, 'Total'],
+
+        rows: list.map((e) {
+          return [
+            e.customerName,
+
+            for (var month in months)
+              (e.monthlyAmounts[month] ?? 0).toStringAsFixed(2),
+
+            e.total.toStringAsFixed(2),
+          ];
+        }).toList(),
+
+        fileName: 'AdvancePaidCustomerTrend.xlsx',
+
+        amountColumns: [2, 3, 4, 5, 6],
+
+        addTotalRow: true,
+
+        reportTitle: 'Finance - Advance Paid Customer Trend',
+      );
+    } catch (e) {
+      final snackBar = SnackBar(content: Text('Error: $e'));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+  }
+
+  Future<void> generateAdvancePaidCustomerTrendPDF(
+    List<AdvancePaidCustomerData> list,
+  ) async {
+    try {
+      final current = currentDate!;
+
+      final months = List.generate(4, (index) {
+        return DateFormat(
+          'MMM',
+        ).format(DateTime(current.year, current.month - (3 - index), 1));
+      });
+
+      await reportService.generatePDF(
+        title: 'Finance - Advance Paid Customer Trend',
+
+        headers: ['Customer Name', ...months, 'Total'],
+
+        rows: list.map((e) {
+          return [
+            e.customerName,
+
+            for (var month in months)
+              (e.monthlyAmounts[month] ?? 0).toStringAsFixed(2),
+
+            e.total.toStringAsFixed(2),
+          ];
+        }).toList(),
+
+        fileName: 'AdvancePaidCustomerTrend.pdf',
+
+        amountColumns: [2, 3, 4, 5, 6],
+      );
+    } catch (e) {
+      final snackBar = SnackBar(content: Text('Error: $e'));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+  }
+
   Future<void> generateRegionalManagerExcel(RsmwiseCollectionList list) async {
     try {
       await reportService.generateExcel(
@@ -2522,6 +2782,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       _loadNetReceivablesData("", "", "", "", "", "", ""),
       _loadAdvanceFromCustomers("", "", "", "", "", "", ""),
       _loadCustomerAnalysis("", "", "", "", "", "", ""),
+      _loadAdvancePaidCustomerTrend("", "", "", "", "", "", ""),
       _loadTSMCollectionBarChartData("", "", "", "", "", "", ""),
       _loadASMCollectionBarChartData("", "", "", "", "", "", ""),
       _loadRSMCollectionBarChartData("", "", "", "", "", "", ""),
@@ -2821,6 +3082,15 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         salesPerson,
       ),
       _loadCustomerAnalysis(
+        receivableId,
+        netReceivableId,
+        advanceId,
+        customer,
+        regionalManager,
+        salesManager,
+        salesPerson,
+      ),
+      _loadAdvancePaidCustomerTrend(
         receivableId,
         netReceivableId,
         advanceId,
@@ -3130,6 +3400,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   final ScrollController _advanceFromCustomersHorizontalController =
       ScrollController();
   final ScrollController _customerAnalysisHorizontalController =
+      ScrollController();
+  final ScrollController _customerAdvancePaidTrendHorizontalController =
       ScrollController();
   final ScrollController _regionalManagerAnalysisHorizontalController =
       ScrollController();
@@ -3779,6 +4051,97 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         right: 16.0,
                                       ),
                                       child: _customerAnalysis(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible: advancePaidCustomerList.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Advance Paid Customers Trend",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateAdvancePaidCustomerTrendExcel(
+                                                        advancePaidCustomerList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateAdvancePaidCustomerTrendPDF(
+                                                        advancePaidCustomerList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child: _advancePaidCustomerTrendChart(),
                                     ),
                                   ],
                                 ),
@@ -4908,6 +5271,144 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                   ),
                   handleBuiltInTouches: true,
                   touchExtraThreshold: const EdgeInsets.all(10),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _advancePaidCustomerTrendChart() {
+    final current = currentDate!;
+
+    final months = List.generate(4, (index) {
+      return DateFormat(
+        'MMM',
+      ).format(DateTime(current.year, current.month - (3 - index), 1));
+    });
+
+    double maxAmount = 0;
+
+    for (var c in advancePaidCustomerList) {
+      for (var v in c.monthlyAmounts.values) {
+        if (v > maxAmount) {
+          maxAmount = v;
+        }
+      }
+    }
+
+    return Scrollbar(
+      controller: _customerAdvancePaidTrendHorizontalController,
+      thumbVisibility: true,
+      radius: const Radius.circular(10),
+      notificationPredicate: (_) => true,
+      child: SingleChildScrollView(
+        controller: _customerAdvancePaidTrendHorizontalController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: SizedBox(
+          height: 350,
+          width: advancePaidCustomerList.length * 120,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: BarChart(
+              BarChartData(
+                maxY: getMaxValue(maxAmount),
+
+                titlesData: FlTitlesData(
+                  show: true,
+
+                  leftTitles: AxisTitles(
+                    sideTitles: _leftTitles,
+                    axisNameSize: 14,
+                  ),
+
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+
+                  topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: getAdvancePaidCustomerBottomTitles,
+                    ),
+                    axisNameSize: 20,
+                  ),
+                ),
+
+                gridData: FlGridData(
+                  show: true,
+                  checkToShowHorizontalLine: (value) => value % 10 == 0,
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                    top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  ),
+                ),
+
+                barGroups: _advancePaidCustomerChartData(
+                  advancePaidCustomerList,
+                  months,
+                ),
+
+                barTouchData: BarTouchData(
+                  allowTouchBarBackDraw: true,
+
+                  touchTooltipData: BarTouchTooltipData(
+                    maxContentWidth: 250,
+
+                    getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                      final customer = advancePaidCustomerList[grpIndex];
+
+                      return BarTooltipItem(
+                        '${customer.customerName}\n\n',
+
+                        const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+
+                        children: [
+                          for (var m in months)
+                            TextSpan(
+                              text:
+                                  '$m : ${formatAmount(customer.monthlyAmounts[m] ?? 0)}\n',
+
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 12,
+                              ),
+                            ),
+
+                          TextSpan(
+                            text: '\nTotal : ${formatAmount(customer.total)}',
+
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+
+                    getTooltipColor: (group) => Colors.white,
+
+                    fitInsideVertically: true,
+                    fitInsideHorizontally: true,
+                  ),
                 ),
               ),
             ),

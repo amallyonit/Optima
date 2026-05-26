@@ -2512,81 +2512,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     return (vendorBalances[vendorCode] ?? 0) > 0;
   }
 
-  Future<void> loadDataWithFilter(
-    String? payable,
-    String? advancePaid,
-    String? supplier,
-    String? supplierCategory,
-    String? documentType,
-    String? bpGroup,
-  ) async {
-    setState(() {
-      chartDataLoadedPayables = false;
-    });
-    clearVariablesForFilter();
-    LoadDates();
-    payablesList = payablesListMaster;
-    await Future.wait([
-      _loadPayablesData(
-        payable!,
-        advancePaid!,
-        supplier!,
-        supplierCategory!,
-        documentType!,
-        bpGroup!,
-      ),
-      _loadAdvancePaidData(
-        payable,
-        advancePaid,
-        supplier,
-        supplierCategory,
-        documentType,
-        bpGroup,
-      ),
-      _loadSupplierAnalysis(
-        payable,
-        advancePaid,
-        supplier,
-        supplierCategory,
-        documentType,
-        bpGroup,
-      ),
-      _loadSupplierCategoryAnalysis(
-        payable,
-        advancePaid,
-        supplier,
-        supplierCategory,
-        documentType,
-        bpGroup,
-      ),
-      _loadDocumentTypeAnalysis(
-        payable,
-        advancePaid,
-        supplier,
-        supplierCategory,
-        documentType,
-        bpGroup,
-      ),
-      _loadVendorPaymentProjection(),
-      _loadFixedExpenses(),
-      _loadBpGroup(
-        payable,
-        advancePaid,
-        supplier,
-        supplierCategory,
-        documentType,
-        bpGroup,
-      ),
-      _loadAdvanceVendors(),
-      _loadCapitalVendors(),
-    ]);
-
-    await applyPayablesVariables();
-    setState(() {
-      chartDataLoadedPayables = true;
-    });
-  }
-
   Future<void> removeFilter() async {
     setState(() {
       chartDataLoadedPayables = false;
@@ -2596,6 +2521,8 @@ class _PayableFinanceState extends State<PayableFinance> {
     allCategoriesState.forEach((category, options) {
       options.updateAll((key, value) => false);
     });
+    toDateFilter = currentDate;
+    fromDateFilter = fiscalYearStartDate;
     await loadData("");
     if (mounted) {
       setState(() {
@@ -2676,9 +2603,10 @@ class _PayableFinanceState extends State<PayableFinance> {
     }).toList();
 
     // ---------- Date Filter ----------
-    if (dateFilterFlag && toDateFilter != null) {
+    if (dateFilterFlag && fromDateFilter != null && toDateFilter != null) {
       list = list.where((p) {
-        return p.postingDateParsed.isAtMost(toDateFilter!);
+        return p.postingDateParsed.isAtLeast(fromDateFilter!) &&
+            p.postingDateParsed.isAtMost(toDateFilter!);
       }).toList();
     }
 
@@ -2989,16 +2917,10 @@ class _PayableFinanceState extends State<PayableFinance> {
   }
 
   Future<void> filterChartFunction() async {
-    // await Future.delayed(const Duration(milliseconds: 100));
-    // // Step 1: show loading
-    // setState(() {
-    //   chartDataLoadedPayables = false;
-    // });
-
-    // Step 2: reset base list
+    // Step 1: reset base list
     payablesList = applyFilters();
 
-    // Step 3: run the async loaders
+    // Step 2: run the async loaders
     await Future.wait([
       _loadPayablesData("", "", "", "", "", ""),
       _loadAdvancePaidData("", "", "", "", "", ""),
@@ -3103,7 +3025,6 @@ class _PayableFinanceState extends State<PayableFinance> {
   @override
   Widget build(BuildContext context) {
     DateTime currentDate = DateTime.now();
-    // selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoadedPayables == true
         ? SingleChildScrollView(
             child: Column(
@@ -3789,23 +3710,6 @@ class _PayableFinanceState extends State<PayableFinance> {
             ),
           )
         : const Center(child: CircularProgressIndicator());
-  }
-
-  showPopupMenu() {
-    showMenu<String>(
-      context: context,
-      position: const RelativeRect.fromLTRB(25.0, 200.0, 0.0, 0.0),
-      elevation: 8.0,
-      items: [
-        const PopupMenuItem<String>(value: '1', child: Text('Remove Filter?')),
-      ],
-    ).then((value) {
-      if (value == '1') {
-        setState(() {
-          loadDataFuture = removeFilter();
-        });
-      }
-    });
   }
 
   Widget _payables() {
@@ -5193,8 +5097,81 @@ class _PayableFinanceState extends State<PayableFinance> {
                                 child:
                                     selectedCategoryIndex ==
                                         categories.indexOf('Date')
-                                    ? Column(
+                                    ?
+                                      // Column(
+                                      //     children: [
+                                      //       ListTile(
+                                      //         title: const Text("To Date"),
+                                      //         subtitle: Text(
+                                      //           toDateFilter != null
+                                      //               ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
+                                      //               : formatDateString(
+                                      //                   currentDate!,
+                                      //                 ),
+                                      //         ),
+                                      //         trailing: const Icon(
+                                      //           Icons.calendar_today,
+                                      //         ),
+                                      //         onTap: () async {
+                                      //           final picked =
+                                      //               await showDatePicker(
+                                      //                 context: context,
+                                      //                 initialDate:
+                                      //                     toDateFilter ??
+                                      //                     DateTime.now(),
+                                      //                 firstDate:
+                                      //                     fiscalYearStartDate!,
+                                      //                 lastDate: currentDate!,
+                                      //               );
+                                      //           if (picked != null) {
+                                      //             modalSetState(() {
+                                      //               toDateFilter = picked;
+                                      //               dateFilterFlag = true;
+                                      //             });
+                                      //           }
+                                      //         },
+                                      //       ),
+                                      //     ],
+                                      //   )
+                                      Column(
                                         children: [
+                                          // FROM DATE
+                                          ListTile(
+                                            title: const Text("From Date"),
+                                            subtitle: Text(
+                                              fromDateFilter != null
+                                                  ? "${fromDateFilter!.day}/${fromDateFilter!.month}/${fromDateFilter!.year}"
+                                                  : formatDateString(
+                                                      fiscalYearStartDate!,
+                                                    ),
+                                            ),
+                                            trailing: const Icon(
+                                              Icons.calendar_today,
+                                            ),
+                                            onTap: () async {
+                                              final picked =
+                                                  await showDatePicker(
+                                                    context: context,
+                                                    initialDate:
+                                                        fromDateFilter ??
+                                                        fiscalYearStartDate!,
+                                                    firstDate:
+                                                        fiscalYearStartDate!,
+                                                    lastDate:
+                                                        toDateFilter ??
+                                                        currentDate!,
+                                                  );
+
+                                              if (picked != null) {
+                                                modalSetState(() {
+                                                  fromDateFilter = picked;
+                                                  dateFilterFlag = true;
+                                                });
+                                              }
+                                            },
+                                          ),
+
+                                          // TO DATE
                                           ListTile(
                                             title: const Text("To Date"),
                                             subtitle: Text(
@@ -5213,11 +5190,13 @@ class _PayableFinanceState extends State<PayableFinance> {
                                                     context: context,
                                                     initialDate:
                                                         toDateFilter ??
-                                                        DateTime.now(),
+                                                        currentDate!,
                                                     firstDate:
+                                                        fromDateFilter ??
                                                         fiscalYearStartDate!,
                                                     lastDate: currentDate!,
                                                   );
+
                                               if (picked != null) {
                                                 modalSetState(() {
                                                   toDateFilter = picked;

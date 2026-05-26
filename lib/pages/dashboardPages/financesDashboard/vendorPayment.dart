@@ -2352,6 +2352,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                           resetSelection();
                         });
                       },
+
                       child: const SizedBox(
                         width: 400,
                         child: Center(

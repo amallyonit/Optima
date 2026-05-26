@@ -6273,3 +6273,17 @@ class CustomerWeekCommitment {
     this.week4 = 0,
   });
 }
+
+class AdvancePaidCustomerData {
+  String customerName;
+
+  Map<String, double> monthlyAmounts;
+
+  double total;
+
+  AdvancePaidCustomerData({
+    required this.customerName,
+    required this.monthlyAmounts,
+    required this.total,
+  });
+}

@@ -69,9 +69,9 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   int currentQuarter = 0;
 
   List<DebtorsAgingList> debtorsList = [];
-  List<DebtorsAgingList> debtorsListTemp = [];
+  List<DebtorsAgingList> debtorsListFiltered = [];
   List<CollectionList> collection = [];
-  List<CollectionList> collectionTemp = [];
+  List<CollectionList> collectionFiltered = [];
   List<SalesList> sales = [];
   List<SalesList> salesTemp = [];
   List<SODetailsList> soList = [];
@@ -91,6 +91,10 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
   double a60to90DaysValue = 0;
   double nearExpiryValue = 0;
   double expiredValue = 0;
+
+  String? selectedRsm;
+  String? selectedAsm;
+  String? selectedTsm;
 
   MonthlyCollectionReportList customerData = MonthlyCollectionReportList(
     weeklyData: [],
@@ -296,10 +300,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     userLevel = prefs.getString('userLevel') ?? '';
     await _loadCollectionTarget(userName, userLevel);
     await _loadCollection(userName, userLevel);
-    await _loadTSMCollectionBarChartData();
-    await _loadASMCollectionBarChartData();
-    await _loadRSMCollectionBarChartData();
-    await _loadCustomerCollectionBarChartData();
+    await applyChartFilters();
     setState(() {
       chartDataLoadedMonthlyCollection = true;
     });
@@ -362,7 +363,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
           targetList,
         );
 
-        debtorsListTemp = targetList;
+        debtorsListFiltered = targetList;
         debtorsList = targetList;
       });
     } catch (e) {
@@ -439,7 +440,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             .updateMonthlyDebtorAgingList(collectionList);
 
         collection = collectionList;
-        collectionTemp = collectionList;
+        collectionFiltered = collectionList;
       });
     } catch (e) {
       if (!mounted) return;
@@ -451,6 +452,52 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         ),
       );
     }
+  }
+
+  Future<void> applyChartFilters() async {
+    //Apply filters to collection and debtors list
+    collectionFiltered = collection.where((e) {
+      bool match = true;
+
+      if (selectedRsm != null) {
+        match = match && e.regionalManager == selectedRsm;
+      }
+
+      if (selectedAsm != null) {
+        match = match && e.salesManager == selectedAsm;
+      }
+
+      if (selectedTsm != null) {
+        match = match && e.salesRep == selectedTsm;
+      }
+
+      return match;
+    }).toList();
+
+    debtorsListFiltered = debtorsList.where((e) {
+      bool match = true;
+
+      if (selectedRsm != null) {
+        match = match && e.regionalManager == selectedRsm;
+      }
+
+      if (selectedAsm != null) {
+        match = match && e.salesManager == selectedAsm;
+      }
+
+      if (selectedTsm != null) {
+        match = match && e.salesRep == selectedTsm;
+      }
+
+      return match;
+    }).toList();
+
+    await _loadTSMCollectionBarChartData();
+    await _loadASMCollectionBarChartData();
+    await _loadRSMCollectionBarChartData();
+    await _loadCustomerCollectionBarChartData();
+
+    setState(() {});
   }
 
   List<Map<String, DateTime>> getWeeksOfCurrentMonth() {
@@ -488,13 +535,14 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     final Map<String, MonthlyCollectionReportData> tsmMap = {};
 
     // Process Debtors (commitment + balance)
-    for (var d in debtorsList) {
+    for (var d in debtorsListFiltered) {
       final date = dateFormat.parse(d.dueon);
       final tsm = d.salesRep;
 
       final entry = tsmMap.putIfAbsent(
         tsm,
         () => MonthlyCollectionReportData(
+          customerName: "",
           regionalManager: "",
           salesManager: "",
           salesPerson: tsm,
@@ -541,7 +589,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     }
 
     // Process Collections (received)
-    for (var c in collection) {
+    for (var c in collectionFiltered) {
       final date = dateFormat.parse(c.postingDate);
       final tsm = c.salesRep;
 
@@ -601,13 +649,14 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     final Map<String, MonthlyCollectionReportData> asmMap = {};
 
     // Process Debtors (commitment + balance)
-    for (var d in debtorsList) {
+    for (var d in debtorsListFiltered) {
       final date = dateFormat.parse(d.dueon);
       final asm = d.salesManager;
 
       final entry = asmMap.putIfAbsent(
         asm,
         () => MonthlyCollectionReportData(
+          customerName: "",
           regionalManager: "",
           salesManager: asm,
           salesPerson: "",
@@ -654,7 +703,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     }
 
     // Process Collections (received)
-    for (var c in collection) {
+    for (var c in collectionFiltered) {
       final date = dateFormat.parse(c.postingDate);
       final asm = c.salesManager;
 
@@ -715,7 +764,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
 
     // Process Debtors (commitment + balance)
 
-    for (var d in debtorsList) {
+    for (var d in debtorsListFiltered) {
       final date = dateFormat.parse(d.dueon);
       final rsm = d.regionalManager;
       final expPayDate = d.expectedPayment.toString().trim().isNotEmpty
@@ -725,6 +774,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       final entry = rsmMap.putIfAbsent(
         rsm,
         () => MonthlyCollectionReportData(
+          customerName: "",
           regionalManager: rsm,
           salesManager: "",
           salesPerson: "",
@@ -773,7 +823,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     }
 
     // Process Collections (received)
-    for (var c in collection) {
+    for (var c in collectionFiltered) {
       final date = dateFormat.parse(c.postingDate);
       final rsm = c.regionalManager;
 
@@ -834,7 +884,7 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
 
     // Process Debtors (commitment + balance)
 
-    for (var d in debtorsList) {
+    for (var d in debtorsListFiltered) {
       final date = dateFormat.parse(d.dueon);
       final customer = d.customerName;
       final expPayDate = d.expectedPayment.toString().trim().isNotEmpty
@@ -893,9 +943,9 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
     }
 
     // Process Collections (received)
-    for (var c in collection) {
+    for (var c in collectionFiltered) {
       final date = dateFormat.parse(c.postingDate);
-      final customer = c.regionalManager;
+      final customer = c.customerName;
 
       final entry = customerMap[customer];
       if (entry == null) continue;
@@ -1349,7 +1399,9 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFF2CA9DF),
+                color: selectedTsm == chartData.salesPerson
+                    ? Colors.red
+                    : const Color(0xFF2CA9DF),
                 borderRadius: BorderRadius.zero,
                 toY:
                     chartData.weekOneReceived +
@@ -1359,13 +1411,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                 width: 15,
               ),
               BarChartRodData(
-                color: Colors.green,
+                color: selectedTsm == chartData.salesPerson
+                    ? Colors.red.shade300
+                    : Colors.green,
                 borderRadius: BorderRadius.zero,
                 toY: chartData.targetMonth,
                 width: 15,
               ),
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                color: selectedTsm == chartData.salesPerson
+                    ? Colors.red.shade100
+                    : const Color(0xFFFF9F47),
                 borderRadius: BorderRadius.zero,
                 toY:
                     chartData.weekOneCommitted +
@@ -1389,7 +1445,9 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFF2CA9DF),
+                color: selectedAsm == chartData.salesManager
+                    ? Colors.red
+                    : const Color(0xFF2CA9DF),
                 borderRadius: BorderRadius.zero,
                 toY:
                     chartData.weekOneReceived +
@@ -1399,13 +1457,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                 width: 15,
               ),
               BarChartRodData(
-                color: Colors.green,
+                color: selectedAsm == chartData.salesManager
+                    ? Colors.red.shade300
+                    : Colors.green,
                 borderRadius: BorderRadius.zero,
                 toY: chartData.targetMonth,
                 width: 15,
               ),
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                color: selectedAsm == chartData.salesManager
+                    ? Colors.red.shade100
+                    : const Color(0xFFFF9F47),
                 borderRadius: BorderRadius.zero,
                 toY:
                     chartData.weekOneCommitted +
@@ -1429,7 +1491,9 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFF2CA9DF),
+                color: selectedRsm == chartData.regionalManager
+                    ? Colors.red
+                    : const Color(0xFF2CA9DF),
                 borderRadius: BorderRadius.zero,
                 toY:
                     chartData.weekOneReceived +
@@ -1439,13 +1503,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                 width: 15,
               ),
               BarChartRodData(
-                color: Colors.green,
+                color: selectedRsm == chartData.regionalManager
+                    ? Colors.red.shade300
+                    : Colors.green,
                 borderRadius: BorderRadius.zero,
                 toY: chartData.targetMonth,
                 width: 15,
               ),
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                color: selectedRsm == chartData.regionalManager
+                    ? Colors.red.shade100
+                    : const Color(0xFFFF9F47),
                 borderRadius: BorderRadius.zero,
                 toY:
                     chartData.weekOneCommitted +
@@ -1999,9 +2067,26 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                   barGroups: _monthlyTsmAnalysisChartData(tsmData.weeklyData),
                   barTouchData: BarTouchData(
                     allowTouchBarBackDraw: true,
-                    touchCallback: (flTouchEvent, barTouchResponse) async {
-                      if (barTouchResponse != null &&
-                          barTouchResponse.spot != null) {}
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is! FlTapUpEvent) return;
+
+                      final spot = barTouchResponse?.spot;
+
+                      if (spot == null) return;
+
+                      final touchedTsm = tsmData
+                          .weeklyData[spot.touchedBarGroupIndex]
+                          .salesPerson;
+
+                      setState(() {
+                        if (selectedTsm == touchedTsm) {
+                          selectedTsm = null;
+                        } else {
+                          selectedTsm = touchedTsm;
+                        }
+
+                        applyChartFilters();
+                      });
                     },
                     touchTooltipData: BarTouchTooltipData(
                       fitInsideHorizontally: true,
@@ -2155,9 +2240,26 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                   barGroups: _monthlyAsmAnalysisChartData(asmData.weeklyData),
                   barTouchData: BarTouchData(
                     allowTouchBarBackDraw: true,
-                    touchCallback: (flTouchEvent, barTouchResponse) async {
-                      if (barTouchResponse != null &&
-                          barTouchResponse.spot != null) {}
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is! FlTapUpEvent) return;
+
+                      final spot = barTouchResponse?.spot;
+
+                      if (spot == null) return;
+
+                      final touchedAsm = asmData
+                          .weeklyData[spot.touchedBarGroupIndex]
+                          .salesManager;
+
+                      setState(() {
+                        if (selectedAsm == touchedAsm) {
+                          selectedAsm = null;
+                        } else {
+                          selectedAsm = touchedAsm;
+                        }
+
+                        applyChartFilters();
+                      });
                     },
                     touchTooltipData: BarTouchTooltipData(
                       fitInsideHorizontally: true,
@@ -2311,9 +2413,26 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                   barGroups: _monthlyRsmAnalysisChartData(rsmData.weeklyData),
                   barTouchData: BarTouchData(
                     allowTouchBarBackDraw: true,
-                    touchCallback: (flTouchEvent, barTouchResponse) async {
-                      if (barTouchResponse != null &&
-                          barTouchResponse.spot != null) {}
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is! FlTapUpEvent) return;
+
+                      final spot = barTouchResponse?.spot;
+
+                      if (spot == null) return;
+
+                      final touchedRsm = rsmData
+                          .weeklyData[spot.touchedBarGroupIndex]
+                          .regionalManager;
+
+                      setState(() {
+                        if (selectedRsm == touchedRsm) {
+                          selectedRsm = null;
+                        } else {
+                          selectedRsm = touchedRsm;
+                        }
+
+                        applyChartFilters();
+                      });
                     },
                     touchTooltipData: BarTouchTooltipData(
                       fitInsideHorizontally: true,

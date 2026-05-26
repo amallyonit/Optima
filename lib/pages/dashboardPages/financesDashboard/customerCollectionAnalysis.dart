@@ -2074,12 +2074,10 @@ class _CustomerCollectionAnalysisState
   Widget buildMonthSelector() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      // padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color.fromARGB(255, 110, 218, 209), Color(0xff2ca9df)],
-          // colors: [Color(0xff2ca9df), Color(0xff0066ff)],
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
@@ -2165,7 +2163,7 @@ class _CustomerCollectionAnalysisState
 
           buildHeaderCell(getWeekLabel(4), 120),
 
-          buildHeaderCell("+", 120),
+          buildHeaderCell(" +/- ", 120),
         ],
       ),
     );
