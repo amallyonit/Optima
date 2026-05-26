@@ -6274,6 +6274,27 @@ class CustomerWeekCommitment {
   });
 }
 
+class VendorCommitmentSummary {
+  String vendorCode;
+  String vendorName;
+  double totalOutstanding;
+  double totalCommitment;
+
+  VendorCommitmentSummary({
+    required this.vendorCode,
+    required this.vendorName,
+    required this.totalOutstanding,
+    this.totalCommitment = 0,
+  });
+}
+
+class VendorMonthCommitment {
+  String vendorCode;
+  double commitment;
+
+  VendorMonthCommitment({required this.vendorCode, this.commitment = 0});
+}
+
 class AdvancePaidCustomerData {
   String customerName;
 

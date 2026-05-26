@@ -1811,7 +1811,16 @@ class _CustomerCollectionAnalysisState
               ],
             ),
           )
-        : const Center(child: CircularProgressIndicator());
+        : SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                buildViewToggle(),
+                const SizedBox(height: 180),
+                const Center(child: CircularProgressIndicator()),
+              ],
+            ),
+          );
   }
 
   Widget _receivablesAging() {
@@ -1954,7 +1963,7 @@ class _CustomerCollectionAnalysisState
           /// CUSTOMER WISE
           Expanded(
             child: GestureDetector(
-              onTap: () {
+              onTap: () async {
                 if (selectedViewType == CollectionViewType.customerWise) {
                   return;
                 }
@@ -1964,6 +1973,7 @@ class _CustomerCollectionAnalysisState
                   isCustomerWiseLoaded = false;
                 });
                 loadDataFuture = loadData("");
+                await loadDataFuture;
                 toDateFilter = currentDate;
                 fromDateFilter = fiscalYearStartDate;
               },
@@ -2023,6 +2033,7 @@ class _CustomerCollectionAnalysisState
                   isBillWiseLoaded = false;
                 });
                 loadDataFuture = loadData("");
+                await loadDataFuture;
                 toDateFilter = currentDate;
                 fromDateFilter = fiscalYearStartDate;
               },
