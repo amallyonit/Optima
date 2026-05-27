@@ -237,6 +237,7 @@ class _CustomerCollectionAnalysisState
   List<CustomerCommitmentSummary> filteredCustomerSummaryList = [];
   final Map<String, TextEditingController> commitmentControllers = {};
   Map<String, CustomerWeekCommitment> customerCommitments = {};
+  bool isSavingCommitments = false;
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -1277,13 +1278,17 @@ class _CustomerCollectionAnalysisState
     const apiUrl = '${ApiHelper.baseUrl}CRMSalesCommentsUpdate';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        body: jsonEncode(commitmentsBody),
-        headers: headerss,
-      );
-      final Map<String, dynamic> responseJson = jsonDecode(response.body);
-      if (responseJson["statusCode"] == 1) {
+      var sapUpdated = true;
+      if (selectedInvoices.isNotEmpty) {
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          body: jsonEncode(commitmentsBody),
+          headers: headerss,
+        );
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        sapUpdated = responseJson["statusCode"] == 1;
+      }
+      if (sapUpdated) {
         await saveCustomerCommitment(); // Save to internal sql server database
         setState(() {
           resetCustomerWiseGrid();
@@ -1532,12 +1537,10 @@ class _CustomerCollectionAnalysisState
     List<Map<String, dynamic>> selectedInvoices = [];
 
     for (final customer in customerCommitments.values) {
-      /// CUSTOMER INVOICES
       final customerInvoices = invoiceList
           .where((e) => e.customerCode == customer.customerCode)
           .toList();
 
-      /// SORT OLDEST FIRST
       customerInvoices.sort((a, b) {
         final aDate =
             DateTime.tryParse(a.postingDate.toString()) ?? DateTime.now();
@@ -1548,6 +1551,7 @@ class _CustomerCollectionAnalysisState
         return aDate.compareTo(bDate);
       });
 
+      final allocatedInvoiceNos = <String>{};
       final weekAmounts = [
         customer.week1,
         customer.week2,
@@ -1555,7 +1559,6 @@ class _CustomerCollectionAnalysisState
         customer.week4,
       ];
 
-      /// REMAINING BALANCES
       final remainingBalances = customerInvoices.map((e) {
         return _invoiceBalance(e);
       }).toList();
@@ -1593,10 +1596,25 @@ class _CustomerCollectionAnalysisState
             'InvoiceOtherRemarks': "",
             'InvoiceCommitments': allocated,
           });
+          allocatedInvoiceNos.add(invoice.documentNumber);
 
           remainingBalances[i] -= allocated;
           remainingCommitment -= allocated;
         }
+      }
+
+      for (final invoice in customerInvoices) {
+        if (allocatedInvoiceNos.contains(invoice.documentNumber)) {
+          continue;
+        }
+        selectedInvoices.add({
+          'InvoiceNo': invoice.documentNumber,
+          'InvoiceIssues': "",
+          'InvoiceExpPayDate': getWeekEndDate(4).toString(),
+          'InvoiceExpPayRemarks': "",
+          'InvoiceOtherRemarks': "",
+          'InvoiceCommitments': 0,
+        });
       }
     }
 
@@ -2389,31 +2407,53 @@ class _CustomerCollectionAnalysisState
         Align(
           alignment: Alignment.centerRight,
           child: ElevatedButton.icon(
-            onPressed: () async {
-              final invalidCustomers = customerSummaryList.where((e) {
-                return e.totalCommitment > e.totalOutstanding;
-              }).toList();
-              if (invalidCustomers.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: Colors.red,
-                    content: Text(
-                      "${invalidCustomers.length} "
-                      "customers commitments exceeded outstanding",
-                    ),
-                  ),
-                );
+            onPressed: isSavingCommitments
+                ? null
+                : () async {
+                    final invalidCustomers = customerSummaryList.where((e) {
+                      return e.totalCommitment > e.totalOutstanding;
+                    }).toList();
+                    if (invalidCustomers.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: Colors.red,
+                          content: Text(
+                            "${invalidCustomers.length} "
+                            "customers commitments exceeded outstanding",
+                          ),
+                        ),
+                      );
 
-                return;
-              }
-              final saved = await submitCustomerCommitments();
-              if (!saved || !mounted) return;
-              setState(() {
-                showAlertDialog(context);
-              });
-            },
-            icon: const Icon(Icons.save),
-            label: const Text("Save Commitments"),
+                      return;
+                    }
+                    setState(() {
+                      isSavingCommitments = true;
+                    });
+                    try {
+                      final saved = await submitCustomerCommitments();
+                      if (!saved || !mounted) return;
+                      setState(() {
+                        showAlertDialog(context);
+                      });
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          isSavingCommitments = false;
+                        });
+                      }
+                    }
+                  },
+            icon: isSavingCommitments
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.save),
+            label: Text(isSavingCommitments ? "Saving..." : "Save Commitments"),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.only(left: 16.0, right: 16.0),
               backgroundColor: const Color(0xff2ca9df),

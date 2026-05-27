@@ -3389,6 +3389,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       pendingHeader.cellStyle.hAlign = xlsio.HAlignType.center;
       pendingHeader.cellStyle.borders.all.lineStyle = borderStyle;
 
+      final titleRange = sheet.getRangeByName("A6:A21");
+      titleRange.cellStyle.bold = true;
+
       sheet.getRangeByIndex(5, 6)
         ..setText("Bangalore: ")
         ..cellStyle.bold = true;

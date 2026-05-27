@@ -239,6 +239,7 @@ class _VendorPaymentState extends State<VendorPayment> {
   List<VendorCommitmentSummary> filteredVendorSummaryList = [];
   final Map<String, TextEditingController> vendorCommitmentControllers = {};
   Map<String, VendorMonthCommitment> vendorCommitments = {};
+  bool isSavingCommitments = false;
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -1203,11 +1204,11 @@ class _VendorPaymentState extends State<VendorPayment> {
 
     for (final vendor in vendorCommitments.values) {
       double remainingCommitment = vendor.commitment;
-      if (remainingCommitment <= 0) continue;
 
       final vendorInvoices = invoiceList
           .where((e) => e.vendorCode == vendor.vendorCode)
           .toList();
+      final allocatedInvoiceNos = <String>{};
 
       vendorInvoices.sort((a, b) {
         final aDate = _tryParseDate(dateFormat, a.dueon);
@@ -1233,8 +1234,23 @@ class _VendorPaymentState extends State<VendorPayment> {
           'InvoiceOtherRemarks': "",
           'InvoiceCommitments': allocated,
         });
+        allocatedInvoiceNos.add(invoice.documentNumber);
 
         remainingCommitment -= allocated;
+      }
+
+      for (final invoice in vendorInvoices) {
+        if (allocatedInvoiceNos.contains(invoice.documentNumber)) {
+          continue;
+        }
+        selectedInvoices.add({
+          'InvoiceNo': invoice.documentNumber,
+          'InvoiceIssues': "",
+          'InvoiceExpPayDate': expectedPaymentDate,
+          'InvoiceExpPayRemarks': "",
+          'InvoiceOtherRemarks': "",
+          'InvoiceCommitments': 0,
+        });
       }
     }
 
@@ -1251,13 +1267,17 @@ class _VendorPaymentState extends State<VendorPayment> {
     const apiUrl = '${ApiHelper.baseUrl}CRMPurchaseCommentsUpdate';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        body: jsonEncode(leadmaster),
-        headers: headerss,
-      );
-      final Map<String, dynamic> responseJson = jsonDecode(response.body);
-      if (responseJson["statusCode"] == 1) {
+      var sapUpdated = true;
+      if (selectedInvoices.isNotEmpty) {
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          body: jsonEncode(leadmaster),
+          headers: headerss,
+        );
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        sapUpdated = responseJson["statusCode"] == 1;
+      }
+      if (sapUpdated) {
         await saveVendorCommitment();
         resetVendorWiseGrid();
         const snackBar = SnackBar(
@@ -3269,7 +3289,7 @@ class _VendorPaymentState extends State<VendorPayment> {
 
   Widget buildVendorWiseWidget() {
     final screenHeight = MediaQuery.of(context).size.height;
-    final double tableHeight = (screenHeight - 430).clamp(300.0, 900.0);
+    final double tableHeight = (screenHeight - 440).clamp(300.0, 900.0);
     return Column(
       children: [
         buildMonthSelector(),
@@ -3310,38 +3330,53 @@ class _VendorPaymentState extends State<VendorPayment> {
           child: Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ElevatedButton.icon(
-              onPressed: () async {
-                final invalidVendors = vendorSummaryList.where((e) {
-                  return e.totalCommitment > e.totalOutstanding;
-                }).toList();
-                if (invalidVendors.isNotEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: Colors.red,
-                      content: Text(
-                        "${invalidVendors.length} "
-                        "vendor commitments exceeded outstanding",
+              onPressed: isSavingCommitments
+                  ? null
+                  : () async {
+                      final invalidVendors = vendorSummaryList.where((e) {
+                        return e.totalCommitment > e.totalOutstanding;
+                      }).toList();
+                      if (invalidVendors.isNotEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.red,
+                            content: Text(
+                              "${invalidVendors.length} "
+                              "vendor commitments exceeded outstanding",
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      setState(() {
+                        isSavingCommitments = true;
+                      });
+                      try {
+                        final saved = await submitVendorCommitments();
+                        if (!saved || !mounted) return;
+                        showAlertDialog(context);
+                        setState(() {});
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            isSavingCommitments = false;
+                          });
+                        }
+                      }
+                    },
+              icon: isSavingCommitments
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
-                    ),
-                  );
-                  return;
-                }
-                final hasCommitments = vendorSummaryList.any(
-                  (e) => e.totalCommitment > 0,
-                );
-                if (!hasCommitments) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Enter commitment to save")),
-                  );
-                  return;
-                }
-                final saved = await submitVendorCommitments();
-                if (!saved || !mounted) return;
-                showAlertDialog(context);
-                setState(() {});
-              },
-              icon: const Icon(Icons.save),
-              label: const Text("Save Commitments"),
+                    )
+                  : const Icon(Icons.save),
+              label: Text(
+                isSavingCommitments ? "Saving..." : "Save Commitments",
+              ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                 backgroundColor: const Color(0xff2ca9df),
