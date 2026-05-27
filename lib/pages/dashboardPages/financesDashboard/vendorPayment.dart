@@ -1319,7 +1319,7 @@ class _VendorPaymentState extends State<VendorPayment> {
         "data": data,
       };
       await http.post(
-        Uri.parse("${ApiHelper.baseUrl}SaveVendorMonthlyCommitment"),
+        Uri.parse("${ApiHelper.baseUrl}SaveVendorCommitment"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
@@ -1342,7 +1342,7 @@ class _VendorPaymentState extends State<VendorPayment> {
         "commitmentYear": selectedCommitmentMonth.year,
       };
       final response = await http.post(
-        Uri.parse("${ApiHelper.baseUrl}GetVendorMonthlyCommitment"),
+        Uri.parse("${ApiHelper.baseUrl}SelectVendorCommitment"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );
@@ -1713,7 +1713,7 @@ class _VendorPaymentState extends State<VendorPayment> {
       return SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             buildViewToggle(),
             const SizedBox(height: 15),
             buildVendorWiseWidget(),
