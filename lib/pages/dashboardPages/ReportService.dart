@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -66,8 +67,13 @@ class ReportService {
     return colName;
   }
 
-  // ---------------- PDF GENERATOR ----------------
+  final indianCurrencyFormatter = NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '',
+    decimalDigits: 2,
+  );
 
+  // ---------------- PDF GENERATOR ----------------
   Future<void> generatePDF({
     BuildContext? context,
     required String title,
@@ -187,10 +193,13 @@ class ReportService {
                       final cell = entry.value;
 
                       final text = cell.toString().trim();
+                      final isAmountColumn =
+                          amountColumns?.contains(entry.key + 1) ?? false;
 
                       final isNumeric = RegExp(
                         r'^-?\d+(\.\d+)?$',
                       ).hasMatch(text);
+
                       final numValue = isNumeric ? double.parse(text) : null;
 
                       return pw.Padding(
@@ -201,7 +210,9 @@ class ReportService {
                               : pw.Alignment.centerLeft,
                           child: pw.Text(
                             (isNumeric && numValue != null)
-                                ? numValue.toStringAsFixed(2)
+                                ? (isAmountColumn
+                                      ? indianCurrencyFormatter.format(numValue)
+                                      : numValue.toStringAsFixed(2))
                                 : cell.toString(),
                             style: pw.TextStyle(fontSize: 12),
                           ),
@@ -229,7 +240,7 @@ class ReportService {
                             : pw.Alignment.centerLeft,
                         child: pw.Text(
                           (isNumeric && numValue != null)
-                              ? numValue.toStringAsFixed(2)
+                              ? indianCurrencyFormatter.format(numValue)
                               : cell.toString(),
                           style: pw.TextStyle(
                             fontSize: 12,
@@ -442,7 +453,11 @@ class ReportService {
 
       if (amountColumns != null) {
         for (final col in amountColumns) {
-          sheet.getRangeByIndex(5, col, totalRows, col).numberFormat = '0.00';
+          final range = sheet.getRangeByIndex(5, col, totalRows, col);
+
+          range.numberFormat = r'#,##,##0.00';
+
+          range.cellStyle.hAlign = xlsio.HAlignType.right;
         }
       }
 

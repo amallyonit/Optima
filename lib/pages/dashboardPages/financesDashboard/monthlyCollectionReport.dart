@@ -1997,18 +1997,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         : 0;
     return Listener(
       onPointerSignal: (pointerSignal) {
-        if (pointerSignal is PointerScrollEvent) {
-          final newOffset =
-              _horizontalTsmController.offset + pointerSignal.scrollDelta.dy;
-
-          if (_horizontalTsmController.hasClients) {
-            _horizontalTsmController.jumpTo(
-              newOffset.clamp(
-                0,
-                _horizontalTsmController.position.maxScrollExtent,
-              ),
-            );
-          }
+        if (pointerSignal is PointerScrollEvent &&
+            pointerSignal.scrollDelta.dy != 0) {
+          GestureBinding.instance.pointerSignalResolver.register(
+            pointerSignal,
+            (_) {
+              if (!_mainScrollController.hasClients) return;
+              final newOffset =
+                  _mainScrollController.offset + pointerSignal.scrollDelta.dy;
+              _mainScrollController.jumpTo(
+                newOffset
+                    .clamp(
+                      _mainScrollController.position.minScrollExtent,
+                      _mainScrollController.position.maxScrollExtent,
+                    )
+                    .toDouble(),
+              );
+            },
+          );
         }
       },
       child: Scrollbar(
@@ -2170,18 +2176,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         : 0;
     return Listener(
       onPointerSignal: (pointerSignal) {
-        if (pointerSignal is PointerScrollEvent) {
-          final newOffset =
-              _horizontalAsmController.offset + pointerSignal.scrollDelta.dy;
-
-          if (_horizontalAsmController.hasClients) {
-            _horizontalAsmController.jumpTo(
-              newOffset.clamp(
-                0,
-                _horizontalAsmController.position.maxScrollExtent,
-              ),
-            );
-          }
+        if (pointerSignal is PointerScrollEvent &&
+            pointerSignal.scrollDelta.dy != 0) {
+          GestureBinding.instance.pointerSignalResolver.register(
+            pointerSignal,
+            (_) {
+              if (!_mainScrollController.hasClients) return;
+              final newOffset =
+                  _mainScrollController.offset + pointerSignal.scrollDelta.dy;
+              _mainScrollController.jumpTo(
+                newOffset
+                    .clamp(
+                      _mainScrollController.position.minScrollExtent,
+                      _mainScrollController.position.maxScrollExtent,
+                    )
+                    .toDouble(),
+              );
+            },
+          );
         }
       },
       child: Scrollbar(
@@ -2343,18 +2355,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         : 0;
     return Listener(
       onPointerSignal: (pointerSignal) {
-        if (pointerSignal is PointerScrollEvent) {
-          final newOffset =
-              _horizontalRsmController.offset + pointerSignal.scrollDelta.dy;
-
-          if (_horizontalRsmController.hasClients) {
-            _horizontalRsmController.jumpTo(
-              newOffset.clamp(
-                0,
-                _horizontalRsmController.position.maxScrollExtent,
-              ),
-            );
-          }
+        if (pointerSignal is PointerScrollEvent &&
+            pointerSignal.scrollDelta.dy != 0) {
+          GestureBinding.instance.pointerSignalResolver.register(
+            pointerSignal,
+            (_) {
+              if (!_mainScrollController.hasClients) return;
+              final newOffset =
+                  _mainScrollController.offset + pointerSignal.scrollDelta.dy;
+              _mainScrollController.jumpTo(
+                newOffset
+                    .clamp(
+                      _mainScrollController.position.minScrollExtent,
+                      _mainScrollController.position.maxScrollExtent,
+                    )
+                    .toDouble(),
+              );
+            },
+          );
         }
       },
       child: Scrollbar(
@@ -2516,19 +2534,24 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
         : 0;
     return Listener(
       onPointerSignal: (pointerSignal) {
-        if (pointerSignal is PointerScrollEvent) {
-          final newOffset =
-              _horizontalCustomerController.offset +
-              pointerSignal.scrollDelta.dy;
-
-          if (_horizontalCustomerController.hasClients) {
-            _horizontalCustomerController.jumpTo(
-              newOffset.clamp(
-                0,
-                _horizontalCustomerController.position.maxScrollExtent,
-              ),
-            );
-          }
+        if (pointerSignal is PointerScrollEvent &&
+            pointerSignal.scrollDelta.dy != 0) {
+          GestureBinding.instance.pointerSignalResolver.register(
+            pointerSignal,
+            (_) {
+              if (!_mainScrollController.hasClients) return;
+              final newOffset =
+                  _mainScrollController.offset + pointerSignal.scrollDelta.dy;
+              _mainScrollController.jumpTo(
+                newOffset
+                    .clamp(
+                      _mainScrollController.position.minScrollExtent,
+                      _mainScrollController.position.maxScrollExtent,
+                    )
+                    .toDouble(),
+              );
+            },
+          );
         }
       },
       child: Scrollbar(

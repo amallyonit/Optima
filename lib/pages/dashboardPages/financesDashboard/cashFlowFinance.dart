@@ -14,6 +14,7 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:http/http.dart' as http;
 
+import 'finance_chart_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -1278,16 +1279,28 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _dailyMovementHorizontalController.dispose();
+    _monthlyAnalysisHorizontalController.dispose();
+    _ledgerWiseHorizontalController.dispose();
     bankBalance = '';
     super.dispose();
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _dailyMovementHorizontalController =
+      ScrollController();
+  final ScrollController _monthlyAnalysisHorizontalController =
+      ScrollController();
+  final ScrollController _ledgerWiseHorizontalController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
     DateTime currentDate = DateTime.now();
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoadedCashFlow == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -1479,7 +1492,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _dailyMovement(),
+                  child: FinanceChartCard(child: _dailyMovement()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1549,7 +1562,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _monthlyAnalysis(),
+                  child: FinanceChartCard(child: _monthlyAnalysis()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1618,7 +1631,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _ledgerWiseAnalysis(),
+                  child: FinanceChartCard(child: _ledgerWiseAnalysis()),
                 ),
               ],
             ),
@@ -1656,8 +1669,9 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
               .map((data) => data.sumOfDr)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _dailyMovementHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -1798,8 +1812,9 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
               .map((data) => data.sumOfDr)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _monthlyAnalysisHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -1960,8 +1975,9 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
               .map((data) => data.sumOfDr ?? 0)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _ledgerWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,

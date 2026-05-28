@@ -13,6 +13,7 @@ import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
+import 'finance_chart_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -1009,13 +1010,21 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _itemWiseHorizontalController.dispose();
+    _itemGroupHorizontalController.dispose();
     super.dispose();
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _itemWiseHorizontalController = ScrollController();
+  final ScrollController _itemGroupHorizontalController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
     return chartDataLoadedProductMargin == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -1074,7 +1083,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _dailyCostingGraph(),
+                  child: FinanceChartCard(child: _dailyCostingGraph()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1119,7 +1128,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemSubGroupWise(),
+                  child: FinanceChartCard(child: _itemSubGroupWise()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1187,8 +1196,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -1312,8 +1322,9 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
               .map((data) => data.marginPercent)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemGroupHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,

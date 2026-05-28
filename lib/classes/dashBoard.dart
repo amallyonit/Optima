@@ -5281,6 +5281,7 @@ class VendorsPaymentProjectionData {
   double a90to180;
   double a180above;
   double commitment;
+  double currentMonthPayable;
   double actualPayable;
   VendorsPaymentProjectionData({
     required this.vendorName,
@@ -5292,6 +5293,7 @@ class VendorsPaymentProjectionData {
     required this.a90to180,
     required this.a180above,
     required this.commitment,
+    required this.currentMonthPayable,
     required this.actualPayable,
   });
 }

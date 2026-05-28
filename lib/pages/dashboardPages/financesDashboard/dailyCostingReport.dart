@@ -194,7 +194,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   final int lastFrom = input.lastMonthFromDate.millisecondsSinceEpoch;
   final int lastTo = input.lastMonthToDate.millisecondsSinceEpoch;
   final int nextFrom = input.nextMonthFromDate.millisecondsSinceEpoch;
-  final int nextTo = input.nextMonthToDate.millisecondsSinceEpoch;
+  final int nextTo = input
+      .nextMonthToDate
+      .millisecondsSinceEpoch; // 6 Months window for next month bucket
 
   // Get current financial year suffix function (same logic as you had)
   String getCurrentFinancialYearSuffix(DateTime now) {
@@ -317,20 +319,23 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
 
   for (final so in filteredSO) {
     final pending = double.tryParse(so.pendingValue) ?? 0;
-    monthlySOvalue += pending;
-    if (so.priority == "Low") lowVal += pending;
-    if (so.priority == "Medium") mediumVal += pending;
-    if (so.priority == "High") highVal += pending;
-
-    if (so.branchName == "Karnataka State") {
+    if (so.bpGroup != "AH GROUP") {
+      monthlySOvalue += pending;
+      if (so.priority == "Low") lowVal += pending;
+      if (so.priority == "Medium") mediumVal += pending;
+      if (so.priority == "High") highVal += pending;
+    }
+    if (so.branchName == "Karnataka State" && so.bpGroup != "AH GROUP") {
       karnatakaPOSum += pending;
-    } else if (so.branchName == "Tamil Nadu State") {
+    } else if (so.branchName == "Tamil Nadu State" &&
+        so.bpGroup != "AH GROUP") {
       tamilNaduPOSum += pending;
     } else {
-      othersPOSum += pending;
-    }
-    if (so.bpGroup == "AH GROUP") {
-      interBranchPendingSoSum += pending;
+      if (so.bpGroup == "AH GROUP") {
+        interBranchPendingSoSum += pending;
+      } else {
+        othersPOSum += pending;
+      }
     }
   }
 
@@ -959,7 +964,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     ).add(const Duration(days: 0));
     nextMonthToDate = addMonth(
       nextMonthFromDate!,
-      1,
+      6, // 6 Months window for next month bucket
     ).add(const Duration(days: -1));
 
     int fiscalYearStartMonth = 4;
@@ -2538,7 +2543,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
             ? 0
             : (stockInTransitValue / inventoryAchieved) * 100;
 
-        cogsPercentage = cogsTarget == 0 ? 0 : (cogsValue / cogsTarget) * 100;
+        cogsPercentage = cogsTarget == 0 ? 0 : (cogsValue / monthlySales) * 100;
         cogsTargetPercentage = cogsTarget == 0
             ? 0
             : (cogsTarget / (medicalDeviceTarget + ipdTarget)) * 100;
@@ -3103,7 +3108,372 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     );
   }
 
+  String formatIndian(dynamic value) {
+    final formatter = NumberFormat('#,##,##0.00', 'en_IN');
+
+    final numValue = value is num
+        ? value.toDouble()
+        : double.tryParse(value.toString());
+
+    if (numValue == null) return value.toString();
+
+    return formatter.format(numValue);
+  }
+
   Future<void> generateFormattedDailyCostingReport() async {
+    try {
+      final workbook = xlsio.Workbook();
+      final sheet = workbook.worksheets[0];
+      sheet.name = "Daily Costing";
+
+      sheet.getRangeByIndex(1, 1).columnWidth = 32;
+      sheet.getRangeByIndex(1, 2).columnWidth = 18;
+      sheet.getRangeByIndex(1, 3).columnWidth = 30;
+      sheet.getRangeByIndex(1, 4).columnWidth = 18;
+      sheet.getRangeByIndex(1, 5).columnWidth = 14;
+      sheet.getRangeByIndex(1, 6).columnWidth = 22;
+      sheet.getRangeByIndex(1, 7).columnWidth = 20;
+
+      final borderStyle = xlsio.LineStyle.thin;
+
+      // HEADER STYLE
+      final header = sheet.getRangeByName("A1:G1");
+      header.merge();
+      header.setText("DAILY COSTING DASHBOARD");
+      header.cellStyle.bold = true;
+      header.cellStyle.fontSize = 18;
+      header.cellStyle.hAlign = xlsio.HAlignType.center;
+      header.cellStyle.vAlign = xlsio.VAlignType.center;
+
+      sheet.getRangeByIndex(1, 1).rowHeight = 28;
+
+      // DATE
+      final dateRange = sheet.getRangeByName("A2:G2");
+      dateRange.merge();
+      dateRange.setText("Date : ${formatDateString(currentDate!)}");
+      dateRange.cellStyle.hAlign = xlsio.HAlignType.center;
+      dateRange.cellStyle.bold = true;
+
+      final fyHeader = sheet.getRangeByName("A4:E4");
+      fyHeader.merge();
+
+      final now = DateTime.now();
+      final int startYear = now.month >= 4 ? now.year : now.year - 1;
+      final int endYear = startYear + 1;
+
+      final String fyText =
+          "Financial Target for FY "
+          "${startYear.toString().substring(2)}-"
+          "${endYear.toString().substring(2)}";
+
+      fyHeader.setText(fyText);
+      fyHeader.cellStyle.bold = true;
+      fyHeader.cellStyle.backColor = "#D9EAF7";
+      fyHeader.cellStyle.hAlign = xlsio.HAlignType.center;
+      fyHeader.cellStyle.borders.all.lineStyle = borderStyle;
+
+      sheet.getRangeByIndex(5, 1).setText("Particulars");
+      sheet.getRangeByIndex(5, 2).setText("Target");
+      sheet.getRangeByIndex(5, 3).setText("");
+      sheet.getRangeByIndex(5, 4).setText("Achieved");
+      sheet.getRangeByIndex(5, 5).setText("%");
+
+      final headingRange = sheet.getRangeByName("A5:E5");
+
+      headingRange.cellStyle.bold = true;
+      headingRange.cellStyle.backColor = "#EAF2F8";
+      headingRange.cellStyle.hAlign = xlsio.HAlignType.center;
+      headingRange.cellStyle.borders.all.lineStyle = borderStyle;
+
+      void setDashboardRow({
+        required int row,
+        String? title,
+        dynamic target,
+        dynamic worksheet,
+        dynamic achieved,
+        dynamic percentage,
+        bool red = false,
+      }) {
+        sheet.getRangeByIndex(row, 1).setText(title ?? "");
+
+        // TARGET
+        if (target != null && target != "") {
+          sheet.getRangeByIndex(row, 2).setText(formatIndian(target));
+        }
+
+        // WORKSHEET
+        if (worksheet != null && worksheet != "") {
+          final cell = sheet.getRangeByIndex(row, 3);
+
+          cell.setText(worksheet);
+          cell.cellStyle.wrapText = true;
+          cell.cellStyle.vAlign = xlsio.VAlignType.center;
+          cell.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+        }
+
+        // ACHIEVED
+        if (achieved != null && achieved != "") {
+          sheet.getRangeByIndex(row, 4).setText(formatIndian(achieved));
+        }
+
+        // PERCENTAGE
+        sheet.getRangeByIndex(row, 5).setText(percentage?.toString() ?? "");
+
+        final rowRange = sheet.getRangeByIndex(row, 1, row, 5);
+
+        rowRange.cellStyle.borders.all.lineStyle = borderStyle;
+        rowRange.cellStyle.vAlign = xlsio.VAlignType.center;
+
+        // ALIGNMENTS
+        sheet.getRangeByIndex(row, 1).cellStyle.hAlign = xlsio.HAlignType.left;
+
+        sheet.getRangeByIndex(row, 2).cellStyle.hAlign = xlsio.HAlignType.right;
+
+        sheet.getRangeByIndex(row, 3).cellStyle.hAlign = xlsio.HAlignType.left;
+
+        sheet.getRangeByIndex(row, 4).cellStyle.hAlign = xlsio.HAlignType.right;
+
+        sheet.getRangeByIndex(row, 5).cellStyle.hAlign =
+            xlsio.HAlignType.center;
+
+        if (red) {
+          sheet.getRangeByIndex(row, 3).cellStyle.fontColor = "#FF0000";
+        }
+      }
+
+      setDashboardRow(
+        row: 6,
+        title: "Revenue",
+        target: ipdTarget + medicalDeviceTarget,
+        worksheet:
+            "Medical Device: ${formatIndian(medicalDevicesSales)}\n"
+            "IPD           : ${formatIndian(ipdSales)}",
+        achieved: monthlySales,
+        percentage:
+            (((monthlySales /
+                        ((ipdTarget + medicalDeviceTarget) == 0
+                            ? 1
+                            : (ipdTarget + medicalDeviceTarget))) *
+                    100))
+                .toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 7,
+        title: "Pending Sales Orders",
+        target: "",
+        worksheet:
+            "High Priority  : ${formatIndian(highPriorityPendingSO)}\n"
+            "Medium Priority: ${formatIndian(mediumPriorityPendingSO)}\n"
+            "Low Priority   : ${formatIndian(lowPriorityPendingSO)}\n"
+            "Inter Branch   : ${formatIndian(interBranchPendingSoSum)}",
+        achieved: totalPendingSO,
+        percentage: "",
+      );
+
+      setDashboardRow(
+        row: 8,
+        title: "Purchases",
+        target: purchaseTarget,
+        achieved: formatIndian(monthlyPurchasePriceGrnSum),
+        percentage: purchaseTarget == 0
+            ? "0"
+            : ((monthlyPurchasePriceGrnSum / purchaseTarget) * 100)
+                  .toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 9,
+        title: "Pending Purchase Orders",
+        target: "",
+        worksheet: "Last Month   : ",
+        achieved: formatIndian(lastMonthPOSum),
+        percentage: "",
+      );
+
+      setDashboardRow(
+        row: 10,
+        target: "",
+        worksheet: "Current Month: ",
+        achieved: formatIndian(currentMonthPOSum),
+        percentage: "",
+      );
+
+      setDashboardRow(
+        row: 11,
+        target: "",
+        worksheet: "Next Month   : ",
+        achieved: formatIndian(nextMonthPOSum),
+        percentage: "",
+      );
+
+      setDashboardRow(
+        row: 12,
+        target: "",
+        worksheet: "Total        : ",
+        achieved: formatIndian(
+          lastMonthPOSum + currentMonthPOSum + nextMonthPOSum,
+        ),
+        percentage: "",
+      );
+
+      final pendingPoMerge = sheet.getRangeByName("A9:A12");
+      pendingPoMerge.merge();
+      pendingPoMerge.setText("Pending Purchase Orders");
+      pendingPoMerge.cellStyle.wrapText = true;
+      pendingPoMerge.cellStyle.hAlign = xlsio.HAlignType.left;
+      pendingPoMerge.cellStyle.vAlign = xlsio.VAlignType.center;
+      pendingPoMerge.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+      setDashboardRow(
+        row: 13,
+        title: "Closing Stock(Including Stock In Transit)",
+        target: inventoryTarget,
+        worksheet: "",
+        achieved: formatIndian(inventoryAchieved),
+        percentage: inventoryTarget == 0
+            ? "0"
+            : ((inventoryAchieved / inventoryTarget) * 100).toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 14,
+        title: "Inventory Ageing",
+        worksheet: "< 30 Days",
+        achieved: formatIndian(lessThan30DaysValue),
+        percentage: inventoryLess30Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 15,
+        worksheet: "30 - 60 Days",
+        achieved: formatIndian(a30to60DaysValue),
+        percentage: inventory30to60Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 16,
+        worksheet: "60 - 90 Days",
+        achieved: formatIndian(a60to90DaysValue),
+        percentage: inventory60to90Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 17,
+        worksheet: "> 90 Days",
+        achieved: formatIndian(a91DaysValue),
+        percentage: inventoryAbove90Percent.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 18,
+        worksheet: "Stock In Transit",
+        achieved: formatIndian(stockInTransitValue),
+        percentage: stockInTransitPercent.toStringAsFixed(2),
+      );
+
+      final inventoryMerge = sheet.getRangeByName("A14:A18");
+      inventoryMerge.merge();
+      inventoryMerge.setText("Inventory Ageing");
+      inventoryMerge.cellStyle.wrapText = true;
+      inventoryMerge.cellStyle.hAlign = xlsio.HAlignType.left;
+      inventoryMerge.cellStyle.vAlign = xlsio.VAlignType.center;
+      inventoryMerge.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+      setDashboardRow(
+        row: 19,
+        title: "COGS",
+        target: cogsTarget,
+        worksheet: "${cogsTargetPercentage.toStringAsFixed(0)}%",
+        achieved: formatIndian(cogsValue),
+        percentage: cogsPercentage.toStringAsFixed(2),
+      );
+
+      setDashboardRow(
+        row: 20,
+        title: "Cash Conversion Cycle",
+        worksheet: "${cashConversionCycleDays.toStringAsFixed(0)} Days",
+      );
+
+      setDashboardRow(
+        row: 21,
+        title: "Note:-",
+        worksheet: "Ready To Dispatch Stock(Customer)",
+        achieved: formatIndian(readyToDispatchStock),
+      );
+
+      final pendingHeader = sheet.getRangeByName("F4:G4");
+
+      pendingHeader.merge();
+      pendingHeader.setText("Pending Sales Orders");
+      pendingHeader.cellStyle.bold = true;
+      pendingHeader.cellStyle.backColor = "#E2EFDA";
+      pendingHeader.cellStyle.hAlign = xlsio.HAlignType.center;
+      pendingHeader.cellStyle.borders.all.lineStyle = borderStyle;
+
+      final titleRange = sheet.getRangeByName("A6:A21");
+
+      titleRange.cellStyle.bold = true;
+
+      sheet.getRangeByIndex(5, 6)
+        ..setText("Bangalore: ")
+        ..cellStyle.bold = true;
+
+      sheet.getRangeByIndex(5, 7).setText(formatIndian(bangalorePendingSO));
+
+      sheet.getRangeByIndex(6, 6)
+        ..setText("Rajapalayam: ")
+        ..cellStyle.bold = true;
+
+      sheet.getRangeByIndex(6, 7).setText(formatIndian(rajapalayamPendingSO));
+
+      sheet.getRangeByIndex(7, 6)
+        ..setText("Others")
+        ..cellStyle.bold = true;
+
+      sheet.getRangeByIndex(7, 7).setText(formatIndian(othersPendingSO));
+
+      sheet.getRangeByIndex(8, 6)
+        ..setText("Total")
+        ..cellStyle.bold = true;
+
+      sheet
+          .getRangeByIndex(8, 7)
+          .setText(
+            formatIndian(
+              bangalorePendingSO + rajapalayamPendingSO + othersPendingSO,
+            ),
+          );
+
+      final pendingRange = sheet.getRangeByName("F5:G8");
+
+      pendingRange.cellStyle.borders.all.lineStyle = borderStyle;
+
+      // ---------------- SAVE ----------------
+
+      final bytes = List<int>.from(workbook.saveAsStream());
+
+      workbook.dispose();
+
+      if (kIsWeb) {
+        downloadExcelWeb("daily_costing.xlsx", bytes);
+      } else {
+        final dir = await getStorageDirectory();
+
+        final file = File('$dir/daily_costing.xlsx');
+
+        await file.writeAsBytes(bytes, flush: true);
+
+        OpenFile.open(file.path);
+      }
+
+      showBottomToast(context, "Excel exported successfully");
+    } catch (e) {
+      showBottomToast(context, "Excel generation failed: $e");
+    }
+  }
+
+  Future<void> generateFormattedDailyCostingReportOld() async {
     try {
       final workbook = xlsio.Workbook();
       final sheet = workbook.worksheets[0];

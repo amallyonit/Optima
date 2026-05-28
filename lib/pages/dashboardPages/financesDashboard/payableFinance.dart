@@ -14,6 +14,7 @@ import 'package:optima/login_screen.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/leads.dart';
+import 'finance_chart_ui.dart';
 import '../ReportService.dart';
 
 class PayableFinance extends StatefulWidget {
@@ -1519,6 +1520,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           'a61to90': 0.0,
           'a90to180': 0.0,
           'a180above': 0.0,
+          'commitment': 0.0,
         },
       );
 
@@ -1552,6 +1554,9 @@ class _PayableFinanceState extends State<PayableFinance> {
             (vendorData['a180above'] as double) +
             (double.tryParse(payableItem.a181Days) ?? 0.0);
       }
+      vendorData['commitment'] =
+          (vendorData['commitment'] as double) +
+          (double.tryParse(payableItem.commitment) ?? 0.0);
     }
 
     final Map<String, double> actualPayableByVendorName = {};
@@ -1560,6 +1565,20 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       if (dueOn.isAtMost(effectiveCurrentMonthToDate!)) {
         actualPayableByVendorName.update(
+          paymentEntry.vendorName,
+          (value) => value + (double.tryParse(paymentEntry.total) ?? 0.0),
+          ifAbsent: () => (double.tryParse(paymentEntry.total) ?? 0.0),
+        );
+      }
+    }
+
+    final Map<String, double> currentMonthPayableByVendorName = {};
+    for (final paymentEntry in modeOfPayment) {
+      final dueOn = df.parse(paymentEntry.postingDate);
+
+      if (dueOn.isAtLeast(currentMonthFromDate!) &&
+          dueOn.isAtMost(currentMonthToDate!)) {
+        currentMonthPayableByVendorName.update(
           paymentEntry.vendorName,
           (value) => value + (double.tryParse(paymentEntry.total) ?? 0.0),
           ifAbsent: () => (double.tryParse(paymentEntry.total) ?? 0.0),
@@ -1578,8 +1597,11 @@ class _PayableFinanceState extends State<PayableFinance> {
       final a61to90 = entry['a61to90'] as double;
       final a90to180 = entry['a90to180'] as double;
       final a180above = entry['a180above'] as double;
+      final commitment = entry['commitment'] as double;
 
       final actualPayable = actualPayableByVendorName[vendorName] ?? 0.0;
+      final currentMonthPayable =
+          currentMonthPayableByVendorName[vendorName] ?? 0.0;
 
       vendorWiseData.add(
         VendorsPaymentProjectionData(
@@ -1591,7 +1613,8 @@ class _PayableFinanceState extends State<PayableFinance> {
           a61to90: a61to90,
           a90to180: a90to180,
           a180above: a180above,
-          commitment: 0,
+          commitment: commitment,
+          currentMonthPayable: currentMonthPayable,
           actualPayable: actualPayable,
         ),
       );
@@ -2289,6 +2312,7 @@ class _PayableFinanceState extends State<PayableFinance> {
             a90to180: a90to180,
             a180above: a180above,
             commitment: commitment,
+            currentMonthPayable: 0,
             actualPayable: actualPayable,
           ),
         );
@@ -2793,7 +2817,8 @@ class _PayableFinanceState extends State<PayableFinance> {
         '91-180',
         '180+',
         'Commitment',
-        'Actual Paid',
+        'Curr. Month Paid',
+        'YTD Paid',
       ],
       rows: vendorProjectionList.vendorData
           .map(
@@ -2807,12 +2832,13 @@ class _PayableFinanceState extends State<PayableFinance> {
               e.a90to180,
               e.a180above,
               e.commitment,
+              e.currentMonthPayable,
               e.actualPayable,
             ],
           )
           .toList(),
       fileName: 'vendor_payment_projection.xlsx',
-      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10],
+      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10, 11],
       addTotalRow: true,
       reportTitle: 'Finance - Vendor Payment Projection',
     );
@@ -3019,14 +3045,40 @@ class _PayableFinanceState extends State<PayableFinance> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _payablesHorizontalController.dispose();
+    _advancePaidHorizontalController.dispose();
+    _supplierHorizontalController.dispose();
+    _supplierCategoryHorizontalController.dispose();
+    _documentTypeHorizontalController.dispose();
+    _bpGroupHorizontalController.dispose();
+    _advanceVendorsHorizontalController.dispose();
+    _capitalVendorsHorizontalController.dispose();
+    _fixedExpensesHorizontalController.dispose();
     super.dispose();
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _payablesHorizontalController = ScrollController();
+  final ScrollController _advancePaidHorizontalController = ScrollController();
+  final ScrollController _supplierHorizontalController = ScrollController();
+  final ScrollController _supplierCategoryHorizontalController =
+      ScrollController();
+  final ScrollController _documentTypeHorizontalController = ScrollController();
+  final ScrollController _bpGroupHorizontalController = ScrollController();
+  final ScrollController _advanceVendorsHorizontalController =
+      ScrollController();
+  final ScrollController _capitalVendorsHorizontalController =
+      ScrollController();
+  final ScrollController _fixedExpensesHorizontalController =
+      ScrollController();
 
   @override
   Widget build(BuildContext context) {
     DateTime currentDate = DateTime.now();
     return chartDataLoadedPayables == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -3331,7 +3383,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _payables(),
+                  child: FinanceChartCard(child: _payables()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3382,7 +3434,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _advancePaidToSupplier(),
+                  child: FinanceChartCard(child: _advancePaidToSupplier()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3432,7 +3484,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _supplierAnalysis(),
+                  child: FinanceChartCard(child: _supplierAnalysis()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3486,7 +3538,9 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _supplierCategoryWiseAnalysis(),
+                  child: FinanceChartCard(
+                    child: _supplierCategoryWiseAnalysis(),
+                  ),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3536,7 +3590,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _documentTypeAnalysis(),
+                  child: FinanceChartCard(child: _documentTypeAnalysis()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3578,7 +3632,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _bpGroup(),
+                  child: FinanceChartCard(child: _bpGroup()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3620,7 +3674,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _advanceVendors(),
+                  child: FinanceChartCard(child: _advanceVendors()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3662,7 +3716,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _capitalVendors(),
+                  child: FinanceChartCard(child: _capitalVendors()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -3704,7 +3758,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _fixedExpenses(),
+                  child: FinanceChartCard(child: _fixedExpenses()),
                 ),
               ],
             ),
@@ -3745,8 +3799,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _payablesHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: screenWidth,
@@ -3937,8 +3992,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _advancePaidHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: screenWidth,
@@ -4135,8 +4191,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _supplierHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -4273,8 +4330,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _supplierCategoryHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -4418,8 +4476,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _documentTypeHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -4556,8 +4615,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _bpGroupHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -4671,8 +4731,9 @@ class _PayableFinanceState extends State<PayableFinance> {
               .map((data) => data.balance)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _advanceVendorsHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -4790,8 +4851,9 @@ class _PayableFinanceState extends State<PayableFinance> {
       chartMaxY = 0;
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _capitalVendorsHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -4929,8 +4991,9 @@ class _PayableFinanceState extends State<PayableFinance> {
               .map((data) => data.balance)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _fixedExpensesHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,

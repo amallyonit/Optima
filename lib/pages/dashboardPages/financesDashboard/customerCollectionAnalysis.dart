@@ -17,6 +17,7 @@ import '../../../api_helper.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../login_screen.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
+import 'finance_chart_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -238,6 +239,8 @@ class _CustomerCollectionAnalysisState
   final Map<String, TextEditingController> commitmentControllers = {};
   Map<String, CustomerWeekCommitment> customerCommitments = {};
   bool isSavingCommitments = false;
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _agingHorizontalController = ScrollController();
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -1638,6 +1641,8 @@ class _CustomerCollectionAnalysisState
       controller.dispose();
     }
 
+    _verticalScrollController.dispose();
+    _agingHorizontalController.dispose();
     customerSearchController.dispose();
     super.dispose();
   }
@@ -1772,7 +1777,8 @@ class _CustomerCollectionAnalysisState
       containerDropDownHeight = screenHeight * 0.12;
     }
     return selectedViewType == CollectionViewType.customerWise
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 const SizedBox(height: 10),
@@ -1783,8 +1789,8 @@ class _CustomerCollectionAnalysisState
             ),
           )
         : isBillWiseLoaded == true
-        ? SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 const SizedBox(height: 10),
@@ -1843,8 +1849,9 @@ class _CustomerCollectionAnalysisState
 
   Widget _receivablesAging() {
     final screenWidth = MediaQuery.of(context).size.width;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _agingHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: screenWidth,
@@ -4017,7 +4024,7 @@ class _CustomerCollectionAnalysisState
         ),
         Padding(
           padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-          child: _receivablesAging(),
+          child: FinanceChartCard(child: _receivablesAging()),
         ),
       ],
     );

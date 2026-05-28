@@ -13,6 +13,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:http/http.dart' as http;
 import 'package:optima/classes/leads.dart';
+import 'finance_chart_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -45,6 +46,7 @@ List<InventoryList> inventory = [];
 List<InventoryList> inventoryClosing = [];
 List<ModeOfPaymentList> modeOfPayment = [];
 List<MonthlyInventoryData> monthWiseInventory = [];
+Map<String, double> invoiceCollectionMap = {};
 
 CashConversionGraphList monthlyAnalysisData = CashConversionGraphList(
   monthData: [],
@@ -620,9 +622,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     List<CollectionList> collectionList = [];
 
     try {
-      // final fromDate = dateFilterFlag
-      //     ? formatDate(fromDateFilter!)
-      //     : formatDate(fiscalYearStartDate!);
       final DateTime fromDate = dateFilterFlag
           ? fromDateFilter!
           : fiscalYearStartDate!;
@@ -1149,7 +1148,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     return result;
   }
 
-  Future<void> _loadMonthlySalesBarCashConversionChartData(
+  Future<void> _loadMonthlySalesBarCashConversionChartDataOld(
     String? touchedMonth,
   ) async {
     List<CashConversionGraphData> soDataList = [];
@@ -1158,9 +1157,37 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     final now = DateTime.now();
     final int fiscalIndex = (now.month < 4) ? now.month + 12 : now.month;
 
-    final dateFormat = DateFormat('dd/MM/yyyy');
+    // final dateFormat = DateFormat('dd/MM/yyyy');
 
-    DateTime parseDate(String d) => dateFormat.parse(d);
+    DateTime? parseDate(dynamic d) {
+      try {
+        if (d == null) return null;
+
+        String value = d.toString().trim();
+
+        if (value.isEmpty) return null;
+
+        /// dd/MM/yyyy
+        try {
+          return DateFormat('dd/MM/yyyy').parseStrict(value);
+        } catch (_) {}
+
+        /// yyyy-MM-dd
+        try {
+          return DateFormat('yyyy-MM-dd').parseStrict(value);
+        } catch (_) {}
+
+        /// yyyy-MM-dd HH:mm:ss
+        try {
+          return DateFormat('yyyy-MM-dd HH:mm:ss').parseStrict(value);
+        } catch (_) {}
+
+        /// fallback
+        return DateTime.tryParse(value);
+      } catch (_) {
+        return null;
+      }
+    }
 
     /// STEP 1: Pre-group (NO repeated where)
     final salesMap = {
@@ -1250,6 +1277,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         /// RECEIVABLE
         for (var r in receivableList) {
           final d = parseDate(r.postingDate);
+          if (d == null) continue;
           final balance = double.tryParse(r.balance) ?? 0;
 
           /// Current Month
@@ -1269,7 +1297,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
           final total = double.tryParse(c.total) ?? 0;
 
           /// Current Month
-          if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
+          if (d!.isAtLeast(curStart) && d.isAtMost(curEnd)) {
             collectionTotal += total;
           }
 
@@ -1278,22 +1306,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
             prevMthCollectionTotal += total;
           }
         }
-
-        // /// RECEIVABLE
-        // for (var r in receivableList) {
-        //   final d = parseDate(r.postingDate);
-        //   if (d.isAtMost(curEnd)) {
-        //     receivableTotal += double.tryParse(r.balance) ?? 0;
-        //   }
-        // }
-
-        // /// COLLECTION
-        // for (var c in collectionList) {
-        //   final d = parseDate(c.postingDate);
-        //   if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
-        //     collectionTotal += double.tryParse(c.total) ?? 0;
-        //   }
-        // }
 
         final avg =
             (prevMthReceivableTotal +
@@ -1329,14 +1341,14 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       double paid = 0;
       for (var c in modeOfPayment) {
         final d = parseDate(c.postingDate);
-        if (d.isAtLeast(curStart) && d.isAtMost(curEnd)) {
+        if (d!.isAtLeast(curStart) && d.isAtMost(curEnd)) {
           paid += double.tryParse(c.total) ?? 0;
         }
       }
       double payable = 0;
       for (var p in payables) {
         final d = parseDate(p.postingDate);
-        if (d.isAtMost(curEnd)) {
+        if (d!.isAtMost(curEnd)) {
           payable += double.tryParse(p.balance) ?? 0;
         }
       }
@@ -1428,6 +1440,521 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
     graphData = DSOGraphList(monthData: dataList);
     if (!mounted) return;
+    setState(() {
+      chartDataLoadedCCC = true;
+    });
+  }
+
+  Future<void> _loadMonthlySalesBarCashConversionChartData(
+    String? touchedMonth,
+  ) async {
+    List<CashConversionGraphData> soDataList = [];
+    List<DSOGraphData> dataList = [];
+
+    final now = DateTime.now();
+    final int fiscalIndex = (now.month < 4) ? now.month + 12 : now.month;
+
+    // final dateFormat = DateFormat('dd/MM/yyyy');
+
+    DateTime? parseDate(dynamic d) {
+      try {
+        if (d == null) return null;
+
+        String value = d.toString().trim();
+
+        if (value.isEmpty) return null;
+
+        /// dd/MM/yyyy
+        try {
+          return DateFormat('dd/MM/yyyy').parseStrict(value);
+        } catch (_) {}
+
+        /// yyyy-MM-dd
+        try {
+          return DateFormat('yyyy-MM-dd').parseStrict(value);
+        } catch (_) {}
+
+        /// yyyy-MM-dd HH:mm:ss
+        try {
+          return DateFormat('yyyy-MM-dd HH:mm:ss').parseStrict(value);
+        } catch (_) {}
+
+        /// fallback
+        return DateTime.tryParse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    /// ----------------------------------------------------
+    /// DAYS LOGIC
+    /// ----------------------------------------------------
+
+    int getDSODays(DateTime monthStart, DateTime monthEnd) {
+      final now = DateTime.now();
+
+      /// current running month
+      if (monthStart.year == now.year && monthStart.month == now.month) {
+        return now.day;
+      }
+
+      /// completed month
+      return monthEnd.day;
+    }
+
+    /// ----------------------------------------------------
+    /// FILTER BY MANAGER
+    /// ----------------------------------------------------
+
+    List<T> filterByManager<T>(List<T> list, String key) {
+      return list.where((e) {
+        dynamic item = e;
+
+        if (key == "NH") {
+          return item.salesManager == "NH GROUP. - Drs.";
+        }
+
+        if (key == "OFFICE") {
+          return item.salesManager == "OFFICE - Drs.";
+        }
+
+        return item.salesManager != "NH GROUP. - Drs." &&
+            item.salesManager != "OFFICE - Drs.";
+      }).toList();
+    }
+
+    /// ----------------------------------------------------
+    /// SALES MAP
+    /// ----------------------------------------------------
+
+    final salesMap = {
+      "NH": filterByManager<SalesList>(sales, "NH"),
+      "OFFICE": filterByManager<SalesList>(sales, "OFFICE"),
+      "SALES": filterByManager<SalesList>(sales, "SALES"),
+    };
+
+    /// ----------------------------------------------------
+    /// RECEIVABLE MAP
+    /// ----------------------------------------------------
+
+    final receivableMap = {
+      "NH": filterByManager(target, "NH"),
+      "OFFICE": filterByManager(target, "OFFICE"),
+      "SALES": filterByManager(target, "SALES"),
+    };
+
+    /// ----------------------------------------------------
+    /// COLLECTION MAP
+    /// ----------------------------------------------------
+
+    final collectionMap = {
+      "NH": filterByManager(collection, "NH"),
+      "OFFICE": filterByManager(collection, "OFFICE"),
+      "SALES": filterByManager(collection, "SALES"),
+    };
+
+    /// ----------------------------------------------------
+    /// GET MONTH END RECEIVABLE
+    /// ----------------------------------------------------
+
+    double getMonthEndReceivable(
+      List receivableList,
+      List collectionList,
+      DateTime monthEnd,
+    ) {
+      double total = 0;
+
+      /// -----------------------------------------
+      /// CURRENT OUTSTANDING
+      /// -----------------------------------------
+
+      for (var r in receivableList) {
+        final postingDate = parseDate(r.postingDate);
+        if (postingDate == null) {
+          continue;
+        }
+        if (postingDate.isAtMost(monthEnd)) {
+          debugPrint(
+            '''OPENING RECEIVABLE Outstanding: ${r.documentNumber}':${r.balance}''',
+          );
+          final balance = double.tryParse(r.balance.toString()) ?? 0;
+          total += balance;
+        }
+      }
+
+      /// -----------------------------------------
+      /// ADD BACK FUTURE COLLECTIONS
+      /// -----------------------------------------
+
+      for (var c in collectionList) {
+        final invoiceDate = parseDate(c.invoiceDate);
+
+        final postingDate = parseDate(c.postingDate);
+
+        if (invoiceDate == null || postingDate == null) {
+          continue;
+        }
+
+        /// invoice belongs to selected month
+        final validInvoice = invoiceDate.isAtMost(monthEnd);
+
+        /// collection happened after month end
+        final futureCollection = postingDate.isAfter(monthEnd);
+
+        if (validInvoice && futureCollection) {
+          debugPrint(
+            '''OPENING RECEIVABLE Collected: ${c.invoiceNo}':${c.total}''',
+          );
+          total += double.tryParse(c.total.toString()) ?? 0;
+        }
+      }
+
+      return total.abs();
+    }
+
+    /// ----------------------------------------------------
+    /// GET MONTH SALES
+    /// ----------------------------------------------------
+
+    double getMonthSales(
+      List<SalesList> salesList,
+      DateTime start,
+      DateTime end,
+    ) {
+      double total = 0;
+
+      for (var s in salesList) {
+        if (s.invoiceDate.isAtLeast(start) && s.invoiceDate.isAtMost(end)) {
+          total += double.tryParse(s.rowTotal.toString()) ?? 0;
+        }
+      }
+
+      return total;
+    }
+
+    /// ----------------------------------------------------
+    /// DSO
+    /// ----------------------------------------------------
+
+    double calcDSO(
+      double openingReceivable,
+      double closingReceivable,
+      double sales,
+      int days,
+    ) {
+      final avgReceivable = (openingReceivable + closingReceivable) / 2;
+
+      if (sales == 0) return 0;
+
+      return (avgReceivable / sales) * days;
+    }
+
+    /// ----------------------------------------------------
+    /// DPO
+    /// ----------------------------------------------------
+
+    double calcDPO(
+      double openingPayable,
+      double closingPayable,
+      double cogs,
+      int days,
+    ) {
+      final avgPayable = (openingPayable + closingPayable) / 2;
+
+      if (cogs == 0) return 0;
+
+      return (avgPayable / cogs) * days;
+    }
+
+    /// ----------------------------------------------------
+    /// MONTH LOOP
+    /// ----------------------------------------------------
+
+    for (int i = 4; i <= 15; i++) {
+      final monthName = getMonthName(i);
+
+      if (i > fiscalIndex) {
+        soDataList.add(
+          CashConversionGraphData(
+            monthName: monthName,
+            dsoDaysSales: 0,
+            dsoDaysNH: 0,
+            dsoDaysOffice: 0,
+            dsoAllDays: 0,
+            payableDays: 0,
+            inventoryDays: 0,
+          ),
+        );
+
+        continue;
+      }
+
+      final dates = getMonthStartEndDates(i);
+
+      final curStart = dates['start']!;
+      final curEnd = dates['end']!;
+
+      final prevDate = DateTime(curStart.year, curStart.month - 1, 1);
+
+      final prevEnd = DateTime(prevDate.year, prevDate.month + 1, 0);
+
+      final days = getDSODays(curStart, curEnd);
+
+      /// ----------------------------------------------------
+      /// NH
+      /// ----------------------------------------------------
+
+      final nhOpening = getMonthEndReceivable(
+        receivableMap["NH"]!,
+        collectionMap["NH"]!,
+        prevEnd,
+      );
+
+      final nhClosing = getMonthEndReceivable(
+        receivableMap["NH"]!,
+        collectionMap["NH"]!,
+        curEnd,
+      );
+
+      final nhSales = getMonthSales(salesMap["NH"]!, curStart, curEnd);
+
+      final dsoNH = calcDSO(nhOpening, nhClosing, nhSales, days);
+
+      /// ----------------------------------------------------
+      /// OFFICE
+      /// ----------------------------------------------------
+
+      final officeOpening = getMonthEndReceivable(
+        receivableMap["OFFICE"]!,
+        collectionMap["OFFICE"]!,
+        prevEnd,
+      );
+
+      final officeClosing = getMonthEndReceivable(
+        receivableMap["OFFICE"]!,
+        collectionMap["OFFICE"]!,
+        curEnd,
+      );
+
+      final officeSales = getMonthSales(salesMap["OFFICE"]!, curStart, curEnd);
+
+      final dsoOffice = calcDSO(
+        officeOpening,
+        officeClosing,
+        officeSales,
+        days,
+      );
+
+      /// ----------------------------------------------------
+      /// SALES
+      /// ----------------------------------------------------
+
+      final salesOpening = getMonthEndReceivable(
+        receivableMap["SALES"]!,
+        collectionMap["SALES"]!,
+        prevEnd,
+      );
+
+      final salesClosing = getMonthEndReceivable(
+        receivableMap["SALES"]!,
+        collectionMap["SALES"]!,
+        curEnd,
+      );
+
+      final salesRevenue = getMonthSales(salesMap["SALES"]!, curStart, curEnd);
+
+      final dsoSales = calcDSO(salesOpening, salesClosing, salesRevenue, days);
+
+      /// ----------------------------------------------------
+      /// TOTAL DSO
+      /// ----------------------------------------------------
+
+      final totalOpening = getMonthEndReceivable(target, collection, prevEnd);
+
+      final totalClosing = getMonthEndReceivable(target, collection, curEnd);
+
+      final totalSales = getMonthSales(sales, curStart, curEnd);
+
+      final totalDSO = calcDSO(totalOpening, totalClosing, totalSales, days);
+
+      debugPrint(
+        '''--------------------------------------------------CCC DEBUG : $monthName--------------------------------------------------
+
+OPENING RECEIVABLE : ${totalOpening.toStringAsFixed(2)}
+CLOSING RECEIVABLE : ${totalClosing.toStringAsFixed(2)}
+
+AVERAGE RECEIVABLE :
+${((totalOpening + totalClosing) / 2).toStringAsFixed(2)}
+
+REVENUE :
+${totalSales.toStringAsFixed(2)}
+
+DAYS :
+$days
+
+DSO :
+${totalDSO.toStringAsFixed(2)}
+
+--------------------------------------------------
+NH OPENING :
+${nhOpening.toStringAsFixed(2)}
+
+NH CLOSING :
+${nhClosing.toStringAsFixed(2)}
+
+NH SALES :
+${nhSales.toStringAsFixed(2)}
+
+NH DSO :
+${dsoNH.toStringAsFixed(2)}
+
+--------------------------------------------------
+OFFICE OPENING :
+${officeOpening.toStringAsFixed(2)}
+
+OFFICE CLOSING :
+${officeClosing.toStringAsFixed(2)}
+
+OFFICE SALES :
+${officeSales.toStringAsFixed(2)}
+
+OFFICE DSO :
+${dsoOffice.toStringAsFixed(2)}
+
+--------------------------------------------------
+SALES OPENING :
+${salesOpening.toStringAsFixed(2)}
+
+SALES CLOSING :
+${salesClosing.toStringAsFixed(2)}
+
+SALES REVENUE :
+${salesRevenue.toStringAsFixed(2)}
+
+SALES DSO :
+${dsoSales.toStringAsFixed(2)}
+
+--------------------------------------------------
+''',
+      );
+
+      /// ----------------------------------------------------
+      /// INVENTORY
+      /// ----------------------------------------------------
+
+      final cogsIndex = i - 4;
+
+      final cogsData = (cogsIndex >= 0 && cogsIndex < monthlyCogsList.length)
+          ? monthlyCogsList[cogsIndex]
+          : MonthlyCogsData(
+              monthYear: monthName,
+              openingStock: 0,
+              purchases: 0,
+              closingStock: 0,
+              cogs: 0,
+            );
+
+      final avgInventory = (cogsData.openingStock + cogsData.closingStock) / 2;
+
+      final inventoryDays = cogsData.cogs != 0
+          ? (avgInventory / cogsData.cogs) * days
+          : 0;
+
+      /// ----------------------------------------------------
+      /// PAYABLE
+      /// ----------------------------------------------------
+
+      double openingPayable = 0;
+      double closingPayable = 0;
+
+      for (var p in payables) {
+        final d = parseDate(p.postingDate);
+        if (d == null) continue;
+        final balance = double.tryParse(p.balance.toString()) ?? 0;
+
+        if (d.isAtMost(prevEnd)) {
+          openingPayable += balance;
+        }
+
+        if (d.isAtMost(curEnd)) {
+          closingPayable += balance;
+        }
+      }
+
+      openingPayable = openingPayable.abs();
+
+      closingPayable = closingPayable.abs();
+
+      final dpo = calcDPO(openingPayable, closingPayable, cogsData.cogs, days);
+
+      /// ----------------------------------------------------
+      /// FINAL DATA
+      /// ----------------------------------------------------
+
+      soDataList.add(
+        CashConversionGraphData(
+          monthName: monthName,
+          dsoDaysSales: dsoSales.roundToDouble(),
+          dsoDaysNH: dsoNH.roundToDouble(),
+          dsoDaysOffice: dsoOffice.roundToDouble(),
+          dsoAllDays: totalDSO.roundToDouble(),
+          payableDays: dpo.roundToDouble(),
+          inventoryDays: inventoryDays.roundToDouble(),
+        ),
+      );
+    }
+
+    /// ----------------------------------------------------
+    /// GRAPH DATA
+    /// ----------------------------------------------------
+
+    monthlyAnalysisData = CashConversionGraphList(monthData: soDataList);
+
+    int displayIndex;
+
+    if (touchedMonth != null) {
+      displayIndex = soDataList.indexWhere((e) => e.monthName == touchedMonth);
+
+      if (displayIndex == -1) {
+        displayIndex = DateTime.now().month - 4;
+      }
+    } else {
+      displayIndex = DateTime.now().month - 4;
+    }
+
+    displayIndex = displayIndex.clamp(0, soDataList.length - 1);
+
+    dataList.add(
+      DSOGraphData(
+        monthname: soDataList[displayIndex].monthName,
+        name: "Receivables Days Outstanding",
+        target: 60,
+        achievement: soDataList[displayIndex].dsoAllDays,
+      ),
+    );
+
+    dataList.add(
+      DSOGraphData(
+        monthname: soDataList[displayIndex].monthName,
+        name: "Inventory Days Outstanding",
+        target: 60,
+        achievement: soDataList[displayIndex].inventoryDays,
+      ),
+    );
+
+    dataList.add(
+      DSOGraphData(
+        monthname: soDataList[displayIndex].monthName,
+        name: "Payable Days Outstanding",
+        target: 75,
+        achievement: soDataList[displayIndex].payableDays,
+      ),
+    );
+
+    graphData = DSOGraphList(monthData: dataList);
+
+    if (!mounted) return;
+
     setState(() {
       chartDataLoadedCCC = true;
     });
@@ -1846,13 +2373,23 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _monthlyAnalysisHorizontalController.dispose();
+    _daysOutstandingHorizontalController.dispose();
     super.dispose();
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _monthlyAnalysisHorizontalController =
+      ScrollController();
+  final ScrollController _daysOutstandingHorizontalController =
+      ScrollController();
 
   @override
   Widget build(BuildContext context) {
     return chartDataLoadedCCC
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 const SizedBox(height: 10),
@@ -1920,7 +2457,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _monthlyAnalysis(),
+                  child: FinanceChartCard(child: _monthlyAnalysis()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -1970,7 +2507,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _monthlyAnalysisGraph(),
+                  child: FinanceChartCard(child: _monthlyAnalysisGraph()),
                 ),
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -2020,8 +2557,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
               .map((data) => data.dsoDaysOffice)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _monthlyAnalysisHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -2148,8 +2686,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
               .map((data) => data.achievement)
               .reduce((a, b) => a > b ? a : b)
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _daysOutstandingHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,

@@ -14,6 +14,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import '../../../api_helper.dart';
+import 'finance_chart_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -1079,10 +1080,21 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _groupWiseHorizontalController.dispose();
+    _subGroupHorizontalController.dispose();
+    _subSubGroupHorizontalController.dispose();
+    _monthlyHorizontalController.dispose();
     _toDateController.dispose();
     _fromDateController.dispose();
     super.dispose();
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _groupWiseHorizontalController = ScrollController();
+  final ScrollController _subGroupHorizontalController = ScrollController();
+  final ScrollController _subSubGroupHorizontalController = ScrollController();
+  final ScrollController _monthlyHorizontalController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -1092,7 +1104,8 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
     ).format(DateTime(currentDate.year, currentDate.month, 1));
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate);
     return chartDataLoadedExpenses == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -1165,7 +1178,7 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _groupWiseAnalysis(),
+                  child: FinanceChartCard(child: _groupWiseAnalysis()),
                 ),
 
                 const Padding(
@@ -1213,7 +1226,7 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _subGroupAnalysis(),
+                  child: FinanceChartCard(child: _subGroupAnalysis()),
                 ),
 
                 const Padding(
@@ -1261,7 +1274,7 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _subSubGroupAnalysis(),
+                  child: FinanceChartCard(child: _subSubGroupAnalysis()),
                 ),
 
                 const Padding(
@@ -1309,7 +1322,7 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _monthlyAnalysis(),
+                  child: FinanceChartCard(child: _monthlyAnalysis()),
                 ),
               ],
             ),
@@ -1350,8 +1363,9 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
               .reduce((a, b) => a > b ? a : b)
         : 0;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _groupWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -1492,8 +1506,9 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _subGroupHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -1637,8 +1652,9 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
       chartMinY = roundDownTo50Lakhs(maxNegative);
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _subSubGroupHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -1757,8 +1773,9 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
               .reduce((a, b) => a > b ? a : b)
         : 0;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _monthlyHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,

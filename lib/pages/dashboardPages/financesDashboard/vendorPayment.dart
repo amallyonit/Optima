@@ -17,6 +17,7 @@ import '../../../classes/dashBoard.dart';
 import '../../../login_screen.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 
+import 'finance_chart_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -240,6 +241,8 @@ class _VendorPaymentState extends State<VendorPayment> {
   final Map<String, TextEditingController> vendorCommitmentControllers = {};
   Map<String, VendorMonthCommitment> vendorCommitments = {};
   bool isSavingCommitments = false;
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _agingHorizontalController = ScrollController();
 
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
@@ -1518,6 +1521,7 @@ class _VendorPaymentState extends State<VendorPayment> {
           a90to180: 0,
           a180above: 0,
           commitment: 0,
+          currentMonthPayable: 0,
           actualPayable: 0,
         ),
       );
@@ -1695,6 +1699,8 @@ class _VendorPaymentState extends State<VendorPayment> {
     for (final controller in vendorCommitmentControllers.values) {
       controller.dispose();
     }
+    _verticalScrollController.dispose();
+    _agingHorizontalController.dispose();
     vendorSearchController.dispose();
     super.dispose();
   }
@@ -1717,7 +1723,8 @@ class _VendorPaymentState extends State<VendorPayment> {
       containerDropDownHeight = screenHeight * 0.12;
     }
     if (!chartDataLoaded) {
-      return SingleChildScrollView(
+      return FinanceVerticalScroll(
+        controller: _verticalScrollController,
         child: Column(
           children: [
             const SizedBox(height: 10),
@@ -1742,8 +1749,8 @@ class _VendorPaymentState extends State<VendorPayment> {
       );
     }
 
-    return SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+    return FinanceVerticalScroll(
+      controller: _verticalScrollController,
       child: Column(
         children: [
           // Row(
@@ -2966,7 +2973,7 @@ class _VendorPaymentState extends State<VendorPayment> {
           ),
           Padding(
             padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-            child: _receivablesAging(),
+            child: FinanceChartCard(child: _receivablesAging()),
           ),
         ],
       ),
@@ -3394,8 +3401,9 @@ class _VendorPaymentState extends State<VendorPayment> {
 
   Widget _receivablesAging() {
     final screenWidth = MediaQuery.of(context).size.width;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _agingHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: screenWidth,
