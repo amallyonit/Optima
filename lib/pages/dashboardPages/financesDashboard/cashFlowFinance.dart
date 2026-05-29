@@ -1428,10 +1428,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                     ),
                   ],
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1494,10 +1491,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _dailyMovement()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1564,10 +1558,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _monthlyAnalysis()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

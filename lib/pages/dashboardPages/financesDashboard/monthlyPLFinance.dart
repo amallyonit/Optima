@@ -3341,10 +3341,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _revenueGraph()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
                   child: Row(
@@ -3398,10 +3395,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _purchaseGraph()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
                   child: Row(
@@ -3455,10 +3449,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _expenditureGraph()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
                   child: Row(
@@ -3510,10 +3501,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _inventoryGraph()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
                   child: Row(
@@ -3562,10 +3550,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _cogsGraph()),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
                 ),
               ],
             ),

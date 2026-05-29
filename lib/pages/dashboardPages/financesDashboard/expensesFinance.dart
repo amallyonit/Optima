@@ -1181,10 +1181,6 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                   child: FinanceChartCard(child: _groupWiseAnalysis()),
                 ),
 
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1229,10 +1225,6 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                   child: FinanceChartCard(child: _subGroupAnalysis()),
                 ),
 
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1275,11 +1267,6 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _subSubGroupAnalysis()),
-                ),
-
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
                 ),
 
                 Row(

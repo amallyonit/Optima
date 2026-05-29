@@ -2430,8 +2430,7 @@ class _CustomerCollectionAnalysisState
                           ),
                         ),
                       );
-
-                      return;
+                      // return;
                     }
                     setState(() {
                       isSavingCommitments = true;
@@ -3979,10 +3978,7 @@ class _CustomerCollectionAnalysisState
             ),
           ],
         ),
-        const Padding(
-          padding: EdgeInsets.only(left: 16.0, right: 16.0),
-          child: Divider(thickness: 2),
-        ),
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

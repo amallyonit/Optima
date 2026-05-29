@@ -663,7 +663,17 @@ class _VendorPaymentState extends State<VendorPayment> {
     for (var invoice in invoiceList) {
       final vendorCode = invoice.vendorCode;
       final vendorName = invoice.vendorName;
-      final outstanding = _invoiceBalance(invoice);
+      final dueBy = DateFormat('dd/MM/yyyy').parse(invoice.dueon);
+
+      final lastDateOfMonth = DateTime(
+        selectedCommitmentMonth.year,
+        selectedCommitmentMonth.month + 1,
+        0,
+      );
+
+      final outstanding = !dueBy.isAfter(lastDateOfMonth)
+          ? _invoiceBalance(invoice)
+          : 0.0;
 
       if (temp.containsKey(vendorCode)) {
         temp[vendorCode]!.totalOutstanding += outstanding;
@@ -2395,10 +2405,7 @@ class _VendorPaymentState extends State<VendorPayment> {
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 10.0),
-            child: Divider(thickness: 2),
-          ),
+
           Padding(
             padding: const EdgeInsets.only(
               left: 16.0,
@@ -2928,10 +2935,7 @@ class _VendorPaymentState extends State<VendorPayment> {
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 16.0, right: 16.0),
-            child: Divider(thickness: 2),
-          ),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -3353,7 +3357,7 @@ class _VendorPaymentState extends State<VendorPayment> {
                             ),
                           ),
                         );
-                        return;
+                        // return;
                       }
                       setState(() {
                         isSavingCommitments = true;

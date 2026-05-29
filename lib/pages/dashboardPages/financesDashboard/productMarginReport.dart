@@ -1085,10 +1085,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _dailyCostingGraph()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
                   child: Row(
@@ -1129,10 +1126,6 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _itemSubGroupWise()),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
                 ),
               ],
             ),

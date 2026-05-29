@@ -172,6 +172,9 @@ class InventoryClosingCashConversionProvider with ChangeNotifier {
 }
 
 class _CashConversionFinanceState extends State<CashConversionFinance> {
+  CCCExcelData? selectedMonthExcelData;
+  List<CCCAuditRow> cccAuditRows = [];
+
   DateTime addMonth(DateTime date, int addMonth) {
     int currentMonth = date.month;
     int currentYear = date.year;
@@ -1148,313 +1151,23 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     return result;
   }
 
-  Future<void> _loadMonthlySalesBarCashConversionChartDataOld(
-    String? touchedMonth,
-  ) async {
-    List<CashConversionGraphData> soDataList = [];
-    List<DSOGraphData> dataList = [];
-
-    final now = DateTime.now();
-    final int fiscalIndex = (now.month < 4) ? now.month + 12 : now.month;
-
-    // final dateFormat = DateFormat('dd/MM/yyyy');
-
-    DateTime? parseDate(dynamic d) {
-      try {
-        if (d == null) return null;
-
-        String value = d.toString().trim();
-
-        if (value.isEmpty) return null;
-
-        /// dd/MM/yyyy
-        try {
-          return DateFormat('dd/MM/yyyy').parseStrict(value);
-        } catch (_) {}
-
-        /// yyyy-MM-dd
-        try {
-          return DateFormat('yyyy-MM-dd').parseStrict(value);
-        } catch (_) {}
-
-        /// yyyy-MM-dd HH:mm:ss
-        try {
-          return DateFormat('yyyy-MM-dd HH:mm:ss').parseStrict(value);
-        } catch (_) {}
-
-        /// fallback
-        return DateTime.tryParse(value);
-      } catch (_) {
-        return null;
-      }
-    }
-
-    /// STEP 1: Pre-group (NO repeated where)
-    final salesMap = {
-      "NH": <SalesList>[],
-      "OFFICE": <SalesList>[],
-      "SALES": <SalesList>[],
-    };
-
-    for (var s in sales) {
-      if (s.salesManager == "NH GROUP. - Drs.") {
-        salesMap["NH"]!.add(s);
-      } else if (s.salesManager == "OFFICE - Drs.") {
-        salesMap["OFFICE"]!.add(s);
-      } else {
-        salesMap["SALES"]!.add(s);
-      }
-    }
-
-    List filterByManager(List list, String key) {
-      return list.where((e) {
-        if (key == "NH") return e.salesManager == "NH GROUP. - Drs.";
-        if (key == "OFFICE") return e.salesManager == "OFFICE - Drs.";
-        return e.salesManager != "NH GROUP. - Drs." &&
-            e.salesManager != "OFFICE - Drs.";
-      }).toList();
-    }
-
-    final receivablesMap = {
-      "NH": filterByManager(target, "NH"),
-      "OFFICE": filterByManager(target, "OFFICE"),
-      "SALES": filterByManager(target, "SALES"),
-    };
-
-    final collectionMap = {
-      "NH": filterByManager(collection, "NH"),
-      "OFFICE": filterByManager(collection, "OFFICE"),
-      "SALES": filterByManager(collection, "SALES"),
-    };
-
-    /// STEP 2: Month Loop
-    for (int i = 4; i <= 15; i++) {
-      final monthName = getMonthName(i);
-
-      if (i > fiscalIndex) {
-        soDataList.add(
-          CashConversionGraphData(
-            monthName: monthName,
-            dsoDaysSales: 0,
-            dsoDaysNH: 0,
-            dsoDaysOffice: 0,
-            dsoAllDays: 0,
-            payableDays: 0,
-            inventoryDays: 0,
-          ),
-        );
-        continue;
-      }
-
-      var dates = getMonthStartEndDates(i);
-      final curStart = dates['start']!;
-      final curEnd = dates['end']!;
-
-      /// Previous month directly from current month
-      final prevDate = DateTime(curStart.year, curStart.month - 1, 1);
-      final prevStart = DateTime(prevDate.year, prevDate.month, 1);
-      final prevEnd = DateTime(prevDate.year, prevDate.month + 1, 0);
-
-      double calcDSO(
-        List<SalesList> salesList,
-        List receivableList,
-        List collectionList,
-      ) {
-        double salesTotal = 0;
-        double receivableTotal = 0;
-        double collectionTotal = 0;
-
-        /// SALES
-        for (var s in salesList) {
-          if (s.invoiceDate.isAtLeast(curStart) &&
-              s.invoiceDate.isAtMost(curEnd)) {
-            salesTotal += double.tryParse(s.rowTotal) ?? 0;
-          }
-        }
-        double prevMthReceivableTotal = 0;
-        double prevMthCollectionTotal = 0;
-
-        /// RECEIVABLE
-        for (var r in receivableList) {
-          final d = parseDate(r.postingDate);
-          if (d == null) continue;
-          final balance = double.tryParse(r.balance) ?? 0;
-
-          /// Current Month
-          if (d.isAtMost(curEnd)) {
-            receivableTotal += balance;
-          }
-
-          /// Previous Month
-          if (d.isAtMost(prevEnd)) {
-            prevMthReceivableTotal += balance;
-          }
-        }
-
-        /// COLLECTION
-        for (var c in collectionList) {
-          final d = parseDate(c.postingDate);
-          final total = double.tryParse(c.total) ?? 0;
-
-          /// Current Month
-          if (d!.isAtLeast(curStart) && d.isAtMost(curEnd)) {
-            collectionTotal += total;
-          }
-
-          /// Previous Month
-          if (d.isAtLeast(prevStart) && d.isAtMost(prevEnd)) {
-            prevMthCollectionTotal += total;
-          }
-        }
-
-        final avg =
-            (prevMthReceivableTotal +
-                prevMthCollectionTotal +
-                receivableTotal +
-                collectionTotal) /
-            2;
-        final days = getCompletedDaysInMonth(DateTime.now().year, i);
-
-        return salesTotal != 0 ? (avg / salesTotal) * days : 0;
-      }
-
-      /// STEP 3: Calculate DSO
-      final dsoNH = calcDSO(
-        salesMap["NH"]!,
-        receivablesMap["NH"]!,
-        collectionMap["NH"]!,
-      );
-
-      final dsoOffice = calcDSO(
-        salesMap["OFFICE"]!,
-        receivablesMap["OFFICE"]!,
-        collectionMap["OFFICE"]!,
-      );
-
-      final dsoSales = calcDSO(
-        salesMap["SALES"]!,
-        receivablesMap["SALES"]!,
-        collectionMap["SALES"]!,
-      );
-
-      /// STEP 4: Payables & Paid
-      double paid = 0;
-      for (var c in modeOfPayment) {
-        final d = parseDate(c.postingDate);
-        if (d!.isAtLeast(curStart) && d.isAtMost(curEnd)) {
-          paid += double.tryParse(c.total) ?? 0;
-        }
-      }
-      double payable = 0;
-      for (var p in payables) {
-        final d = parseDate(p.postingDate);
-        if (d!.isAtMost(curEnd)) {
-          payable += double.tryParse(p.balance) ?? 0;
-        }
-      }
-
-      /// STEP 5: Inventory
-      final cogsIndex = i - 4;
-
-      final cogsData = (cogsIndex >= 0 && cogsIndex < monthlyCogsList.length)
-          ? monthlyCogsList[cogsIndex]
-          : MonthlyCogsData(
-              monthYear: monthName,
-              openingStock: 0,
-              purchases: 0,
-              closingStock: 0,
-              cogs: 0,
-            );
-
-      double avgInventory = (cogsData.openingStock + cogsData.closingStock) / 2;
-
-      double inventoryDays = cogsData.cogs != 0
-          ? (avgInventory / cogsData.cogs) *
-                getCompletedDaysInMonth(DateTime.now().year, i)
-          : 0;
-
-      payable = payable.abs();
-      final avg = (payable + paid) / 2;
-      final days = getCompletedDaysInMonth(DateTime.now().year, i);
-
-      payable = payable != 0 ? (avg / cogsData.cogs) * days : 0;
-
-      final totalDSO = dsoNH + dsoSales + dsoOffice;
-
-      soDataList.add(
-        CashConversionGraphData(
-          monthName: monthName,
-          dsoDaysSales: dsoSales.roundToDouble(),
-          dsoDaysNH: dsoNH.roundToDouble(),
-          dsoDaysOffice: dsoOffice.roundToDouble(),
-          dsoAllDays: totalDSO.roundToDouble(),
-          payableDays: payable.abs().roundToDouble(),
-          inventoryDays: inventoryDays.roundToDouble(),
-        ),
-      );
-    }
-
-    /// STEP 6: Graph Selection
-    monthlyAnalysisData = CashConversionGraphList(monthData: soDataList);
-
-    int displayIndex;
-
-    if (touchedMonth != null) {
-      displayIndex = soDataList.indexWhere((e) => e.monthName == touchedMonth);
-
-      if (displayIndex == -1) {
-        displayIndex = DateTime.now().month - 4;
-      }
-    } else {
-      displayIndex = DateTime.now().month - 4;
-    }
-
-    displayIndex = displayIndex.clamp(0, soDataList.length - 1);
-
-    dataList.add(
-      DSOGraphData(
-        monthname: soDataList[displayIndex].monthName,
-        name: "Receivables Days Outstanding",
-        target: 60,
-        achievement: soDataList[displayIndex].dsoAllDays,
-      ),
-    );
-
-    dataList.add(
-      DSOGraphData(
-        monthname: soDataList[displayIndex].monthName,
-        name: "Inventory Days Outstanding",
-        target: 60,
-        achievement: soDataList[displayIndex].inventoryDays,
-      ),
-    );
-
-    dataList.add(
-      DSOGraphData(
-        monthname: soDataList[displayIndex].monthName,
-        name: "Payable Days Outstanding",
-        target: 75,
-        achievement: soDataList[displayIndex].payableDays,
-      ),
-    );
-
-    graphData = DSOGraphList(monthData: dataList);
-    if (!mounted) return;
-    setState(() {
-      chartDataLoadedCCC = true;
-    });
-  }
-
   Future<void> _loadMonthlySalesBarCashConversionChartData(
     String? touchedMonth,
   ) async {
     List<CashConversionGraphData> soDataList = [];
     List<DSOGraphData> dataList = [];
+    cccAuditRows.clear();
 
     final now = DateTime.now();
     final int fiscalIndex = (now.month < 4) ? now.month + 12 : now.month;
 
-    // final dateFormat = DateFormat('dd/MM/yyyy');
+    final selectedMonth = touchedMonth!.isEmpty
+        ? getMonthName(
+            DateTime.now().month < 4
+                ? DateTime.now().month + 12
+                : DateTime.now().month,
+          )
+        : touchedMonth;
 
     DateTime? parseDate(dynamic d) {
       try {
@@ -1574,8 +1287,15 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
           continue;
         }
         if (postingDate.isAtMost(monthEnd)) {
-          debugPrint(
-            '''OPENING RECEIVABLE Outstanding: ${r.documentNumber}':${r.balance}''',
+          cccAuditRows.add(
+            CCCAuditRow(
+              month: selectedMonth,
+              type: 'Opening Outstanding ${r.bpGroup}',
+              documentNo: r.documentNumber?.toString() ?? '',
+              invoiceDate: '',
+              postingDate: r.postingDate?.toString() ?? '',
+              amount: double.tryParse(r.balance.toString()) ?? 0,
+            ),
           );
           final balance = double.tryParse(r.balance.toString()) ?? 0;
           total += balance;
@@ -1602,8 +1322,15 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         final futureCollection = postingDate.isAfter(monthEnd);
 
         if (validInvoice && futureCollection) {
-          debugPrint(
-            '''OPENING RECEIVABLE Collected: ${c.invoiceNo}':${c.total}''',
+          cccAuditRows.add(
+            CCCAuditRow(
+              month: selectedMonth,
+              type: 'Future Collection Added Back ${c.bpGroup}',
+              documentNo: c.invoiceNo?.toString() ?? '',
+              invoiceDate: c.invoiceDate?.toString() ?? '',
+              postingDate: c.postingDate?.toString() ?? '',
+              amount: double.tryParse(c.total.toString()) ?? 0,
+            ),
           );
           total += double.tryParse(c.total.toString()) ?? 0;
         }
@@ -1669,6 +1396,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     /// ----------------------------------------------------
     /// MONTH LOOP
     /// ----------------------------------------------------
+    List<CCCExcelData> excelMonthData = [];
 
     for (int i = 4; i <= 15; i++) {
       final monthName = getMonthName(i);
@@ -1777,65 +1505,31 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
       final totalDSO = calcDSO(totalOpening, totalClosing, totalSales, days);
 
-      debugPrint(
-        '''--------------------------------------------------CCC DEBUG : $monthName--------------------------------------------------
+      excelMonthData.add(
+        CCCExcelData(
+          prevMonth: getMonthName(i - 1),
+          currentMonth: monthName,
 
-OPENING RECEIVABLE : ${totalOpening.toStringAsFixed(2)}
-CLOSING RECEIVABLE : ${totalClosing.toStringAsFixed(2)}
+          salesOpening: salesOpening,
+          salesClosing: salesClosing,
+          salesRevenue: salesRevenue,
+          salesDSO: dsoSales,
 
-AVERAGE RECEIVABLE :
-${((totalOpening + totalClosing) / 2).toStringAsFixed(2)}
+          nhOpening: nhOpening,
+          nhClosing: nhClosing,
+          nhRevenue: nhSales,
+          nhDSO: dsoNH,
 
-REVENUE :
-${totalSales.toStringAsFixed(2)}
+          officeOpening: officeOpening,
+          officeClosing: officeClosing,
+          officeRevenue: officeSales,
+          officeDSO: dsoOffice,
 
-DAYS :
-$days
-
-DSO :
-${totalDSO.toStringAsFixed(2)}
-
---------------------------------------------------
-NH OPENING :
-${nhOpening.toStringAsFixed(2)}
-
-NH CLOSING :
-${nhClosing.toStringAsFixed(2)}
-
-NH SALES :
-${nhSales.toStringAsFixed(2)}
-
-NH DSO :
-${dsoNH.toStringAsFixed(2)}
-
---------------------------------------------------
-OFFICE OPENING :
-${officeOpening.toStringAsFixed(2)}
-
-OFFICE CLOSING :
-${officeClosing.toStringAsFixed(2)}
-
-OFFICE SALES :
-${officeSales.toStringAsFixed(2)}
-
-OFFICE DSO :
-${dsoOffice.toStringAsFixed(2)}
-
---------------------------------------------------
-SALES OPENING :
-${salesOpening.toStringAsFixed(2)}
-
-SALES CLOSING :
-${salesClosing.toStringAsFixed(2)}
-
-SALES REVENUE :
-${salesRevenue.toStringAsFixed(2)}
-
-SALES DSO :
-${dsoSales.toStringAsFixed(2)}
-
---------------------------------------------------
-''',
+          totalOpening: totalOpening,
+          totalClosing: totalClosing,
+          totalRevenue: totalSales,
+          totalDSO: totalDSO,
+        ),
       );
 
       /// ----------------------------------------------------
@@ -1912,17 +1606,18 @@ ${dsoSales.toStringAsFixed(2)}
 
     int displayIndex;
 
-    if (touchedMonth != null) {
+    if (touchedMonth.isNotEmpty) {
       displayIndex = soDataList.indexWhere((e) => e.monthName == touchedMonth);
 
       if (displayIndex == -1) {
-        displayIndex = DateTime.now().month - 4;
+        displayIndex = fiscalIndex - 4;
       }
     } else {
-      displayIndex = DateTime.now().month - 4;
+      displayIndex = fiscalIndex - 4;
     }
-
     displayIndex = displayIndex.clamp(0, soDataList.length - 1);
+
+    selectedMonthExcelData = excelMonthData[displayIndex];
 
     dataList.add(
       DSOGraphData(
@@ -1958,6 +1653,110 @@ ${dsoSales.toStringAsFixed(2)}
     setState(() {
       chartDataLoadedCCC = true;
     });
+  }
+
+  Future<void> downloadCCCExcel() async {
+    if (selectedMonthExcelData == null) return;
+
+    final d = selectedMonthExcelData!;
+
+    await reportService.generateExcel(
+      sheetName: 'CashConversion',
+      headers: [
+        'Name',
+        d.prevMonth,
+        d.currentMonth,
+        'Average Receivable',
+        'Revenue',
+        'Days Outstanding',
+      ],
+      rows: [
+        [
+          'Sales Team',
+          d.salesOpening,
+          d.salesClosing,
+          (d.salesOpening + d.salesClosing) / 2,
+          d.salesRevenue,
+          d.salesDSO,
+        ],
+        [
+          'NH Group',
+          d.nhOpening,
+          d.nhClosing,
+          (d.nhOpening + d.nhClosing) / 2,
+          d.nhRevenue,
+          d.nhDSO,
+        ],
+        [
+          'Office',
+          d.officeOpening,
+          d.officeClosing,
+          (d.officeOpening + d.officeClosing) / 2,
+          d.officeRevenue,
+          d.officeDSO,
+        ],
+        [
+          'Total',
+          d.totalOpening,
+          d.totalClosing,
+          (d.totalOpening + d.totalClosing) / 2,
+          d.totalRevenue,
+          d.totalDSO,
+        ],
+      ],
+      fileName: 'CashConversion_${d.currentMonth}.xlsx',
+      amountColumns: [2, 3, 4, 5, 6],
+      reportTitle: 'Cash Conversion Analysis - ${d.currentMonth}',
+      enableStyling: true,
+    );
+  }
+
+  Future<void> downloadCCCAuditExcel() async {
+    final selectedMonth = touchedMonth == ""
+        ? getMonthName(
+            DateTime.now().month < 4
+                ? DateTime.now().month + 12
+                : DateTime.now().month,
+          )
+        : touchedMonth;
+
+    final rowsToExport = cccAuditRows
+        .where((e) => e.month == selectedMonth)
+        .toList();
+
+    await reportService.generateExcel(
+      sheetName: 'CCC Audit',
+
+      headers: [
+        'Month',
+        'Type',
+        'Document No',
+        'Invoice Date',
+        'Posting Date',
+        'Amount',
+      ],
+
+      rows: rowsToExport
+          .map(
+            (e) => [
+              e.month,
+              e.type,
+              e.documentNo,
+              e.invoiceDate,
+              e.postingDate,
+              e.amount,
+            ],
+          )
+          .toList(),
+
+      fileName: 'CCC_Audit_$selectedMonth.xlsx',
+
+      amountColumns: [6],
+
+      reportTitle: 'CCC Audit - $selectedMonth',
+
+      enableStyling: true,
+    );
   }
 
   Future<void> loadDataWithFilter(String? touchedMonth) async {
@@ -2153,8 +1952,8 @@ ${dsoSales.toStringAsFixed(2)}
       ],
       fileName: 'cashConversionCycle.xlsx',
       reportTitle: 'Cash Conversion Cycle',
-      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-      addTotalRow: true,
+      // amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      addTotalRow: false,
     );
   }
 
@@ -2459,10 +2258,7 @@ ${dsoSales.toStringAsFixed(2)}
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _monthlyAnalysis()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 const SizedBox(height: 15),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2483,12 +2279,19 @@ ${dsoSales.toStringAsFixed(2)}
                           itemBuilder: (BuildContext bc) {
                             return [
                               PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyCCExcel(graphData);
-                                  });
+                                onTap: () async {
+                                  // setState(() {
+                                  //   generateMonthlyCCExcel(graphData);
+                                  // });
+                                  await downloadCCCExcel();
                                 },
                                 child: const Text("Download Excel"),
+                              ),
+                              PopupMenuItem(
+                                onTap: () async {
+                                  await downloadCCCAuditExcel();
+                                },
+                                child: const Text("Download AuditExcel"),
                               ),
                               PopupMenuItem(
                                 onTap: () {
@@ -2509,34 +2312,6 @@ ${dsoSales.toStringAsFixed(2)}
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: FinanceChartCard(child: _monthlyAnalysisGraph()),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                // Center(
-                //   child: ElevatedButton(
-                //     style: ElevatedButton.styleFrom(
-                //       backgroundColor:
-                //       const Color(0xff2ca9df),
-                //       shape: RoundedRectangleBorder(
-                //         borderRadius:
-                //         BorderRadius.circular(5.0),
-                //       ),
-                //     ),
-                //     onPressed: () {},
-                //     child: const SizedBox(
-                //       width: 400,
-                //       child: Center(
-                //         child: Text(
-                //           "Download Reports",
-                //           style: TextStyle(
-                //               fontSize: 14,
-                //               color: Colors.white),
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-                // ),
               ],
             ),
           )
@@ -2596,21 +2371,27 @@ ${dsoSales.toStringAsFixed(2)}
             barTouchData: BarTouchData(
               allowTouchBarBackDraw: true,
               touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedMonth = touchedMonth == ""
-                          ? monthlyAnalysisData
-                                .monthData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .monthName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(touchedMonth);
-                    }
-                  });
-                }
+                if (flTouchEvent is! FlTapUpEvent) return;
+
+                if (barTouchResponse?.spot == null) return;
+
+                final groupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+
+                final month =
+                    monthlyAnalysisData.monthData[groupIndex].monthName;
+
+                setState(() {
+                  if (touchedMonth == month) {
+                    touchedMonth = "";
+                    showDrillDownChart = false;
+                  } else {
+                    touchedMonth = month;
+                    selectedChart = groupIndex.toDouble();
+                    showDrillDownChart = true;
+                  }
+                });
+
+                await loadDataWithFilter(touchedMonth);
               },
               touchTooltipData: BarTouchTooltipData(
                 maxContentWidth: 200,

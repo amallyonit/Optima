@@ -6310,3 +6310,67 @@ class AdvancePaidCustomerData {
     required this.total,
   });
 }
+
+class CCCExcelData {
+  String prevMonth;
+  String currentMonth;
+
+  double salesOpening;
+  double salesClosing;
+  double salesRevenue;
+  double salesDSO;
+
+  double nhOpening;
+  double nhClosing;
+  double nhRevenue;
+  double nhDSO;
+
+  double officeOpening;
+  double officeClosing;
+  double officeRevenue;
+  double officeDSO;
+
+  double totalOpening;
+  double totalClosing;
+  double totalRevenue;
+  double totalDSO;
+
+  CCCExcelData({
+    required this.prevMonth,
+    required this.currentMonth,
+    required this.salesOpening,
+    required this.salesClosing,
+    required this.salesRevenue,
+    required this.salesDSO,
+    required this.nhOpening,
+    required this.nhClosing,
+    required this.nhRevenue,
+    required this.nhDSO,
+    required this.officeOpening,
+    required this.officeClosing,
+    required this.officeRevenue,
+    required this.officeDSO,
+    required this.totalOpening,
+    required this.totalClosing,
+    required this.totalRevenue,
+    required this.totalDSO,
+  });
+}
+
+class CCCAuditRow {
+  final String month;
+  final String type;
+  final String documentNo;
+  final String invoiceDate;
+  final String postingDate;
+  final double amount;
+
+  CCCAuditRow({
+    required this.month,
+    required this.type,
+    required this.documentNo,
+    required this.invoiceDate,
+    required this.postingDate,
+    required this.amount,
+  });
+}

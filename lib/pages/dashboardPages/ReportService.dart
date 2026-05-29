@@ -262,14 +262,6 @@ class ReportService {
       if (kIsWeb) {
         downloadPDFWeb(fileName, bytes);
       } else {
-        // final url = await uploadPDF(Uint8List.fromList(bytes), fileName);
-
-        // if (url != null) {
-        //   await downloadFile(url, fileName); // DownloadManager
-        // } else {
-        //   debugPrint("Upload failed");
-        // }
-
         final dir = await getStorageDirectory();
         final file = File('$dir/$fileName');
         await file.writeAsBytes(bytes);
