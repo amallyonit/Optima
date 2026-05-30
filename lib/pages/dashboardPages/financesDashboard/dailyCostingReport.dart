@@ -40,7 +40,7 @@ class DailyCostingInput {
   final List<GRNList> grnList;
   final List<POList> poListOpen;
   final List<InventoryList> inventory;
-  final List<InventoryList> inventoryClosing;
+  final List<InventoryList> inventoryOpening;
   final List<SalesTargetList> salesTarget;
   final List<StockInTransitList> stockList;
 
@@ -62,7 +62,7 @@ class DailyCostingInput {
     required this.grnList,
     required this.poListOpen,
     required this.inventory,
-    required this.inventoryClosing,
+    required this.inventoryOpening,
     required this.salesTarget,
     required this.currentMonthFromDate,
     required this.currentMonthToDate,
@@ -401,10 +401,15 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   expiredValue = 0;
 
   double inventoryOpeningValue = 0;
-  for (final it in input.inventory) {
+  for (final it in input.inventoryOpening.where((e) {
+    return e.itemSubGroup != "Suture";
+  })) {
+    inventoryOpeningValue += (double.tryParse(it.totalValue) ?? 0);
+  }
+
+  for (final it in input.inventory.where((e) => e.itemSubGroup != "Suture")) {
     final val = double.tryParse(it.totalValue) ?? 0;
     final bracket = it.ageingBrackets.trim();
-    inventoryOpeningValue += val;
 
     if (bracket == "<30 Days") {
       lessThan30DaysValue += val;
@@ -435,9 +440,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   inventoryClosingValue = 0;
-  for (final it in input.inventoryClosing.where(
-    (e) => e.itemSubGroup != "Suture",
-  )) {
+  for (final it in input.inventory.where((e) => e.itemSubGroup != "Suture")) {
     inventoryClosingValue += (double.tryParse(it.totalValue) ?? 0);
   }
 
@@ -775,7 +778,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   List<POList> poListOpen = [];
   List<POList> poListOpenTemp = [];
   List<InventoryList> inventory = [];
-  List<InventoryList> inventoryClosing = [];
+  List<InventoryList> inventoryOpening = [];
   List<SalesTargetList> salesTarget = [];
   List<GRNList> grnList = [];
   List<GRNList> grnListTemp = [];
@@ -890,10 +893,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
   }
 
   List<InventoryList> parseInventoryList(List<dynamic> data) {
-    return data.map((e) => InventoryList.fromJson(e)).toList();
-  }
-
-  List<InventoryList> parseInventoryClosingList(List<dynamic> data) {
     return data.map((e) => InventoryList.fromJson(e)).toList();
   }
 
@@ -1451,7 +1450,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       await _loadPurchasePrice(userName, userLevel);
       await _loadPOList(userName, userLevel);
       await _loadInventory(userName, userLevel);
-      await _loadInventoryClosing(userName, userLevel);
+      await _loadInventoryOpening(userName, userLevel);
       await _loadSalesTarget(userName, userLevel);
       await _loadGRN(userName, userLevel);
       await _loadStockInTransitList(userName, userLevel);
@@ -2048,7 +2047,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
     final toDate = dateFilterFlag
         ? formatDate(toDateFilter!)
-        : formatDate(lastMonthToDate!);
+        : formatDate(currentMonthToDate!);
 
     const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
 
@@ -2125,16 +2124,16 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     }
   }
 
-  Future<void> _loadInventoryClosing(String userName, String userLevel) async {
+  Future<void> _loadInventoryOpening(String userName, String userLevel) async {
     int index = 0;
     const int limit = 10000;
     int fetchedCount = 0;
 
-    List<InventoryList> closingList = [];
+    List<InventoryList> inventoryList = [];
 
     final toDate = dateFilterFlag
         ? formatDate(toDateFilter!)
-        : formatDate(currentDate!);
+        : formatDate(lastMonthToDate!);
 
     const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
 
@@ -2149,7 +2148,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         late http.Response response;
 
-        // Robust retry logic
+        // Retry 3 times on network/server errors
         for (int retry = 0; retry < 3; retry++) {
           try {
             response = await http
@@ -2162,6 +2161,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
             if (response.statusCode == 200) break;
 
+            // retry only on temporary server errors
             if (response.statusCode == 502 || response.statusCode == 504) {
               await Future.delayed(const Duration(seconds: 2));
               continue;
@@ -2180,8 +2180,8 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
           if (data == null || data.isEmpty) {
             fetchedCount = 0;
           } else {
-            final parsed = parseInventoryClosingList(data);
-            closingList.addAll(parsed);
+            final parsed = parseInventoryList(data);
+            inventoryList.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
           }
@@ -2192,11 +2192,10 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       if (!mounted) return;
 
-      // UPDATE UI
       setState(() {
-        // Assign once for all user levels
-        if (inventoryClosing.isEmpty) {
-          inventoryClosing = List.from(closingList);
+        // Assign once per level
+        if (inventoryOpening.isEmpty) {
+          inventoryOpening = List.from(inventoryList);
         }
       });
     } catch (e) {
@@ -2205,7 +2204,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 2),
-          content: Text("Inventory Closing load failed: $e"),
+          content: Text("Inventory loading failed: $e"),
         ),
       );
     }
@@ -2494,7 +2493,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       grnList: grnList,
       poListOpen: poListOpen,
       inventory: inventory,
-      inventoryClosing: inventoryClosing,
+      inventoryOpening: inventoryOpening,
       salesTarget: salesTarget,
       currentMonthFromDate: currentMonthFromDate!,
       currentMonthToDate: currentMonthToDate!,

@@ -1413,7 +1413,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     );
   }
 
-  Future<void> _loadAdvancePaidCustomerTrend(
+  Future<void> _loadAdvanceReceivedCustomerTrend(
     String receivableId,
     String netReceivableId,
     String advanceId,
@@ -1469,17 +1469,17 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     for (var custName in customerNames) {
       // FULL HISTORY OF CUSTOMER
       final fullRows = targetAPIData.where((e) => e.customerName == custName);
+      final rsmName = fullRows.isNotEmpty
+          ? (fullRows.first.regionalManager)
+          : '';
 
       // ONLY ADVANCE TERM CUSTOMERS
-      final customerRows = targetAPIData.where(
-        (e) => e.customerName == custName,
-      );
 
-      final hasAdvancePaymentTerm = customerRows.any(
+      final advanceRows = fullRows.where(
         (e) => (e.paymentTerms).toLowerCase().trim().contains('adv'),
       );
 
-      if (!hasAdvancePaymentTerm) {
+      if (advanceRows.isEmpty) {
         continue;
       }
 
@@ -1491,6 +1491,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         custName,
         () => AdvanceReceivedCustomerData(
           customerName: custName,
+          rsmName: rsmName,
           monthlyAmounts: {for (var m in monthKeys) m: 0},
           total: 0,
         ),
@@ -1499,7 +1500,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       // -------------------------
       // Month Distribution
       // -------------------------
-      for (var r in fullRows) {
+      for (var r in advanceRows) {
         final posting = r.parsedPostingDate;
         final amount = (double.tryParse(r.balance) ?? 0).abs();
         for (var monthDate in months) {
@@ -2546,11 +2547,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       await reportService.generateExcel(
         sheetName: 'AdvanceReceivedCustomerTrend',
 
-        headers: ['Customer Name', ...months, 'Total'],
+        headers: ['Customer Name', 'RSM Name', ...months, 'Total'],
 
         rows: list.map((e) {
           return [
             e.customerName,
+            e.rsmName,
 
             for (var month in months)
               (e.monthlyAmounts[month] ?? 0).toStringAsFixed(2),
@@ -2561,7 +2563,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
         fileName: 'AdvanceReceivedCustomerTrend.xlsx',
 
-        amountColumns: [2, 3, 4, 5, 6],
+        amountColumns: [3, 4, 5, 6, 7],
 
         addTotalRow: true,
 
@@ -2591,12 +2593,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       await reportService.generatePDF(
         title: 'Finance - Advance Received Customer Trend',
 
-        headers: ['Customer Name', ...months, 'Total'],
+        headers: ['Customer Name', 'RSM Name', ...months, 'Total'],
 
         rows: list.map((e) {
           return [
             e.customerName,
-
+            e.rsmName,
             for (var month in months)
               (e.monthlyAmounts[month] ?? 0).toStringAsFixed(2),
 
@@ -2606,7 +2608,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
         fileName: 'AdvanceReceivedCustomerTrend.pdf',
 
-        amountColumns: [2, 3, 4, 5, 6],
+        amountColumns: [3, 4, 5, 6, 7],
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2782,7 +2784,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       _loadNetReceivablesData("", "", "", "", "", "", ""),
       _loadAdvanceFromCustomers("", "", "", "", "", "", ""),
       _loadCustomerAnalysis("", "", "", "", "", "", ""),
-      _loadAdvancePaidCustomerTrend("", "", "", "", "", "", ""),
+      _loadAdvanceReceivedCustomerTrend("", "", "", "", "", "", ""),
       _loadTSMCollectionBarChartData("", "", "", "", "", "", ""),
       _loadASMCollectionBarChartData("", "", "", "", "", "", ""),
       _loadRSMCollectionBarChartData("", "", "", "", "", "", ""),
@@ -3090,7 +3092,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         salesManager,
         salesPerson,
       ),
-      _loadAdvancePaidCustomerTrend(
+      _loadAdvanceReceivedCustomerTrend(
         receivableId,
         netReceivableId,
         advanceId,

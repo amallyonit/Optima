@@ -1833,6 +1833,7 @@ class DocumentTypeData {
 }
 
 class InventoryList {
+  final String docDate;
   final String itemNo;
   final String itemDescription;
   final String warehouseCode;
@@ -1845,6 +1846,7 @@ class InventoryList {
   final String totalValue;
 
   InventoryList({
+    required this.docDate,
     required this.itemNo,
     required this.itemDescription,
     required this.warehouseCode,
@@ -1859,6 +1861,7 @@ class InventoryList {
 
   factory InventoryList.fromJson(Map<String, dynamic> json) {
     return InventoryList(
+      docDate: json['docDate'],
       itemNo: json['itemNo'],
       itemDescription: json['itemDescription'],
       warehouseCode: json['warehouseCode'],
@@ -6299,13 +6302,14 @@ class VendorMonthCommitment {
 
 class AdvanceReceivedCustomerData {
   String customerName;
-
+  String rsmName;
   Map<String, double> monthlyAmounts;
 
   double total;
 
   AdvanceReceivedCustomerData({
     required this.customerName,
+    required this.rsmName,
     required this.monthlyAmounts,
     required this.total,
   });
