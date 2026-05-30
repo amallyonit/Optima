@@ -6297,14 +6297,14 @@ class VendorMonthCommitment {
   VendorMonthCommitment({required this.vendorCode, this.commitment = 0});
 }
 
-class AdvancePaidCustomerData {
+class AdvanceReceivedCustomerData {
   String customerName;
 
   Map<String, double> monthlyAmounts;
 
   double total;
 
-  AdvancePaidCustomerData({
+  AdvanceReceivedCustomerData({
     required this.customerName,
     required this.monthlyAmounts,
     required this.total,

@@ -58,7 +58,7 @@ AsmwiseCollectionList asmwiseCollectionList = AsmwiseCollectionList(
 RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
   rsmwiseData: [],
 );
-List<AdvancePaidCustomerData> advancePaidCustomerList = [];
+List<AdvanceReceivedCustomerData> advanceReceivedCustomerList = [];
 final reportService = ReportService();
 
 double Collections = 0;
@@ -561,14 +561,14 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     },
   );
 
-  Widget getAdvancePaidCustomerBottomTitles(double value, TitleMeta meta) {
+  Widget getAdvanceReceivedCustomerBottomTitles(double value, TitleMeta meta) {
     final index = value.toInt();
 
-    if (index >= advancePaidCustomerList.length) {
+    if (index >= advanceReceivedCustomerList.length) {
       return const SizedBox();
     }
 
-    final customer = advancePaidCustomerList[index].customerName;
+    final customer = advanceReceivedCustomerList[index].customerName;
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),
@@ -757,8 +757,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         .toList();
   }
 
-  List<BarChartGroupData> _advancePaidCustomerChartData(
-    List<AdvancePaidCustomerData> data,
+  List<BarChartGroupData> _advanceReceivedCustomerChartData(
+    List<AdvanceReceivedCustomerData> data,
     List<String> months,
   ) {
     return List.generate(data.length, (index) {
@@ -1422,7 +1422,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     String salesManager,
     String salesPerson,
   ) async {
-    advancePaidCustomerList.clear();
+    advanceReceivedCustomerList.clear();
 
     // -----------------------------
     // 1. Rolling 4 Months
@@ -1464,7 +1464,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     // 4. Prepare Data
     // -----------------------------
 
-    final Map<String, AdvancePaidCustomerData> customerMap = {};
+    final Map<String, AdvanceReceivedCustomerData> customerMap = {};
 
     for (var custName in customerNames) {
       // FULL HISTORY OF CUSTOMER
@@ -1476,7 +1476,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       );
 
       final hasAdvancePaymentTerm = customerRows.any(
-        (e) => (e.paymentTerms).toLowerCase().trim() == 'advance',
+        (e) => (e.paymentTerms).toLowerCase().trim().contains('adv'),
       );
 
       if (!hasAdvancePaymentTerm) {
@@ -1489,7 +1489,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       final monthKeys = months.map((e) => DateFormat('MMM').format(e));
       final entry = customerMap.putIfAbsent(
         custName,
-        () => AdvancePaidCustomerData(
+        () => AdvanceReceivedCustomerData(
           customerName: custName,
           monthlyAmounts: {for (var m in monthKeys) m: 0},
           total: 0,
@@ -1519,10 +1519,10 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     // -----------------------------
     // 5. Final List
     // -----------------------------
-    advancePaidCustomerList = customerMap.values.toList();
+    advanceReceivedCustomerList = customerMap.values.toList();
 
     // Highest first
-    advancePaidCustomerList.sort((a, b) => b.total.compareTo(a.total));
+    advanceReceivedCustomerList.sort((a, b) => b.total.compareTo(a.total));
   }
 
   Future<void> _loadTSMCollectionBarChartData(
@@ -2531,8 +2531,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
   }
 
-  Future<void> generateAdvancePaidCustomerTrendExcel(
-    List<AdvancePaidCustomerData> list,
+  Future<void> generateAdvanceReceivedCustomerTrendExcel(
+    List<AdvanceReceivedCustomerData> list,
   ) async {
     try {
       final current = currentDate!;
@@ -2544,7 +2544,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       });
 
       await reportService.generateExcel(
-        sheetName: 'AdvancePaidCustomerTrend',
+        sheetName: 'AdvanceReceivedCustomerTrend',
 
         headers: ['Customer Name', ...months, 'Total'],
 
@@ -2559,13 +2559,13 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           ];
         }).toList(),
 
-        fileName: 'AdvancePaidCustomerTrend.xlsx',
+        fileName: 'AdvanceReceivedCustomerTrend.xlsx',
 
         amountColumns: [2, 3, 4, 5, 6],
 
         addTotalRow: true,
 
-        reportTitle: 'Finance - Advance Paid Customer Trend',
+        reportTitle: 'Finance - Advance Received Customer Trend',
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2576,8 +2576,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
   }
 
-  Future<void> generateAdvancePaidCustomerTrendPDF(
-    List<AdvancePaidCustomerData> list,
+  Future<void> generateAdvanceReceivedCustomerTrendPDF(
+    List<AdvanceReceivedCustomerData> list,
   ) async {
     try {
       final current = currentDate!;
@@ -2589,7 +2589,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       });
 
       await reportService.generatePDF(
-        title: 'Finance - Advance Paid Customer Trend',
+        title: 'Finance - Advance Received Customer Trend',
 
         headers: ['Customer Name', ...months, 'Total'],
 
@@ -2604,7 +2604,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           ];
         }).toList(),
 
-        fileName: 'AdvancePaidCustomerTrend.pdf',
+        fileName: 'AdvanceReceivedCustomerTrend.pdf',
 
         amountColumns: [2, 3, 4, 5, 6],
       );
@@ -4060,7 +4060,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                         ),
 
                         Visibility(
-                          visible: advancePaidCustomerList.isNotEmpty,
+                          visible: advanceReceivedCustomerList.isNotEmpty,
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Card(
@@ -4082,7 +4082,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                           children: [
                                             SizedBox(width: 15),
                                             Text(
-                                              "Advance Paid Customers Trend",
+                                              "Advance Received Customers Trend",
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -4097,8 +4097,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                                 return [
                                                   PopupMenuItem(
                                                     onTap: () async {
-                                                      await generateAdvancePaidCustomerTrendExcel(
-                                                        advancePaidCustomerList,
+                                                      await generateAdvanceReceivedCustomerTrendExcel(
+                                                        advanceReceivedCustomerList,
                                                       );
                                                     },
                                                     child: const Text(
@@ -4107,8 +4107,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                                   ),
                                                   PopupMenuItem(
                                                     onTap: () async {
-                                                      await generateAdvancePaidCustomerTrendPDF(
-                                                        advancePaidCustomerList,
+                                                      await generateAdvanceReceivedCustomerTrendPDF(
+                                                        advanceReceivedCustomerList,
                                                       );
                                                     },
                                                     child: const Text(
@@ -4141,7 +4141,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         left: 16.0,
                                         right: 16.0,
                                       ),
-                                      child: _advancePaidCustomerTrendChart(),
+                                      child:
+                                          _advanceReceivedCustomerTrendChart(),
                                     ),
                                   ],
                                 ),
@@ -5280,7 +5281,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     );
   }
 
-  Widget _advancePaidCustomerTrendChart() {
+  Widget _advanceReceivedCustomerTrendChart() {
     final current = currentDate!;
 
     final months = List.generate(4, (index) {
@@ -5291,7 +5292,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
     double maxAmount = 0;
 
-    for (var c in advancePaidCustomerList) {
+    for (var c in advanceReceivedCustomerList) {
       for (var v in c.monthlyAmounts.values) {
         if (v > maxAmount) {
           maxAmount = v;
@@ -5310,7 +5311,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         physics: const ClampingScrollPhysics(),
         child: SizedBox(
           height: 350,
-          width: advancePaidCustomerList.length * 120,
+          width: advanceReceivedCustomerList.length * 120,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 20),
             child: BarChart(
@@ -5334,7 +5335,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      getTitlesWidget: getAdvancePaidCustomerBottomTitles,
+                      getTitlesWidget: getAdvanceReceivedCustomerBottomTitles,
                     ),
                     axisNameSize: 20,
                   ),
@@ -5356,8 +5357,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                   ),
                 ),
 
-                barGroups: _advancePaidCustomerChartData(
-                  advancePaidCustomerList,
+                barGroups: _advanceReceivedCustomerChartData(
+                  advanceReceivedCustomerList,
                   months,
                 ),
 
@@ -5368,7 +5369,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                     maxContentWidth: 250,
 
                     getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                      final customer = advancePaidCustomerList[grpIndex];
+                      final customer = advanceReceivedCustomerList[grpIndex];
 
                       return BarTooltipItem(
                         '${customer.customerName}\n\n',

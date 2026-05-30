@@ -294,11 +294,10 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
 
     if (input.warehouse.isNotEmpty) {
       final w = input.warehouse;
-      if (w == "Karnataka State" || w == "Tamil Nadu State") {
-        if (so.branchName != w) continue;
+      if (w == "BANGALWH" || w == "RAJAPAWH") {
+        if (so.warehouse != w) continue;
       } else if (w == "Others") {
-        if (so.branchName == "Karnataka State" ||
-            so.branchName == "Tamil Nadu State") {
+        if (so.warehouse == "BANGALWH" || so.warehouse == "RAJAPAWH") {
           continue;
         }
       } else {
@@ -325,10 +324,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
       if (so.priority == "Medium") mediumVal += pending;
       if (so.priority == "High") highVal += pending;
     }
-    if (so.branchName == "Karnataka State" && so.bpGroup != "AH GROUP") {
+    if (so.warehouse == "BANGALWH" && so.bpGroup != "AH GROUP") {
       karnatakaPOSum += pending;
-    } else if (so.branchName == "Tamil Nadu State" &&
-        so.bpGroup != "AH GROUP") {
+    } else if (so.warehouse == "RAJAPAWH" && so.bpGroup != "AH GROUP") {
       tamilNaduPOSum += pending;
     } else {
       if (so.bpGroup == "AH GROUP") {
@@ -437,7 +435,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   inventoryClosingValue = 0;
-  for (final it in input.inventoryClosing) {
+  for (final it in input.inventoryClosing.where(
+    (e) => e.itemSubGroup != "Suture",
+  )) {
     inventoryClosingValue += (double.tryParse(it.totalValue) ?? 0);
   }
 
@@ -464,20 +464,69 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     stockInTransitValue += stkValue;
   }
 
-  //Ready to dispatch
-  double pendingQty = 0, pendingVal = 0, warehouseQty = 0;
-  readyToDispatchStock = 0;
-  for (final so in filteredSO) {
-    pendingQty = double.tryParse(so.pendingQuantity) ?? 0;
-    if (pendingQty == 0) continue;
-    pendingVal = double.tryParse(so.pendingValue) ?? 0;
-    warehouseQty = double.tryParse(so.warehouseQty) ?? 0;
-    if (pendingQty <= warehouseQty) {
-      readyToDispatchStock += pendingVal;
+  DateTime parseSoDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) {
+      return DateTime(1900);
+    }
+
+    try {
+      final parts = dateStr.split('/');
+      return DateTime(
+        int.parse(parts[2]),
+        int.parse(parts[1]),
+        int.parse(parts[0]),
+      );
+    } catch (_) {
+      return DateTime(1900);
     }
   }
 
-  // Build graph data lists (Your DailyCostingGraphData assumed constructor fields)
+  double readyToDispatchStock = 0;
+
+  final sortedSO = [...filteredSO]
+    ..sort((a, b) {
+      // Warehouse
+      final warehouseCompare = (a.warehouse).compareTo(b.warehouse);
+      if (warehouseCompare != 0) return warehouseCompare;
+
+      // Product
+      final productCompare = (a.productCode).compareTo(b.productCode);
+      if (productCompare != 0) return productCompare;
+
+      // FIFO by SO Date
+      return parseSoDate(a.soDate).compareTo(parseSoDate(b.soDate));
+    });
+
+  final Map<String, double> remainingStock = {};
+
+  for (final so in sortedSO) {
+    final warehouse = so.warehouse;
+    final productCode = so.productCode;
+
+    // Warehouse + Product is the stock bucket
+    final stockKey = '$warehouse|$productCode';
+
+    final pendingQty = double.tryParse(so.pendingQuantity) ?? 0;
+
+    if (pendingQty <= 0) continue;
+
+    final pendingVal = double.tryParse(so.pendingValue) ?? 0;
+
+    remainingStock.putIfAbsent(
+      stockKey,
+      () => double.tryParse(so.warehouseQty) ?? 0,
+    );
+
+    final availableQty = remainingStock[stockKey]!;
+
+    if (availableQty >= pendingQty) {
+      readyToDispatchStock += pendingVal;
+
+      remainingStock[stockKey] = availableQty - pendingQty;
+    }
+  }
+
+  // Build graph data lists.
   final revenueGraph = <DailyCostingGraphData>[];
   revenueGraph.add(
     DailyCostingGraphData(
@@ -3663,6 +3712,8 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
           );
       sheet.getRangeByIndex(8, 7).cellStyle.hAlign = xlsio.HAlignType.right;
 
+      final pendingSoBranchTotalRange = sheet.getRangeByName("G8:G8");
+      pendingSoBranchTotalRange.cellStyle.bold = true;
       final pendingRange = sheet.getRangeByName("F5:G8");
       pendingRange.cellStyle.borders.all.lineStyle = borderStyle;
 
@@ -3681,337 +3732,6 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         await file.writeAsBytes(bytes, flush: true);
 
-        OpenFile.open(file.path);
-      }
-
-      showBottomToast(context, "Excel exported successfully");
-    } catch (e) {
-      showBottomToast(context, "Excel generation failed: $e");
-    }
-  }
-
-  Future<void> generateFormattedDailyCostingReportOld() async {
-    try {
-      final workbook = xlsio.Workbook();
-      final sheet = workbook.worksheets[0];
-      sheet.name = "Daily Costing";
-
-      sheet.getRangeByIndex(1, 1).columnWidth = 32;
-      sheet.getRangeByIndex(1, 2).columnWidth = 18;
-      sheet.getRangeByIndex(1, 3).columnWidth = 30;
-      sheet.getRangeByIndex(1, 4).columnWidth = 18;
-      sheet.getRangeByIndex(1, 5).columnWidth = 14;
-      sheet.getRangeByIndex(1, 6).columnWidth = 22;
-      sheet.getRangeByIndex(1, 7).columnWidth = 20;
-
-      final borderStyle = xlsio.LineStyle.thin;
-
-      // HEADER STYLE
-      final header = sheet.getRangeByName("A1:G1");
-      header.merge();
-      header.setText("DAILY COSTING DASHBOARD");
-      header.cellStyle.bold = true;
-      header.cellStyle.fontSize = 18;
-      header.cellStyle.hAlign = xlsio.HAlignType.center;
-      header.cellStyle.vAlign = xlsio.VAlignType.center;
-
-      sheet.getRangeByIndex(1, 1).rowHeight = 28;
-
-      // DATE
-      final dateRange = sheet.getRangeByName("A2:G2");
-      dateRange.merge();
-      dateRange.setText("Date : ${formatDateString(currentDate!)}");
-      dateRange.cellStyle.hAlign = xlsio.HAlignType.center;
-      dateRange.cellStyle.bold = true;
-
-      final fyHeader = sheet.getRangeByName("A4:E4");
-      fyHeader.merge();
-      final now = DateTime.now();
-      final int startYear = now.month >= 4 ? now.year : now.year - 1;
-      final int endYear = startYear + 1;
-      final String fyText =
-          "Financial Target for FY "
-          "${startYear.toString().substring(2)}-"
-          "${endYear.toString().substring(2)}";
-
-      fyHeader.setText(fyText);
-      fyHeader.cellStyle.bold = true;
-      fyHeader.cellStyle.backColor = "#D9EAF7";
-      fyHeader.cellStyle.hAlign = xlsio.HAlignType.center;
-      fyHeader.cellStyle.borders.all.lineStyle = borderStyle;
-
-      sheet.getRangeByIndex(5, 1).setText("Particulars");
-      sheet.getRangeByIndex(5, 2).setText("Target");
-      sheet.getRangeByIndex(5, 3).setText("");
-      sheet.getRangeByIndex(5, 4).setText("Achieved");
-      sheet.getRangeByIndex(5, 5).setText("%");
-
-      final headingRange = sheet.getRangeByName("A5:E5");
-      headingRange.cellStyle.bold = true;
-      headingRange.cellStyle.backColor = "#EAF2F8";
-      headingRange.cellStyle.hAlign = xlsio.HAlignType.center;
-      headingRange.cellStyle.borders.all.lineStyle = borderStyle;
-
-      void setDashboardRow({
-        required int row,
-        String? title,
-        dynamic target,
-        dynamic worksheet,
-        dynamic achieved,
-        dynamic percentage,
-        bool red = false,
-      }) {
-        sheet.getRangeByIndex(row, 1).setText(title);
-
-        if (target != null && target != "") {
-          sheet
-              .getRangeByIndex(row, 2)
-              .setNumber(double.tryParse(target.toString()) ?? 0);
-        }
-
-        if (worksheet != null && worksheet != "") {
-          final cell = sheet.getRangeByIndex(row, 3);
-          cell.setText(worksheet);
-          cell.cellStyle.wrapText = true;
-          cell.cellStyle.vAlign = xlsio.VAlignType.center;
-          cell.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
-        }
-
-        if (achieved != null && achieved != "") {
-          sheet
-              .getRangeByIndex(row, 4)
-              .setNumber(double.tryParse(achieved.toString()) ?? 0);
-        }
-
-        sheet.getRangeByIndex(row, 5).setText(percentage ?? "");
-
-        final rowRange = sheet.getRangeByIndex(row, 1, row, 5);
-
-        rowRange.cellStyle.borders.all.lineStyle = borderStyle;
-
-        rowRange.cellStyle.vAlign = xlsio.VAlignType.center;
-
-        // COLUMN A - TITLE
-        sheet.getRangeByIndex(row, 1).cellStyle.hAlign = xlsio.HAlignType.left;
-
-        // COLUMN B - TARGET
-        sheet.getRangeByIndex(row, 2).cellStyle.hAlign = xlsio.HAlignType.right;
-
-        // COLUMN C - WORKSHEET
-        sheet.getRangeByIndex(row, 3).cellStyle.hAlign = xlsio.HAlignType.right;
-
-        // COLUMN D - ACHIEVED
-        sheet.getRangeByIndex(row, 4).cellStyle.hAlign = xlsio.HAlignType.right;
-
-        // COLUMN E - PERCENTAGE
-        sheet.getRangeByIndex(row, 5).cellStyle.hAlign =
-            xlsio.HAlignType.center;
-
-        if (red) {
-          sheet.getRangeByIndex(row, 3).cellStyle.fontColor = "#FF0000";
-        }
-      }
-
-      setDashboardRow(
-        row: 6,
-        title: "Revenue",
-        target: ipdTarget + medicalDeviceTarget,
-        worksheet:
-            "Medical Device: ${medicalDevicesSales.toStringAsFixed(2)}\n"
-            "IPD           : ${ipdSales.toStringAsFixed(2)}",
-        achieved: monthlySales,
-        percentage:
-            (((monthlySales /
-                        ((ipdTarget + medicalDeviceTarget) == 0
-                            ? 1
-                            : (ipdTarget + medicalDeviceTarget))) *
-                    100))
-                .toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 7,
-        title: "Pending Sales Orders",
-        target: "",
-        worksheet:
-            "High Priority  : ${highPriorityPendingSO.toStringAsFixed(2)}\n"
-            "Medium Priority: ${mediumPriorityPendingSO.toStringAsFixed(2)}\n"
-            "Low Priority   : ${lowPriorityPendingSO.toStringAsFixed(2)}\n"
-            "Inter Branch   : ${interBranchPendingSoSum.toStringAsFixed(2)}",
-        achieved: totalPendingSO,
-        percentage: "",
-      );
-
-      setDashboardRow(
-        row: 8,
-        title: "Purchases",
-        target: purchaseTarget,
-        achieved: monthlyPurchasePriceGrnSum.toStringAsFixed(2),
-        percentage: purchaseTarget == 0
-            ? "0"
-            : ((monthlyPurchasePriceGrnSum / purchaseTarget) * 100)
-                  .toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 9,
-        title: "Pending Purchase Orders",
-        target: "",
-        worksheet: "Last Month   : ",
-        achieved: lastMonthPOSum.toStringAsFixed(2),
-        percentage: "",
-      );
-      setDashboardRow(
-        row: 10,
-        target: "",
-        worksheet: "Current Month: ",
-        achieved: currentMonthPOSum.toStringAsFixed(2),
-        percentage: "",
-      );
-      setDashboardRow(
-        row: 11,
-        target: "",
-        worksheet: "Next Month   : ",
-        achieved: nextMonthPOSum.toStringAsFixed(2),
-        percentage: "",
-      );
-      setDashboardRow(
-        row: 12,
-        target: "",
-        worksheet: "Total        : ",
-        achieved: (lastMonthPOSum + currentMonthPOSum + nextMonthPOSum)
-            .toStringAsFixed(2),
-        percentage: "",
-      );
-      final pendingPoMerge = sheet.getRangeByName("A9:A12");
-      pendingPoMerge.merge();
-      pendingPoMerge.setText("Pending Purchase Orders");
-      pendingPoMerge.cellStyle.wrapText = true;
-      pendingPoMerge.cellStyle.hAlign = xlsio.HAlignType.left;
-      pendingPoMerge.cellStyle.vAlign = xlsio.VAlignType.center;
-      pendingPoMerge.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
-
-      setDashboardRow(
-        row: 13,
-        title: "Closing Stock(Including Stock In Transit)",
-        target: inventoryTarget,
-        worksheet: "",
-        achieved: inventoryAchieved,
-        percentage: inventoryTarget == 0
-            ? "0"
-            : ((inventoryAchieved / inventoryTarget) * 100).toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 14,
-        title: "Inventory Ageing",
-        worksheet: "< 30 Days",
-        achieved: lessThan30DaysValue,
-        percentage: inventoryLess30Percent.toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 15,
-        worksheet: "30 - 60 Days",
-        achieved: a30to60DaysValue,
-        percentage: inventory30to60Percent.toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 16,
-        worksheet: "60 - 90 Days",
-        achieved: a60to90DaysValue,
-        percentage: inventory60to90Percent.toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 17,
-        worksheet: "> 90 Days",
-        achieved: a91DaysValue,
-        percentage: inventoryAbove90Percent.toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 18,
-        worksheet: "Stock In Transit",
-        achieved: stockInTransitValue.toStringAsFixed(2),
-        percentage: stockInTransitPercent.toStringAsFixed(2),
-      );
-
-      final inventoryMerge = sheet.getRangeByName("A13:A18");
-      inventoryMerge.merge();
-      inventoryMerge.setText("Inventory Ageing");
-      inventoryMerge.cellStyle.wrapText = true;
-      inventoryMerge.cellStyle.hAlign = xlsio.HAlignType.left;
-      inventoryMerge.cellStyle.vAlign = xlsio.VAlignType.center;
-      inventoryMerge.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
-
-      setDashboardRow(
-        row: 19,
-        title: "COGS",
-        target: cogsTarget,
-        worksheet: "${cogsTargetPercentage.toStringAsFixed(0)}%",
-        achieved: cogsValue,
-        percentage: cogsPercentage.toStringAsFixed(2),
-      );
-
-      setDashboardRow(
-        row: 20,
-        title: "Cash Conversion Cycle",
-        worksheet: "${cashConversionCycleDays.toStringAsFixed(0)} Days",
-      );
-
-      setDashboardRow(
-        row: 21,
-        title: "Note:-",
-        worksheet: "Ready To Dispatch Stock(Customer)",
-        achieved: readyToDispatchStock.toStringAsFixed(2),
-      );
-
-      final pendingHeader = sheet.getRangeByName("F4:G4");
-      pendingHeader.merge();
-      pendingHeader.setText("Pending Sales Orders");
-      pendingHeader.cellStyle.bold = true;
-      pendingHeader.cellStyle.backColor = "#E2EFDA";
-      pendingHeader.cellStyle.hAlign = xlsio.HAlignType.center;
-      pendingHeader.cellStyle.borders.all.lineStyle = borderStyle;
-
-      final titleRange = sheet.getRangeByName("A6:A21");
-      titleRange.cellStyle.bold = true;
-
-      sheet.getRangeByIndex(5, 6)
-        ..setText("Bangalore: ")
-        ..cellStyle.bold = true;
-      sheet.getRangeByIndex(5, 7).setNumber(bangalorePendingSO);
-      sheet.getRangeByIndex(6, 6)
-        ..setText("Rajapalayam: ")
-        ..cellStyle.bold = true;
-      sheet.getRangeByIndex(6, 7).setNumber(rajapalayamPendingSO);
-      sheet.getRangeByIndex(7, 6)
-        ..setText("Others")
-        ..cellStyle.bold = true;
-      sheet.getRangeByIndex(7, 7).setNumber(othersPendingSO);
-      sheet.getRangeByIndex(8, 6)
-        ..setText("Total")
-        ..cellStyle.bold = true;
-      sheet
-          .getRangeByIndex(8, 7)
-          .setNumber(
-            bangalorePendingSO + rajapalayamPendingSO + othersPendingSO,
-          );
-      final pendingRange = sheet.getRangeByName("F5:G8");
-      pendingRange.cellStyle.borders.all.lineStyle = borderStyle;
-
-      // ---------------- SAVE ----------------
-      final bytes = List<int>.from(workbook.saveAsStream());
-      workbook.dispose();
-
-      if (kIsWeb) {
-        downloadExcelWeb("daily_costing.xlsx", bytes);
-      } else {
-        final dir = await getStorageDirectory();
-        final file = File('$dir/daily_costing.xlsx');
-        await file.writeAsBytes(bytes, flush: true);
         OpenFile.open(file.path);
       }
 
