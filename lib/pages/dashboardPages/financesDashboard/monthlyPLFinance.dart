@@ -17,7 +17,7 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
 
-import 'finance_chart_ui.dart';
+import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -3339,7 +3339,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _revenueGraph()),
+                  child: DashboardCardBody(child: _revenueGraph()),
                 ),
 
                 Padding(
@@ -3393,7 +3393,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _purchaseGraph()),
+                  child: DashboardCardBody(child: _purchaseGraph()),
                 ),
 
                 Padding(
@@ -3447,7 +3447,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _expenditureGraph()),
+                  child: DashboardCardBody(child: _expenditureGraph()),
                 ),
 
                 Padding(
@@ -3499,7 +3499,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _inventoryGraph()),
+                  child: DashboardCardBody(child: _inventoryGraph()),
                 ),
 
                 Padding(
@@ -3549,7 +3549,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _cogsGraph()),
+                  child: DashboardCardBody(child: _cogsGraph()),
                 ),
               ],
             ),

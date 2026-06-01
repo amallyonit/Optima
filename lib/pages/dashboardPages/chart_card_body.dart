@@ -1,16 +1,15 @@
 import 'dart:ui';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-class FinanceChartCard extends StatelessWidget {
+class DashboardCardBody extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
 
-  const FinanceChartCard({
+  const DashboardCardBody({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
   });
 
   @override

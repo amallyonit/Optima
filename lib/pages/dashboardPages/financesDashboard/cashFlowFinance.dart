@@ -14,7 +14,7 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:http/http.dart' as http;
 
-import 'finance_chart_ui.dart';
+import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -1343,107 +1343,48 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                     ),
                   ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
+
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardBody(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        Text(
-                          formatAmount(bankBalanceOpening),
-                          style: const TextStyle(
-                            fontSize: 20,
-                            color: Color(0xFFF49136),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        FinanceKPI(
+                          value: formatAmount(bankBalanceOpening),
+                          label: 'OP Bal',
+                          color: const Color(0xFFF49136),
                         ),
-                        const Text(
-                          "OP Bal",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF8F8F8F),
-                            fontWeight: FontWeight.w100,
-                          ),
+
+                        FinanceKPI(
+                          value: inflow,
+                          label: 'Inflow',
+                          color: Colors.green,
+                        ),
+
+                        FinanceKPI(
+                          value: outflow,
+                          label: 'Outflow',
+                          color: Colors.red,
+                        ),
+
+                        FinanceKPI(
+                          value: bankBalance,
+                          label: 'CL Bal',
+                          color: Colors.blue,
                         ),
                       ],
                     ),
-                    Column(
-                      children: [
-                        Text(
-                          inflow,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            color: Color(0xFFF49136),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Text(
-                          "Inflow",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF8F8F8F),
-                            fontWeight: FontWeight.w100,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        Text(
-                          outflow,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            color: Color(0xFFF49136),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Text(
-                          "Outflow",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF8F8F8F),
-                            fontWeight: FontWeight.w100,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        Text(
-                          bankBalance,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            color: Color(0xFFF49136),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Text(
-                          "CL Bal",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF8F8F8F),
-                            fontWeight: FontWeight.w100,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Daily Movement",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Daily Movement',
+                    spacing: 0,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
@@ -1451,62 +1392,45 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                           color: const Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Sum of Cr", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Sum of Cr', style: TextStyle(fontSize: 12)),
+
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
                           color: const Color(0xFF97D7F3),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Sum of Dr", style: TextStyle(fontSize: 12)),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateDailyMovementExcel(dailyData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateDailyMovementPDF(dailyData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
+                        const Text('Sum of Dr', style: TextStyle(fontSize: 12)),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _dailyMovement()),
+
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyMovementExcel(dailyData);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyMovementPDF(dailyData);
+                        },
+                        child: const Text('Download PDF'),
+                      ),
+                    ],
+                    child: _dailyMovement(),
+                  ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Monthly Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Monthly Analysis',
+                    spacing: 0,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
@@ -1514,65 +1438,45 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                           color: const Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Sum of Cr", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Sum of Cr', style: TextStyle(fontSize: 12)),
+
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
                           color: const Color(0xFF97D7F3),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Sum of Dr", style: TextStyle(fontSize: 12)),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyAnalysisExcel(
-                                      monthlyAnalysisData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyAnalysisPDF(
-                                      monthlyAnalysisData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
+                        const Text('Sum of Dr', style: TextStyle(fontSize: 12)),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _monthlyAnalysis()),
+
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateMonthlyAnalysisExcel(monthlyAnalysisData);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateMonthlyAnalysisPDF(monthlyAnalysisData);
+                        },
+                        child: const Text('Download PDF'),
+                      ),
+                    ],
+                    child: _monthlyAnalysis(),
+                  ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Ledger-wise\nAnalysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Ledger-wise\nAnalysis',
+                    spacing: 0,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
@@ -1580,49 +1484,36 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                           color: const Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Sum of Cr", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Sum of Cr', style: TextStyle(fontSize: 12)),
+
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
                           color: const Color(0xFF97D7F3),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Sum of Dr", style: TextStyle(fontSize: 12)),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateLedgerWiseAnalysisExcel(
-                                      ledgerAnalysisData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateLedgerWiseAnalysisPDF(
-                                      ledgerAnalysisData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
+                        const Text('Sum of Dr', style: TextStyle(fontSize: 12)),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _ledgerWiseAnalysis()),
+
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateLedgerWiseAnalysisExcel(ledgerAnalysisData);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateLedgerWiseAnalysisPDF(ledgerAnalysisData);
+                        },
+                        child: const Text('Download PDF'),
+                      ),
+                    ],
+                    child: _ledgerWiseAnalysis(),
+                  ),
                 ),
               ],
             ),
@@ -1666,121 +1557,128 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesDailyMovement,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _dailyMovementChartData(dailyData.dailyData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedDailyDate = touchedDailyDate == ""
-                          ? dailyData
-                                .dailyData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .date
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedDailyDate,
-                        touchedLedger,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxAmount),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${dailyData.dailyData[grpIndex].date}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Opening Balance : ${formatAmount(dailyData.dailyData[grpIndex].openingBalance)}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Closing Balance : ${formatAmount(dailyData.dailyData[grpIndex].closingBalance)}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Sum of Cr : ${formatAmount(dailyData.dailyData[grpIndex].sumOfCr)}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Sum of Dr : ${formatAmount(dailyData.dailyData[grpIndex].sumOfDr)}\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesDailyMovement,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _dailyMovementChartData(dailyData.dailyData),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedDailyDate = touchedDailyDate == ""
+                            ? dailyData
+                                  .dailyData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .date
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedDailyDate,
+                          touchedLedger,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${dailyData.dailyData[grpIndex].date}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              'Opening Balance : ${formatAmount(dailyData.dailyData[grpIndex].openingBalance)}\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Closing Balance : ${formatAmount(dailyData.dailyData[grpIndex].closingBalance)}\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Sum of Cr : ${formatAmount(dailyData.dailyData[grpIndex].sumOfCr)}\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Sum of Dr : ${formatAmount(dailyData.dailyData[grpIndex].sumOfDr)}\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -1809,142 +1707,151 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesMonthlyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _monthlyAnalysisChartData(monthlyAnalysisData.monthData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedMonth = touchedMonth == ""
-                          ? monthlyAnalysisData
-                                .monthData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .monthName
-                          : "";
-
-                      List months = [
-                        'Jan',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
-                        'Jun',
-                        'Jul',
-                        'Aug',
-                        'Sep',
-                        'Oct',
-                        'Nov',
-                        'Dec',
-                      ];
-                      if (touchedMonth == "") {
-                        touchedMonthIndex = 0;
-                      } else {
-                        touchedMonthIndex =
-                            months.indexOf(touchedMonth.substring(0, 3)) + 1;
-                      }
-                      touchedDailyDate = "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedDailyDate,
-                        touchedLedger,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxAmount),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${monthlyAnalysisData.monthData[grpIndex].monthName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Opening Balance: ${formatAmount(monthlyAnalysisData.monthData[grpIndex].openingBalance)}\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Closing Balance: ${formatAmount(monthlyAnalysisData.monthData[grpIndex].closingBalance)}\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Sum of Cr: ${formatAmount(monthlyAnalysisData.monthData[grpIndex].sumOfCr)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47), //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Sum of Dr : ${formatAmount(monthlyAnalysisData.monthData[grpIndex].sumOfDr)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF97D7F3), //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesMonthlyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _monthlyAnalysisChartData(
+                monthlyAnalysisData.monthData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedMonth = touchedMonth == ""
+                            ? monthlyAnalysisData
+                                  .monthData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .monthName
+                            : "";
+
+                        List months = [
+                          'Jan',
+                          'Feb',
+                          'Mar',
+                          'Apr',
+                          'May',
+                          'Jun',
+                          'Jul',
+                          'Aug',
+                          'Sep',
+                          'Oct',
+                          'Nov',
+                          'Dec',
+                        ];
+                        if (touchedMonth == "") {
+                          touchedMonthIndex = 0;
+                        } else {
+                          touchedMonthIndex =
+                              months.indexOf(touchedMonth.substring(0, 3)) + 1;
+                        }
+                        touchedDailyDate = "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedDailyDate,
+                          touchedLedger,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${monthlyAnalysisData.monthData[grpIndex].monthName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              'Opening Balance: ${formatAmount(monthlyAnalysisData.monthData[grpIndex].openingBalance)}\n',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Closing Balance: ${formatAmount(monthlyAnalysisData.monthData[grpIndex].closingBalance)}\n',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Sum of Cr: ${formatAmount(monthlyAnalysisData.monthData[grpIndex].sumOfCr)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFFFF9F47), //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Sum of Dr : ${formatAmount(monthlyAnalysisData.monthData[grpIndex].sumOfDr)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF97D7F3), //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -1972,121 +1879,128 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesLedgerAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _ledgerWiseAnalysisChartData(
-              ledgerAnalysisData.ledgerData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedLedger = touchedLedger == ""
-                          ? ledgerAnalysisData
-                                .ledgerData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .ledgerName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedDailyDate,
-                        touchedLedger,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxAmount),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${ledgerAnalysisData.ledgerData[grpIndex].ledgerName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Opening Balance: ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].openingBal!)}\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Closing Balance: ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].closingBal!)}\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Sum of Cr: ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].sumOfCr!)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47), //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Sum of Dr : ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].sumOfDr!)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF97D7F3), //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesLedgerAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _ledgerWiseAnalysisChartData(
+                ledgerAnalysisData.ledgerData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedLedger = touchedLedger == ""
+                            ? ledgerAnalysisData
+                                  .ledgerData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .ledgerName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedDailyDate,
+                          touchedLedger,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${ledgerAnalysisData.ledgerData[grpIndex].ledgerName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              'Opening Balance: ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].openingBal!)}\n',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Closing Balance: ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].closingBal!)}\n',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Sum of Cr: ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].sumOfCr!)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFFFF9F47), //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Sum of Dr : ${formatAmount(ledgerAnalysisData.ledgerData[grpIndex].sumOfDr!)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF97D7F3), //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

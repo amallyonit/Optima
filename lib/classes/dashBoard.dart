@@ -959,7 +959,7 @@ String formatAmount(double amount) {
 
   if (positiveAmount >= 10000000) {
     String formattedAmount =
-        '${(positiveAmount / 10000000).toStringAsFixed(2)} Cr';
+        '${(positiveAmount / 10000000).toStringAsFixed(2)} C';
     return isNegative ? '-$formattedAmount' : formattedAmount;
   } else if (positiveAmount >= 100000) {
     String formattedAmount =

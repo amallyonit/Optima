@@ -13,7 +13,8 @@ import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
-import 'finance_chart_ui.dart';
+import '../dashboard_card_ui.dart';
+
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -1083,7 +1084,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _dailyCostingGraph()),
+                  child: DashboardCardBody(child: _dailyCostingGraph()),
                 ),
 
                 Padding(
@@ -1125,7 +1126,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _itemSubGroupWise()),
+                  child: DashboardCardBody(child: _itemSubGroupWise()),
                 ),
               ],
             ),

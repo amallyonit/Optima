@@ -17,7 +17,7 @@ import '../../../api_helper.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../login_screen.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
-import 'finance_chart_ui.dart';
+import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -4020,7 +4020,7 @@ class _CustomerCollectionAnalysisState
         ),
         Padding(
           padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-          child: FinanceChartCard(child: _receivablesAging()),
+          child: DashboardCardBody(child: _receivablesAging()),
         ),
       ],
     );

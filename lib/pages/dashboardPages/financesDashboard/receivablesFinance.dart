@@ -31,6 +31,7 @@ List<Map<String, dynamic>> userList = [];
 bool noUserList = false;
 String UserLevel = "0";
 List<CollectionList> collection = [];
+List<CollectionList> collectionFiltered = [];
 List<DebtorsAgingList> target = [];
 List<DebtorsAgingList> targetAPIData = [];
 
@@ -1437,22 +1438,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     // -----------------------------
     // 2. Initial Filter
     // -----------------------------
-
-    var filteredCustomers = targetAPIData.where((t) {
-      return t.parsedPostingDate.isAtMost(currentDate!);
-    }).cast<DebtorsAgingList>();
-
-    filteredCustomers = filterCollectionTargetList(
-      filteredCustomers.toList(),
-      usersListForFilter,
-      regionalManager: regionalManager,
-      salesManager: salesManager,
-      salesRep: salesPerson,
-      customer: customer,
-      receivableCatg: receivableId,
-      netReceivableCatg: netReceivableId,
-      advanceCatg: advanceId,
-    );
+    final df = DateFormat('dd/MM/yyyy');
+    var filteredCustomers = collection.where((t) {
+      final postDate = df.parse(t.postingDate);
+      return postDate.isAtMost(currentDate!);
+    }).cast<CollectionList>();
 
     // -----------------------------
     // 3. Unique Customers
@@ -1468,7 +1458,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
 
     for (var custName in customerNames) {
       // FULL HISTORY OF CUSTOMER
-      final fullRows = targetAPIData.where((e) => e.customerName == custName);
+      final fullRows = collection.where((e) => e.customerName == custName);
       final rsmName = fullRows.isNotEmpty
           ? (fullRows.first.regionalManager)
           : '';
@@ -1501,8 +1491,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       // Month Distribution
       // -------------------------
       for (var r in advanceRows) {
-        final posting = r.parsedPostingDate;
-        final amount = (double.tryParse(r.balance) ?? 0).abs();
+        final posting = df.parse(r.postingDate);
+        final amount = (double.tryParse(r.total) ?? 0);
         for (var monthDate in months) {
           if (posting.year == monthDate.year &&
               posting.month == monthDate.month) {
@@ -2266,9 +2256,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
             .updateTargetList(targetList);
 
         target = filtered;
-        targetAPIData =
-            targetList; // Keep full data for export, use filtered for display
-        // targetAPIData = filtered;
+        targetAPIData = targetList;
       });
     } catch (e) {
       if (mounted) {
@@ -2279,6 +2267,78 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _loadCollection(String UserName, String UserLevel) async {
+    int index = 0;
+    int limit = 10000;
+    int fetchedCount = 0;
+
+    List<CollectionList> collectionList = [];
+
+    try {
+      // compute once
+      final fromDate = dateFilterFlag
+          ? formatDate(fromDateFilter!)
+          : formatDate(fiscalYearStartDate!);
+
+      final toDate = dateFilterFlag
+          ? formatDate(toDateFilter!)
+          : formatDate(currentDate!);
+
+      do {
+        final body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index,
+          "Limit": limit,
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        const apiUrl = '${ApiHelper.baseUrl}CRMCollectionAnalysisList';
+
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode == 200) {
+          final responseJson = jsonDecode(response.body);
+          final data = responseJson['responseData'] as List?;
+
+          if (data != null && data.isNotEmpty) {
+            final newList = data
+                .map((e) => CollectionList.fromJson(e))
+                .toList();
+
+            collectionList.addAll(newList);
+            fetchedCount = newList.length;
+            index++;
+          } else {
+            fetchedCount = 0;
+          }
+        } else {
+          fetchedCount = 0;
+        }
+      } while (fetchedCount == limit);
+
+      if (!mounted) return;
+
+      setState(() {
+        collection = collectionList;
+        collectionFiltered = collectionList;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('Error: $e'),
+        ),
+      );
     }
   }
 
@@ -2779,6 +2839,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       parsedUserLevel,
     );
     await _loadCollectionTarget(userName, userLevel, fromFilter);
+    await _loadCollection(userName, userLevel);
     await Future.wait([
       _loadReceivablesData("", "", "", "", "", "", ""),
       _loadNetReceivablesData("", "", "", "", "", "", ""),
@@ -3403,7 +3464,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       ScrollController();
   final ScrollController _customerAnalysisHorizontalController =
       ScrollController();
-  final ScrollController _customerAdvancePaidTrendHorizontalController =
+  final ScrollController _customerAdvanceReceivedTrendHorizontalController =
       ScrollController();
   final ScrollController _regionalManagerAnalysisHorizontalController =
       ScrollController();
@@ -3767,6 +3828,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                                   size: 18,
                                                 ),
                                               ),
+                                            
                                             ),
                                           ],
                                         ),
@@ -4053,98 +4115,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         right: 16.0,
                                       ),
                                       child: _customerAnalysis(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        Visibility(
-                          visible: advanceReceivedCustomerList.isNotEmpty,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Card(
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.start,
-                                          children: [
-                                            SizedBox(width: 15),
-                                            Text(
-                                              "Advance Received Customers Trend",
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            PopupMenuButton(
-                                              onSelected: (value) {},
-                                              itemBuilder: (BuildContext bc) {
-                                                return [
-                                                  PopupMenuItem(
-                                                    onTap: () async {
-                                                      await generateAdvanceReceivedCustomerTrendExcel(
-                                                        advanceReceivedCustomerList,
-                                                      );
-                                                    },
-                                                    child: const Text(
-                                                      "Download Excel",
-                                                    ),
-                                                  ),
-                                                  PopupMenuItem(
-                                                    onTap: () async {
-                                                      await generateAdvanceReceivedCustomerTrendPDF(
-                                                        advanceReceivedCustomerList,
-                                                      );
-                                                    },
-                                                    child: const Text(
-                                                      "Download PDF",
-                                                    ),
-                                                  ),
-                                                ];
-                                              },
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  6,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey.shade100,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.more_vert,
-                                                  size: 18,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 16.0,
-                                        right: 16.0,
-                                      ),
-                                      child:
-                                          _advanceReceivedCustomerTrendChart(),
                                     ),
                                   ],
                                 ),
@@ -4500,6 +4470,98 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                         right: 16.0,
                                       ),
                                       child: _salesPersonAnalysis(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Visibility(
+                          visible: advanceReceivedCustomerList.isNotEmpty,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            SizedBox(width: 15),
+                                            Text(
+                                              "Advance Received Customers Trend",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            PopupMenuButton(
+                                              onSelected: (value) {},
+                                              itemBuilder: (BuildContext bc) {
+                                                return [
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateAdvanceReceivedCustomerTrendExcel(
+                                                        advanceReceivedCustomerList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download Excel",
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    onTap: () async {
+                                                      await generateAdvanceReceivedCustomerTrendPDF(
+                                                        advanceReceivedCustomerList,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      "Download PDF",
+                                                    ),
+                                                  ),
+                                                ];
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                        right: 16.0,
+                                      ),
+                                      child:
+                                          _advanceReceivedCustomerTrendChart(),
                                     ),
                                   ],
                                 ),
@@ -5303,12 +5365,12 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
     }
 
     return Scrollbar(
-      controller: _customerAdvancePaidTrendHorizontalController,
+      controller: _customerAdvanceReceivedTrendHorizontalController,
       thumbVisibility: true,
       radius: const Radius.circular(10),
       notificationPredicate: (_) => true,
       child: SingleChildScrollView(
-        controller: _customerAdvancePaidTrendHorizontalController,
+        controller: _customerAdvanceReceivedTrendHorizontalController,
         scrollDirection: Axis.horizontal,
         physics: const ClampingScrollPhysics(),
         child: SizedBox(

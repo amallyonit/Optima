@@ -13,7 +13,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:http/http.dart' as http;
 import 'package:optima/classes/leads.dart';
-import 'finance_chart_ui.dart';
+import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -2042,13 +2042,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     });
   }
 
-  void toggleCheckbox() async {
-    setState(() {
-      chartDataLoadedCCC = false;
-    });
-    await loadData("");
-  }
-
   Future<void> _dateFilterTarget() async {
     setState(() {
       context.read<CashConversionReceivablesProvider>().updateTargetList(
@@ -2220,97 +2213,53 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "CCC - Monthly Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateCashConversionExcel();
-                                },
-                                child: const Row(
-                                  children: [Text("Download Excel")],
-                                ),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _monthlyAnalysis()),
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'CCC - Monthly Analysis',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateCashConversionExcel();
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                    ],
+                    child: _monthlyAnalysis(),
+                  ),
                 ),
 
-                const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "CCC - Days Outstanding",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  // setState(() {
-                                  //   generateMonthlyCCExcel(graphData);
-                                  // });
-                                  await downloadCCCExcel();
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await downloadCCCAuditExcel();
-                                },
-                                child: const Text("Download AuditExcel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthlyCCPDF(graphData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: FinanceChartCard(child: _monthlyAnalysisGraph()),
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'CCC - Days Outstanding',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          downloadCCCExcel();
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await downloadCCCAuditExcel();
+                        },
+                        child: const Text("Download AuditExcel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          setState(() {
+                            generateMonthlyCCPDF(graphData);
+                          });
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _monthlyAnalysisGraph(),
+                  ),
                 ),
               ],
             ),
@@ -2338,114 +2287,123 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesMonthlyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _monthlyAnalysisChartData(monthlyAnalysisData.monthData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (flTouchEvent is! FlTapUpEvent) return;
-
-                if (barTouchResponse?.spot == null) return;
-
-                final groupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
-
-                final month =
-                    monthlyAnalysisData.monthData[groupIndex].monthName;
-
-                setState(() {
-                  if (touchedMonth == month) {
-                    touchedMonth = "";
-                    showDrillDownChart = false;
-                  } else {
-                    touchedMonth = month;
-                    selectedChart = groupIndex.toDouble();
-                    showDrillDownChart = true;
-                  }
-                });
-
-                await loadDataWithFilter(touchedMonth);
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxAmount),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${monthlyAnalysisData.monthData[grpIndex].monthName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'DSO NH: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysNH}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'DSO Sales: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysSales}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'DSO Office: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysOffice}\n',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF78E25D),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesMonthlyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _monthlyAnalysisChartData(
+                monthlyAnalysisData.monthData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (flTouchEvent is! FlTapUpEvent) return;
+
+                  if (barTouchResponse?.spot == null) return;
+
+                  final groupIndex =
+                      barTouchResponse!.spot!.touchedBarGroupIndex;
+
+                  final month =
+                      monthlyAnalysisData.monthData[groupIndex].monthName;
+
+                  setState(() {
+                    if (touchedMonth == month) {
+                      touchedMonth = "";
+                      showDrillDownChart = false;
+                    } else {
+                      touchedMonth = month;
+                      selectedChart = groupIndex.toDouble();
+                      showDrillDownChart = true;
+                    }
+                  });
+
+                  await loadDataWithFilter(touchedMonth);
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${monthlyAnalysisData.monthData[grpIndex].monthName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              'DSO NH: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysNH}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF2CA9DF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'DSO Sales: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysSales}\n',
+                          style: const TextStyle(
+                            color: Color(0xFFFF9F47),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'DSO Office: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysOffice}\n',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF78E25D),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -2473,87 +2431,94 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesCCC,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _CCCChartData(graphData.monthData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {});
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxAmount),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${graphData.monthData[grpIndex].monthname}\n${graphData.monthData[grpIndex].name}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Target: ${graphData.monthData[grpIndex].target.toStringAsFixed(0)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFFFF9F47),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Days: ${graphData.monthData[grpIndex].achievement.toStringAsFixed(0)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesCCC,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _CCCChartData(graphData.monthData),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {});
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${graphData.monthData[grpIndex].monthname}\n${graphData.monthData[grpIndex].name}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              'Target: ${graphData.monthData[grpIndex].target.toStringAsFixed(0)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFFFF9F47),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Days: ${graphData.monthData[grpIndex].achievement.toStringAsFixed(0)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF2CA9DF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -2781,7 +2746,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
                                       selectedSalesData = selectedFilterOptions;
 
-                                      // toggleCheckbox();
                                       filterDateFunction();
                                       setState(() {});
                                     },

@@ -107,7 +107,8 @@ class DailyCostingResult {
   final double cogsTarget;
   final double inventoryTarget;
   final double stockInTransitValue;
-  final double readyToDispatchStock;
+  final double readyToDispatchStockItemwise;
+  final double readyToDispatchStockSoNowise;
   final double interBranchPendingSoSum;
   // the graph arrays (your DailyCostingGraphData type)
   final List<DailyCostingGraphData> revenueGraph;
@@ -152,7 +153,8 @@ class DailyCostingResult {
     required this.saleOrderWarehouseGraph,
     required this.inventoryAgingGraph,
     required this.stockInTransitValue,
-    required this.readyToDispatchStock,
+    required this.readyToDispatchStockItemwise,
+    required this.readyToDispatchStockSoNowise,
     required this.interBranchPendingSoSum,
   });
 }
@@ -185,7 +187,8 @@ double inventoryClosingValue = 0;
 double cogsValue = 0;
 double inventoryAchieved = 0;
 double stockInTransitValue = 0;
-double readyToDispatchStock = 0;
+double readyToDispatchStockItemwise = 0;
+double readyToDispatchStockSoNowise = 0;
 // ---- Top-level compute function (runs in isolate) ----
 DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // Helper: convert DateTime to milliseconds for fast comparisons
@@ -484,8 +487,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     }
   }
 
-  double readyToDispatchStock = 0;
-
+  double readyToDispatchStockItemwise = 0;
   final sortedSO = [...filteredSO]
     ..sort((a, b) {
       // Warehouse
@@ -523,11 +525,105 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     final availableQty = remainingStock[stockKey]!;
 
     if (availableQty >= pendingQty) {
-      readyToDispatchStock += pendingVal;
+      readyToDispatchStockItemwise += pendingVal;
 
       remainingStock[stockKey] = availableQty - pendingQty;
     }
   }
+
+  double readyToDispatchStockSoNowise = 0;
+  // --------------------------------------------------
+  // Create stock bucket
+  // --------------------------------------------------
+
+  final Map<String, double> remainingStockSoNo = {};
+
+  for (final so in filteredSO) {
+    final stockKey = '${so.warehouse}|${so.productCode}';
+
+    remainingStockSoNo.putIfAbsent(
+      stockKey,
+      () => double.tryParse(so.warehouseQty) ?? 0,
+    );
+  }
+
+  // --------------------------------------------------
+  // Group by SO No
+  // --------------------------------------------------
+
+  final Map<String, List<dynamic>> soGroups = {};
+
+  for (final so in filteredSO) {
+    soGroups.putIfAbsent(so.soNo, () => []);
+
+    soGroups[so.soNo]!.add(so);
+  }
+
+  // --------------------------------------------------
+  // FIFO SO Sorting
+  // --------------------------------------------------
+
+  final sortedSoGroups = soGroups.entries.toList()
+    ..sort((a, b) {
+      final aDate = parseSoDate(a.value.first.soDate);
+
+      final bDate = parseSoDate(b.value.first.soDate);
+
+      return aDate.compareTo(bDate);
+    });
+
+  // --------------------------------------------------
+  // SO Wise Ready To Dispatch
+  // --------------------------------------------------
+
+  for (final entry in sortedSoGroups) {
+    // final soNo = entry.key;
+    final soRows = entry.value;
+
+    bool canDispatch = true;
+    double soValue = 0;
+
+    final tempStock = Map<String, double>.from(remainingStockSoNo);
+
+    for (final row in soRows) {
+      final stockKey = '${row.warehouse}|${row.productCode}';
+
+      final pendingQty = double.tryParse(row.pendingQuantity) ?? 0;
+
+      final pendingVal = double.tryParse(row.pendingValue) ?? 0;
+
+      final availableQty = tempStock[stockKey] ?? 0;
+
+      if (availableQty < pendingQty) {
+        canDispatch = false;
+        break;
+      }
+
+      tempStock[stockKey] = availableQty - pendingQty;
+
+      soValue += pendingVal;
+    }
+
+    if (canDispatch) {
+      readyToDispatchStockSoNowise += soValue;
+
+      remainingStockSoNo
+        ..clear()
+        ..addAll(tempStock);
+
+      // print(
+      //   'READY : $soNo => '
+      //   '${soValue.toStringAsFixed(2)}',
+      // );
+    } else {
+      // print('NOT READY : $soNo');
+    }
+  }
+
+  // print(
+  //   'SO Wise Ready To Dispatch = '
+  //   '${readyToDispatchStockSoNowise.toStringAsFixed(2)}',
+  // );
 
   // Build graph data lists.
   final revenueGraph = <DailyCostingGraphData>[];
@@ -735,7 +831,8 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     saleOrderWarehouseGraph: saleOrderWarehouseGraph,
     inventoryAgingGraph: inventoryAgingGraph,
     stockInTransitValue: stockInTransitValue,
-    readyToDispatchStock: readyToDispatchStock,
+    readyToDispatchStockItemwise: readyToDispatchStockItemwise,
+    readyToDispatchStockSoNowise: readyToDispatchStockSoNowise,
     interBranchPendingSoSum: interBranchPendingSoSum,
   );
 }
@@ -2600,8 +2697,8 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
         cashConversionCycleDays = currentCashConversionCycleDays;
 
-        readyToDispatchStock = result.readyToDispatchStock;
-
+        readyToDispatchStockItemwise = result.readyToDispatchStockItemwise;
+        readyToDispatchStockSoNowise = result.readyToDispatchStockSoNowise;
         // graphs — replace your graph data lists with the computed ones
         revenueBreakup.graphData = result.revenueGraph;
         dailyCostingData.graphData = result.dailyCostingGraph;
@@ -3657,8 +3754,15 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       setDashboardRow(
         row: 21,
         title: "Note:-",
-        worksheet: "Ready To Dispatch Stock(Customer)",
-        achieved: formatIndian(readyToDispatchStock),
+        worksheet: "Ready To Dispatch Stock(Item wise)",
+        achieved: formatIndian(readyToDispatchStockItemwise),
+      );
+
+      setDashboardRow(
+        row: 22,
+        title: "",
+        worksheet: "Ready To Dispatch Stock(So No wise)",
+        achieved: formatIndian(readyToDispatchStockSoNowise),
       );
 
       final pendingHeader = sheet.getRangeByName("F4:G4");
@@ -3677,7 +3781,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       achieveTotalRange.cellStyle.bold = true;
       achieveTotalRange = sheet.getRangeByName("D12:D13");
       achieveTotalRange.cellStyle.bold = true;
-      achieveTotalRange = sheet.getRangeByName("D19:D21");
+      achieveTotalRange = sheet.getRangeByName("D19:D22");
       achieveTotalRange.cellStyle.bold = true;
 
       sheet.getRangeByIndex(5, 6)
