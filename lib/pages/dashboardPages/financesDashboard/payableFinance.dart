@@ -1419,13 +1419,6 @@ class _PayableFinanceState extends State<PayableFinance> {
       if (fPayable.isNotEmpty && vendorIsAdvance) {
         continue;
       }
-      // final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
-      // if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
-      //   continue;
-      // }
-      // if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
-      //   continue;
-      // }
 
       if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
         continue;
@@ -1500,11 +1493,11 @@ class _PayableFinanceState extends State<PayableFinance> {
     final Map<String, Map<String, dynamic>> aggregatedPayableData = {};
 
     for (final payableItem in payablesList) {
-      final dueOn = df.parse(payableItem.dueon);
+      final postingDate = df.parse(payableItem.postingDate);
+      if (!postingDate.isAtMost(effectiveCurrentMonthToDate!)) continue;
 
-      if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) {
-        continue;
-      }
+      final vendorIsAdvance = isAdvanceVendor(payableItem.vendorCode);
+      if (vendorIsAdvance) continue;
 
       final vendorCode = payableItem.vendorCode;
       final vendorName = payableItem.vendorName;
@@ -1514,6 +1507,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         () => {
           'vendorCode': vendorCode,
           'vendorName': vendorName,
+          'totalPayable': 0.0,
           'balance': 0.0,
           'a0to30': 0.0,
           'a31to60': 0.0,
@@ -1526,34 +1520,74 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       final vendorData = aggregatedPayableData[vendorCode]!;
 
-      vendorData['balance'] =
-          (vendorData['balance'] as double) +
-          (double.tryParse(payableItem.balance) ?? 0.0);
+      vendorData['totalPayable'] =
+          (vendorData['totalPayable'] as double) +
+          (double.tryParse(payableItem.balance) ?? 0.0) * -1;
+      final dueOn = df.parse(payableItem.dueon);
+      if (dueOn.isAtMost(effectiveCurrentMonthToDate)) {
+        final balance = (double.tryParse(payableItem.balance) ?? 0.0) * -1;
 
-      final overDueDaysString = payableItem.dueDays.replaceAll(' Days', '');
-      final overDueDays = int.tryParse(overDueDaysString) ?? 0;
+        // Optional
+        vendorData['balance'] = (vendorData['balance'] as double) + balance;
 
-      if (overDueDays <= 30) {
-        vendorData['a0to30'] =
-            (vendorData['a0to30'] as double) +
-            (double.tryParse(payableItem.a0to30Days) ?? 0.0);
-      } else if (overDueDays >= 31 && overDueDays <= 60) {
-        vendorData['a31to60'] =
-            (vendorData['a31to60'] as double) +
-            (double.tryParse(payableItem.a31to60Days) ?? 0.0);
-      } else if (overDueDays >= 61 && overDueDays <= 90) {
-        vendorData['a61to90'] =
-            (vendorData['a61to90'] as double) +
-            (double.tryParse(payableItem.a61to90Days) ?? 0.0);
-      } else if (overDueDays >= 91 && overDueDays <= 180) {
-        vendorData['a90to180'] =
-            (vendorData['a90to180'] as double) +
-            (double.tryParse(payableItem.a91to180Days) ?? 0.0);
-      } else if (overDueDays >= 181) {
-        vendorData['a180above'] =
-            (vendorData['a180above'] as double) +
-            (double.tryParse(payableItem.a181Days) ?? 0.0);
+        switch (payableItem.ageingBrackets) {
+          case "0-30 Days":
+            vendorData['a0to30'] = (vendorData['a0to30'] as double) + balance;
+            break;
+
+          case "31-60 Days":
+            vendorData['a31to60'] = (vendorData['a31to60'] as double) + balance;
+            break;
+
+          case "61-90 Days":
+            vendorData['a61to90'] = (vendorData['a61to90'] as double) + balance;
+            break;
+
+          case "91-180 Days":
+            vendorData['a90to180'] =
+                (vendorData['a90to180'] as double) + balance;
+            break;
+
+          case "Future":
+            // ignore because Future should not appear in aging buckets
+            break;
+
+          default:
+            vendorData['a180above'] =
+                (vendorData['a180above'] as double) + balance;
+        }
       }
+      // final dueOn = df.parse(payableItem.dueon);
+      // if (dueOn.isAtMost(effectiveCurrentMonthToDate)) {
+      //   vendorData['balance'] =
+      //       (vendorData['balance'] as double) +
+      //       (double.tryParse(payableItem.balance) ?? 0.0) * -1;
+
+      //   final overDueDaysString = payableItem.dueDays.replaceAll(' Days', '');
+      //   final overDueDays = int.tryParse(overDueDaysString) ?? 0;
+
+      //   if (overDueDays <= 30) {
+      //     vendorData['a0to30'] =
+      //         (vendorData['a0to30'] as double) +
+      //         (double.tryParse(payableItem.a0to30Days) ?? 0.0);
+      //   } else if (overDueDays >= 31 && overDueDays <= 60) {
+      //     vendorData['a31to60'] =
+      //         (vendorData['a31to60'] as double) +
+      //         (double.tryParse(payableItem.a31to60Days) ?? 0.0);
+      //   } else if (overDueDays >= 61 && overDueDays <= 90) {
+      //     vendorData['a61to90'] =
+      //         (vendorData['a61to90'] as double) +
+      //         (double.tryParse(payableItem.a61to90Days) ?? 0.0);
+      //   } else if (overDueDays >= 91 && overDueDays <= 180) {
+      //     vendorData['a90to180'] =
+      //         (vendorData['a90to180'] as double) +
+      //         (double.tryParse(payableItem.a91to180Days) ?? 0.0);
+      //   } else if (overDueDays >= 181) {
+      //     vendorData['a180above'] =
+      //         (vendorData['a180above'] as double) +
+      //         (double.tryParse(payableItem.a181Days) ?? 0.0);
+      //   }
+      // }
       vendorData['commitment'] =
           (vendorData['commitment'] as double) +
           (double.tryParse(payableItem.commitment) ?? 0.0);
@@ -1565,7 +1599,7 @@ class _PayableFinanceState extends State<PayableFinance> {
 
       if (dueOn.isAtMost(effectiveCurrentMonthToDate!)) {
         actualPayableByVendorName.update(
-          paymentEntry.vendorName,
+          paymentEntry.vendorCode,
           (value) => value + (double.tryParse(paymentEntry.total) ?? 0.0),
           ifAbsent: () => (double.tryParse(paymentEntry.total) ?? 0.0),
         );
@@ -1579,7 +1613,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       if (dueOn.isAtLeast(currentMonthFromDate!) &&
           dueOn.isAtMost(currentMonthToDate!)) {
         currentMonthPayableByVendorName.update(
-          paymentEntry.vendorName,
+          paymentEntry.vendorCode,
           (value) => value + (double.tryParse(paymentEntry.total) ?? 0.0),
           ifAbsent: () => (double.tryParse(paymentEntry.total) ?? 0.0),
         );
@@ -1590,7 +1624,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     for (final entry in aggregatedPayableData.values) {
       final vendorName = entry['vendorName'] as String;
       final vendorCode = entry['vendorCode'] as String;
-
+      final totalPayable = entry['totalPayable'] as double;
       final balanceDue = entry['balance'] as double;
       final a0to30 = entry['a0to30'] as double;
       final a31to60 = entry['a31to60'] as double;
@@ -1607,6 +1641,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         VendorsPaymentProjectionData(
           vendorName: vendorName,
           vendorCode: vendorCode,
+          totalPayable: totalPayable,
           balanceDue: balanceDue,
           a0to30: a0to30,
           a31to60: a31to60,
@@ -2802,7 +2837,8 @@ class _PayableFinanceState extends State<PayableFinance> {
       headers: [
         'Vendor Code',
         'Vendor Name',
-        'Balance Due',
+        'Total Payable',
+        'Payable Due',
         '0-30',
         '31-60',
         '61-90',
@@ -2817,6 +2853,7 @@ class _PayableFinanceState extends State<PayableFinance> {
             (e) => [
               e.vendorCode,
               e.vendorName,
+              e.totalPayable,
               e.balanceDue,
               e.a0to30,
               e.a31to60,
@@ -2830,7 +2867,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           )
           .toList(),
       fileName: 'vendor_payment_projection.xlsx',
-      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10, 11],
+      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       addTotalRow: true,
       reportTitle: 'Finance - Vendor Payment Projection',
     );

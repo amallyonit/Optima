@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, file_names, use_build_context_synchronously, non_constant_identifier_names
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
@@ -189,6 +190,22 @@ double inventoryAchieved = 0;
 double stockInTransitValue = 0;
 double readyToDispatchStockItemwise = 0;
 double readyToDispatchStockSoNowise = 0;
+
+int? _parseDdMmYyyyMillis(String? value) {
+  if (value == null) return null;
+
+  final datePart = value.trim().split(' ').first;
+  final parts = datePart.split('/');
+  if (parts.length != 3) return null;
+
+  final day = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final year = int.tryParse(parts[2]);
+  if (day == null || month == null || year == null) return null;
+
+  return DateTime(year, month, day).millisecondsSinceEpoch;
+}
+
 // ---- Top-level compute function (runs in isolate) ----
 DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // Helper: convert DateTime to milliseconds for fast comparisons
@@ -314,6 +331,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   lowVal = 0;
   mediumVal = 0;
   highVal = 0;
+  monthlySOvalue = 0;
   karnatakaPOSum = 0;
   tamilNaduPOSum = 0;
   othersPOSum = 0;
@@ -343,13 +361,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // Purchase lists in current month
   monthlyPurchasePriceSum = 0;
   for (final p in input.purchasePrice) {
-    DateTime inv;
-    try {
-      inv = DateFormat('dd/MM/yyyy').parse(p.invoiceDate);
-    } catch (_) {
-      continue;
-    }
-    final ms = inv.millisecondsSinceEpoch;
+    final ms = _parseDdMmYyyyMillis(p.invoiceDate);
+    if (ms == null) continue;
+
     if (ms >= curFrom && ms <= curTo) {
       monthlyPurchasePriceSum += (double.tryParse(p.rowTotal) ?? 0);
     }
@@ -359,13 +373,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // .where((e) => e.itemSubGroup != "Suture")  //May be add in future
   monthlyPurchasePriceGrnSum = 0.00;
   for (final g in input.grnList) {
-    DateTime inv;
-    try {
-      inv = DateFormat('dd/MM/yyyy').parse(g.grnDate);
-    } catch (_) {
-      continue;
-    }
-    final ms = inv.millisecondsSinceEpoch;
+    final ms = _parseDdMmYyyyMillis(g.grnDate);
+    if (ms == null) continue;
+
     if (ms >= curFrom && ms <= curTo) {
       monthlyPurchasePriceGrnSum += (double.tryParse(g.rowTotal) ?? 0.00);
     }
@@ -380,13 +390,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   for (final po in input.poListOpen.where((e) => e.itemSubGroup != "Suture")) {
     final pending = double.tryParse(po.pendingValue) ?? 0;
     monthlyPOSum += pending;
-    DateTime inv;
-    try {
-      inv = DateFormat('dd/MM/yyyy').parse(po.expectedTimeofDelivey);
-    } catch (_) {
-      continue;
-    }
-    final ms = inv.millisecondsSinceEpoch;
+    final ms = _parseDdMmYyyyMillis(po.expectedTimeofDelivey);
+    if (ms == null) continue;
+
     if (ms >= curFrom && ms <= curTo) {
       currentMonthPOSum += pending;
     } else if (ms <= lastTo) {
@@ -400,6 +406,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   lessThan30DaysValue = 0;
   a30to60DaysValue = 0;
   a60to90DaysValue = 0;
+  a91DaysValue = 0;
   nearExpiryValue = 0;
   expiredValue = 0;
 
@@ -410,8 +417,11 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     inventoryOpeningValue += (double.tryParse(it.totalValue) ?? 0);
   }
 
+  inventoryClosingValue = 0;
   for (final it in input.inventory.where((e) => e.itemSubGroup != "Suture")) {
     final val = double.tryParse(it.totalValue) ?? 0;
+    inventoryClosingValue += val;
+
     final bracket = it.ageingBrackets.trim();
 
     if (bracket == "<30 Days") {
@@ -442,11 +452,6 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     }
   }
 
-  inventoryClosingValue = 0;
-  for (final it in input.inventory.where((e) => e.itemSubGroup != "Suture")) {
-    inventoryClosingValue += (double.tryParse(it.totalValue) ?? 0);
-  }
-
   // COGS calculation
   cogsValue =
       (inventoryOpeningValue + monthlyPurchasePriceGrnSum) -
@@ -470,41 +475,32 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     stockInTransitValue += stkValue;
   }
 
-  DateTime parseSoDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) {
-      return DateTime(1900);
-    }
-
-    try {
-      final parts = dateStr.split('/');
-      return DateTime(
-        int.parse(parts[2]),
-        int.parse(parts[1]),
-        int.parse(parts[0]),
-      );
-    } catch (_) {
-      return DateTime(1900);
-    }
-  }
-
   double readyToDispatchStockItemwise = 0;
-  final sortedSO = [...filteredSO]
-    ..sort((a, b) {
-      // Warehouse
-      final warehouseCompare = (a.warehouse).compareTo(b.warehouse);
-      if (warehouseCompare != 0) return warehouseCompare;
+  final sortedSO =
+      filteredSO
+          .map(
+            (so) => (item: so, soDateMs: _parseDdMmYyyyMillis(so.soDate) ?? 0),
+          )
+          .toList()
+        ..sort((a, b) {
+          // Warehouse
+          final warehouseCompare = a.item.warehouse.compareTo(b.item.warehouse);
+          if (warehouseCompare != 0) return warehouseCompare;
 
-      // Product
-      final productCompare = (a.productCode).compareTo(b.productCode);
-      if (productCompare != 0) return productCompare;
+          // Product
+          final productCompare = a.item.productCode.compareTo(
+            b.item.productCode,
+          );
+          if (productCompare != 0) return productCompare;
 
-      // FIFO by SO Date
-      return parseSoDate(a.soDate).compareTo(parseSoDate(b.soDate));
-    });
+          // FIFO by SO Date
+          return a.soDateMs.compareTo(b.soDateMs);
+        });
 
   final Map<String, double> remainingStock = {};
 
-  for (final so in sortedSO) {
+  for (final sorted in sortedSO) {
+    final so = sorted.item;
     final warehouse = so.warehouse;
     final productCode = so.productCode;
 
@@ -551,7 +547,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // Group by SO No
   // --------------------------------------------------
 
-  final Map<String, List<dynamic>> soGroups = {};
+  final Map<String, List<SODetailsList>> soGroups = {};
 
   for (final so in filteredSO) {
     soGroups.putIfAbsent(so.soNo, () => []);
@@ -563,20 +559,25 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // FIFO SO Sorting
   // --------------------------------------------------
 
-  final sortedSoGroups = soGroups.entries.toList()
-    ..sort((a, b) {
-      final aDate = parseSoDate(a.value.first.soDate);
-
-      final bDate = parseSoDate(b.value.first.soDate);
-
-      return aDate.compareTo(bDate);
-    });
+  final sortedSoGroups =
+      soGroups.entries
+          .map(
+            (entry) => (
+              item: entry,
+              soDateMs: _parseDdMmYyyyMillis(entry.value.first.soDate) ?? 0,
+            ),
+          )
+          .toList()
+        ..sort((a, b) {
+          return a.soDateMs.compareTo(b.soDateMs);
+        });
 
   // --------------------------------------------------
   // SO Wise Ready To Dispatch
   // --------------------------------------------------
 
-  for (final entry in sortedSoGroups) {
+  for (final sorted in sortedSoGroups) {
+    final entry = sorted.item;
     // final soNo = entry.key;
     final soRows = entry.value;
 
@@ -924,6 +925,8 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
   double cashConversionCycleDays = 0;
   double currentCashConversionCycleDays = 0;
+  Future<void>? _secondaryDailyCostingDataFuture;
+  bool _cashConversionDataLoaded = false;
 
   MonthlyCollectionReportList weeklyData = MonthlyCollectionReportList(
     weeklyData: [],
@@ -1534,6 +1537,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     showLoadingOverlay(context, message: "Loading daily costing report...");
 
     try {
+      _cashConversionDataLoaded = false;
+      _secondaryDailyCostingDataFuture = null;
+
       final prefs = await SharedPreferences.getInstance();
       final userName = selectedUser.isEmpty
           ? prefs.getString('userName') ?? ''
@@ -1541,23 +1547,17 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       userLevel = prefs.getString('userLevel') ?? '';
 
-      // Run ALL API calls WITHOUT calling overlay again
-      await _loadSales(userName, userLevel);
-      await _loadSODetails(userName, userLevel);
-      await _loadPurchasePrice(userName, userLevel);
-      await _loadPOList(userName, userLevel);
-      await _loadInventory(userName, userLevel);
-      await _loadInventoryOpening(userName, userLevel);
-      await _loadSalesTarget(userName, userLevel);
-      await _loadGRN(userName, userLevel);
-      await _loadStockInTransitList(userName, userLevel);
-      await _loadCollectionTarget(userName, userLevel);
-      await _loadCollection(userName, userLevel);
-      await _loadPayables(userName, userLevel);
-      await _loadModeOfPayment(userName, userLevel);
-      await _loadMonthlyInventory(userName, userLevel);
-      await _loadMonthlyAnalysisPurchase();
-      await _loadMonthlySalesBarCashConversionChartData();
+      await Future.wait([
+        _loadSales(userName, userLevel),
+        _loadSODetails(userName, userLevel),
+        _loadPurchasePrice(userName, userLevel),
+        _loadPOList(userName, userLevel),
+        _loadInventory(userName, userLevel),
+        _loadInventoryOpening(userName, userLevel),
+        _loadSalesTarget(userName, userLevel),
+        _loadGRN(userName, userLevel),
+        _loadStockInTransitList(userName, userLevel),
+      ]);
 
       await _loadDailyCostingReport("", "");
 
@@ -1565,9 +1565,41 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       setState(() => chartDataLoadedDailyCosting = true);
       hideLoadingOverlay();
       showBottomToast(context, "Dashboard Ready");
+      _secondaryDailyCostingDataFuture = _loadSecondaryDailyCostingData(
+        userName,
+        userLevel,
+      );
+      unawaited(_secondaryDailyCostingDataFuture);
     } catch (e) {
       hideLoadingOverlay(); // avoid stuck overlay
       showBottomToast(context, "Failed: $e");
+    }
+  }
+
+  Future<void> _loadSecondaryDailyCostingData(
+    String userName,
+    String userLevel,
+  ) async {
+    try {
+      await Future.wait([
+        _loadCollectionTarget(userName, userLevel),
+        _loadCollection(userName, userLevel),
+        _loadPayables(userName, userLevel),
+        _loadModeOfPayment(userName, userLevel),
+      ]);
+
+      await _loadMonthlyInventory(userName, userLevel);
+      await _loadMonthlyAnalysisPurchase();
+      await _loadMonthlySalesBarCashConversionChartData();
+
+      if (!mounted) return;
+      setState(() {
+        cashConversionCycleDays = currentCashConversionCycleDays;
+        _cashConversionDataLoaded = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      showBottomToast(context, "Secondary dashboard data failed: $e");
     }
   }
 
@@ -3476,8 +3508,43 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     return formatter.format(numValue);
   }
 
+  Future<void> _ensureCashConversionDataReady() async {
+    if (_cashConversionDataLoaded) return;
+
+    final bool shouldHideOverlay = _loadingOverlay == null;
+    if (shouldHideOverlay) {
+      showLoadingOverlay(context, message: "Preparing cash conversion data...");
+    }
+
+    try {
+      if (_secondaryDailyCostingDataFuture != null) {
+        await _secondaryDailyCostingDataFuture;
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        final userName = prefs.getString('userName') ?? '';
+        final storedUserLevel = prefs.getString('userLevel') ?? userLevel;
+
+        _secondaryDailyCostingDataFuture = _loadSecondaryDailyCostingData(
+          userName,
+          storedUserLevel,
+        );
+        await _secondaryDailyCostingDataFuture;
+      }
+
+      if (!_cashConversionDataLoaded) {
+        throw Exception("Cash conversion data is not ready.");
+      }
+    } finally {
+      if (shouldHideOverlay) {
+        hideLoadingOverlay();
+      }
+    }
+  }
+
   Future<void> generateFormattedDailyCostingReport() async {
     try {
+      await _ensureCashConversionDataReady();
+
       final workbook = xlsio.Workbook();
       final sheet = workbook.worksheets[0];
       sheet.name = "Daily Costing";
@@ -4078,10 +4145,31 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     String? touchedPriority,
     String? touchedWarehouse,
   ) async {
+    showLoadingOverlay(context, message: "Applying filter...");
     clearVariablesForFilter();
     LoadDates();
     await _loadDailyCostingReport(touchedPriority!, touchedWarehouse!);
-    chartDataLoadedDailyCosting = true;
+    if (!mounted) return;
+    setState(() {
+      chartDataLoadedDailyCosting = true;
+    });
+  }
+
+  String _priorityFilterValue(String priorityLabel) {
+    return priorityLabel.replaceAll(" Priority", "");
+  }
+
+  String _warehouseFilterValue(String warehouseLabel) {
+    switch (warehouseLabel) {
+      case "Karnataka State":
+        return "BANGALWH";
+      case "Tamil Nadu State":
+        return "RAJAPAWH";
+      case "Others":
+        return "Others";
+      default:
+        return warehouseLabel;
+    }
   }
 
   @override
@@ -4717,23 +4805,23 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
                 barTouchData: BarTouchData(
                   allowTouchBarBackDraw: true,
                   touchCallback: (flTouchEvent, barTouchResponse) async {
-                    if (barTouchResponse != null &&
+                    if (flTouchEvent is FlTapUpEvent &&
+                        barTouchResponse != null &&
                         barTouchResponse.spot != null) {
+                      final touchedLabel = saleOrderPriorityBreakup
+                          .graphData[barTouchResponse.spot!.spot.x.toInt()]
+                          .name;
+
                       setState(() {
-                        if (flTouchEvent is FlTapUpEvent) {
-                          touchedPriority = touchedPriority == ""
-                              ? saleOrderPriorityBreakup
-                                    .graphData[barTouchResponse.spot!.spot.x
-                                        .toInt()]
-                                    .name
-                              : "";
-                          touchedPriority = touchedPriority.replaceAll(
-                            " Priority",
-                            "",
-                          );
-                          loadDataWithFilter(touchedPriority, touchedWarehouse);
-                        }
+                        touchedPriority = touchedPriority == ""
+                            ? _priorityFilterValue(touchedLabel)
+                            : "";
                       });
+
+                      await loadDataWithFilter(
+                        touchedPriority,
+                        touchedWarehouse,
+                      );
                     }
                   },
                   touchTooltipData: BarTouchTooltipData(
@@ -4847,19 +4935,23 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
                 barTouchData: BarTouchData(
                   allowTouchBarBackDraw: true,
                   touchCallback: (flTouchEvent, barTouchResponse) async {
-                    if (barTouchResponse != null &&
+                    if (flTouchEvent is FlTapUpEvent &&
+                        barTouchResponse != null &&
                         barTouchResponse.spot != null) {
+                      final touchedLabel = saleOrderWarehouseBreakup
+                          .graphData[barTouchResponse.spot!.spot.x.toInt()]
+                          .name;
+
                       setState(() {
-                        if (flTouchEvent is FlTapUpEvent) {
-                          touchedWarehouse = touchedWarehouse == ""
-                              ? saleOrderWarehouseBreakup
-                                    .graphData[barTouchResponse.spot!.spot.x
-                                        .toInt()]
-                                    .name
-                              : "";
-                          loadDataWithFilter(touchedPriority, touchedWarehouse);
-                        }
+                        touchedWarehouse = touchedWarehouse == ""
+                            ? _warehouseFilterValue(touchedLabel)
+                            : "";
                       });
+
+                      await loadDataWithFilter(
+                        touchedPriority,
+                        touchedWarehouse,
+                      );
                     }
                   },
                   touchTooltipData: BarTouchTooltipData(

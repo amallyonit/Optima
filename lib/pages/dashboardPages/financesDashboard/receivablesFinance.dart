@@ -2281,7 +2281,7 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       // compute once
       final fromDate = dateFilterFlag
           ? formatDate(fromDateFilter!)
-          : formatDate(fiscalYearStartDate!);
+          : formatDate(addMonth(fiscalYearStartDate!, -1));
 
       final toDate = dateFilterFlag
           ? formatDate(toDateFilter!)
@@ -3828,7 +3828,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                                                   size: 18,
                                                 ),
                                               ),
-                                            
                                             ),
                                           ],
                                         ),

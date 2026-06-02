@@ -175,6 +175,17 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   CCCExcelData? selectedMonthExcelData;
   List<CCCAuditRow> cccAuditRows = [];
 
+  bool get _hasMonthlyAnalysisData => monthlyAnalysisData.monthData.isNotEmpty;
+
+  bool get _hasDaysOutstandingData => graphData.monthData.isNotEmpty;
+
+  bool get _isCashConversionReady =>
+      chartDataLoadedCCC && _hasMonthlyAnalysisData && _hasDaysOutstandingData;
+
+  void _setCashConversionReady() {
+    chartDataLoadedCCC = _hasMonthlyAnalysisData && _hasDaysOutstandingData;
+  }
+
   DateTime addMonth(DateTime date, int addMonth) {
     int currentMonth = date.month;
     int currentYear = date.year;
@@ -1651,7 +1662,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     if (!mounted) return;
 
     setState(() {
-      chartDataLoadedCCC = true;
+      _setCashConversionReady();
     });
   }
 
@@ -1767,7 +1778,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     LoadDates();
     await _loadMonthlySalesBarCashConversionChartData(touchedMonth);
     setState(() {
-      chartDataLoadedCCC = true;
+      _setCashConversionReady();
     });
   }
 
@@ -1999,6 +2010,14 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
   Future<void> loadData(String selectedUser) async {
     if (!mounted) return;
+    setState(() {
+      chartDataLoadedCCC = false;
+      monthlyAnalysisData = CashConversionGraphList(monthData: []);
+      graphData = DSOGraphList(monthData: []);
+      selectedMonthExcelData = null;
+      cccAuditRows = [];
+    });
+
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
         ? prefs.getString('userName') ?? ''
@@ -2015,7 +2034,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     await _loadMonthlyInventory(userName, userLevel);
     await _loadMonthlyAnalysisPurchase();
     await _loadMonthlySalesBarCashConversionChartData("");
-    chartDataLoadedCCC = true;
   }
 
   String formatDateString(DateTime date) {
@@ -2029,8 +2047,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     allCategoriesState.forEach((category, options) {
       options.updateAll((key, value) => false);
     });
-    loadData("");
-    chartDataLoadedCCC = true;
+    await loadData("");
   }
 
   void clearVariables() {
@@ -2108,8 +2125,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     _dateFilterTarget();
     await _loadMonthlyAnalysisPurchase();
     await _loadMonthlySalesBarCashConversionChartData("");
-    setState(() {});
-    chartDataLoadedCCC = true;
+    setState(() {
+      _setCashConversionReady();
+    });
   }
 
   double getMaxValue(double maxValue) {
@@ -2155,6 +2173,11 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
   @override
   void initState() {
     super.initState();
+    chartDataLoadedCCC = false;
+    monthlyAnalysisData = CashConversionGraphList(monthData: []);
+    graphData = DSOGraphList(monthData: []);
+    selectedMonthExcelData = null;
+    cccAuditRows = [];
     LoadDates();
     if (isUserLoggedIn && isBiDashboardStart) {
       loadDataFuture = loadData("");
@@ -2179,7 +2202,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
   @override
   Widget build(BuildContext context) {
-    return chartDataLoadedCCC
+    return _isCashConversionReady
         ? FinanceVerticalScroll(
             controller: _verticalScrollController,
             child: Column(
@@ -2748,7 +2771,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                                       minimumSize: const Size(10, 10),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    onPressed: () {
+                                    onPressed: () async {
                                       List<String> selectedFilterOptions = [];
                                       for (
                                         int i = 0;
@@ -2792,8 +2815,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
 
                                       selectedSalesData = selectedFilterOptions;
 
-                                      filterDateFunction();
-                                      setState(() {});
+                                      await filterDateFunction();
                                     },
                                     child: const Padding(
                                       padding: EdgeInsets.all(8.0),
@@ -2810,14 +2832,10 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                                       minimumSize: const Size(10, 10),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    onPressed: () {
-                                      chartDataLoadedCCC = false;
-                                      setState(() {
-                                        chartDataLoadedCCC = false;
-                                        loadDataFuture = removeFilter();
-                                        Navigator.pop(context);
-                                        chartDataLoadedCCC = true;
-                                      });
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      loadDataFuture = removeFilter();
+                                      await loadDataFuture;
                                     },
                                     child: const Padding(
                                       padding: EdgeInsets.all(8.0),
