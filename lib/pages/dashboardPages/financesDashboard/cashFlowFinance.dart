@@ -1382,7 +1382,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                   padding: const EdgeInsets.all(16),
                   child: DashboardCardUI(
                     title: 'Daily Movement',
-                    spacing: 0,
+                    spacing: 20,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1405,7 +1405,6 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                         const Text('Sum of Dr', style: TextStyle(fontSize: 12)),
                       ],
                     ),
-
                     menuItems: [
                       PopupMenuItem(
                         onTap: () {
@@ -1474,7 +1473,7 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
                   padding: const EdgeInsets.all(16),
                   child: DashboardCardUI(
                     title: 'Ledger-wise\nAnalysis',
-                    spacing: 0,
+                    spacing: 20,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

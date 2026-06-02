@@ -438,19 +438,19 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                color: Color(0xFF78E25D),
                 borderRadius: BorderRadius.zero,
                 toY: chartData.dsoDaysSales,
                 width: 15,
               ),
               BarChartRodData(
-                color: const Color(0xFF2CA9DF),
+                color: const Color(0xFFFF9F47),
                 borderRadius: BorderRadius.zero,
                 toY: chartData.dsoDaysNH,
                 width: 15,
               ),
               BarChartRodData(
-                color: const Color(0xFF78E25D),
+                color: Colors.blue,
                 borderRadius: BorderRadius.zero,
                 toY: chartData.dsoDaysOffice,
                 width: 15,
@@ -2217,8 +2217,33 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: DashboardCardUI(
-                    title: 'CCC - Monthly Analysis',
+                    title: 'CCC\nMonthly Analysis',
                     spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFF78E25D),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('DSO Sales', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('DSO NH.', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(height: 8, width: 8, color: Colors.blue),
+                        const SizedBox(width: 5),
+                        const Text('DSO Off.', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
                     menuItems: [
                       PopupMenuItem(
                         onTap: () {
@@ -2236,6 +2261,27 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                   child: DashboardCardUI(
                     title: 'CCC - Days Outstanding',
                     spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Target', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFF2CA9DF),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Days', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
                     menuItems: [
                       PopupMenuItem(
                         onTap: () {
@@ -2368,16 +2414,16 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                       children: <TextSpan>[
                         TextSpan(
                           text:
-                              'DSO NH: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysNH}\n',
+                              'DSO Sales: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysSales}\n',
                           style: const TextStyle(
-                            color: Color(0xFF2CA9DF),
+                            color: Color(0xFF78E25D),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TextSpan(
                           text:
-                              'DSO Sales: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysSales}\n',
+                              'DSO NH: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysNH}\n',
                           style: const TextStyle(
                             color: Color(0xFFFF9F47),
                             fontSize: 12,
@@ -2389,7 +2435,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                               'DSO Office: ${monthlyAnalysisData.monthData[grpIndex].dsoDaysOffice}\n',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF78E25D),
+                            color: Colors.blue,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

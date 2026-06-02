@@ -1500,7 +1500,7 @@ class _PayableFinanceState extends State<PayableFinance> {
     final Map<String, Map<String, dynamic>> aggregatedPayableData = {};
 
     for (final payableItem in payablesList) {
-      final dueOn = df.parse(payableItem.postingDate);
+      final dueOn = df.parse(payableItem.dueon);
 
       if (!dueOn.isAtMost(effectiveCurrentMonthToDate!)) {
         continue;
@@ -2090,14 +2090,6 @@ class _PayableFinanceState extends State<PayableFinance> {
       if (fPayable.isNotEmpty && vendorIsAdvance) {
         continue;
       }
-
-      // final tAgeingBracketsLower = t.ageingBrackets.toLowerCase();
-      // if (fPayable.isNotEmpty && !tAgeingBracketsLower.contains(fPayable)) {
-      //   continue;
-      // }
-      // if (fAdvance.isNotEmpty && !tAgeingBracketsLower.contains(fAdvance)) {
-      //   continue;
-      // }
 
       if (fSupplier.isNotEmpty && tVendorNameLower != fSupplier) {
         continue;

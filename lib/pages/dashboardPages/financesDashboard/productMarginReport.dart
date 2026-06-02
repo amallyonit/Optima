@@ -735,44 +735,40 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     },
   );
 
-  List<BarChartGroupData> _monthlyAnalysisChartData(
-    List<ProductMarginData> data,
-  ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                color: const Color(0xFFFF9F47),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.marginPercent,
-                width: 30,
-              ),
-            ],
+  List<BarChartGroupData> _itemWiseChartData(List<ProductMarginData> data) {
+    return List.generate(
+      data.length,
+      (index) => BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            color: const Color(0xFF2CA9DF),
+            borderRadius: BorderRadius.zero,
+            toY: data[index].marginPercent,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      ),
+    );
   }
 
   List<BarChartGroupData> _itemSubGroupChartData(
     List<SubGroupMarginTotal> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                color: const Color(0xFFFF9F47),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.marginPercent,
-                width: 30,
-              ),
-            ],
+    return List.generate(
+      data.length,
+      (index) => BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            color: const Color(0xFF2CA9DF),
+            borderRadius: BorderRadius.zero,
+            toY: data[index].marginPercent,
+            width: 30,
           ),
-        )
-        .toList();
+        ],
+      ),
+    );
   }
 
   String getSelectedFiltersText(
@@ -1045,88 +1041,39 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
                     ),
                   ],
                 ),
+
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Product Margin Report - Item Wise",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateSalesAnalysisYTDExcel();
-                                  },
-                                  child: const Row(
-                                    children: [Text("Download Excel")],
-                                  ),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Product Margin Report - Item Wise',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateSalesAnalysisYTDExcel();
+                        },
+                        child: const Text('Download Excel'),
                       ),
                     ],
+                    child: _itemWise(),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: DashboardCardBody(child: _dailyCostingGraph()),
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 16, 8, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Product Margin Report - Item Group Wise",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateItemGroupWise();
-                                  },
-                                  child: const Row(
-                                    children: [Text("Download Excel")],
-                                  ),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Product Margin Report - Item Group Wise',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemGroupWise();
+                        },
+                        child: const Text('Download Excel'),
                       ),
                     ],
+                    child: _itemSubGroupWise(),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: DashboardCardBody(child: _itemSubGroupWise()),
                 ),
               ],
             ),
@@ -1151,7 +1098,7 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
     });
   }
 
-  Widget _dailyCostingGraph() {
+  Widget _itemWise() {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = productMarginListGraph.productMarginData.length;
@@ -1196,105 +1143,113 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(
-                sideTitles: _leftProductTitles,
-                axisNameSize: 14,
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesMonthlyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _monthlyAnalysisChartData(
-              productMarginListGraph.productMarginData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItem = touchedItem == ""
-                          ? productMarginListGraph
-                                .productMarginData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .itemDescription
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(touchedGroup, touchedItem);
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: chartMaxY,
+              minY: chartMinY,
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftProductTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${productMarginListGraph.productMarginData[grpIndex].itemDescription}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Margin Percentage: ${productMarginListGraph.productMarginData[grpIndex].marginPercent.toStringAsFixed(0)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Total Margin Amount: ${formatAmount(double.parse(productMarginListGraph.productMarginData[grpIndex].totalMarginAmount))}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesMonthlyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemWiseChartData(
+                productMarginListGraph.productMarginData,
+              ),
+              barTouchData: BarTouchData(
+                // enabled: false,
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedItem = touchedItem == ""
+                            ? productMarginListGraph
+                                  .productMarginData[barTouchResponse
+                                      .spot!
+                                      .spot
+                                      .x
+                                      .toInt()]
+                                  .itemDescription
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(touchedGroup, touchedItem);
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${productMarginListGraph.productMarginData[grpIndex].itemDescription}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              'Margin Percentage: ${productMarginListGraph.productMarginData[grpIndex].marginPercent.toStringAsFixed(0)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF2CA9DF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Total Margin Amount: ${formatAmount(double.parse(productMarginListGraph.productMarginData[grpIndex].totalMarginAmount))}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF2CA9DF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -1322,101 +1277,105 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxAmount),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(
-                sideTitles: _leftProductTitles,
-                axisNameSize: 14,
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemSubGroup,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _itemSubGroupChartData(itemSubGroupGraphList.data),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedGroup = touchedGroup == ""
-                          ? itemSubGroupGraphList
-                                .data[barTouchResponse.spot!.spot.x.toInt()]
-                                .itemSubGroup
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(touchedGroup, touchedItem);
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxAmount),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftProductTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${itemSubGroupGraphList.data[grpIndex].itemSubGroup}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            'Margin Percentage: ${itemSubGroupGraphList.data[grpIndex].marginPercent.toStringAsFixed(0)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            'Total Margin Amount: ${formatAmount(itemSubGroupGraphList.data[grpIndex].totalMarginAmount)}\n',
-                        style: const TextStyle(
-                          color: Color(0xFF2CA9DF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemSubGroup,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemSubGroupChartData(itemSubGroupGraphList.data),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedGroup = touchedGroup == ""
+                            ? itemSubGroupGraphList
+                                  .data[barTouchResponse.spot!.spot.x.toInt()]
+                                  .itemSubGroup
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(touchedGroup, touchedItem);
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${itemSubGroupGraphList.data[grpIndex].itemSubGroup}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              'Margin Percentage: ${itemSubGroupGraphList.data[grpIndex].marginPercent.toStringAsFixed(0)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF2CA9DF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              'Total Margin Amount: ${formatAmount(itemSubGroupGraphList.data[grpIndex].totalMarginAmount)}\n',
+                          style: const TextStyle(
+                            color: Color(0xFF2CA9DF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

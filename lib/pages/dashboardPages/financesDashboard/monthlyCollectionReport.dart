@@ -1820,6 +1820,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                                       ),
                                     ];
                                   },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.more_vert,
+                                      size: 18,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -1867,6 +1878,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                                       ),
                                     ];
                                   },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.more_vert,
+                                      size: 18,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -1914,6 +1936,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                                       ),
                                     ];
                                   },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.more_vert,
+                                      size: 18,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -1961,6 +1994,17 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
                                       ),
                                     ];
                                   },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.more_vert,
+                                      size: 18,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),

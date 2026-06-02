@@ -73,7 +73,6 @@ List<PayablesList> invoiceListTemp = [];
 List<PayablesList> selectedInvoiceList = [];
 List<Users> usersListForFilter = [];
 List<InvoiceCustomers> customers = [];
-// List<InvoiceCustomers> asmList = [];
 List<UsersForSearch> asmList = [];
 List<Map<String, dynamic>> userList = [];
 List<MyNode> nodes = [];
@@ -654,7 +653,8 @@ class _VendorPaymentState extends State<VendorPayment> {
           ? maxValue
           : monthlyData.agingGroupTotal;
     }
-    return ((maxValue ~/ 200000) + 1) * 200000;
+    maxValue = ((maxValue ~/ 5000000) + 1) * 5000000;
+    return maxValue;
   }
 
   Future<void> prepareVendorSummary() async {
@@ -1763,33 +1763,6 @@ class _VendorPaymentState extends State<VendorPayment> {
       controller: _verticalScrollController,
       child: Column(
         children: [
-          // Row(
-          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //   children: [
-          //     Row(
-          //       children: [
-          //         const SizedBox(
-          //           width: 15,
-          //         ),
-          //         dateFilterFlag
-          //             ? Text(
-          //             "${formatDateString(fromDateFilter!)} - ${formatDateString(toDateFilter!)}")
-          //             : Text(
-          //             "${formatDateString(fiscalYearStartDate!)} - ${formatDateString(currentDate!)}"),
-          //       ],
-          //     ),
-          //     Row(
-          //       children: [
-          //         IconButton(
-          //           onPressed: () {
-          //             showFilterBottomSheet(context);
-          //           },
-          //           icon: const Icon(Icons.settings),
-          //         ),
-          //       ],
-          //     ),
-          //   ],
-          // ),
           const SizedBox(height: 10),
           buildViewToggle(),
           kIsWeb ? const SizedBox(height: 10) : const SizedBox(height: 0),
@@ -2936,48 +2909,27 @@ class _VendorPaymentState extends State<VendorPayment> {
             ],
           ),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  SizedBox(width: 15),
-                  Text(
-                    "Payables Aging",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  PopupMenuButton(
-                    onSelected: (value) {},
-                    itemBuilder: (BuildContext bc) {
-                      return [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateVendorPaymentExcel(receivablesAgingList);
-                          },
-                          child: const Text("Download Excel"),
-                        ),
-                        PopupMenuItem(
-                          onTap: () {
-                            generateVendorPaymentPDF(receivablesAgingList);
-                          },
-                          child: const Text("Download PDF"),
-                        ),
-                      ];
-                    },
-                  ),
-                  const SizedBox(width: 5),
-                ],
-              ),
-            ],
-          ),
           Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-            child: DashboardCardBody(child: _receivablesAging()),
+            padding: const EdgeInsets.all(16),
+            child: DashboardCardUI(
+              title: 'Payables Aging',
+              spacing: 20,
+              menuItems: [
+                PopupMenuItem(
+                  onTap: () {
+                    generateVendorPaymentExcel(receivablesAgingList);
+                  },
+                  child: const Text("Download Excel"),
+                ),
+                PopupMenuItem(
+                  onTap: () {
+                    generateVendorPaymentPDF(receivablesAgingList);
+                  },
+                  child: const Text("Download PDF"),
+                ),
+              ],
+              child: _payablesAging(),
+            ),
           ),
         ],
       ),
@@ -3403,7 +3355,7 @@ class _VendorPaymentState extends State<VendorPayment> {
     );
   }
 
-  Widget _receivablesAging() {
+  Widget _payablesAging() {
     final screenWidth = MediaQuery.of(context).size.width;
     return FinanceHorizontalChartScroll(
       controller: _agingHorizontalController,
@@ -3411,119 +3363,125 @@ class _VendorPaymentState extends State<VendorPayment> {
       child: SizedBox(
         height: 350,
         width: screenWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getAgingMaxValue(receivablesAgingList),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesReceivableAging,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _receivableAgingChartData(
-              receivablesAgingList.agingData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null &&
-                    barTouchResponse.spot != null) {}
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getAgingMaxValue(receivablesAgingList),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    'Payables\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            '${receivablesAgingList.agingData[0].agingGroup} :'
-                            ' ${(receivablesAgingList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesAgingList.agingData[1].agingGroup} '
-                            ': ${(receivablesAgingList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesAgingList.agingData[2].agingGroup} '
-                            ': ${(receivablesAgingList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${receivablesAgingList.agingData[3].agingGroup} '
-                            ': ${(receivablesAgingList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Total : ${(receivablesAgingList.agingData[3].agingTotal / 100000).toStringAsFixed(2)} L",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesReceivableAging,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _receivableAgingChartData(
+                receivablesAgingList.agingData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {}
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      'Payables\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              '${receivablesAgingList.agingData[0].agingGroup} :'
+                              ' ${(receivablesAgingList.agingData[0].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              '${receivablesAgingList.agingData[1].agingGroup} '
+                              ': ${(receivablesAgingList.agingData[1].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              '${receivablesAgingList.agingData[2].agingGroup} '
+                              ': ${(receivablesAgingList.agingData[2].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              '${receivablesAgingList.agingData[3].agingGroup} '
+                              ': ${(receivablesAgingList.agingData[3].agingGroupTotal / 100000).toStringAsFixed(2)} L\n',
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Total : ${(receivablesAgingList.agingData[3].agingTotal / 100000).toStringAsFixed(2)} L",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
