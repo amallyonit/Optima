@@ -1793,11 +1793,15 @@ class SupplierAnalysisPayablesList {
 class SupplierAnalysisPayablesData {
   final String supplierName;
   double balance;
+  double? overDue;
   double? actualPaid;
+  double? currentMonthPaid;
   SupplierAnalysisPayablesData({
     required this.supplierName,
     required this.balance,
+    required this.overDue,
     this.actualPaid,
+    this.currentMonthPaid,
   });
 }
 
@@ -1813,11 +1817,13 @@ class SupplierCategoryWiseAnalysisPayablesData {
   double balance;
   double? actualPaid;
   double? commitment;
+  double? currentMonthPaid;
   SupplierCategoryWiseAnalysisPayablesData({
     required this.supplierCategoryName,
     required this.balance,
     this.actualPaid,
     this.commitment,
+    this.currentMonthPaid,
   });
 }
 
@@ -5287,6 +5293,7 @@ class VendorsPaymentProjectionData {
   double commitment;
   double currentMonthPayable;
   double actualPayable;
+  double overDue;
   VendorsPaymentProjectionData({
     required this.vendorName,
     required this.vendorCode,
@@ -5300,6 +5307,7 @@ class VendorsPaymentProjectionData {
     required this.commitment,
     required this.currentMonthPayable,
     required this.actualPayable,
+    required this.overDue,
   });
 }
 
@@ -6254,12 +6262,14 @@ class CustomerCommitmentSummary {
   String customerCode;
   String customerName;
   double totalOutstanding;
+  double totalOverdue;
   double totalCommitment;
 
   CustomerCommitmentSummary({
     required this.customerCode,
     required this.customerName,
     required this.totalOutstanding,
+    required this.totalOverdue,
     this.totalCommitment = 0,
   });
 }

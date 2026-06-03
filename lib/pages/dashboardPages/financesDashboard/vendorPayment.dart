@@ -934,18 +934,8 @@ class _VendorPaymentState extends State<VendorPayment> {
     List<PayablesList> targetList = [];
 
     try {
-      final fromDate = dateFilterFlag
-          ? formatDate(fromDateFilter!)
-          : formatDate(fiscalYearStartDate!);
-
-      final toDate = dateFilterFlag
-          ? formatDate(toDateFilter!)
-          : formatDate(currentDate!);
-
       do {
         final body = {
-          "FromDate": fromDate,
-          "ToDate": toDate,
           "Index": index,
           "Limit": limit,
           "sapToken": DataManager.readSapToken(),
@@ -1533,6 +1523,7 @@ class _VendorPaymentState extends State<VendorPayment> {
           commitment: 0,
           currentMonthPayable: 0,
           actualPayable: 0,
+          overDue: 0,
         ),
       );
 

@@ -646,8 +646,6 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
     try {
       do {
         var body = {
-          // "FromDate": formatDate(monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-          // "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
@@ -655,11 +653,7 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         const apiUrl = '${ApiHelper.baseUrl}BicxoCreditorsAgingList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 

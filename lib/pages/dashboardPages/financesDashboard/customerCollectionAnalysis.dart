@@ -611,14 +611,22 @@ class _CustomerCollectionAnalysisState
       final customerCode = invoice.customerCode;
       final customerName = invoice.customerName;
       final outstanding = double.tryParse(invoice.balance)?.abs() ?? 0;
+      final overdue =
+          (double.tryParse(invoice.a0to30Days)?.abs() ?? 0) +
+          (double.tryParse(invoice.a31to60Days)?.abs() ?? 0) +
+          (double.tryParse(invoice.a61to90Days)?.abs() ?? 0) +
+          (double.tryParse(invoice.a91to180Days)?.abs() ?? 0) +
+          (double.tryParse(invoice.a181Days)?.abs() ?? 0);
 
       if (temp.containsKey(customerCode)) {
         temp[customerCode]!.totalOutstanding += outstanding;
+        temp[customerCode]!.totalOverdue += overdue;
       } else {
         temp[customerCode] = CustomerCommitmentSummary(
           customerCode: customerCode,
           customerName: customerName,
           totalOutstanding: outstanding,
+          totalOverdue: overdue,
         );
       }
     }
@@ -626,7 +634,7 @@ class _CustomerCollectionAnalysisState
     customerSummaryList = temp.values.toList();
 
     customerSummaryList.sort(
-      (a, b) => b.totalOutstanding.compareTo(a.totalOutstanding),
+      (a, b) => b.totalOverdue.compareTo(a.totalOverdue),
     );
 
     filteredCustomerSummaryList = List.from(customerSummaryList);
@@ -2197,6 +2205,8 @@ class _CustomerCollectionAnalysisState
 
           buildHeaderCell("Balance", 90),
 
+          buildHeaderCell("Overdue", 90),
+
           buildHeaderCell(getWeekLabel(1), 120),
 
           buildHeaderCell(getWeekLabel(2), 120),
@@ -2269,6 +2279,9 @@ class _CustomerCollectionAnalysisState
 
           /// OUTSTANDING
           buildDataCell(formatAmount(customer.totalOutstanding), 90),
+
+          /// OVERDUE
+          buildDataCell(formatAmount(customer.totalOverdue), 90),
 
           /// WEEK 1
           buildInputCell(120, customer.customerCode, "week1"),
@@ -2394,7 +2407,7 @@ class _CustomerCollectionAnalysisState
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
-              width: 1010,
+              width: 1085,
               child: Column(
                 children: [
                   buildGridHeader(),
@@ -4007,7 +4020,6 @@ class _CustomerCollectionAnalysisState
             child: _receivablesAging(),
           ),
         ),
-      
       ],
     );
   }

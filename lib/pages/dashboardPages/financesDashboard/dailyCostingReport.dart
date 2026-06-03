@@ -211,12 +211,8 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   // Helper: convert DateTime to milliseconds for fast comparisons
   final int curFrom = input.currentMonthFromDate.millisecondsSinceEpoch;
   final int curTo = input.currentMonthToDate.millisecondsSinceEpoch;
-  // final int lastFrom = input.lastMonthFromDate.millisecondsSinceEpoch;
   final int lastTo = input.lastMonthToDate.millisecondsSinceEpoch;
   final int nextFrom = input.nextMonthFromDate.millisecondsSinceEpoch;
-  // final int nextTo = input
-  //     .nextMonthToDate
-  //     .millisecondsSinceEpoch; // 6 Months window for next month bucket
 
   // Get current financial year suffix function (same logic as you had)
   String getCurrentFinancialYearSuffix(DateTime now) {
@@ -418,7 +414,9 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   }
 
   inventoryClosingValue = 0;
-  for (final it in input.inventory.where((e) => e.itemSubGroup != "Suture")) {
+  for (final it in input.inventory.where((e) {
+    return e.itemSubGroup != "Suture";
+  })) {
     final val = double.tryParse(it.totalValue) ?? 0;
     inventoryClosingValue += val;
 
@@ -426,7 +424,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
 
     if (bracket == "<30 Days") {
       lessThan30DaysValue += val;
-    } else if (bracket == "31-45 Days" || bracket == "31-60 Days") {
+    } else if (bracket == "31-45 Days" || bracket == "46-60 Days") {
       a30to60DaysValue += val;
     } else if (bracket == "61-90 Days") {
       a60to90DaysValue += val;
@@ -452,6 +450,12 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     }
   }
 
+  print('lessThan30DaysValue = $lessThan30DaysValue');
+  print('30to60DaysValue = $a30to60DaysValue');
+  print('60to90DaysValue = $a60to90DaysValue');
+  print('91DaysValue = $a91DaysValue');
+
+  print('InventoryClosing = $inventoryClosingValue');
   // COGS calculation
   cogsValue =
       (inventoryOpeningValue + monthlyPurchasePriceGrnSum) -
@@ -611,20 +615,8 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
       remainingStockSoNo
         ..clear()
         ..addAll(tempStock);
-
-      // print(
-      //   'READY : $soNo => '
-      //   '${soValue.toStringAsFixed(2)}',
-      // );
-    } else {
-      // print('NOT READY : $soNo');
-    }
+    } else {}
   }
-
-  // print(
-  //   'SO Wise Ready To Dispatch = '
-  //   '${readyToDispatchStockSoNowise.toStringAsFixed(2)}',
-  // );
 
   // Build graph data lists.
   final revenueGraph = <DailyCostingGraphData>[];
@@ -757,7 +749,7 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
   final inventoryAgingGraph = <DailyCostingGraphData>[];
   inventoryAgingGraph.add(
     DailyCostingGraphData(
-      name: "> 30 Days",
+      name: "<30 Days",
       target: 0,
       achievement: lessThan30DaysValue,
       percentage: 0,
@@ -1610,18 +1602,8 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
     List<PaymentAnalysisList> payablesList = [];
 
     try {
-      final fromDate = dateFilterFlag
-          ? formatDate(fromDateFilter!)
-          : formatDate(fiscalYearStartDate!);
-
-      final toDate = dateFilterFlag
-          ? formatDate(toDateFilter!)
-          : formatDate(currentDate!);
-
       while (true) {
         final body = {
-          "FromDate": fromDate,
-          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
@@ -2176,7 +2158,7 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
     final toDate = dateFilterFlag
         ? formatDate(toDateFilter!)
-        : formatDate(currentMonthToDate!);
+        : formatDate(currentDate!);
 
     const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
 

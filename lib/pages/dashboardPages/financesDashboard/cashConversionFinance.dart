@@ -710,18 +710,8 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
     List<PaymentAnalysisList> payablesList = [];
 
     try {
-      final fromDate = dateFilterFlag
-          ? formatDate(fromDateFilter!)
-          : formatDate(fiscalYearStartDate!);
-
-      final toDate = dateFilterFlag
-          ? formatDate(toDateFilter!)
-          : formatDate(currentDate!);
-
       while (true) {
         final body = {
-          "FromDate": fromDate,
-          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
