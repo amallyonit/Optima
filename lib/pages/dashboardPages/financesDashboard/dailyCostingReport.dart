@@ -450,12 +450,6 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     }
   }
 
-  print('lessThan30DaysValue = $lessThan30DaysValue');
-  print('30to60DaysValue = $a30to60DaysValue');
-  print('60to90DaysValue = $a60to90DaysValue');
-  print('91DaysValue = $a91DaysValue');
-
-  print('InventoryClosing = $inventoryClosingValue');
   // COGS calculation
   cogsValue =
       (inventoryOpeningValue + monthlyPurchasePriceGrnSum) -

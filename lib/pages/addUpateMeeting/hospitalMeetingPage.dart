@@ -1,4 +1,4 @@
-// ignore_for_file: file_names, use_build_context_synchronously, avoid_print, non_constant_identifier_names
+// ignore_for_file: empty_catches, file_names, use_build_context_synchronously, avoid_print, non_constant_identifier_names
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -24,6 +24,7 @@ import 'package:optima/pages/addUpateMeeting/stageMultiDropDown.dart';
 import 'package:optima/tabs/tabspage.dart';
 import '../../api_helper.dart';
 import '../../classes/leads.dart';
+import '../../notificationService.dart';
 import 'contactSummaryWidget.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
@@ -152,16 +153,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
 
   void accountNameEmptyChecker() {
     if (_searchController.text == "") {
-      SnackBar snackBar = const SnackBar(
-        showCloseIcon: true,
-        duration: Duration(seconds: 1),
-        content: Text(
-          "Please Enter Account Name",
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please Enter Account Name.",
+      );
     }
   }
 
@@ -318,11 +314,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error getting location: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Error getting location.",
+      );
     }
   }
 
@@ -381,11 +377,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error getting location: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Error getting location.",
+      );
     }
   }
 
@@ -568,9 +564,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             }
           });
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error getting location: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.warning(
+        title: "Warning",
+        message: "Error getting location.",
+      );
     }
   }
 
@@ -624,35 +622,28 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
-      } else {
-        final snackBar = SnackBar(
-          content: Text('HTTP Error: ${response.statusCode}'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text(e.toString()));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading customer data.",
+      );
     }
   }
 
@@ -695,29 +686,28 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text(e.toString()));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading products.",
+      );
     }
   }
 
@@ -755,29 +745,28 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading product category.",
+      );
     }
   }
 
@@ -811,29 +800,28 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text(e.toString()));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading input materials.",
+      );
     }
   }
 
@@ -935,32 +923,28 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading contact details.",
+      );
     }
   }
 
@@ -979,19 +963,6 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
         builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: ""),
       ),
     );
-  }
-
-  void showSnackBar(String message) {
-    SnackBar snackBar = SnackBar(
-      showCloseIcon: true,
-      duration: const Duration(seconds: 1),
-      content: Text(
-        message,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
-      ),
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
   void validateInputMaterials() {
@@ -1108,48 +1079,36 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
             summarySave &&
             responseJson["Data"].toString().isNotEmpty) {
           summarySave = false;
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(
-              'Saved Successfully...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.success(
+            title: "Success",
+            message: "Saved successfully.",
+          );
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
-      } else {
-        const snackBar = SnackBar(content: Text('Lead entry save failed'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while saving.",
+      );
     }
   }
 
@@ -1168,15 +1127,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
       }
       retries++;
       if (retries >= maxRetries) {
-        const snackBar = SnackBar(
-          duration: Duration(seconds: 1),
-          content: Text(
-            'Location missing, Please try again...',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.warning(
+          title: "Warning",
+          message: "Location missing, Please try again.",
+        );
         break;
       }
     } while (locationControllerFooter.text.isEmpty);
@@ -1211,49 +1166,40 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
 
           if (status && responseJson["Data"].toString().isNotEmpty) {
             summarySave = false;
-            const snackBar = SnackBar(
-              duration: Duration(seconds: 1),
-              content: Text(
-                'Saved Successfully...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.success(
+              title: "Success",
+              message: "Checkin success.",
+            );
           } else {
             if (responseJson.containsKey("Error") &&
                 responseJson["Error"].toString() ==
                     "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.warning(
+                title: "Security Alert",
+                message: "Invalid or Expired Token.",
+              );
+
               navigateToLoginScreen();
             } else {
-              final snackBar = SnackBar(
-                content: Text(responseJson["Error"].toString()),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.error(
+                title: "Error",
+                message: responseJson["Error"].toString(),
+              );
             }
           }
         } else {
-          const snackBar = SnackBar(content: Text('Checkin failed'));
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.error(title: "Error", message: "Checkin failed.");
         }
       } catch (e) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while saving checkin details.",
+        );
       }
     }
   }
@@ -1292,48 +1238,39 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
 
         if (status && responseJson["Data"].toString().isNotEmpty) {
           summarySave = false;
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(
-              'Saved Successfully...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.success(
+            title: "Success",
+            message: "Checkout success.",
+          );
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('Checkout failed'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: "Checkout failed.");
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while checkout.",
+      );
     }
   }
 
@@ -1374,80 +1311,63 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
       };
       const apiUrl = '${ApiHelper.baseUrl}insertleadactivity';
       var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
-      try {
-        final response = await http.post(
-          Uri.parse(apiUrl),
-          body: jsonEncode(leadactivity),
-          headers: headerss,
-        );
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          bool status = responseJson["Status"];
-          if (status && responseJson["Data"].toString().isNotEmpty) {
-            if (widget.checkInDetails != null) {
-              await submitCheckout();
-            }
-            summarySave = true;
-            summaryController.clear();
-            inputMaterialController.clear();
-            _dateController.text = DateFormat(
-              'dd/MM/yyyy hh:mm a',
-            ).format(DateTime.now());
-            nextActionValue = 'Stages';
-            leadId = "";
-            setState(() {
-              selectedParticipantList.clear();
-              selectedParticipantList = [];
-              participantList.clear();
-              participantList = [];
-              selectedProductCategory.clear();
-              selectedProductCategory = [];
-            });
-          } else {
-            if (responseJson.containsKey("Error") &&
-                responseJson["Error"].toString() ==
-                    "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-              navigateToLoginScreen();
-            } else {
-              final snackBar = SnackBar(
-                content: Text(responseJson["Error"].toString()),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: jsonEncode(leadactivity),
+        headers: headerss,
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        bool status = responseJson["Status"];
+        if (status && responseJson["Data"].toString().isNotEmpty) {
+          if (widget.checkInDetails != null) {
+            await submitCheckout();
           }
+          summarySave = true;
+          summaryController.clear();
+          inputMaterialController.clear();
+          _dateController.text = DateFormat(
+            'dd/MM/yyyy hh:mm a',
+          ).format(DateTime.now());
+          nextActionValue = 'Stages';
+          leadId = "";
+          setState(() {
+            selectedParticipantList.clear();
+            selectedParticipantList = [];
+            participantList.clear();
+            participantList = [];
+            selectedProductCategory.clear();
+            selectedProductCategory = [];
+          });
         } else {
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text('Lead activity save failed'),
-          );
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          if (responseJson.containsKey("Error") &&
+              responseJson["Error"].toString() == "Invalid or Expired Token") {
+            if (!mounted) return;
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
+            navigateToLoginScreen();
+          } else {
+            if (!mounted) return;
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
+          }
         }
-      } catch (e) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
+      } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: "Save failed..");
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while saving stage summary.",
+      );
     }
   }
 
@@ -1469,66 +1389,46 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
       };
       const apiUrl = '${ApiHelper.baseUrl}insertcustomermaster';
       var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
-      try {
-        final response = await http.post(
-          Uri.parse(apiUrl),
-          body: jsonEncode(customer),
-          headers: headerss,
-        );
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          bool status = responseJson["Status"];
-          if (status && responseJson["AccountCode"].toString().isNotEmpty) {
-            setState(() {
-              selectedHospitalId = responseJson["AccountCode"].toString();
-            });
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: jsonEncode(customer),
+        headers: headerss,
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        bool status = responseJson["Status"];
+        if (status && responseJson["AccountCode"].toString().isNotEmpty) {
+          setState(() {
+            selectedHospitalId = responseJson["AccountCode"].toString();
+          });
+        } else {
+          if (responseJson.containsKey("Error") &&
+              responseJson["Error"].toString() == "Invalid or Expired Token") {
+            if (!mounted) return;
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
+            navigateToLoginScreen();
           } else {
-            if (responseJson.containsKey("Error") &&
-                responseJson["Error"].toString() ==
-                    "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
+            if (responseJson["AccountCode"].toString().isNotEmpty) {
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-              navigateToLoginScreen();
-            } else {
-              if (responseJson["AccountCode"].toString().isNotEmpty) {
-                final snackBar = SnackBar(
-                  content: Text(responseJson["Error"].toString()),
-                );
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(snackBar);
-              }
+              NotificationService.error(
+                title: "Error",
+                message: responseJson["Error"].toString(),
+              );
             }
           }
-        } else {
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text('Customer save failed'),
-          );
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
-      } catch (e) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating new customer.",
+      );
     }
   }
 
@@ -2243,23 +2143,12 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                             ),
                                                           );
                                                     } else {
-                                                      SnackBar
-                                                      snackBar = const SnackBar(
-                                                        showCloseIcon: true,
-                                                        duration: Duration(
-                                                          seconds: 1,
-                                                        ),
-                                                        content: Text(
-                                                          "Please Enter Product Category",
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 16,
-                                                          ),
-                                                        ),
+                                                      if (!mounted) return;
+                                                      NotificationService.warning(
+                                                        title: "Warning",
+                                                        message:
+                                                            "Please Enter Product Category.",
                                                       );
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(snackBar);
                                                     }
                                                   }
                                                 });
@@ -2318,25 +2207,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                               ),
                                                             );
                                                       } else {
-                                                        SnackBar
-                                                        snackBar = const SnackBar(
-                                                          showCloseIcon: true,
-                                                          duration: Duration(
-                                                            seconds: 1,
-                                                          ),
-                                                          content: Text(
-                                                            "Please Enter Product Category",
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 16,
-                                                            ),
-                                                          ),
-                                                        );
-                                                        ScaffoldMessenger.of(
-                                                          context,
-                                                        ).showSnackBar(
-                                                          snackBar,
+                                                        if (!mounted) return;
+                                                        NotificationService.warning(
+                                                          title: "Warning",
+                                                          message:
+                                                              "Please Enter Product Category.",
                                                         );
                                                       }
                                                       productCategoryController
@@ -2622,23 +2497,12 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                   ),
                                                 );
                                               } else {
-                                                SnackBar
-                                                snackBar = const SnackBar(
-                                                  showCloseIcon: true,
-                                                  duration: Duration(
-                                                    seconds: 1,
-                                                  ),
-                                                  content: Text(
-                                                    "Please Enter Product Name",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
+                                                if (!mounted) return;
+                                                NotificationService.warning(
+                                                  title: "Warning",
+                                                  message:
+                                                      "Please Enter Product Name.",
                                                 );
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(snackBar);
                                               }
                                               productController.clear();
                                             });
@@ -2716,25 +2580,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                           ),
                                                         );
                                                       } else {
-                                                        SnackBar
-                                                        snackBar = const SnackBar(
-                                                          showCloseIcon: true,
-                                                          duration: Duration(
-                                                            seconds: 1,
-                                                          ),
-                                                          content: Text(
-                                                            "Please Enter Product Name",
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 16,
-                                                            ),
-                                                          ),
-                                                        );
-                                                        ScaffoldMessenger.of(
-                                                          context,
-                                                        ).showSnackBar(
-                                                          snackBar,
+                                                        if (!mounted) return;
+                                                        NotificationService.warning(
+                                                          title: "Warning",
+                                                          message:
+                                                              "Please Enter Product Name.",
                                                         );
                                                       }
                                                       productController.clear();
@@ -3636,18 +3486,15 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                                   .currentState!
                                                                   .validate()) {
                                                                 addDataToList();
-                                                                // _clearControls();
                                                               } else {
-                                                                const snackBar =
-                                                                    SnackBar(
-                                                                      content: Text(
-                                                                        'Contact details not added to the list',
-                                                                      ),
-                                                                    );
-                                                                ScaffoldMessenger.of(
-                                                                  context,
-                                                                ).showSnackBar(
-                                                                  snackBar,
+                                                                if (!mounted) {
+                                                                  return;
+                                                                }
+                                                                NotificationService.warning(
+                                                                  title:
+                                                                      "Warning",
+                                                                  message:
+                                                                      "Contact details not added to the list.",
                                                                 );
                                                               }
                                                             },
@@ -4040,23 +3887,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       materialController
                                                           .clear();
                                                     } else {
-                                                      SnackBar
-                                                      snackBar = const SnackBar(
-                                                        showCloseIcon: true,
-                                                        duration: Duration(
-                                                          seconds: 1,
-                                                        ),
-                                                        content: Text(
-                                                          "Please Enter Product Name",
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 16,
-                                                          ),
-                                                        ),
+                                                      NotificationService.warning(
+                                                        title: "Warning",
+                                                        message:
+                                                            "Pleasse Enter Product Name.",
                                                       );
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(snackBar);
                                                     }
                                                     productController.clear();
                                                   });
@@ -4715,30 +4550,16 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                       contactList.isEmpty ||
                                                       validInputMaterial ==
                                                           false) {
-                                                    final snackBar = SnackBar(
-                                                      backgroundColor:
-                                                          const Color(
-                                                            0xFF2CA9DF,
-                                                          ),
-                                                      duration: const Duration(
-                                                        seconds: 2,
-                                                      ),
-                                                      content: Text(
-                                                        contactList.isEmpty
-                                                            ? 'Add contact person.'
-                                                            : validInputMaterial ==
-                                                                  false
-                                                            ? 'Please select a valid Material Name and try again...'
-                                                            : 'Location is missing, Please add location and try again...',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 14,
-                                                        ),
-                                                      ),
+                                                    NotificationService.warning(
+                                                      title: "Warning",
+                                                      message:
+                                                          contactList.isEmpty
+                                                          ? 'Add contact person.'
+                                                          : validInputMaterial ==
+                                                                false
+                                                          ? 'Please select a valid Material Name and try again...'
+                                                          : 'Location is missing, Please add location and try again...',
                                                     );
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(snackBar);
                                                   } else {
                                                     BuildContext? dialogContext;
                                                     showDialog(
@@ -4758,14 +4579,11 @@ class _HospitalMeetingPageState extends State<HospitalMeetingPage> {
                                                     );
                                                     try {
                                                       await submitLeads();
-                                                      // await submitStageSummary();
                                                       Navigator.of(
                                                         dialogContext!,
                                                       ).pop();
                                                       navigateToHomePage();
-                                                    } catch (error) {
-                                                      // print('Error: $error');
-                                                    }
+                                                    } catch (error) {}
                                                   }
                                                 },
                                           child: const SizedBox(

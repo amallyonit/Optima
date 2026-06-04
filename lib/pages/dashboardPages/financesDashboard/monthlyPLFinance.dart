@@ -3,7 +3,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +14,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
-
+import '../../../notificationService.dart';
 import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
@@ -608,12 +607,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       });
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: e.toString());
       }
     }
   }
@@ -688,17 +682,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         purchasePrice = salesList.toList();
       });
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -779,14 +764,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         sales = salesList.toList();
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -876,15 +855,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         }
       });
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -943,37 +915,31 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('Sales target details not found.'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.info(
+          title: "Info",
+          message: "Sales target details not found.",
+        );
       }
     } catch (e) {
-      const snackBar = SnackBar(
-        content: Text('SAP Server down, Please try again after some time.'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 

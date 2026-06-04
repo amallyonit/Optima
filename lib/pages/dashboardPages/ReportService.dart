@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
+import 'package:syncfusion_flutter_xlsio/xlsio.dart';
 import 'report_service_platform.dart';
 import '../../api_helper.dart';
 import 'dart:convert';
@@ -278,6 +279,11 @@ class ReportService {
     required List<String> headers,
     required List<List<dynamic>> rows,
     required String fileName,
+
+    List<String>? secondSheetHeaders,
+    List<List<dynamic>>? secondSheetRows,
+    String? secondSheetName,
+
     List<int>?
     amountColumns, // optional: 1-based column indices for numeric formatting
     bool addTotalRow = false, // optional
@@ -300,6 +306,14 @@ class ReportService {
       final workbook = xlsio.Workbook();
       final sheet = workbook.worksheets[0];
       sheet.name = sheetName;
+
+      Worksheet? secondSheet;
+
+      if (secondSheetHeaders != null &&
+          secondSheetRows != null &&
+          secondSheetName != null) {
+        secondSheet = workbook.worksheets.addWithName(secondSheetName);
+      }
       // -------- REPORT HEADER --------
       // 'assets/images/${ApiHelper.projectName}/logo.png'
       // Row 1 → Title (Left)
@@ -342,6 +356,25 @@ class ReportService {
       // ---------------- HEADER ----------------
       for (int col = 0; col < headers.length; col++) {
         sheet.getRangeByIndex(4, col + 1).setText(headers[col]);
+      }
+
+      if (secondSheet != null) {
+        for (int col = 0; col < secondSheetHeaders!.length; col++) {
+          secondSheet
+              .getRangeByIndex(4, col + 1)
+              .setText(secondSheetHeaders[col]);
+        }
+
+        final headerRange = secondSheet.getRangeByIndex(
+          4,
+          1,
+          4,
+          secondSheetHeaders.length,
+        );
+
+        headerRange.cellStyle.bold = true;
+        headerRange.cellStyle.backColor = "#E7F3FF";
+        headerRange.cellStyle.hAlign = xlsio.HAlignType.center;
       }
 
       final headerRange = sheet.getRangeByIndex(4, 1, 4, headers.length);
@@ -437,6 +470,30 @@ class ReportService {
         }
       }
 
+      if (secondSheet != null) {
+        for (int i = 0; i < secondSheetRows!.length; i++) {
+          final rowIndex = i + 5;
+          final row = secondSheetRows[i];
+
+          for (int j = 0; j < row.length; j++) {
+            final cell = secondSheet.getRangeByIndex(rowIndex, j + 1);
+
+            final value = row[j];
+
+            if (value is num) {
+              cell.setNumber(value.toDouble());
+            } else {
+              final numValue = double.tryParse(value.toString());
+
+              if (numValue != null) {
+                cell.setNumber(numValue);
+              } else {
+                cell.setText(value.toString());
+              }
+            }
+          }
+        }
+      }
       int totalRows = rows.length + 4;
       if (addTotalRow) {
         totalRows += 1;
@@ -520,6 +577,12 @@ class ReportService {
         sheet.autoFitColumn(col);
       }
 
+      if (secondSheet != null) {
+        for (int col = 1; col <= secondSheetHeaders!.length; col++) {
+          secondSheet.autoFitColumn(col);
+        }
+      }
+
       if (addTotalRow && amountColumns != null) {
         final totalRowIndex = rows.length + 5;
 
@@ -551,6 +614,26 @@ class ReportService {
           cell.cellStyle.borders.right.lineStyle = xlsio.LineStyle.thin;
           cell.cellStyle.borders.top.lineStyle = xlsio.LineStyle.thin;
           cell.cellStyle.borders.bottom.lineStyle = xlsio.LineStyle.thin;
+        }
+      }
+
+      if (secondSheet != null) {
+        final totalRowIndex = secondSheetRows!.length + 5;
+
+        secondSheet.getRangeByIndex(totalRowIndex, 1).setText("Total");
+
+        secondSheet.getRangeByIndex(totalRowIndex, 1).cellStyle.bold = true;
+
+        final amountCols = [8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+        for (final col in amountCols) {
+          final letter = _getExcelColumnName(col);
+
+          secondSheet
+              .getRangeByIndex(totalRowIndex, col)
+              .setFormula(
+                'SUM(${letter}5:$letter${secondSheetRows.length + 4})',
+              );
         }
       }
 

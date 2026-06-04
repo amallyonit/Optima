@@ -15,6 +15,8 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 
+import '../../../../notificationService.dart';
+
 class ItemGroupAgeingSummary {
   String groupName;
 
@@ -490,8 +492,6 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
     try {
       do {
         var body = {
-          // "FromDate": formatDate(monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-          // "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
           "type": "CMS",
@@ -500,11 +500,7 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
         const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -534,14 +530,11 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
         cmsDataTemp = salesList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory level.",
+      );
     }
   }
 

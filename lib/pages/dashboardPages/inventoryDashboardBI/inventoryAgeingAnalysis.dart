@@ -24,6 +24,8 @@ import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
 import 'package:optima/excel_helper.dart';
 
+import '../../../notificationService.dart';
+
 class InventoryAgeingAnalysis extends StatefulWidget {
   const InventoryAgeingAnalysis({super.key});
 
@@ -419,14 +421,11 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
         }
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occurred while loading inventory data.",
+      );
     }
   }
 
@@ -620,11 +619,11 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occurred while generating Excel file.",
+      );
     }
   }
 
@@ -707,11 +706,11 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occurred while generating PDF file.",
+      );
     }
   }
 

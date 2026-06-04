@@ -12,6 +12,8 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/login_screen.dart';
 
+import '../notificationService.dart';
+
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
@@ -128,12 +130,11 @@ class NotificationPageState extends State<NotificationPage> {
       setState(() {
         isLoading = false;
       });
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading notifications.",
+      );
     }
   }
 

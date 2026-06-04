@@ -2371,8 +2371,29 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
   Future<void> generateAllReceivablesExcel() async {
     try {
       final rows = _prepareAllReceivablesRows(target);
+      final summaryHeaders = [
+        'Sales Manager',
+        'Regional Manager',
+        'Sales Rep',
+        'Customer Group',
+        'BP Group',
+        'Customer Code',
+        'Customer Name',
+        'Credit Limit',
+        'Account Balance',
+        'Balance',
+        'Future',
+        '0 - 30',
+        '31 - 60',
+        '61 - 90',
+        '91 - 180',
+        '180+',
+      ];
+
+      final summaryRows = _prepareCustomerWiseSummaryRows(target);
+
       await reportService.generateExcel(
-        sheetName: 'AllReceivablesExcel',
+        sheetName: 'Detailed Receivables',
         headers: [
           'Sales Manager',
           'Regional Manager',
@@ -2412,6 +2433,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         amountColumns: [8, 12, 22, 24, 25, 26, 27, 28, 29, 31],
         addTotalRow: true,
         reportTitle: 'Finance - Gross Receivables',
+        secondSheetName: 'Summarized Receivables',
+        secondSheetHeaders: summaryHeaders,
+        secondSheetRows: summaryRows,
       );
     } catch (e) {
       final snackBar = SnackBar(content: Text('Error: $e'));
@@ -2460,6 +2484,66 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         e.commitment,
       ];
     });
+  }
+
+  List<List<dynamic>> _prepareCustomerWiseSummaryRows(
+    List<DebtorsAgingList> target,
+  ) {
+    final Map<String, Map<String, dynamic>> grouped = {};
+
+    for (final e in target) {
+      final key = e.customerCode;
+
+      if (!grouped.containsKey(key)) {
+        grouped[key] = {
+          'salesManager': e.salesManager,
+          'regionalManager': e.regionalManager,
+          'salesRep': e.salesRep,
+          'customerGroup': e.customerGroup,
+          'bpGroup': e.bpGroup,
+          'customerCode': e.customerCode,
+          'customerName': e.customerName,
+          'creditLimit': double.tryParse(e.creditLimit) ?? 0,
+          'accountBalance': double.tryParse(e.accountBalance) ?? 0,
+          'balance': 0.0,
+          'future': 0.0,
+          'a0to30': 0.0,
+          'a31to60': 0.0,
+          'a61to90': 0.0,
+          'a91to180': 0.0,
+          'a181': 0.0,
+        };
+      }
+
+      grouped[key]!['balance'] += double.tryParse(e.balance) ?? 0;
+      grouped[key]!['future'] += double.tryParse(e.future) ?? 0;
+      grouped[key]!['a0to30'] += double.tryParse(e.a0to30Days) ?? 0;
+      grouped[key]!['a31to60'] += double.tryParse(e.a31to60Days) ?? 0;
+      grouped[key]!['a61to90'] += double.tryParse(e.a61to90Days) ?? 0;
+      grouped[key]!['a91to180'] += double.tryParse(e.a91to180Days) ?? 0;
+      grouped[key]!['a181'] += double.tryParse(e.a181Days) ?? 0;
+    }
+
+    return grouped.values.map((e) {
+      return [
+        e['salesManager'],
+        e['regionalManager'],
+        e['salesRep'],
+        e['customerGroup'],
+        e['bpGroup'],
+        e['customerCode'],
+        e['customerName'],
+        (e['creditLimit'] as double).toStringAsFixed(2),
+        (e['accountBalance'] as double).toStringAsFixed(2),
+        (e['balance'] as double).toStringAsFixed(2),
+        (e['future'] as double).toStringAsFixed(2),
+        (e['a0to30'] as double).toStringAsFixed(2),
+        (e['a31to60'] as double).toStringAsFixed(2),
+        (e['a61to90'] as double).toStringAsFixed(2),
+        (e['a91to180'] as double).toStringAsFixed(2),
+        (e['a181'] as double).toStringAsFixed(2),
+      ];
+    }).toList();
   }
 
   Future<void> generateNetReceivablesExcel(ReceivablesFinanceList list) async {

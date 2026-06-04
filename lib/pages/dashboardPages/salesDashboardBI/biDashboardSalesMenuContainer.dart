@@ -14,6 +14,7 @@ import 'package:optima/pages/dashboardPages/salesDashboardBI/soAnalysisBI.dart';
 import 'package:optima/pages/dashboardPages/salesDashboardBI/visitAnalysis.dart';
 import 'package:optima/sidemenu/sidemenu.dart';
 
+import '../../../notificationService.dart';
 import 'salesAnalysis.dart';
 import 'collectionAnalysisBI.dart';
 
@@ -93,12 +94,10 @@ class _SalesBIState extends State<SalesBI> {
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading menu permission.",
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
   }
 

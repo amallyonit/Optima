@@ -13,6 +13,7 @@ import 'package:optima/pages/dashboardPages/purchaseDashboard/procurementLeadTim
 import 'package:optima/pages/dashboardPages/purchaseDashboard/purchasePriceAnalysis.dart';
 import 'package:optima/sidemenu/sidemenu.dart';
 
+import '../../../notificationService.dart';
 import '../salesDashboardBI/loaderPage.dart';
 
 class PurchaseBI extends StatefulWidget {
@@ -93,12 +94,11 @@ class _PurchaseBIState extends State<PurchaseBI> {
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading menu permission.",
+      );
     }
   }
 

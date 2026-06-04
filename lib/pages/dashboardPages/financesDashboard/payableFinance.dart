@@ -14,6 +14,7 @@ import 'package:optima/login_screen.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/leads.dart';
+import '../../../notificationService.dart';
 import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
@@ -884,28 +885,23 @@ class _PayableFinanceState extends State<PayableFinance> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.info(
+          title: "Info",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -1155,14 +1151,8 @@ class _PayableFinanceState extends State<PayableFinance> {
         }
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -1222,14 +1212,8 @@ class _PayableFinanceState extends State<PayableFinance> {
         modeOfPayment = modeOfPaymentList.toList();
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -1552,7 +1536,9 @@ class _PayableFinanceState extends State<PayableFinance> {
             break;
 
           case "Future":
-            // ignore because Future should not appear in aging buckets
+            vendorData['future'] = (vendorData['future'] as double) + balance;
+
+            vendorData['balance'] = (vendorData['balance'] as double) + balance;
             break;
 
           default:
@@ -1605,6 +1591,7 @@ class _PayableFinanceState extends State<PayableFinance> {
       final vendorCode = entry['vendorCode'] as String;
       final totalPayable = entry['totalPayable'] as double;
       final balanceDue = entry['balance'] as double;
+      final future = entry['future'] as double;
       final a0to30 = entry['a0to30'] as double;
       final a31to60 = entry['a31to60'] as double;
       final a61to90 = entry['a61to90'] as double;
@@ -1622,6 +1609,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           vendorCode: vendorCode,
           totalPayable: totalPayable,
           balanceDue: balanceDue,
+          future: future,
           a0to30: a0to30,
           a31to60: a31to60,
           a61to90: a61to90,
@@ -2902,6 +2890,7 @@ class _PayableFinanceState extends State<PayableFinance> {
         'Vendor Name',
         'Total Payable',
         'Over Due',
+        'Future',
         '0-30',
         '31-60',
         '61-90',
@@ -2918,6 +2907,7 @@ class _PayableFinanceState extends State<PayableFinance> {
               e.vendorName,
               e.totalPayable,
               e.balanceDue,
+              e.future,
               e.a0to30,
               e.a31to60,
               e.a61to90,
@@ -2930,7 +2920,7 @@ class _PayableFinanceState extends State<PayableFinance> {
           )
           .toList(),
       fileName: 'vendor_payment_projection.xlsx',
-      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      amountColumns: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
       addTotalRow: true,
       reportTitle: 'Finance - Vendor Payment Projection',
     );

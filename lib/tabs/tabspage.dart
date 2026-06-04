@@ -10,6 +10,7 @@ import 'package:optima/pages/dashboardPages/salesDashboardBI/biDashboardSalesMen
 import 'package:optima/pages/dashboardPages/salesDashboardBI/salesAnalysis.dart';
 import 'package:optima/screens/home.dart';
 import 'package:optima/screens/leads.dart';
+import '../notificationService.dart';
 
 // ignore: must_be_immutable
 class TabsPage extends StatefulWidget {
@@ -96,7 +97,23 @@ class TabsPageState extends State<TabsPage> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.white,
-        onTap: _onItemTapped,
+        // onTap: _onItemTapped,
+        onTap: (index) {
+          final isUnauthorized =
+              (index == 1 || index == 3) &&
+              userRoleCode != "R1" &&
+              userRoleCode != "R2";
+
+          if (isUnauthorized) {
+            NotificationService.error(
+              title: "Access Denied",
+              message: "You are not authorized to access this module.",
+            );
+            return;
+          }
+
+          _onItemTapped(index);
+        },
       ),
     );
   }

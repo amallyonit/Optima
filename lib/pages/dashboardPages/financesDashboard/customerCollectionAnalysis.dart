@@ -17,6 +17,7 @@ import '../../../api_helper.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../login_screen.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
+import '../../../notificationService.dart';
 import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
@@ -713,27 +714,24 @@ class _CustomerCollectionAnalysisState
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.info(
+          title: "Info",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -1251,31 +1249,24 @@ class _CustomerCollectionAnalysisState
         setState(() {
           selectedInvoiceList = [];
         });
-        const snackBar = SnackBar(
-          duration: Duration(seconds: 1),
-          content: Text(
-            'Saved Successfully...',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        );
+
         if (!mounted) return false;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.success(
+          title: "Success",
+          message: "Commitments saved successfully.",
+        );
         return true;
       } else {
-        const snackBar = SnackBar(
-          content: Text('Collection comment updation failed'),
-        );
         if (!mounted) return false;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "Commitments save failed.",
+        );
         return false;
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
       return false;
     }
   }
@@ -1306,20 +1297,16 @@ class _CustomerCollectionAnalysisState
         });
         return true;
       } else {
-        const snackBar = SnackBar(
-          content: Text('Customer wise collection commitment updation failed'),
-        );
         if (!mounted) return false;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "Customer wise collection commitment updation failed.",
+        );
         return false;
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
       return false;
     }
   }

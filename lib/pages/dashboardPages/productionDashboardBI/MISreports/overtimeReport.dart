@@ -19,6 +19,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:excel/excel.dart' as xl;
 
+import '../../../../notificationService.dart';
+
 class DepartmentOvertimeData {
   final String departmentName;
   final double otHours;
@@ -504,9 +506,11 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
         const SnackBar(content: Text('Overtime Report exported successfully')),
       );
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating excel.",
+      );
     }
   }
 

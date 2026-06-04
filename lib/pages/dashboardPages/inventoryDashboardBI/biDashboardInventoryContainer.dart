@@ -12,6 +12,7 @@ import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventoryMoveme
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventorySlowDeadAnalysis.dart';
 import 'package:optima/sidemenu/sidemenu.dart';
 
+import '../../../notificationService.dart';
 import '../salesDashboardBI/loaderPage.dart';
 
 class InventoryBI extends StatefulWidget {
@@ -88,12 +89,11 @@ class _InventoryBIState extends State<InventoryBI> {
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error loading menu permissions.",
+      );
     }
   }
 

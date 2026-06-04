@@ -42,6 +42,7 @@ dependencies:
   percent_indicator: ^4.2.3
   animated_custom_dropdown: ^3.1.1
   pluto_grid: ^8.0.0
+  awesome_snackbar_content: ^0.1.5
 
   # Pickers
   month_year_picker: ^0.5.0+1

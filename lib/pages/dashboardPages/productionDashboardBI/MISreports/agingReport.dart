@@ -19,6 +19,8 @@ import 'package:excel/excel.dart' as xl;
 
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
+import '../../../../notificationService.dart';
+
 class ItemGroupAgeingSummary {
   String groupName;
 
@@ -577,14 +579,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
         inventory = salesList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory.",
+      );
     }
   }
 
@@ -964,9 +963,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating ageing excel.",
+      );
     }
   }
 

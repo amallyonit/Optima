@@ -13,6 +13,7 @@ import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
+import '../../../notificationService.dart';
 import '../dashboard_card_ui.dart';
 
 import '../ReportService.dart';
@@ -444,27 +445,28 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Failed to load user list.",
+      );
     }
   }
 
@@ -522,12 +524,11 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         salesTemp = filteredSales;
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error loading sales data.",
+      );
     }
   }
 
@@ -575,14 +576,11 @@ class _ProductMarginReportState extends State<ProductMarginReport> {
         itemCostList = tmpItemList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error loading item cost data.",
+      );
     }
   }
 

@@ -14,6 +14,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 
+import '../../../notificationService.dart';
 import '../ReportService.dart';
 
 class OpenProductionOrderAnalysis extends StatefulWidget {
@@ -1349,14 +1350,12 @@ class _OpenProductionOrderAnalysisState
       if (kDebugMode) {
         print(e);
       }
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message:
+            "Error occured while loading production order target analysis.",
+      );
     }
   }
 
@@ -1519,14 +1518,11 @@ class _OpenProductionOrderAnalysisState
       if (kDebugMode) {
         print(e);
       }
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading production order analysis.",
+      );
     }
   }
 

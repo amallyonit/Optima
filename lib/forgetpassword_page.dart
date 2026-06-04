@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:optima/resetpassword_page.dart';
 import 'package:http/http.dart' as http;
 
+import 'notificationService.dart';
+
 class OTPScreen extends StatefulWidget {
   const OTPScreen({super.key});
   @override
@@ -52,9 +54,9 @@ class OTPScreenState extends State<OTPScreen> {
     if (generatedOTP == otp) {
       navigateToResetPassword(email);
     } else {
-      const snackBar = SnackBar(content: Text('Invalid OTP'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+      NotificationService.error(title: "Error", message: "Invalid OTP.");
     }
   }
 
@@ -76,15 +78,16 @@ class OTPScreenState extends State<OTPScreen> {
         bool status = responseJson["Status"];
         if (status) {
         } else {
-          const snackBar = SnackBar(content: Text('Failed'));
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.error(
+            title: "Error",
+            message: "Failed to send OTP.",
+          );
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 

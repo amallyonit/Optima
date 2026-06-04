@@ -20,6 +20,8 @@ import 'package:optima/classes/globals.dart';
 
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
+import '../../../../notificationService.dart';
+
 late Future<void> loadDataFuture;
 
 DateTime? currentDate;
@@ -393,14 +395,11 @@ class _MinimumStockVsActualStockPageState
         inventoryLevelTemp = salesList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory level.",
+      );
     }
   }
 
@@ -584,9 +583,11 @@ class _MinimumStockVsActualStockPageState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 

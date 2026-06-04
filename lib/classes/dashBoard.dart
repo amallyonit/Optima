@@ -5285,6 +5285,7 @@ class VendorsPaymentProjectionData {
   final String vendorCode;
   double totalPayable;
   double balanceDue;
+  double future;
   double a0to30;
   double a31to60;
   double a61to90;
@@ -5299,6 +5300,7 @@ class VendorsPaymentProjectionData {
     required this.vendorCode,
     this.totalPayable = 0.0,
     required this.balanceDue,
+    this.future = 0.0,
     required this.a0to30,
     required this.a31to60,
     required this.a61to90,

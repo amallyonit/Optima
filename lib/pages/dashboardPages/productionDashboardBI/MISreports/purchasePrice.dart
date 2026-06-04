@@ -20,6 +20,8 @@ import 'package:excel/excel.dart' as xl;
 
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
+import '../../../../notificationService.dart';
+
 class ItemGroupAgeingSummary {
   String groupName;
 
@@ -627,12 +629,11 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
       if (kDebugMode) {
         print(e);
       }
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading purchase price.",
+      );
     }
   }
 
@@ -976,9 +977,11 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating excel.",
+      );
     }
   }
 

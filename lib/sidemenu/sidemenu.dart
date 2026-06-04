@@ -4,15 +4,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
-import 'package:optima/classes/dataManager.dart';
 import 'package:optima/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/approvedManPowerInput.dart';
@@ -26,6 +23,7 @@ import 'package:excel/excel.dart' as xl;
 
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
+import '../notificationService.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/scrapDataInput.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/sterilizationExpenses.dart';
 
@@ -64,271 +62,12 @@ class SideMenuState extends State<SideMenu> {
   String? hoveredTitle; // track which tile is being hovered
   bool isHeaderHovered = false;
 
-  Future<void> submitCheckin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userJwtToken = prefs.getString('userJwtToken') ?? '';
-    final userMailID = prefs.getString('userMailID') ?? '';
-    final userId = prefs.getString('userId') ?? '';
-    int retries = 0;
-    const maxRetries = 5;
-    do {
-      await getCurrentLocation();
-      retries++;
-      if (retries >= maxRetries) {
-        const snackBar = SnackBar(
-          duration: Duration(seconds: 1),
-          content: Text(
-            'Location missing, Please try again...',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        break;
-      }
-    } while (locationControllerFooter.text.isEmpty);
-    if (locationControllerFooter.text.isNotEmpty) {
-      final checkin = {
-        'UserJwtToken': userJwtToken,
-        'UsermailID': userMailID,
-        'CheckinId': 0,
-        'CheckinUserId': userId,
-        'CheckinCustomerType': '',
-        'CheckinCustomerCode': '',
-        'CheckinLatitude': latitudeFooter,
-        'CheckinLongitude': longitudeFooter,
-        'CheckinLocation': locationControllerFooter.text,
-        'CheckoutLatitude': "",
-        'CheckoutLongitude': "",
-        'CheckoutLocation': "",
-      };
-      const apiUrl = '${ApiHelper.baseUrl}insertorupdatecheckindetails';
-      var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
-      try {
-        final response = await http.post(
-          Uri.parse(apiUrl),
-          body: jsonEncode(checkin),
-          headers: headerss,
-        );
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          bool status = responseJson["Status"];
-          int id = int.parse(responseJson["Data"]);
-          if (status && id != 0) {
-            DataManager.saveCheckinId(id);
-            const snackBar = SnackBar(
-              duration: Duration(seconds: 1),
-              content: Text(
-                'Checked In Successfully...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          } else {
-            if (responseJson.containsKey("Error") &&
-                responseJson["Error"].toString() ==
-                    "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-              navigateToLoginScreen();
-            } else {
-              const snackBar = SnackBar(content: Text('Checkin failed'));
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
-          }
-        } else {
-          const snackBar = SnackBar(content: Text('Checkin failed'));
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        }
-      } catch (e) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
-    }
-  }
-
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-  }
-
-  Future<void> submitCheckout() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userJwtToken = prefs.getString('userJwtToken') ?? '';
-    final userMailID = prefs.getString('userMailID') ?? '';
-    final userId = prefs.getString('userId') ?? '';
-    await getCurrentLocation();
-    final checkin = {
-      'UserJwtToken': userJwtToken,
-      'UsermailID': userMailID,
-      'CheckinId': DataManager.readCheckinId(),
-      'CheckinUserId': userId,
-      'CheckinCustomerType': '',
-      'CheckinCustomerCode': '',
-      'CheckinLatitude': "",
-      'CheckinLongitude': "",
-      'CheckinLocation': "",
-      'CheckoutLatitude': latitudeFooter,
-      'CheckoutLongitude': longitudeFooter,
-      'CheckoutLocation': locationControllerFooter.text,
-    };
-    const apiUrl = '${ApiHelper.baseUrl}insertorupdatecheckindetails';
-    var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
-    try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        body: jsonEncode(checkin),
-        headers: headerss,
-      );
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        bool status = responseJson["Status"];
-
-        if (status && responseJson["Data"].toString().isNotEmpty) {
-          DataManager.saveCheckinId(0);
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(
-              'Checked out Successfully...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          );
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        } else {
-          if (responseJson.containsKey("Error") &&
-              responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            navigateToLoginScreen();
-          } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          }
-        }
-      } else {
-        const snackBar = SnackBar(content: Text('Checkout failed'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> getCurrentLocation() async {
-    try {
-      // Choose platform-specific settings or use general LocationSettings
-      final locationSettings = Platform.isAndroid
-          ? AndroidSettings(
-              accuracy: LocationAccuracy.high,
-              distanceFilter: 0,
-              forceLocationManager: false,
-            )
-          : Platform.isIOS
-          ? AppleSettings(accuracy: LocationAccuracy.high, distanceFilter: 0)
-          : const LocationSettings(accuracy: LocationAccuracy.high);
-
-      Position? position = await Geolocator.getCurrentPosition(
-        locationSettings: locationSettings,
-      );
-
-      latitudeFooter = position.latitude.toString();
-      longitudeFooter = position.longitude.toString();
-
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        Placemark placemark = placemarks.first;
-        String location = [
-          placemark.name ?? '',
-          placemark.subLocality ?? '',
-          placemark.locality ?? '',
-          '${placemark.administrativeArea ?? ''}${placemark.postalCode != null ? ' - ' : ''}${placemark.postalCode ?? ''}',
-          placemark.country ?? '',
-        ].where((part) => part.isNotEmpty).join(', ');
-
-        locationControllerFooter.text = location;
-      } else {
-        locationControllerFooter.clear();
-      }
-
-      setState(() {
-        locationLoading = true;
-      });
-
-      if (locationControllerFooter.text == "") {
-        _timer = Timer(const Duration(seconds: 30), () {
-          if (locationLoading) {
-            setState(() {
-              locationLoading = false;
-            });
-            _showLocationFetchFailedAlert();
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error getting location: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
-    }
-  }
-
-  void _showLocationFetchFailedAlert() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Error'),
-          content: const Text('Location fetch failed, Retry now'),
-          actions: [
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -689,29 +428,24 @@ class SideMenuState extends State<SideMenu> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginPage();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -761,29 +495,25 @@ class SideMenuState extends State<SideMenu> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -832,29 +562,24 @@ class SideMenuState extends State<SideMenu> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -971,19 +696,20 @@ class SideMenuState extends State<SideMenu> {
                 );
               },
             ),
-          buildHoverTile(
-            icon: Icons.people_alt_outlined,
-            title: 'Leads',
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      TabsPage(selectedIndex: 1, selectedRoleCode: ""),
-                ),
-              );
-            },
-          ),
+          if (userRoleCode == "R1" || userRoleCode == "R2")
+            buildHoverTile(
+              icon: Icons.people_alt_outlined,
+              title: 'Leads',
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        TabsPage(selectedIndex: 1, selectedRoleCode: ""),
+                  ),
+                );
+              },
+            ),
           ExpansionTile(
             leading: const Icon(Icons.dashboard_customize_outlined),
             title: const Text('BI Dashboard'),

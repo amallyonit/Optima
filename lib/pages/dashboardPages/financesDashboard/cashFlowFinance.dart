@@ -14,6 +14,7 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../notificationService.dart';
 import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
@@ -574,12 +575,8 @@ class _CashFlowFinanceState extends State<CashFlowFinance> {
       });
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: e.toString());
       }
     }
   }

@@ -14,6 +14,7 @@ import 'package:optima/api_helper.dart';
 import 'package:optima/core/app_providers.dart';
 import 'http_override.dart';
 import 'login_screen.dart';
+import 'notificationService.dart';
 import 'versionservice.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
@@ -90,6 +91,7 @@ class MyApp extends StatelessWidget {
           child: child!,
         );
       },
+      scaffoldMessengerKey: NotificationService.messengerKey,
       debugShowCheckedModeBanner: false,
       title: 'Optima',
       scrollBehavior: MyCustomScrollBehavior(),
@@ -170,21 +172,16 @@ class _VersionCheckPageState extends State<VersionCheckPage> {
       }
       return;
     }
-
     // Mobile (Android / iOS)
     final status = await Permission.location.request();
-
     if (status == PermissionStatus.granted) {
       locationGranted = true;
     } else {
       locationGranted = false;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Location permission is required to continue'),
-        ),
+      NotificationService.warning(
+        title: "Location Access Required",
+        message: "Location permission is required to continue.",
       );
-
       Future.delayed(const Duration(seconds: 2), () {
         SystemNavigator.pop(); // OK for mobile
       });
@@ -198,10 +195,9 @@ class _VersionCheckPageState extends State<VersionCheckPage> {
         ? await Permission.storage.request()
         : PermissionStatus.granted;
     if (status != PermissionStatus.granted) {
-      ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
-        const SnackBar(
-          content: Text('You can\'t use this app without storage permission.'),
-        ),
+      NotificationService.warning(
+        title: "Storage Access Required",
+        message: "You can't use this app without storage permission.",
       );
       Future.delayed(const Duration(seconds: 2), () {
         SystemNavigator.pop();
@@ -229,9 +225,8 @@ class _VersionCheckPageState extends State<VersionCheckPage> {
         });
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 

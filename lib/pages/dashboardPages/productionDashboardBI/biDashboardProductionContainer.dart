@@ -17,6 +17,7 @@ import 'package:optima/pages/dashboardPages/productionDashboardBI/produtionOrder
 import 'package:optima/pages/dashboardPages/productionDashboardBI/salesOrderVsProductionCompletedReport.dart';
 import 'package:http/http.dart' as http;
 import 'package:optima/sidemenu/sidemenu.dart';
+import '../../../notificationService.dart';
 import '../salesDashboardBI/loaderPage.dart';
 
 class ProductionFI extends StatefulWidget {
@@ -103,12 +104,11 @@ class _ProductionFIState extends State<ProductionFI> {
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occurred while loading menu permissions.",
+      );
     }
   }
 

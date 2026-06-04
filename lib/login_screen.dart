@@ -17,6 +17,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:uuid/uuid.dart';
 
+import 'notificationService.dart';
+
 String sapToken = "";
 
 class LoginScreen extends StatefulWidget {
@@ -51,12 +53,8 @@ class LoginScreenState extends State<LoginScreen> {
       }
       super.dispose();
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -109,12 +107,8 @@ class LoginScreenState extends State<LoginScreen> {
         validToken = responseJson["Status"];
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
     if (validToken) {
       DataManager.saveSapToken(sapToken);
@@ -165,12 +159,8 @@ class LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -236,9 +226,8 @@ class LoginScreenState extends State<LoginScreen> {
             _isLoginLoading = false;
           });
           await prefs.setBool('isUserLoggedIn', false);
-          const snackBar = SnackBar(content: Text('Login failed'));
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.error(title: "Error", message: "Login failed");
         }
       } else {
         if (!mounted) return;
@@ -246,9 +235,8 @@ class LoginScreenState extends State<LoginScreen> {
           _isLoginLoading = false;
         });
         await prefs.setBool('isUserLoggedIn', false);
-        const snackBar = SnackBar(content: Text('Login failed'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: "Login failed");
       }
     } catch (e) {
       if (!mounted) return;
@@ -256,9 +244,8 @@ class LoginScreenState extends State<LoginScreen> {
         _isLoginLoading = false;
       });
       await prefs.setBool('isUserLoggedIn', false);
-      const snackBar = SnackBar(content: Text('Login failed.'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: "Login failed");
     }
   }
 
@@ -328,10 +315,9 @@ class LoginScreenState extends State<LoginScreen> {
       bool isDeviceSupported = await auth.isDeviceSupported();
 
       if (!canCheckBiometrics || !isDeviceSupported) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Biometric authentication not available"),
-          ),
+        NotificationService.error(
+          title: "Error",
+          message: "Biometric authentication not available",
         );
         return;
       }
@@ -355,15 +341,14 @@ class LoginScreenState extends State<LoginScreen> {
 
           _login();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("No saved credentials found")),
+          NotificationService.error(
+            title: "Error",
+            message: "No saved credentials found!",
           );
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Biometric Error: $e")));
+      NotificationService.error(title: "Error", message: "Biometric Error: $e");
     }
   }
 
@@ -397,11 +382,21 @@ class LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.statusCode == 200) {
-      } else {}
+        NotificationService.success(
+          title: "Success",
+          message: "Login log saved successfully.",
+        );
+      } else {
+        NotificationService.error(
+          title: "Error",
+          message: "Failed to save login log.",
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to save: $e")));
+      NotificationService.error(
+        title: "Error",
+        message: "Failed to save login log. Error: $e",
+      );
     }
   }
 
@@ -475,22 +470,18 @@ class LoginScreenState extends State<LoginScreen> {
         final responseData = jsonDecode(response.body);
         sapToken = responseData['token'];
       } else {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 1),
-          content: Text(
-            'Failed to fetch SAP Token. Status code: ${response.statusCode}',
-          ),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "Failed to fetch SAP Token.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Failed to fetch SAP Token. Error: $e",
+      );
     }
   }
 

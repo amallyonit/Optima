@@ -11,6 +11,7 @@ import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
+import '../notificationService.dart';
 import '../sidemenu/sidemenu.dart';
 import '../pages/calendar.dart';
 import '../pages/homepage.dart';
@@ -103,12 +104,8 @@ class HomeState extends State<Home> {
         });
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 

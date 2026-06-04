@@ -21,6 +21,8 @@ import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 import 'package:excel/excel.dart' as xl;
 import 'package:open_file/open_file.dart';
 
+import '../../../notificationService.dart';
+
 class DayWiseProductionReportwrtMPPresent extends StatefulWidget {
   const DayWiseProductionReportwrtMPPresent({super.key});
 
@@ -528,9 +530,11 @@ class _DayWiseProductionReportwrtMPPresentState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error generating excel file.",
+      );
     }
   }
 

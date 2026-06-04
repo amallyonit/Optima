@@ -19,6 +19,8 @@ import '../classes/footerConstants.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 
+import '../notificationService.dart';
+
 String leadId = "";
 String leadStageForEdit = "";
 String leadActivityId = "0";
@@ -260,38 +262,30 @@ class FooterPageState extends State<FooterPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       } else {
-        final snackBar = SnackBar(
-          content: Text('Lead details not found for Lead ID: $widget.leadsId'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.info(
+          title: "Alert",
+          message: 'Lead details not found for Lead ID: $widget.leadsId',
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -390,38 +384,30 @@ class FooterPageState extends State<FooterPage> {
             if (responseJson.containsKey("Error") &&
                 responseJson["Error"].toString() ==
                     "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.warning(
+                title: "Security Alert",
+                message: "Invalid or Expired Token.",
+              );
               navigateToLoginScreen();
             } else {
-              final snackBar = SnackBar(
-                content: Text(responseJson["Error"].toString()),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.error(
+                title: "Error",
+                message: responseJson["Error"].toString(),
+              );
             }
           }
         } else {
-          const snackBar = SnackBar(
-            content: Text('Leads activity details not found.'),
-          );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.info(
+            title: "Alert",
+            message: "Leads activity details not found.",
+          );
         }
       } catch (e) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: e.toString());
       }
     } else {
       leadActivityId = "0";
@@ -480,48 +466,40 @@ class FooterPageState extends State<FooterPage> {
                 }
               }
             } else {
-              const snackBar = SnackBar(
-                content: Text('Leads activity image not found...'),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.info(
+                title: "Alert",
+                message: "Leads activity image not found.",
+              );
             }
           } else {
             if (responseJson.containsKey("Error") &&
                 responseJson["Error"].toString() ==
                     "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.warning(
+                title: "Security Alert",
+                message: "Invalid or Expired Token.",
+              );
               navigateToLoginScreen();
             } else {
-              final snackBar = SnackBar(
-                content: Text(responseJson["Error"].toString()),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.error(
+                title: "Error",
+                message: responseJson["Error"].toString(),
+              );
             }
           }
         } else {
-          const snackBar = SnackBar(
-            content: Text('Leads activity image not found...'),
-          );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.info(
+            title: "Alert",
+            message: "Leads activity image not found.",
+          );
         }
       } catch (e) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: e.toString());
       }
     } else {
       _selectedImage = "";
@@ -557,9 +535,11 @@ class FooterPageState extends State<FooterPage> {
       }
       _updateLocation(locationSettings);
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error getting location: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.warning(
+        title: "Alert",
+        message: "Error getting location: $e",
+      );
     }
   }
 
@@ -589,11 +569,11 @@ class FooterPageState extends State<FooterPage> {
             }
           },
           onError: (e) {
-            final snackBar = SnackBar(
-              content: Text('Error in positionStream: $e'),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Alert",
+              message: "Error in positionStream: $e",
+            );
           },
         );
   }
@@ -650,38 +630,30 @@ class FooterPageState extends State<FooterPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('Participants details not found.'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.info(
+          title: "Alert",
+          message: "Participants details not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: "Error: $e");
     }
   }
 
@@ -761,9 +733,11 @@ class FooterPageState extends State<FooterPage> {
       }
     } catch (e) {
       if (mounted) {
-        final snackBar = SnackBar(content: Text('Error getting location: $e'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.warning(
+          title: "Alert",
+          message: "Error getting location: $e",
+        );
       }
     }
   }
@@ -816,160 +790,65 @@ class FooterPageState extends State<FooterPage> {
       };
       const apiUrl = '${ApiHelper.baseUrl}insertleadactivity';
       var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
-      try {
-        final response = await http.post(
-          Uri.parse(apiUrl),
-          body: jsonEncode(leadactivity),
-          headers: headerss,
-        );
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          bool status = responseJson["Status"];
-          if (status && responseJson["Data"].toString().isNotEmpty) {
-            summaryControllerFooter.clear();
-            followupDateControllerFooter.text = DateFormat(
-              'dd/MM/yyyy hh:mm a',
-            ).format(DateTime.now());
-            selectedStatusFooter = 'Next Action';
-            _leadID = "";
-            _leadStage = "";
-            _selectedImage = "";
-            // _selectedImageFile = "";
-            imageIsSelected = false;
-            setState(() {
-              selectedParticipantList.clear();
-              selectedParticipantList = [];
-              selectedParticipantFooter.clear();
-              selectedParticipantFooter = [];
-            });
-            const snackBar = SnackBar(
-              duration: Duration(seconds: 1),
-              content: Text(
-                'Saved Successfully...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
-          } else {
-            if (responseJson.containsKey("Error") &&
-                responseJson["Error"].toString() ==
-                    "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-              navigateToLoginScreen();
-            } else {
-              final snackBar = SnackBar(
-                content: Text(responseJson["Error"].toString()),
-              );
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
-          }
-        } else {
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text('Lead activity save failed.'),
-          );
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: jsonEncode(leadactivity),
+        headers: headerss,
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        bool status = responseJson["Status"];
+        if (status && responseJson["Data"].toString().isNotEmpty) {
+          summaryControllerFooter.clear();
+          followupDateControllerFooter.text = DateFormat(
+            'dd/MM/yyyy hh:mm a',
+          ).format(DateTime.now());
+          selectedStatusFooter = 'Next Action';
+          _leadID = "";
+          _selectedImage = "";
+          imageIsSelected = false;
+          setState(() {
+            selectedParticipantList.clear();
+            selectedParticipantList = [];
+            selectedParticipantFooter.clear();
+            selectedParticipantFooter = [];
+          });
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.success(
+            title: "Success",
+            message: "Lead activity - Stage $_leadStage saved successfully.",
+          );
+          _leadStage = "";
+        } else {
+          if (responseJson.containsKey("Error") &&
+              responseJson["Error"].toString() == "Invalid or Expired Token") {
+            if (!mounted) return;
+            NotificationService.error(
+              title: "Error",
+              message: "Invalid or Expired Token",
+            );
+            navigateToLoginScreen();
+          } else {
+            if (!mounted) return;
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
+          }
         }
-      } catch (e) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
+      } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.warning(
+          title: "Warning",
+          message: "Lead activity - Stage $_leadStage save failed.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
-
-  // void displayImage(BuildContext context, String selectedImage) {
-  //   try {
-  //     showDialog(
-  //       context: context,
-  //       builder: (BuildContext context) {
-  //         return AlertDialog(
-  //           content: SizedBox(
-  //             height: selectedImage.isNotEmpty
-  //                 ? (MediaQuery.of(context).size.height) * 0.68
-  //                 : 200,
-  //             child: SingleChildScrollView(
-  //               physics: const AlwaysScrollableScrollPhysics(),
-  //               child: Column(
-  //                 children: [
-  //                   Align(
-  //                     alignment: Alignment.topRight,
-  //                     child: IconButton(
-  //                       icon: const Icon(Icons.cancel_presentation_rounded),
-  //                       onPressed: () {
-  //                         Navigator.of(context).pop(); // Close the image popup
-  //                       },
-  //                     ),
-  //                   ),
-  //                   Image(
-  //                     image: MemoryImage(base64Decode(selectedImage)),
-  //                     fit: BoxFit.cover,
-  //                     filterQuality: FilterQuality.high,
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ),
-  //         );
-  //       },
-  //     );
-  //   } catch (e) {
-  //     print('Error decoding base64 image: $e');
-  //   }
-  // }
-
-  // Future<void> openGallery(BuildContext context) async {
-  //   final picker = ImagePicker();
-  //   final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-  //   if (pickedFile != null) {
-  //     List<int> imageBytes = await pickedFile.readAsBytes();
-  //     String base64Image = base64Encode(imageBytes);
-  //     setState(() {
-  //       _selectedImage = base64Image;
-  //       // _selectedImageFile = pickedFile.name;
-  //     });
-  //     displayImage(context, _selectedImage);
-  //     Navigator.of(context).pop();
-  //   }
-  // }
-
-  // Future<void> openCamera(BuildContext context) async {
-  //   final picker = ImagePicker();
-  //   final pickedFile = await picker.pickImage(source: ImageSource.camera);
-
-  //   if (pickedFile != null) {
-  //     List<int> imageBytes = await pickedFile.readAsBytes();
-  //     String base64Image = base64Encode(imageBytes);
-  //     setState(() {
-  //       _selectedImage = base64Image;
-  //       // _selectedImageFile = pickedFile.name;
-  //     });
-  //     displayImage(context, _selectedImage);
-  //     Navigator.of(context).pop();
-  //   }
-  // }
 
   @override
   void dispose() {
@@ -1015,9 +894,8 @@ class FooterPageState extends State<FooterPage> {
       }
       super.dispose();
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 

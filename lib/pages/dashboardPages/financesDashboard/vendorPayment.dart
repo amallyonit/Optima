@@ -17,6 +17,7 @@ import '../../../classes/dashBoard.dart';
 import '../../../login_screen.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 
+import '../../../notificationService.dart';
 import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
@@ -765,27 +766,24 @@ class _VendorPaymentState extends State<VendorPayment> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -1165,31 +1163,20 @@ class _VendorPaymentState extends State<VendorPayment> {
         setState(() {
           selectedInvoiceList = [];
         });
-        const snackBar = SnackBar(
-          duration: Duration(seconds: 1),
-          content: Text(
-            'Saved Successfully...',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        );
         if (!mounted) return false;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.success(
+          title: "Success",
+          message: "Saved Successfully.",
+        );
         return true;
       } else {
-        const snackBar = SnackBar(
-          content: Text('Payment comments updation failed'),
-        );
         if (!mounted) return false;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: "Save failed.");
         return false;
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
       return false;
     }
   }
@@ -1283,31 +1270,20 @@ class _VendorPaymentState extends State<VendorPayment> {
       if (sapUpdated) {
         await saveVendorCommitment();
         resetVendorWiseGrid();
-        const snackBar = SnackBar(
-          duration: Duration(seconds: 1),
-          content: Text(
-            'Saved Successfully...',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        );
         if (!mounted) return false;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.success(
+          title: "Success",
+          message: "Saved successfully.",
+        );
         return true;
       } else {
-        const snackBar = SnackBar(
-          content: Text('Vendor payment commitment updation failed'),
-        );
         if (!mounted) return false;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(title: "Error", message: "Save failed.");
         return false;
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(title: "Error", message: e.toString());
       return false;
     }
   }

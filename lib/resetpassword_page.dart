@@ -7,6 +7,8 @@ import 'package:optima/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'notificationService.dart';
+
 class ResetpasswordScreen extends StatefulWidget {
   // const ResetpasswordScreen({super.key});
   final String email;
@@ -49,22 +51,26 @@ class ResetpasswordScreenstate extends State<ResetpasswordScreen> {
             navigateToLoginPage();
           } else {
             final Map<String, dynamic> responseJson = jsonDecode(response.body);
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
+
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Change password failed",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       } catch (e) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Change password failed",
+          message: 'An error occurred while changing the password. Error: $e',
+        );
       }
     } else {
-      const snackBar = SnackBar(content: Text('Password mismatch'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.warning(
+        title: "Warning",
+        message: 'Password mismatch.',
+      );
     }
   }
 

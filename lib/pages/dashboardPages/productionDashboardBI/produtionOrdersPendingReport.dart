@@ -12,6 +12,7 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
+import '../../../notificationService.dart';
 import '../ReportService.dart';
 
 class ProductionOrdersPendingReport extends StatefulWidget {
@@ -636,14 +637,11 @@ class _ProductionOrdersPendingReportState
         pendingQtyHeader = pendingQtyTotal;
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading pending production orders.",
+      );
     }
   }
 
@@ -687,14 +685,12 @@ class _ProductionOrdersPendingReportState
         pendingOrders = soDetailList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message:
+            "Error occured while loading pending production order for excel.",
+      );
     }
   }
 
