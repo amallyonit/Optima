@@ -23,6 +23,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
 import 'package:open_file/open_file.dart';
 
+import '../../../notificationService.dart';
+
 class SalesOrderVsProductionCompletedReport extends StatefulWidget {
   const SalesOrderVsProductionCompletedReport({super.key});
 
@@ -844,9 +846,11 @@ class _SalesOrderVsProductionCompletedReportState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating priority status excel.",
+      );
     }
   }
 
@@ -945,9 +949,11 @@ class _SalesOrderVsProductionCompletedReportState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating priority status pdf.",
+      );
     }
   }
 
@@ -977,9 +983,11 @@ class _SalesOrderVsProductionCompletedReportState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating order status excel.",
+      );
     }
   }
 
@@ -1078,9 +1086,11 @@ class _SalesOrderVsProductionCompletedReportState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating order status pdf.",
+      );
     }
   }
 
@@ -1113,9 +1123,11 @@ class _SalesOrderVsProductionCompletedReportState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating hospital wise excel.",
+      );
     }
   }
 
@@ -1214,9 +1226,11 @@ class _SalesOrderVsProductionCompletedReportState
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating hospital wise pdf.",
+      );
     }
   }
 

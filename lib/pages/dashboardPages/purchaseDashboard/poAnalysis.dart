@@ -24,6 +24,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
 import 'package:open_file/open_file.dart';
 
+import '../../../notificationService.dart';
+
 class POAnalysis extends StatefulWidget {
   const POAnalysis({super.key});
 
@@ -1036,12 +1038,11 @@ class _POAnalysisState extends State<POAnalysis> {
         ytdPercentage = 100;
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading PO data",
+      );
     }
   }
 

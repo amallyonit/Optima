@@ -22,6 +22,8 @@ import 'package:optima/classes/leads.dart';
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
+import '../../../notificationService.dart';
+
 class InventoryMovementAnalysis extends StatefulWidget {
   const InventoryMovementAnalysis({super.key});
 
@@ -514,14 +516,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         }
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory movement data.",
+      );
     }
   }
 
@@ -908,9 +907,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item wise excel.",
+      );
     }
   }
 
@@ -993,11 +994,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item wise pdf.",
+      );
     }
   }
 
@@ -1024,11 +1025,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item group wise excel.",
+      );
     }
   }
 
@@ -1111,11 +1112,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item group wise pdf.",
+      );
     }
   }
 
@@ -1142,11 +1143,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item sub group wise excel.",
+      );
     }
   }
 
@@ -1229,11 +1230,11 @@ class _InventoryMovementAnalysisState extends State<InventoryMovementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item sub group wise pdf.",
+      );
     }
   }
 

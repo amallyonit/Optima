@@ -9,13 +9,10 @@ import 'package:http/http.dart' as http;
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
+import '../../../notificationService.dart';
+import '../ReportService.dart';
 
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:optima/excel_helper.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+final reportService = ReportService();
 
 class SalaryInputTable extends StatefulWidget {
   @override
@@ -106,78 +103,59 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
     loadData();
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> _downloadExcel() async {
     if (controllers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No data available to export.")),
+      if (!mounted) return;
+      NotificationService.info(
+        title: "Info",
+        message: "No data available to export.",
       );
       return;
     }
 
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['CTC'];
-
     String caption =
-        "${_selectedPlant ?? ''} (${DateFormat('MMMM yyyy').format(selectedDate!)})";
+        "${_selectedPlant ?? ''} "
+        "(${DateFormat('MMMM yyyy').format(selectedDate!)})";
 
-    /// Caption
-    sheet.appendRow(toCellRow([caption]));
+    List<List<dynamic>> rows = [];
 
-    /// Empty Row
-    sheet.appendRow([]);
-
-    /// Header Row
-    sheet.appendRow(toCellRow(headers));
-
-    /// Data Rows
     for (int i = 0; i < departments.length; i++) {
       List<dynamic> row = [departments[i]];
 
       for (int j = 0; j < headers.length - 1; j++) {
-        row.add(controllers[i][j].text);
+        row.add(double.tryParse(controllers[i][j].text) ?? 0);
       }
 
-      sheet.appendRow(toCellRow(row));
+      rows.add(row);
     }
 
-    /// Total Row
-    List<dynamic> totalRow = ["Total"];
-    totalRow.addAll(totals.map((e) => e.toStringAsFixed(2)));
+    await reportService.generateExcel(
+      sheetName: 'CTC',
+      headers: headers,
+      rows: rows,
+      fileName: 'monthly_ctc_report.xlsx',
+      reportTitle: caption,
 
-    sheet.appendRow(toCellRow(totalRow));
+      amountColumns: List.generate(headers.length - 1, (index) => index + 2),
 
-    /// Summary rows
-    sheet.appendRow([]);
-    sheet.appendRow(toCellRow(["No. of Days", noOfDays]));
-    sheet.appendRow(toCellRow(["Total ManPower", totalManPower]));
-    sheet.appendRow(toCellRow(["Average Work Force", averageWorkForce]));
+      addTotalRow: true,
 
-    /// Save / Download
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('monthly_ctc_report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/monthly_ctc_report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
+      footerRows: [
+        ["No. of Days", noOfDays],
+        ["Total ManPower", totalManPower],
+        ["Average Work Force", averageWorkForce],
+      ],
+
+      enableStyling: true,
+    );
   }
 
   Future<void> _saveToApi() async {
     if (selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month first.")),
+      if (!mounted) return;
+      NotificationService.info(
+        title: "Info",
+        message: "Please select a month first.",
       );
       return;
     }
@@ -239,27 +217,30 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Data saved successfully")),
+        if (!mounted) return;
+        NotificationService.success(
+          title: "Success",
+          message: "Data saved successfully.",
         );
-        //clearValues();
-        //await fetchCTCDetails();
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        if (!mounted) return;
+        NotificationService.error(title: "Error", message: "Save failed.");
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to save: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "An error occured while saving the CTC details.",
+      );
     }
   }
 
   Future<void> fetchCTCDetails(String plant) async {
     if (selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month first.")),
+      if (!mounted) return;
+      NotificationService.info(
+        title: "Info",
+        message: "Please select a month first.",
       );
       return;
     }
@@ -341,7 +322,7 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
               ),
             ];
 
-            // ✅ Add onChanged to trigger calculateTotals on every controller
+            // Add onChanged to trigger calculateTotals on every controller
             for (var controller in rowControllers) {
               controller.addListener(() {
                 calculateTotals();
@@ -356,19 +337,19 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
             controllers.clear();
           });
           clearValues();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("No data found or status is false.")),
+          if (!mounted) return;
+          NotificationService.info(
+            title: "Info",
+            message: "No data found for the selected plant and month.",
           );
         }
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to fetch: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Failed to fetch CTC details.",
+      );
     }
   }
 

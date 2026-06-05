@@ -292,6 +292,8 @@ class ReportService {
     bool highlightSections = false, // optional
     bool highlightProfitability = false, // optional
     bool highlightNegative = false, // optional
+
+    List<List<dynamic>>? footerRows,
   }) async {
     try {
       final userName = await getUserName();
@@ -498,6 +500,9 @@ class ReportService {
       if (addTotalRow) {
         totalRows += 1;
       }
+      if (footerRows != null) {
+        totalRows += footerRows.length + 1;
+      }
       final totalCols = headers.length;
 
       if (amountColumns != null) {
@@ -614,6 +619,36 @@ class ReportService {
           cell.cellStyle.borders.right.lineStyle = xlsio.LineStyle.thin;
           cell.cellStyle.borders.top.lineStyle = xlsio.LineStyle.thin;
           cell.cellStyle.borders.bottom.lineStyle = xlsio.LineStyle.thin;
+        }
+      }
+
+      // ---------------- FOOTER ROWS ----------------
+      if (footerRows != null && footerRows.isNotEmpty) {
+        int footerStartRow = rows.length + 5 + (addTotalRow ? 2 : 1);
+
+        for (int i = 0; i < footerRows.length; i++) {
+          final footerRow = footerRows[i];
+
+          for (int j = 0; j < footerRow.length; j++) {
+            final cell = sheet.getRangeByIndex(footerStartRow + i, j + 1);
+
+            final value = footerRow[j];
+
+            if (value is num) {
+              cell.setNumber(value.toDouble());
+            } else {
+              final numValue = double.tryParse(value.toString());
+
+              if (numValue != null) {
+                cell.setNumber(numValue);
+              } else {
+                cell.setText(value.toString());
+              }
+            }
+          }
+
+          // Style footer labels
+          sheet.getRangeByIndex(footerStartRow + i, 1).cellStyle.bold = true;
         }
       }
 

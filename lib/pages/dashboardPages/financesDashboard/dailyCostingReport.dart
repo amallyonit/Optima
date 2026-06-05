@@ -16,6 +16,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
+import '../../../notificationService.dart';
 import '../ReportService.dart';
 import 'dart:math';
 import 'dart:ui';
@@ -2365,11 +2366,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       if (response.statusCode == 401 ||
           response.body.contains("Invalid or Expired Token")) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            duration: Duration(seconds: 2),
-            content: Text("Token expired. Please login again."),
-          ),
+        NotificationService.warning(
+          title: "Security Alert",
+          message: "Invalid or Expired Token.",
         );
         navigateToLoginScreen();
         return;

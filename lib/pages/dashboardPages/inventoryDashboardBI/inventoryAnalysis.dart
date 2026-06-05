@@ -23,6 +23,8 @@ import 'package:excel/excel.dart' as xl;
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
+import '../../../notificationService.dart';
+
 class InventoryAnalysis extends StatefulWidget {
   const InventoryAnalysis({super.key});
 
@@ -608,27 +610,27 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading user list.",
+      );
     }
   }
 
@@ -769,14 +771,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         }
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory data.",
+      );
     }
   }
 
@@ -839,14 +838,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         }
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory level data.",
+      );
     }
   }
 
@@ -1341,9 +1337,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating inventory ageing excel.",
+      );
     }
   }
 
@@ -1426,9 +1424,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating inventory ageing pdf.",
+      );
     }
   }
 
@@ -1455,9 +1455,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating warehouse location excel.",
+      );
     }
   }
 
@@ -1540,9 +1542,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating warehouse location pdf.",
+      );
     }
   }
 
@@ -1569,9 +1573,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item group wise excel.",
+      );
     }
   }
 
@@ -1654,9 +1660,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item group wise pdf.",
+      );
     }
   }
 
@@ -1683,9 +1691,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item sub group wise excel.",
+      );
     }
   }
 
@@ -1768,9 +1778,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating item sub group wise pdf.",
+      );
     }
   }
 
@@ -1802,9 +1814,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating inventory level excel.",
+      );
     }
   }
 
@@ -1915,9 +1929,11 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating inventory level pdf.",
+      );
     }
   }
 

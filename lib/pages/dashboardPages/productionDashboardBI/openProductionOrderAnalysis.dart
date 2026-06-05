@@ -13,9 +13,10 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
-
 import '../../../notificationService.dart';
 import '../ReportService.dart';
+
+final reportService = ReportService();
 
 class OpenProductionOrderAnalysis extends StatefulWidget {
   const OpenProductionOrderAnalysis({super.key});
@@ -28,7 +29,6 @@ class OpenProductionOrderAnalysis extends StatefulWidget {
 class _OpenProductionOrderAnalysisState
     extends State<OpenProductionOrderAnalysis> {
   late Future<void> loadDataFuture;
-  final reportService = ReportService();
   final http.Client client = http.Client();
   late String formattedFiscalYearStartDate;
   late String formattedQuarterStartDate;

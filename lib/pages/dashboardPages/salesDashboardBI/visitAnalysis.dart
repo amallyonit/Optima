@@ -1,5 +1,5 @@
 // ignore_for_file: file_names, use_build_context_synchronously, non_constant_identifier_names, avoid_web_libraries_in_flutter, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -7,8 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
@@ -16,11 +14,10 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
 import '../../../classes/dashBoard.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
+import '../../../notificationService.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+final reportService = ReportService();
 
 bool VisitData = false;
 bool visitAnalysisDataLoaded = false;
@@ -608,11 +605,11 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     visitAnalysisList.visitAnalysisData.clear();
     await _loadVisitAnalysis(userId, userJwtToken, userMailID);
     if (visitAnalysisList.visitAnalysisData.isEmpty) {
-      final snackBar = SnackBar(
-        content: Text('Visit Analysis Data loading failed please try again.'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Visit Analysis Data loading failed please try again.",
+      );
       return;
     } else {
       setState(() {
@@ -620,10 +617,9 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
       });
     }
 
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    sheet.appendRow(
-      toCellRow([
+    await reportService.generateExcel(
+      sheetName: 'MonthlyVisitAnalysis',
+      headers: [
         'Lead ID',
         'Visit Date',
         'Visit Time',
@@ -640,73 +636,38 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         'In Location',
         'Check Out',
         'Out Location',
-      ]),
+      ],
+      rows: visitAnalysisList.visitAnalysisData
+          .map(
+            (visitData) => [
+              visitData.leadID,
+              visitData.visitDate,
+              visitData.visitTime,
+              visitData.visitCount,
+              visitData.userName,
+              visitData.accountName,
+              visitData.leadActivitySummary,
+              visitData.visitType,
+              visitData.productCategory,
+              visitData.productName,
+              visitData.leadInputMaterials,
+              visitData.participantName,
+              visitData.leadActivityCheckin,
+              visitData.leadActivityInLocation,
+              visitData.leadActivityCheckout,
+              visitData.leadActivityLocation,
+            ],
+          )
+          .toList(),
+      fileName: 'VisitAnalysis_Report.xlsx',
+      amountColumns: [0],
+      addTotalRow: false,
+      reportTitle: 'Sales - Monthly Visit Analysis',
     );
-
-    for (int column = 0; column <= 15; column++) {
-      var cell = sheet.cell(
-        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-      );
-      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
-    }
-
-    for (var visitData in visitAnalysisList.visitAnalysisData) {
-      sheet.appendRow(
-        toCellRow([
-          visitData.leadID,
-          visitData.visitDate,
-          visitData.visitTime,
-          visitData.visitCount,
-          visitData.userName,
-          visitData.accountName,
-          visitData.leadActivitySummary,
-          visitData.visitType,
-          visitData.productCategory,
-          visitData.productName,
-          visitData.leadInputMaterials,
-          visitData.participantName,
-          visitData.leadActivityCheckin,
-          visitData.leadActivityInLocation,
-          visitData.leadActivityCheckout,
-          visitData.leadActivityLocation,
-          //xl.CellStyle(),
-        ]),
-      );
-    }
-
-    xl.CellStyle centerCellStyle = xl.CellStyle(
-      verticalAlign: xl.VerticalAlign.Center,
-      horizontalAlign: xl.HorizontalAlign.Center,
-    );
-
-    int numberOfRows = visitAnalysisList.visitAnalysisData.length;
-
-    for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-      for (int colIndex = 0; colIndex <= 15; colIndex++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex,
-            rowIndex: rowIndex,
-          ),
-        );
-        if (rowIndex != 0) {
-          cell.cellStyle = centerCellStyle;
-        }
-      }
-    }
 
     setState(() {
       VisitData = true;
     });
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('VisitAnalysis_Report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/VisitAnalysis_Report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
   }
 
   Future<void> _loadVisitAnalysis(
@@ -804,29 +765,27 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading daily visit data summary",
+      );
     }
   }
 
@@ -884,29 +843,27 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading daily visit chart.",
+      );
     }
   }
 
@@ -1027,30 +984,28 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
             if (responseJson.containsKey("Error") &&
                 responseJson["Error"].toString() ==
                     "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.warning(
+                title: "Security Alert",
+                message: "Invalid or Expired Token.",
+              );
               navigateToLoginScreen();
             } else {
-              final snackBar = SnackBar(
-                content: Text(responseJson["Error"].toString()),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.error(
+                title: "Error",
+                message: responseJson["Error"].toString(),
+              );
             }
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading each quarter values.",
+      );
     }
   }
 
@@ -1108,9 +1063,11 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         rsmVisitList = RsmVisitList(rsmvisitData: rsmVisitDataList);
       });
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading RSM chart data.",
+      );
     }
   }
 
@@ -1168,9 +1125,11 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         asmVisitList = AsmVisitList(asmvisitData: asmVisitDataList);
       });
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading ASM chart data.",
+      );
     }
   }
 
@@ -1228,9 +1187,11 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         tsmVisitList = TsmVisitList(tsmvisitData: tsmVisitDataList);
       });
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading TSM chart data.",
+      );
     }
   }
 
@@ -1279,9 +1240,12 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       });
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message:
+            "Error occured while loading account wise number of visit chart data.",
+      );
     }
   }
 
@@ -1343,9 +1307,11 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         );
       });
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading promotion chart data.",
+      );
     }
   }
 
@@ -1397,29 +1363,27 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading product wise promotion analysis",
+      );
     }
   }
 
@@ -1654,815 +1618,234 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
     return filteredVisitList;
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateDailyNumberVisitExcel(DailyVisitList data) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Date', 'Visit Count']));
-      for (var itemData in data.dailyVisitData) {
-        sheet.appendRow(toCellRow([itemData.dateName, itemData.visitCount]));
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('daily_number_of_visits.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_number_of_visits.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'DailyVisitAnalysis',
+      headers: ['Date', 'Visit Count'],
+      rows: data.dailyVisitData
+          .map((itemData) => [itemData.dateName, itemData.visitCount])
+          .toList(),
+      fileName: 'daily_number_of_visits.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Sales - Daily Visit Analysis',
+    );
   }
 
   Future<void> generateDailyNumberVisitPDF(DailyVisitList data) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Daily Number of Visits',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      for (var data in data.dailyVisitData) {
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Date : ${data.dateName}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-                  pw.Text(
-                    'Visit Count: ${data.visitCount}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-                  pw.SizedBox(height: 20), // Add space between entries
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/receivables_aging.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'DailyVisitAnalysis',
+      headers: ['Date', 'Visit Count'],
+      rows: data.dailyVisitData
+          .map((itemData) => [itemData.dateName, itemData.visitCount])
+          .toList(),
+      fileName: 'daily_number_of_visits.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateRegionalManagerVisitExcel(RsmVisitList data) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Name', 'Visit Count', 'Call Avg.']));
-      for (var itemData in data.rsmvisitData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.rsmName,
-            itemData.visitCount,
-            (itemData.visitCount / itemData.visitPeriod).toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('regional_managers_visit.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regional_managers_visit.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'RSMVisitAnalysis',
+      headers: ['RSM Name', 'Visit Count', 'Call Avg.'],
+      rows: data.rsmvisitData
+          .map(
+            (rsmData) => [
+              rsmData.rsmName,
+              rsmData.visitCount,
+              (rsmData.visitCount / rsmData.visitPeriod).toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'rsm_number_of_visits.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Sales - RSM Visit Analysis',
+    );
   }
 
   Future<void> generateRegionalManagerVisitPDF(RsmVisitList data) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                "Regional Manager's Visit ",
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      for (var data in data.rsmvisitData) {
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Name : ${data.rsmName}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-                  pw.Text(
-                    'Visit Count: ${data.visitCount}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-                  pw.Text(
-                    'Call Avg.: ${(data.visitCount / data.visitPeriod).toStringAsFixed(2)}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-
-                  pw.SizedBox(height: 20), // Add space between entries
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regional_managers_visit.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'RSMVisitAnalysis',
+      headers: ['RSM Name', 'Visit Count', 'Call Avg.'],
+      rows: data.rsmvisitData
+          .map(
+            (rsmData) => [
+              rsmData.rsmName,
+              rsmData.visitCount,
+              (rsmData.visitCount / rsmData.visitPeriod).toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'rsm_number_of_visits.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateSalesManagerVisitExcel(AsmVisitList data) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Name', 'Visit Count', 'Call Avg.']));
-      for (var itemData in data.asmvisitData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.asmName,
-            itemData.visitCount,
-            (itemData.visitCount / itemData.visitPeriod).toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('sales_managers_visit.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_managers_visit.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ASMVisitAnalysis',
+      headers: ['ASM Name', 'Visit Count', 'Call Avg.'],
+      rows: data.asmvisitData
+          .map(
+            (asmData) => [
+              asmData.asmName,
+              asmData.visitCount,
+              (asmData.visitCount / asmData.visitPeriod).toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'asm_number_of_visits.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Sales - ASM Visit Analysis',
+    );
   }
 
   Future<void> generateSalesManagerVisitPDF(AsmVisitList data) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                "Sales Manager's Visit ",
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      for (var data in data.asmvisitData) {
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Name : ${data.asmName}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-                  pw.Text(
-                    'Visit Count: ${data.visitCount}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-                  pw.Text(
-                    'Call Avg.: ${(data.visitCount / data.visitPeriod).toStringAsFixed(2)}',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.normal,
-                    ),
-                  ),
-
-                  pw.SizedBox(height: 20), // Add space between entries
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_managers_visit.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ASMVisitAnalysis',
+      headers: ['ASM Name', 'Visit Count', 'Call Avg.'],
+      rows: data.asmvisitData
+          .map(
+            (asmData) => [
+              asmData.asmName,
+              asmData.visitCount,
+              (asmData.visitCount / asmData.visitPeriod).toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'asm_number_of_visits.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateSalesPersonVisitExcel(TsmVisitList data) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Name', 'Visit Count', 'Call Avg.']));
-      for (var itemData in data.tsmvisitData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.tsmName,
-            itemData.visitCount,
-            (itemData.visitCount / itemData.visitPeriod).toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('sales_person_visit.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_person_visit.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'TSMVisitAnalysis',
+      headers: ['TSM Name', 'Visit Count', 'Call Avg.'],
+      rows: data.tsmvisitData
+          .map(
+            (tsmData) => [
+              tsmData.tsmName,
+              tsmData.visitCount,
+              (tsmData.visitCount / tsmData.visitPeriod).toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'tsm_number_of_visits.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Sales - TSM Visit Analysis',
+    );
   }
 
   Future<void> generateSalesPersonVisitPDF(TsmVisitList data) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                "Sales Person's Visit ",
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages = (data.tsmvisitData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > data.tsmvisitData.length
-            ? data.tsmvisitData.length
-            : start + rowsPerPage;
-        final tableData = data.tsmvisitData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Visit Count',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.tsmName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.visitCount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_persons_visit.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'TSMVisitAnalysis',
+      headers: ['TSM Name', 'Visit Count', 'Call Avg.'],
+      rows: data.tsmvisitData
+          .map(
+            (tsmData) => [
+              tsmData.tsmName,
+              tsmData.visitCount,
+              (tsmData.visitCount / tsmData.visitPeriod).toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'tsm_number_of_visits.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateNumberOfVisitsAccWiseExcel(
     NumberOfVisitsAccWiseList data,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Account Name', 'Visit Count']));
-      for (var itemData in data.visitAccWiseData) {
-        sheet.appendRow(
-          toCellRow([itemData.accountName, itemData.accountCount]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('number_of_visits_acc_wise.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/number_of_visits_acc_wise.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'AccountWiseVisitAnalysis',
+      headers: ['Account Name', 'Visit Count'],
+      rows: data.visitAccWiseData
+          .map((itemData) => [itemData.accountName, itemData.accountCount])
+          .toList(),
+      fileName: 'account_wise_visits.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Sales - Account Wise Visit Analysis',
+    );
   }
 
   Future<void> generateNumberOfVisitsAccWisePDF(
     NumberOfVisitsAccWiseList data,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Number of Visits Accounts Wise',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages = (data.visitAccWiseData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > data.visitAccWiseData.length
-            ? data.visitAccWiseData.length
-            : start + rowsPerPage;
-        final tableData = data.visitAccWiseData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Visit Count',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.accountName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.accountCount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/receivables_aging.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'AccountWiseVisitAnalysis',
+      headers: ['Account Name', 'Visit Count'],
+      rows: data.visitAccWiseData
+          .map((itemData) => [itemData.accountName, itemData.accountCount])
+          .toList(),
+      fileName: 'account_wise_visits.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generatePromotionAnalysisExcel(
     PromotionAnalysisDataList data,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Type of Product', 'Percentage']));
-      for (var itemData in data.promotionAnalysisData) {
-        sheet.appendRow(
-          toCellRow([itemData.chartCaption, itemData.chartAverage]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('promotion_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/promotion_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'PromotionAnalysis',
+      headers: ['Type of Product', 'Percentage'],
+      rows: data.promotionAnalysisData
+          .map((itemData) => [itemData.chartCaption, itemData.chartAverage])
+          .toList(),
+      fileName: 'promotion_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Sales - Promotion Analysis',
+    );
   }
 
   Future<void> generatePromotionAnalysisPDF(
     PromotionAnalysisDataList data,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Promotion Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages = (data.promotionAnalysisData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > data.promotionAnalysisData.length
-            ? data.promotionAnalysisData.length
-            : start + rowsPerPage;
-        final tableData = data.promotionAnalysisData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Visit Count',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.chartCaption,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.chartAverage
-                              .toStringAsFixed(2)
-                              .toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/receivables_aging.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'PromotionAnalysis',
+      headers: ['Type of Product', 'Percentage'],
+      rows: data.promotionAnalysisData
+          .map((itemData) => [itemData.chartCaption, itemData.chartAverage])
+          .toList(),
+      fileName: 'promotion_analysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateProductWisePromotionAnalysisExcel(
     ProductWisePromotionAnalysisList data,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Product Name', 'Count']));
-      for (var itemData in data.productWisePromotionData) {
-        sheet.appendRow(
-          toCellRow([itemData.productName, itemData.productCount]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('product_wise_promotion_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/product_wise_promotion_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'PromotionAnalysis',
+      headers: ['Product Name', 'Count'],
+      rows: data.productWisePromotionData
+          .map((itemData) => [itemData.productName, itemData.productCount])
+          .toList(),
+      fileName: 'product_wise_promotion_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Sales - Product Wise Promotion Analysis',
+    );
   }
 
   Future<void> generateProductWisePromotionAnalysisPDF(
     ProductWisePromotionAnalysisList data,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Product Wise Promotion Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages = (data.productWisePromotionData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > data.productWisePromotionData.length
-            ? data.productWisePromotionData.length
-            : start + rowsPerPage;
-        final tableData = data.productWisePromotionData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Product Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Count',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.productName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.productCount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/product_wise_promotion_analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'PromotionAnalysis',
+      headers: ['Product Name', 'Count'],
+      rows: data.productWisePromotionData
+          .map((itemData) => [itemData.productName, itemData.productCount])
+          .toList(),
+      fileName: 'product_wise_promotion_analysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> _loadUserListForFilter(
@@ -2499,27 +1882,27 @@ class _VisitAnalysisPageState extends State<VisitAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading user list.",
+      );
     }
   }
 

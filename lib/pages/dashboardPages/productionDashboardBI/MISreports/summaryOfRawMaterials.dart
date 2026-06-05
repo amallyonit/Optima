@@ -20,6 +20,8 @@ import 'package:excel/excel.dart' as xl;
 
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
+import '../../../../notificationService.dart';
+
 late Future<void> loadDataFuture;
 
 DateTime? currentDate;
@@ -300,11 +302,7 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
         const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -336,14 +334,11 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
         stockDataTemp = salesList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading stock statement.",
+      );
     }
   }
 
@@ -489,9 +484,11 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error exporting Excel: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating excel.",
+      );
     }
   }
 

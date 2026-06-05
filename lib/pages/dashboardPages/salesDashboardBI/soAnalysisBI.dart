@@ -1,28 +1,23 @@
 // ignore_for_file: file_names, use_build_context_synchronously, non_constant_identifier_names, avoid_web_libraries_in_flutter, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-
 import '../../../api_helper.dart';
 import '../../../classes/dashBoard.dart';
 import '../../../classes/dataManager.dart';
 import '../../../login_screen.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
+import '../../../notificationService.dart';
+import '../ReportService.dart';
+
+final reportService = ReportService();
 
 bool touchedMonthGoals = false;
 bool touchedQuarterGoals = false;
@@ -1006,12 +1001,11 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
       await Future.delayed(const Duration(milliseconds: 50));
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading SO data.",
+      );
     }
   }
 
@@ -2385,29 +2379,27 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading user list.",
+      );
     }
   }
 
@@ -2445,29 +2437,27 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(content: Text('Error: $e'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading user list.",
+      );
     }
   }
 
@@ -2642,62 +2632,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     return DateTime(nextYear, nextMonth, originalDay);
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
-  Future<void> generateMonthWiseSOAnalysisExcel(
-    MonthlySalesOrderList monthlySalesList,
-  ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Month',
-          'SO Amount',
-          'SO Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var monthlyData in monthlySalesList.soData) {
-        sheet.appendRow(
-          toCellRow([
-            monthlyData.monthName,
-            monthlyData.salesOrderAmount,
-            monthlyData.salesOrderTarget,
-            ((monthlyData.salesOrderAmount / monthlyData.salesOrderTarget == 0
-                        ? monthlyData.salesOrderAmount
-                        : monthlyData.salesOrderTarget) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            monthlyData.salesOrderAmount - monthlyData.salesOrderTarget,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthly_sales_report_SO_Analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_sales_report_SO_Analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
   Map<String, DateTime> getLastThreeMonthsRange(int monthIndex) {
     // Ensure the month index is valid (1 to 12)
     if (monthIndex < 1 || monthIndex > 12) {
@@ -2729,1350 +2663,490 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     return {'fromDate': startDate, 'endDate': endDate};
   }
 
+  Future<void> generateMonthWiseSOAnalysisExcel(
+    MonthlySalesOrderList monthlySalesList,
+  ) async {
+    await reportService.generateExcel(
+      sheetName: 'MonthWiseSOAnalysis',
+      headers: [
+        'Month',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: monthlySalesList.soData
+          .map(
+            (monthlyData) => [
+              monthlyData.monthName,
+              monthlyData.salesOrderAmount,
+              monthlyData.salesOrderTarget,
+              ((monthlyData.salesOrderAmount / monthlyData.salesOrderTarget == 0
+                          ? monthlyData.salesOrderAmount
+                          : monthlyData.salesOrderTarget) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              monthlyData.salesOrderAmount - monthlyData.salesOrderTarget,
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_so_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - MonthWise SO Analysis',
+    );
+  }
+
   Future<void> generateMonthWiseSOAnalysisPDF(
     MonthlySalesOrderList monthlySalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthwise SO Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'SO Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'SO Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Percentage',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Difference',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var monthlyData in monthlySalesList.soData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        monthlyData.monthName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.salesOrderAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.salesOrderTarget.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        ((monthlyData.salesOrderAmount /
-                                            monthlyData.salesOrderTarget ==
-                                        0
-                                    ? monthlyData.salesOrderAmount
-                                    : monthlyData.salesOrderTarget) *
-                                100)
-                            .ceil()
-                            .toStringAsFixed(0),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (monthlyData.salesOrderAmount -
-                                monthlyData.salesOrderTarget)
-                            .toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_sales_report_SO_Analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'MonthWiseSOAnalysis',
+      headers: [
+        'Month',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: monthlySalesList.soData
+          .map(
+            (monthlyData) => [
+              monthlyData.monthName,
+              monthlyData.salesOrderAmount,
+              monthlyData.salesOrderTarget,
+              ((monthlyData.salesOrderAmount / monthlyData.salesOrderTarget == 0
+                          ? monthlyData.salesOrderAmount
+                          : monthlyData.salesOrderTarget) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              monthlyData.salesOrderAmount - monthlyData.salesOrderTarget,
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_so_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateCustomerAnalysisSOExcel(
     CustomerWiseSalesList customerWiseSalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Customer Name',
-          'SO Amount',
-          'SO Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var customerData in customerWiseSalesList.customerData) {
-        sheet.appendRow(
-          toCellRow([
-            customerData.customerName,
-            customerData.saleAmount,
-            customerData.targetAmount,
-            ((customerData.saleAmount / customerData.targetAmount == 0
-                        ? customerData.saleAmount
-                        : customerData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            customerData.saleAmount - customerData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'customerwise_sales_report_SO_Analysis.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/customerwise_sales_report_SO_Analysis.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'CustomerWiseSOAnalysis',
+      headers: [
+        'Customer Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: customerWiseSalesList.customerData
+          .map(
+            (customerData) => [
+              customerData.customerName,
+              customerData.saleAmount,
+              customerData.targetAmount,
+              ((customerData.saleAmount / customerData.targetAmount == 0
+                          ? customerData.saleAmount
+                          : customerData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              customerData.saleAmount - customerData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'customer_wise_so_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - Customer Wise SO Analysis',
+    );
   }
 
   Future<void> generateCustomerAnalysisSOPDF(
     CustomerWiseSalesList customerWiseSalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Customer Sales Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages =
-          (customerWiseSalesList.customerData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > customerWiseSalesList.customerData.length
-            ? customerWiseSalesList.customerData.length
-            : start + rowsPerPage;
-        final tableData = customerWiseSalesList.customerData.sublist(
-          start,
-          end,
-        );
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Customer Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Percentage',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Difference',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.customerName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.saleAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          ((monthlyData.saleAmount / monthlyData.targetAmount !=
-                                          0
-                                      ? monthlyData.targetAmount
-                                      : monthlyData.saleAmount) *
-                                  100)
-                              .ceil()
-                              .toStringAsFixed(0),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          (monthlyData.saleAmount - monthlyData.targetAmount)
-                              .toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/customerwise_sales_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'CustomerWiseSOAnalysis',
+      headers: [
+        'Customer Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: customerWiseSalesList.customerData
+          .map(
+            (customerData) => [
+              customerData.customerName,
+              customerData.saleAmount,
+              customerData.targetAmount,
+              ((customerData.saleAmount / customerData.targetAmount == 0
+                          ? customerData.saleAmount
+                          : customerData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              customerData.saleAmount - customerData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'customer_wise_so_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateRsmSalesExcel(RsmwiseSalesList rsmwiseSalesList) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Name',
-          'SO Amount',
-          'SO Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var rsmData in rsmwiseSalesList.rsmwiseData) {
-        sheet.appendRow(
-          toCellRow([
-            rsmData.rsmName,
-            rsmData.salesAmount,
-            rsmData.targetAmount,
-            ((rsmData.salesAmount / rsmData.targetAmount) * 100)
-                .ceil()
-                .toStringAsFixed(0),
-            rsmData.salesAmount - rsmData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('regionalmanager_salesorder_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regionalmanager_salesorder_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'RSMWiseSOAnalysis',
+      headers: [
+        'RSM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: rsmwiseSalesList.rsmwiseData
+          .map(
+            (rsmData) => [
+              rsmData.rsmName,
+              rsmData.salesAmount,
+              rsmData.targetAmount,
+              ((rsmData.salesAmount / rsmData.targetAmount) * 100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              rsmData.salesAmount - rsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'rsm_wise_so_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - RSM Wise SO Analysis',
+    );
   }
 
   Future<void> generateRsmSalesPDF(RsmwiseSalesList rsmwiseSalesList) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Regional Managers Sales Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'SO Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'SO Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Percentage',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Difference',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var monthlyData in rsmwiseSalesList.rsmwiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        monthlyData.rsmName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.salesAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.targetAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        ((monthlyData.salesAmount / monthlyData.targetAmount) *
-                                100)
-                            .ceil()
-                            .toStringAsFixed(0),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (monthlyData.salesAmount - monthlyData.targetAmount)
-                            .toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regionalmanager_salesorder_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'RSMWiseSOAnalysis',
+      headers: [
+        'RSM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: rsmwiseSalesList.rsmwiseData
+          .map(
+            (rsmData) => [
+              rsmData.rsmName,
+              rsmData.salesAmount,
+              rsmData.targetAmount,
+              ((rsmData.salesAmount / rsmData.targetAmount) * 100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              rsmData.salesAmount - rsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'rsm_wise_so_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateSalesManagerAnalysisSOExcel(
     AsmwiseSalesList asmwiseSalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Name',
-          'SO Amount',
-          'SO Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var asmData in asmwiseSalesList.asmwiseData) {
-        sheet.appendRow(
-          toCellRow([
-            asmData.asmName,
-            asmData.salesAmount,
-            asmData.targetAmount,
-            ((asmData.salesAmount / asmData.targetAmount == 0
-                        ? asmData.salesAmount
-                        : asmData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            asmData.salesAmount - asmData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'salesmanager_sales_report_SO_Analysis.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/salesmanager_sales_report_SO_Analysis.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ASMWiseSOAnalysis',
+      headers: [
+        'ASM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: asmwiseSalesList.asmwiseData
+          .map(
+            (asmData) => [
+              asmData.asmName,
+              asmData.salesAmount,
+              asmData.targetAmount,
+              ((asmData.salesAmount / asmData.targetAmount) * 100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              asmData.salesAmount - asmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'asm_wise_so_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - ASM Wise SO Analysis',
+    );
   }
 
   Future<void> generateSalesManagerAnalysisSOPDF(
     AsmwiseSalesList asmwiseSalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sales Manager Analysis - SO Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages = (asmwiseSalesList.asmwiseData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > asmwiseSalesList.asmwiseData.length
-            ? asmwiseSalesList.asmwiseData.length
-            : start + rowsPerPage;
-        final tableData = asmwiseSalesList.asmwiseData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.asmName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.salesAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/salesmanager_sales_report_SO_Analysis.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ASMWiseSOAnalysis',
+      headers: [
+        'ASM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: asmwiseSalesList.asmwiseData
+          .map(
+            (asmData) => [
+              asmData.asmName,
+              asmData.salesAmount,
+              asmData.targetAmount,
+              ((asmData.salesAmount / asmData.targetAmount) * 100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              asmData.salesAmount - asmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'asm_wise_so_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateSalesPersonAnalysisSOExcel(
     TsmwiseSalesList tsmwiseSalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Name',
-          'SO Amount',
-          'SO Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var tsmData in tsmwiseSalesList.tsmwiseData) {
-        sheet.appendRow(
-          toCellRow([
-            tsmData.tsmName,
-            tsmData.salesAmount,
-            tsmData.targetAmount,
-            ((tsmData.salesAmount / tsmData.targetAmount == 0
-                        ? tsmData.salesAmount
-                        : tsmData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            tsmData.salesAmount - tsmData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('salesrep_sales_report_SO_Analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/salesrep_sales_report_SO_Analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'TSMWiseSOAnalysis',
+      headers: [
+        'TSM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: tsmwiseSalesList.tsmwiseData
+          .map(
+            (tsmData) => [
+              tsmData.tsmName,
+              tsmData.salesAmount,
+              tsmData.targetAmount,
+              ((tsmData.salesAmount / tsmData.targetAmount) * 100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              tsmData.salesAmount - tsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'tsm_wise_so_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - TSM Wise SO Analysis',
+    );
   }
 
   Future<void> generateSalesPersonAnalysisSOPDF(
     TsmwiseSalesList tsmwiseSalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sales Person Analysis - SO Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages = (tsmwiseSalesList.tsmwiseData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > tsmwiseSalesList.tsmwiseData.length
-            ? tsmwiseSalesList.tsmwiseData.length
-            : start + rowsPerPage;
-        final tableData = tsmwiseSalesList.tsmwiseData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.tsmName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.salesAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/salesmanager_sales_report_SO_Analysis.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'TSMWiseSOAnalysis',
+      headers: [
+        'TSM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: tsmwiseSalesList.tsmwiseData
+          .map(
+            (tsmData) => [
+              tsmData.tsmName,
+              tsmData.salesAmount,
+              tsmData.targetAmount,
+              ((tsmData.salesAmount / tsmData.targetAmount) * 100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              tsmData.salesAmount - tsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'tsm_wise_so_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateItemGroupWiseAnalysisSOExcel(
     ProductGroupwiseSalesList productGroupwiseSalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Product Group',
-          'SO Amount',
-          'SO Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var groupData in productGroupwiseSalesList.productGroupData) {
-        sheet.appendRow(
-          toCellRow([
-            groupData.productGroupName,
-            groupData.salesAmount,
-            groupData.targetAmount,
-            ((groupData.salesAmount / groupData.targetAmount == 0
-                        ? groupData.salesAmount
-                        : groupData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            groupData.salesAmount - groupData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'productgroupwise_sales_report_SO_Analysis.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/productgroupwise_sales_report_SO_Analysis.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemGroupWiseSOAnalysis',
+      headers: [
+        'Product Group',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: productGroupwiseSalesList.productGroupData
+          .map(
+            (groupData) => [
+              groupData.productGroupName,
+              groupData.salesAmount,
+              groupData.targetAmount,
+              ((groupData.salesAmount / groupData.targetAmount == 0
+                          ? groupData.salesAmount
+                          : groupData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              groupData.salesAmount - groupData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'item_group_wise_so_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - Item Group Wise SO Analysis',
+    );
   }
 
   Future<void> generateItemGroupWiseAnalysisSOPDF(
     ProductGroupwiseSalesList productGroupwiseSalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Item GroupWise Analysis - SO Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (productGroupwiseSalesList.productGroupData.length / rowsPerPage)
-              .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage >
-                productGroupwiseSalesList.productGroupData.length
-            ? productGroupwiseSalesList.productGroupData.length
-            : start + rowsPerPage;
-        final tableData = productGroupwiseSalesList.productGroupData.sublist(
-          start,
-          end,
-        );
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Group Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.productGroupName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.salesAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/productgroup_wise_sales_report_SO_Analysis.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ItemGroupWiseSOAnalysis',
+      headers: [
+        'Product Group',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: productGroupwiseSalesList.productGroupData
+          .map(
+            (groupData) => [
+              groupData.productGroupName,
+              groupData.salesAmount,
+              groupData.targetAmount,
+              ((groupData.salesAmount / groupData.targetAmount == 0
+                          ? groupData.salesAmount
+                          : groupData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              groupData.salesAmount - groupData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'item_group_wise_so_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateItemAnalysisSOExcel(
     ProductwiseSalesList productwiseSalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Product Name',
-          'SO Amount',
-          'SO Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var itemData in productwiseSalesList.productData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.productName,
-            itemData.salesAmount,
-            itemData.targetAmount,
-            ((itemData.salesAmount / itemData.targetAmount == 0
-                        ? itemData.salesAmount
-                        : itemData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            itemData.salesAmount - itemData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel(
-          'productwise_sales_report_SO_Analysis.xlsx',
-          excelBytes,
-        );
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/productwise_sales_report_SO_Analysis.xlsx',
-        );
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemWiseSOAnalysis',
+      headers: [
+        'Product Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: productwiseSalesList.productData
+          .map(
+            (itemData) => [
+              itemData.productName,
+              itemData.salesAmount,
+              itemData.targetAmount,
+              ((itemData.salesAmount / itemData.targetAmount == 0
+                          ? itemData.salesAmount
+                          : itemData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              itemData.salesAmount - itemData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'item_wise_so_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - Item Wise SO Analysis',
+    );
   }
 
   Future<void> generateItemAnalysisSOPDF(
     ProductwiseSalesList productwiseSalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Item Analysis - SO Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages = (productwiseSalesList.productData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > productwiseSalesList.productData.length
-            ? productwiseSalesList.productData.length
-            : start + rowsPerPage;
-        final tableData = productwiseSalesList.productData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Product Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'SO Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.productName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.salesAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/productwise_sales_report_SO_Analysis.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ItemWiseSOAnalysis',
+      headers: [
+        'Product Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: productwiseSalesList.productData
+          .map(
+            (itemData) => [
+              itemData.productName,
+              itemData.salesAmount,
+              itemData.targetAmount,
+              ((itemData.salesAmount / itemData.targetAmount == 0
+                          ? itemData.salesAmount
+                          : itemData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              itemData.salesAmount - itemData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'item_wise_so_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateOpenSOAgingExcel(OpenSOAgingList agingData) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Group Name', 'Amount']));
-      for (var itemData in agingData.soAgingData) {
-        sheet.appendRow(toCellRow([itemData.group, itemData.receivableAmount]));
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('openSOAging.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/openSOAging.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'OpenSOAgeingAnalysis',
+      headers: ['Ageing Category', 'Amount'],
+      rows: agingData.soAgingData
+          .map((agingData) => [agingData.group, agingData.receivableAmount])
+          .toList(),
+      fileName: 'open_so_ageing_analysis.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Sales - Open SO Ageing Analysis',
+    );
   }
 
   Future<void> generateOpenSOAgingPDF(OpenSOAgingList agingData) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Open SO Aging',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages = (agingData.soAgingData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > agingData.soAgingData.length
-            ? agingData.soAgingData.length
-            : start + rowsPerPage;
-        final tableData = agingData.soAgingData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Group',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.group,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.receivableAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/productwise_sales_report_SO_Analysis.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'OpenSOAgeingAnalysis',
+      headers: ['Ageing Category', 'Amount'],
+      rows: agingData.soAgingData
+          .map((agingData) => [agingData.group, agingData.receivableAmount])
+          .toList(),
+      fileName: 'open_so_ageing_analysis.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateSalesAnalysisYTDExcel() async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    sheet.appendRow(
-      toCellRow([
+    await reportService.generateExcel(
+      sheetName: 'SOAnalysisYTD',
+      headers: [
         'PO Date',
         'Customer Name',
         'Sales Rep',
@@ -4085,21 +3159,9 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         'Pending Quantity',
         'Pending Value',
         'Remark',
-      ]),
-    );
-
-    for (int column = 0; column < 34; column++) {
-      var cell = sheet.cell(
-        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-      );
-      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
-
-      // sheet.setColAutoFit(column);
-    }
-
-    for (var ytdData in SODetailList) {
-      sheet.appendRow(
-        toCellRow([
+      ],
+      rows: SODetailList.map(
+        (ytdData) => [
           ytdData.poDate,
           ytdData.customerName,
           ytdData.salesRep,
@@ -4112,43 +3174,13 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           ytdData.pendingQuantity,
           ytdData.pendingValue,
           ytdData.remark,
-        ]),
-      );
-    }
-
-    xl.CellStyle centerCellStyle = xl.CellStyle(
-      verticalAlign: xl.VerticalAlign.Center,
-      horizontalAlign: xl.HorizontalAlign.Left,
+        ],
+      ).toList(),
+      fileName: 'ytd_so_analysis.xlsx',
+      amountColumns: [8, 9, 10, 11],
+      addTotalRow: true,
+      reportTitle: 'Sales - SO Analysis(YTD)',
     );
-
-    int numberOfRows = SODetailList.length;
-
-    for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-      for (int colIndex = 0; colIndex < 34; colIndex++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex,
-            rowIndex: rowIndex,
-          ),
-        );
-        if (rowIndex != 0) {
-          cell.cellStyle = centerCellStyle;
-        }
-      }
-    }
-
-    setState(() {
-      YtdSOBarChartData = true;
-    });
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('YTDSOAnalysis_Report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/YTDSOAnalysis_Report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
   }
 
   String formatDateString(DateTime date) {

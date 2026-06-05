@@ -1,5 +1,5 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -7,20 +7,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
+final reportService = ReportService();
 
 class JobCartEntryForAlternateMaterials extends StatefulWidget {
   const JobCartEntryForAlternateMaterials({super.key});
@@ -1260,886 +1255,246 @@ class _JobCartEntryForAlternateMaterialsState
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateMonthlyJobcardExcel(
     MonthWiseAnalysisJobCardList monthWiseAnalysisJobCardList,
   ) async {
-    double totalProduction = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Month', 'Quantity']));
-      for (var monthlyData in monthWiseAnalysisJobCardList.monthData) {
-        sheet.appendRow(
-          toCellRow([monthlyData.monthName, monthlyData.production]),
-        );
-        totalProduction += monthlyData.production;
-      }
-      sheet.appendRow(toCellRow(["Total", totalProduction]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthly_jobcard_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_jobcard_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'MonthlyJobcard',
+      headers: ['Month', 'Quantity'],
+      rows: monthWiseAnalysisJobCardList.monthData
+          .map((monthlyData) => [monthlyData.monthName, monthlyData.production])
+          .toList(),
+      fileName: 'monthly_jobcard_report.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Production - Monthly Jobcard',
+    );
   }
 
   Future<void> generateMonthlyJobcardPDF(
     MonthWiseAnalysisJobCardList monthWiseAnalysisJobCardList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthly Jobcard Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Quantity',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var monthlyData in monthWiseAnalysisJobCardList.monthData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        monthlyData.monthName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.production.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_jobcard_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'MonthlyJobcard',
+      headers: ['Month', 'Quantity'],
+      rows: monthWiseAnalysisJobCardList.monthData
+          .map((monthlyData) => [monthlyData.monthName, monthlyData.production])
+          .toList(),
+      fileName: 'monthly_jobcard_report.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateBranchJobcardExcel(
     BranchWiseJobCardList branchWiseJobCardList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Branch Name', 'Line Total', 'Percentage']));
-      for (var itemData in branchWiseJobCardList.branchWiseData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.branchName,
-            itemData.branchAmount.toStringAsFixed(2),
-            itemData.percentage.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('branch_jobcard_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/branch_jobcard_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'BranchWiseJobcard',
+      headers: ['Branch Name', 'Line Total', 'Percentage'],
+      rows: branchWiseJobCardList.branchWiseData
+          .map(
+            (itemData) => [
+              itemData.branchName,
+              itemData.branchAmount.toStringAsFixed(2),
+              itemData.percentage.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_jobcard_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Branch Wise Jobcard',
+    );
   }
 
   Future<void> generateBranchJobcardPDF(
     BranchWiseJobCardList branchWiseJobCardList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Branch Jobcard Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (branchWiseJobCardList.branchWiseData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > branchWiseJobCardList.branchWiseData.length
-            ? branchWiseJobCardList.branchWiseData.length
-            : start + rowsPerPage;
-        final tableData = branchWiseJobCardList.branchWiseData.sublist(
-          start,
-          end,
-        );
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Branch Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Line Total',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Percentage',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.branchName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.branchAmount.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.percentage.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/branch_jobcard_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'BranchWiseJobcard',
+      headers: ['Branch Name', 'Line Total', 'Percentage'],
+      rows: branchWiseJobCardList.branchWiseData
+          .map(
+            (itemData) => [
+              itemData.branchName,
+              itemData.branchAmount.toStringAsFixed(2),
+              itemData.percentage.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'monthly_jobcard_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateItemGroupJobcardExcel(
     ItemGroupWiseAnalysisJobCardList itemGroupWiseAnalysisJobCardList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Group Name', 'Line Total', 'Quantity']));
-      for (var itemData in itemGroupWiseAnalysisJobCardList.itemGroupData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.itemGroupName,
-            itemData.lineTotal.toStringAsFixed(2),
-            itemData.quantity.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('itemgroup_jobcard_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/itemgroup_jobcard_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemGroupWiseJobcard',
+      headers: ['Group Name', 'Line Total', 'Quantity'],
+      rows: itemGroupWiseAnalysisJobCardList.itemGroupData
+          .map(
+            (itemData) => [
+              itemData.itemGroupName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'itemgroup_jobcard_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Item Group Wise Jobcard',
+    );
   }
 
   Future<void> generateItemGroupJobcardPDF(
     ItemGroupWiseAnalysisJobCardList itemGroupWiseAnalysisJobCardList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Product Group Wise Jobcard Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (itemGroupWiseAnalysisJobCardList.itemGroupData.length / rowsPerPage)
-              .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage >
-                itemGroupWiseAnalysisJobCardList.itemGroupData.length
-            ? itemGroupWiseAnalysisJobCardList.itemGroupData.length
-            : start + rowsPerPage;
-        final tableData = itemGroupWiseAnalysisJobCardList.itemGroupData
-            .sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Group Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Line Total',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Quantity',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.itemGroupName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.lineTotal.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.quantity.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/item_groupwise_jobcard_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ItemGroupWiseJobcard',
+      headers: ['Group Name', 'Line Total', 'Quantity'],
+      rows: itemGroupWiseAnalysisJobCardList.itemGroupData
+          .map(
+            (itemData) => [
+              itemData.itemGroupName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'itemgroup_jobcard_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateItemSubGroupJobcardExcel(
     ItemSubGroupWiseAnalysisJobCardList itemSubGroupWiseAnalysisJobCardList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Sub Group', 'Line Total', 'Quantity']));
-      for (var itemData
-          in itemSubGroupWiseAnalysisJobCardList.itemSubGroupData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.itemSubGroupName,
-            itemData.lineTotal.toStringAsFixed(2),
-            itemData.quantity.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('itemgsubroup_jobcard_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/itemsubgroup_jobcard_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemSubGroupWiseJobcard',
+      headers: ['Group Name', 'Line Total', 'Quantity'],
+      rows: itemSubGroupWiseAnalysisJobCardList.itemSubGroupData
+          .map(
+            (itemData) => [
+              itemData.itemSubGroupName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'itemsubgroup_jobcard_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Item Sub Group Wise Jobcard',
+    );
   }
 
   Future<void> generateItemSubGroupJobcardPDF(
     ItemSubGroupWiseAnalysisJobCardList itemSubGroupWiseAnalysisJobCardList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Product Sub Group Wise Jobcard Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (itemSubGroupWiseAnalysisJobCardList.itemSubGroupData.length /
-                  rowsPerPage)
-              .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage >
-                itemSubGroupWiseAnalysisJobCardList.itemSubGroupData.length
-            ? itemSubGroupWiseAnalysisJobCardList.itemSubGroupData.length
-            : start + rowsPerPage;
-        final tableData = itemSubGroupWiseAnalysisJobCardList.itemSubGroupData
-            .sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Sub Group ',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Line Total',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Quantity',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.itemSubGroupName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.lineTotal.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.quantity.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/item_subgroupwise_jobcard_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ItemSubGroupWiseJobcard',
+      headers: ['Group Name', 'Line Total', 'Quantity'],
+      rows: itemSubGroupWiseAnalysisJobCardList.itemSubGroupData
+          .map(
+            (itemData) => [
+              itemData.itemSubGroupName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'itemsubgroup_jobcard_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateItemwiseJobcardExcel(
     ItemDescriptionWiseAnalysisJobCardList
     itemDescriptionWiseAnalysisJobCardList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Item Name', 'Line Total', 'Quantity']));
-      for (var itemData in itemDescriptionWiseAnalysisJobCardList.itemData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.itemName,
-            itemData.lineTotal.toStringAsFixed(2),
-            itemData.quantity.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('item_jobcard_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/item_jobcard_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ItemWiseJobcard',
+      headers: ['Item Name', 'Line Total', 'Quantity'],
+      rows: itemDescriptionWiseAnalysisJobCardList.itemData
+          .map(
+            (itemData) => [
+              itemData.itemName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'item_jobcard_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Item Wise Jobcard',
+    );
   }
 
   Future<void> generateItemwiseJobcardPDF(
     ItemDescriptionWiseAnalysisJobCardList
     itemDescriptionWiseAnalysisJobCardList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Product Wise Jobcard Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (itemDescriptionWiseAnalysisJobCardList.itemData.length / rowsPerPage)
-              .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage >
-                itemDescriptionWiseAnalysisJobCardList.itemData.length
-            ? itemDescriptionWiseAnalysisJobCardList.itemData.length
-            : start + rowsPerPage;
-        final tableData = itemDescriptionWiseAnalysisJobCardList.itemData
-            .sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Product Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Line Total',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Quantity',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.itemName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.lineTotal.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.quantity.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/itemwise_jobcard_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ItemWiseJobcard',
+      headers: ['Item Name', 'Line Total', 'Quantity'],
+      rows: itemDescriptionWiseAnalysisJobCardList.itemData
+          .map(
+            (itemData) => [
+              itemData.itemName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'item_jobcard_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateWarehouseJobcardExcel(
     WarehouseWiseAnalysisJobCardList warehouseWiseAnalysisJobCardList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Warehouse', 'Line Total', 'Quantity']));
-      for (var itemData in warehouseWiseAnalysisJobCardList.warehouseData) {
-        sheet.appendRow(
-          toCellRow([
-            itemData.warehouseName,
-            itemData.lineTotal.toStringAsFixed(2),
-            itemData.quantity.toStringAsFixed(2),
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('warehouse_jobcard_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/warehouse_jobcard_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'WarehouseWiseJobcard',
+      headers: ['Warehouse', 'Line Total', 'Quantity'],
+      rows: warehouseWiseAnalysisJobCardList.warehouseData
+          .map(
+            (itemData) => [
+              itemData.warehouseName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'warehouse_jobcard_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Warehouse Wise Jobcard',
+    );
   }
 
   Future<void> generateWarehouseJobcardPDF(
     WarehouseWiseAnalysisJobCardList warehouseWiseAnalysisJobCardList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Warehouse Wise Jobcard Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages =
-          (warehouseWiseAnalysisJobCardList.warehouseData.length / rowsPerPage)
-              .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage >
-                warehouseWiseAnalysisJobCardList.warehouseData.length
-            ? warehouseWiseAnalysisJobCardList.warehouseData.length
-            : start + rowsPerPage;
-        final tableData = warehouseWiseAnalysisJobCardList.warehouseData
-            .sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Warehouse',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Line Total',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Quantity',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.warehouseName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.lineTotal.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.quantity.toStringAsFixed(2),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/warehousewise_jobcard_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'WarehouseWiseJobcard',
+      headers: ['Warehouse', 'Line Total', 'Quantity'],
+      rows: warehouseWiseAnalysisJobCardList.warehouseData
+          .map(
+            (itemData) => [
+              itemData.warehouseName,
+              itemData.lineTotal.toStringAsFixed(2),
+              itemData.quantity.toStringAsFixed(2),
+            ],
+          )
+          .toList(),
+      fileName: 'warehouse_jobcard_report.xlsx',
+      amountColumns: [2, 3],
+    );
   }
 
   @override

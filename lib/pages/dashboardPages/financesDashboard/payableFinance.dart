@@ -1257,17 +1257,11 @@ class _PayableFinanceState extends State<PayableFinance> {
         final error = responseJson["Error"]?.toString() ?? "Unknown error";
 
         if (error == "Invalid or Expired Token") {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  error,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            );
-          }
+          if (!mounted) return;
+          NotificationService.warning(
+            title: "Security Alert",
+            message: "Invalid or Expired Token.",
+          );
           navigateToLoginScreen();
         } else {
           if (mounted) {

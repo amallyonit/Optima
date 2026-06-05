@@ -17,6 +17,7 @@ import 'package:optima/classes/leads.dart';
 import 'package:flutter_async_autocomplete/flutter_async_autocomplete.dart';
 import 'package:intl/intl.dart';
 import '../classes/footerConstants.dart';
+import '../notificationService.dart';
 
 String leadId = "";
 String deviceOrientation = "";
@@ -365,45 +366,37 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
                 });
               }
             } else {
-              const snackBar = SnackBar(
-                content: Text('Leads details not found.'),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.error(
+                title: "Error",
+                message: "Error occured while loading lead details",
+              );
             }
           } else {
             if (responseJson.containsKey("Error") &&
                 responseJson["Error"].toString() ==
                     "Invalid or Expired Token") {
-              final snackBar = SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(
-                  responseJson["Error"].toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.warning(
+                title: "Security Alert",
+                message: "Invalid or Expired Token.",
+              );
               navigateToLoginScreen();
             } else {
-              final snackBar = SnackBar(
-                content: Text(responseJson["Error"].toString()),
-              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              NotificationService.error(
+                title: "Error",
+                message: responseJson["Error"].toString(),
+              );
             }
           }
-        } else {
-          final snackBar = SnackBar(
-            content: Text('HTTP Error: ${response.statusCode}'),
-          );
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       } catch (e) {
-        final snackBar = SnackBar(content: Text('$e'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading lead details.",
+        );
       }
     }
   }
@@ -451,13 +444,12 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
       _designationController.clear();
       selectedValue = true;
     } else {
-      const snackBar = SnackBar(
-        content: Text(
-          'Contact details are missing. Please fill in the contact details.',
-        ),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.warning(
+        title: "Alert",
+        message:
+            "Contact details are missing. Please fill in the contact details.",
+      );
     }
   }
 
@@ -499,29 +491,27 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading customer.",
+      );
     }
   }
 
@@ -563,29 +553,27 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading distributor.",
+      );
     }
   }
 
@@ -643,29 +631,27 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading contacts",
+      );
     }
   }
 
@@ -707,29 +693,27 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading lead assignees.",
+      );
     }
   }
 
@@ -787,41 +771,35 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
               selectedParticipantFooter = [];
             });
           }
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(
-              'Saved Successfully...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.success(
+            title: "Success",
+            message: "Saved successfully.",
+          );
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while submitting stage 1.",
+      );
     }
   }
 
@@ -901,32 +879,27 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 1),
-        content: Text('$e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while submitting stage summary.",
+      );
     }
   }
 
@@ -1071,16 +1044,11 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
 
   void accountNameEmptyChecker() {
     if (searchController.text == "") {
-      SnackBar snackBar = const SnackBar(
-        showCloseIcon: true,
-        duration: Duration(seconds: 1),
-        content: Text(
-          "Please Enter Hospital Name",
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please enter hospital name.",
+      );
     }
   }
 

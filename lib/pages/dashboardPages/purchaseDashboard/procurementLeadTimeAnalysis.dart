@@ -16,6 +16,8 @@ import 'package:optima/classes/globals.dart';
 import 'package:http/http.dart' as http;
 import 'package:optima/classes/leads.dart';
 
+import '../../../notificationService.dart';
+
 class ProcurementLeadTimeAnalysis extends StatefulWidget {
   const ProcurementLeadTimeAnalysis({super.key});
 
@@ -472,12 +474,11 @@ class _ProcurementLeadTimeAnalysisState
       if (kDebugMode) {
         print(e);
       }
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading production completed analysis.",
+      );
     }
   }
 

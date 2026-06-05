@@ -18,6 +18,8 @@ import 'package:excel/excel.dart' as xl;
 
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
+import '../../../../notificationService.dart';
+
 late Future<void> loadDataFuture;
 
 class MonthlySampleData {
@@ -430,14 +432,11 @@ class _SampleDataPageState extends State<SampleDataPage> {
         sampleDataTemp = salesList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading samples.",
+      );
     }
   }
 

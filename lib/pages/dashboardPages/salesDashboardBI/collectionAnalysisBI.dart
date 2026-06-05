@@ -1,14 +1,11 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, avoid_web_libraries_in_flutter, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,11 +15,10 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:optima/login_screen.dart';
 import '../../../classes/dashBoard.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
+import '../../../notificationService.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
+final reportService = ReportService();
 
 bool touchedLastMonthGoals = false;
 bool touchedThisMonthGoals = false;
@@ -870,12 +866,11 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
       YtdTargetStr = "${(YtdTarget / 100000).toStringAsFixed(2)} L";
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection data",
+      );
     }
   }
 
@@ -1003,12 +998,11 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
       }
       YtdTarget = sum;
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection target data",
+      );
     }
   }
 
@@ -1112,26 +1106,27 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+            navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading user list.",
+      );
     }
   }
 
@@ -1169,27 +1164,27 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       } else {
-        const snackBar = SnackBar(content: Text('User list not found.'));
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "User list not found.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading user list.",
+      );
     }
   }
 
@@ -2762,1295 +2757,434 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
     }
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateReceivablesAgingExcel(
     ReceivablesAgingList agingData,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Group Name', 'Amount']));
-      for (var itemData in agingData.agingData) {
-        sheet.appendRow(
-          toCellRow([itemData.agingGroup, itemData.agingGroupTotal]),
-        );
-      }
-      if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'receivables_aging.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
-
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('receivables_aging.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/receivables_aging.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'ReceivablesAging',
+      headers: ['Group Name', 'Amount'],
+      rows: agingData.agingData
+          .map(
+            (data) => [
+              data.agingGroup,
+              double.tryParse(data.agingGroupTotal.toStringAsFixed(2)) ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'receivables_ageing.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle: 'Sales - Receivables Ageing',
+    );
   }
 
   Future<void> generateReceivablesAgingPDF(
     ReceivablesAgingList agingData,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Receivables Aging',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20;
-      final totalPages = (agingData.agingData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > agingData.agingData.length
-            ? agingData.agingData.length
-            : start + rowsPerPage;
-        final tableData = agingData.agingData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Group',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.agingGroup,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.agingGroupTotal.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/receivables_aging.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'ReceivablesAging',
+      headers: ['Group Name', 'Amount'],
+      rows: agingData.agingData
+          .map(
+            (data) => [
+              data.agingGroup,
+              double.tryParse(data.agingGroupTotal.toStringAsFixed(2)) ?? 0.0,
+            ],
+          )
+          .toList(),
+      fileName: 'receivables_ageing.pdf',
+      amountColumns: [2],
+    );
   }
 
   Future<void> generateMonthWiseCollectionAnalysisExcel(
     MonthlyColectionList monthlySalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Month',
-          'Sales Amount',
-          'Sales Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var monthlyData in monthlySalesList.monthlyData) {
-        sheet.appendRow(
-          toCellRow([
-            monthlyData.monthName,
-            monthlyData.collectionAmount,
-            monthlyData.collectionTarget,
-            ((monthlyData.collectionAmount / monthlyData.collectionTarget == 0
-                        ? monthlyData.collectionAmount
-                        : monthlyData.collectionTarget) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            monthlyData.collectionAmount - monthlyData.collectionTarget,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'monthWise_collection_analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('monthWise_collection_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthWise_collection_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'MonthWiseCollectionAnalysis',
+      headers: [
+        'Month',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: monthlySalesList.monthlyData
+          .map(
+            (monthlyData) => [
+              monthlyData.monthName,
+              monthlyData.collectionAmount,
+              monthlyData.collectionTarget,
+              ((monthlyData.collectionAmount / monthlyData.collectionTarget == 0
+                          ? monthlyData.collectionAmount
+                          : monthlyData.collectionTarget) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              monthlyData.collectionAmount - monthlyData.collectionTarget,
+            ],
+          )
+          .toList(),
+      fileName: 'monthWise_collection_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - MonthWise Collection Analysis',
+    );
   }
 
   Future<void> generateMonthWiseCollectionAnalysisPDF(
     MonthlyColectionList monthlySalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Monthwise Collection Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Month',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sales Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sales Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Percentage',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Difference',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var monthlyData in monthlySalesList.monthlyData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        monthlyData.monthName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.collectionAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.collectionTarget.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        ((monthlyData.collectionAmount /
-                                            monthlyData.collectionTarget ==
-                                        0
-                                    ? monthlyData.collectionAmount
-                                    : monthlyData.collectionTarget) *
-                                100)
-                            .ceil()
-                            .toStringAsFixed(0),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (monthlyData.collectionAmount -
-                                monthlyData.collectionTarget)
-                            .toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/monthly_sales_report_SO_Analysis.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'MonthWiseCollectionAnalysis',
+      headers: [
+        'Month',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: monthlySalesList.monthlyData
+          .map(
+            (monthlyData) => [
+              monthlyData.monthName,
+              monthlyData.collectionAmount,
+              monthlyData.collectionTarget,
+              ((monthlyData.collectionAmount / monthlyData.collectionTarget == 0
+                          ? monthlyData.collectionAmount
+                          : monthlyData.collectionTarget) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              monthlyData.collectionAmount - monthlyData.collectionTarget,
+            ],
+          )
+          .toList(),
+      fileName: 'monthWise_collection_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateCustomerAnalysisCollectionExcel(
     CustomerWiseCollectionList customerWiseSalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Customer Name',
-          'Sales Amount',
-          'Sales Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var customerData in customerWiseSalesList.customerData) {
-        sheet.appendRow(
-          toCellRow([
-            customerData.customerName,
-            customerData.collectionAmount,
-            customerData.targetAmount,
-            ((customerData.collectionAmount / customerData.targetAmount == 0
-                        ? customerData.collectionAmount
-                        : customerData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            customerData.collectionAmount - customerData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'customer_collection_analysis.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
-
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('customer_collection_analysis.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/customer_collection_analysis.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'CustomerCollectionAnalysis',
+      headers: [
+        'Customer Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: customerWiseSalesList.customerData
+          .map(
+            (customerData) => [
+              customerData.customerName,
+              customerData.collectionAmount,
+              customerData.targetAmount,
+              ((customerData.collectionAmount / customerData.targetAmount == 0
+                          ? customerData.collectionAmount
+                          : customerData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              customerData.collectionAmount - customerData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'customer_collection_analysis.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - Customer Collection Analysis',
+    );
   }
 
   Future<void> generateCustomerAnalysisCollectionPDF(
     CustomerWiseCollectionList customerWiseSalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Customer Analysis - Collection',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages =
-          (customerWiseSalesList.customerData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end =
-            start + rowsPerPage > customerWiseSalesList.customerData.length
-            ? customerWiseSalesList.customerData.length
-            : start + rowsPerPage;
-        final tableData = customerWiseSalesList.customerData.sublist(
-          start,
-          end,
-        );
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Customer Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Percentage',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Difference',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.customerName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.collectionAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          ((monthlyData.collectionAmount /
-                                              monthlyData.targetAmount !=
-                                          0
-                                      ? monthlyData.targetAmount
-                                      : monthlyData.collectionAmount) *
-                                  100)
-                              .ceil()
-                              .toStringAsFixed(0),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          (monthlyData.collectionAmount -
-                                  monthlyData.targetAmount)
-                              .toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/customerwise_sales_report_SO_Analysis.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateSalesManagerAnalysisCollectionExcel(
-    AsmwiseCollectionList asmwiseSalesList,
-  ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Name',
-          'Sales Amount',
-          'Sales Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var asmData in asmwiseSalesList.asmwiseData) {
-        sheet.appendRow(
-          toCellRow([
-            asmData.asmName,
-            asmData.collectionAmount,
-            asmData.targetAmount,
-            ((asmData.collectionAmount / asmData.targetAmount == 0
-                        ? asmData.collectionAmount
-                        : asmData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            asmData.collectionAmount - asmData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'sales_manager_analysis_collection.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
-
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('sales_manager_analysis_collection.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_manager_analysis_collection.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateSalesManagerAnalysisCollectionPDF(
-    AsmwiseCollectionList asmwiseSalesList,
-  ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sales Manager Analysis - Collection',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages = (asmwiseSalesList.asmwiseData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > asmwiseSalesList.asmwiseData.length
-            ? asmwiseSalesList.asmwiseData.length
-            : start + rowsPerPage;
-        final tableData = asmwiseSalesList.asmwiseData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.asmName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.collectionAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/salesmanager_sales_report_SO_Analysis.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateSalesPersonAnalysisCollectionExcel(
-    TsmwiseCollectionList tsmwiseSalesList,
-  ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Name',
-          'Sales Amount',
-          'Sales Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var tsmData in tsmwiseSalesList.tsmwiseData) {
-        sheet.appendRow(
-          toCellRow([
-            tsmData.tsmName,
-            tsmData.collectionAmount,
-            tsmData.targetAmount,
-            ((tsmData.collectionAmount / tsmData.targetAmount == 0
-                        ? tsmData.collectionAmount
-                        : tsmData.targetAmount) *
-                    100)
-                .ceil()
-                .toStringAsFixed(0),
-            tsmData.collectionAmount - tsmData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'sales_person_analysis_collection.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
-
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('sales_person_analysis_collection.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/sales_person_analysis_collection.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateSalesPersonAnalysisCollectionPDF(
-    TsmwiseCollectionList tsmwiseSalesList,
-  ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Sales Person Analysis - Collection',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages = (tsmwiseSalesList.tsmwiseData.length / rowsPerPage)
-          .ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > tsmwiseSalesList.tsmwiseData.length
-            ? tsmwiseSalesList.tsmwiseData.length
-            : start + rowsPerPage;
-        final tableData = tsmwiseSalesList.tsmwiseData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.tsmName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.collectionAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.targetAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/sale_person_sales_report_collection.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateReceivablesCategoryCollectionExcel(
-    ReceivablesCategoryList dataList,
-  ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Name', 'Sales Amount', 'Percentage']));
-      for (var data in dataList.categoryData) {
-        sheet.appendRow(
-          toCellRow([
-            data.categoryName,
-            data.categoryAmount,
-            data.categoryPercentage,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'receivables_category_collection.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
-
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('receivables_category_collection.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/receivables_category_collection.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
-  }
-
-  Future<void> generateReceivablesCategoryCollectionPDF(
-    ReceivablesCategoryList dataList,
-  ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Receivables Category Wise Analysis',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-
-      const int rowsPerPage = 20; // Number of rows per page
-      final totalPages = (dataList.categoryData.length / rowsPerPage).ceil();
-
-      for (int page = 0; page < totalPages; page++) {
-        final start = page * rowsPerPage;
-        final end = start + rowsPerPage > dataList.categoryData.length
-            ? dataList.categoryData.length
-            : start + rowsPerPage;
-        final tableData = dataList.categoryData.sublist(start, end);
-
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Table header
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Amount',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        'Sales Target',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Table data rows
-                  for (var monthlyData in tableData)
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          monthlyData.categoryName,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.categoryAmount.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                        pw.Text(
-                          monthlyData.categoryPercentage.toString(),
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File(
-          '$storageDir/sale_person_sales_report_collection.pdf',
-        );
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e.message'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generatePDF(
+      title: 'CustomerCollectionAnalysis',
+      headers: [
+        'Customer Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: customerWiseSalesList.customerData
+          .map(
+            (customerData) => [
+              customerData.customerName,
+              customerData.collectionAmount,
+              customerData.targetAmount,
+              ((customerData.collectionAmount / customerData.targetAmount == 0
+                          ? customerData.collectionAmount
+                          : customerData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              customerData.collectionAmount - customerData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'customer_collection_analysis.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
   }
 
   Future<void> generateRsmCollectionExcel(
     RsmwiseCollectionList rsmwiseSalesList,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Name',
-          'Sales Amount',
-          'Sales Target',
-          'Percentage',
-          'Difference',
-        ]),
-      );
-      for (var rsmData in rsmwiseSalesList.rsmwiseData) {
-        sheet.appendRow(
-          toCellRow([
-            rsmData.rsmName,
-            rsmData.collectionAmount,
-            rsmData.targetAmount,
-            ((rsmData.collectionAmount / rsmData.targetAmount) * 100)
-                .ceil()
-                .toStringAsFixed(0),
-            rsmData.collectionAmount - rsmData.targetAmount,
-          ]),
-        );
-      }
-      if (kIsWeb) {
-        // var fileBytes = excel.encode();
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'regionalmanager_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
-
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('regionalmanager_sales_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regionalmanager_sales_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+    await reportService.generateExcel(
+      sheetName: 'RSMCollectionAnalysis',
+      headers: [
+        'RSM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: rsmwiseSalesList.rsmwiseData
+          .map(
+            (rsmData) => [
+              rsmData.rsmName,
+              rsmData.collectionAmount,
+              rsmData.targetAmount,
+              ((rsmData.collectionAmount / rsmData.targetAmount == 0
+                          ? rsmData.collectionAmount
+                          : rsmData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              rsmData.collectionAmount - rsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'regionalmanager_sales_report.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - RSM Collection Analysis',
+    );
   }
 
   Future<void> generateRsmCollectionPDF(
     RsmwiseCollectionList rsmwiseSalesList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Regional Managers Sales Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
+    await reportService.generatePDF(
+      title: 'RSMCollectionAnalysis',
+      headers: [
+        'RSM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: rsmwiseSalesList.rsmwiseData
+          .map(
+            (rsmData) => [
+              rsmData.rsmName,
+              rsmData.collectionAmount,
+              rsmData.targetAmount,
+              ((rsmData.collectionAmount / rsmData.targetAmount == 0
+                          ? rsmData.collectionAmount
+                          : rsmData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              rsmData.collectionAmount - rsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'regionalmanager_sales_report.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
+  }
 
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sales Amount',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Sales Target',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Percentage',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Difference',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var monthlyData in rsmwiseSalesList.rsmwiseData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        monthlyData.rsmName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.collectionAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        monthlyData.targetAmount.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        ((monthlyData.collectionAmount /
-                                    monthlyData.targetAmount) *
-                                100)
-                            .ceil()
-                            .toStringAsFixed(0),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        (monthlyData.collectionAmount -
-                                monthlyData.targetAmount)
-                            .toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-      if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // html.window.open(url, '_blank');
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/regionalmanager_sales_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    }
+  Future<void> generateSalesManagerAnalysisCollectionExcel(
+    AsmwiseCollectionList asmwiseSalesList,
+  ) async {
+    await reportService.generateExcel(
+      sheetName: 'ASMCollectionAnalysis',
+      headers: [
+        'ASM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: asmwiseSalesList.asmwiseData
+          .map(
+            (asmData) => [
+              asmData.asmName,
+              asmData.collectionAmount,
+              asmData.targetAmount,
+              ((asmData.collectionAmount / asmData.targetAmount == 0
+                          ? asmData.collectionAmount
+                          : asmData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              asmData.collectionAmount - asmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'sales_manager_analysis_collection.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - ASM Collection Analysis',
+    );
+  }
+
+  Future<void> generateSalesManagerAnalysisCollectionPDF(
+    AsmwiseCollectionList asmwiseSalesList,
+  ) async {
+    await reportService.generatePDF(
+      title: 'ASMCollectionAnalysis',
+      headers: [
+        'ASM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: asmwiseSalesList.asmwiseData
+          .map(
+            (asmData) => [
+              asmData.asmName,
+              asmData.collectionAmount,
+              asmData.targetAmount,
+              ((asmData.collectionAmount / asmData.targetAmount == 0
+                          ? asmData.collectionAmount
+                          : asmData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              asmData.collectionAmount - asmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'sales_manager_analysis_collection.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
+  }
+
+  Future<void> generateSalesPersonAnalysisCollectionExcel(
+    TsmwiseCollectionList tsmwiseSalesList,
+  ) async {
+    await reportService.generateExcel(
+      sheetName: 'TSMCollectionAnalysis',
+      headers: [
+        'ASM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: tsmwiseSalesList.tsmwiseData
+          .map(
+            (tsmData) => [
+              tsmData.tsmName,
+              tsmData.collectionAmount,
+              tsmData.targetAmount,
+              ((tsmData.collectionAmount / tsmData.targetAmount == 0
+                          ? tsmData.collectionAmount
+                          : tsmData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              tsmData.collectionAmount - tsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'sales_person_analysis_collection.xlsx',
+      amountColumns: [2, 3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Sales - TSM Collection Analysis',
+    );
+  }
+
+  Future<void> generateSalesPersonAnalysisCollectionPDF(
+    TsmwiseCollectionList tsmwiseSalesList,
+  ) async {
+    await reportService.generatePDF(
+      title: 'TSMCollectionAnalysis',
+      headers: [
+        'ASM Name',
+        'Sales Amount',
+        'Sales Target',
+        'Percentage',
+        'Difference',
+      ],
+      rows: tsmwiseSalesList.tsmwiseData
+          .map(
+            (tsmData) => [
+              tsmData.tsmName,
+              tsmData.collectionAmount,
+              tsmData.targetAmount,
+              ((tsmData.collectionAmount / tsmData.targetAmount == 0
+                          ? tsmData.collectionAmount
+                          : tsmData.targetAmount) *
+                      100)
+                  .ceil()
+                  .toStringAsFixed(0),
+              tsmData.collectionAmount - tsmData.targetAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'sales_person_analysis_collection.pdf',
+      amountColumns: [2, 3, 4, 5],
+    );
+  }
+
+  Future<void> generateReceivablesCategoryCollectionExcel(
+    ReceivablesCategoryList dataList,
+  ) async {
+    await reportService.generateExcel(
+      sheetName: 'CategoryCollectionAnalysis',
+      headers: ['Name', 'Sales Amount', 'Percentage'],
+      rows: dataList.categoryData
+          .map(
+            (catgData) => [
+              catgData.categoryName,
+              catgData.categoryAmount,
+              catgData.categoryPercentage,
+            ],
+          )
+          .toList(),
+      fileName: 'receivables_category_collection.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Sales - Receivables Category Collection Analysis',
+    );
+  }
+
+  Future<void> generateReceivablesCategoryCollectionPDF(
+    ReceivablesCategoryList dataList,
+  ) async {
+    await reportService.generatePDF(
+      title: 'CategoryCollectionAnalysis',
+      headers: ['Name', 'Sales Amount', 'Percentage'],
+      rows: dataList.categoryData
+          .map(
+            (catgData) => [
+              catgData.categoryName,
+              catgData.categoryAmount,
+              catgData.categoryPercentage,
+            ],
+          )
+          .toList(),
+      fileName: 'receivables_category_collection.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateCollectionAnalysisExcel() async {
     await _loadYtdCollectionBarChartData();
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Sheet1'];
-    // sheet.getColAutoFits;
-    sheet.appendRow(
-      toCellRow([
+
+    await reportService.generateExcel(
+      sheetName: 'YTDCollectionAnalysis',
+      headers: [
         'Customer Name',
         'Sales Manager',
         'Sales Representative',
@@ -4067,87 +3201,34 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
         'Feb Value',
         'Mar Value',
         'YTD Total Value',
-      ]),
+      ],
+      rows: ytdCollectionList.ytdColData
+          .map(
+            (colData) => [
+              colData.customerName,
+              colData.salesManager,
+              colData.salesRep,
+              colData.aprValue,
+              colData.mayValue,
+              colData.junValue,
+              colData.julValue,
+              colData.augValue,
+              colData.sepValue,
+              colData.octValue,
+              colData.novValue,
+              colData.decValue,
+              colData.janValue,
+              colData.febValue,
+              colData.marValue,
+              colData.ytdTotalValue,
+            ],
+          )
+          .toList(),
+      fileName: 'YTD_CollectionAnalysis_Report.xlsx',
+      amountColumns: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      addTotalRow: true,
+      reportTitle: 'Sales - YTD Collection Analysis',
     );
-
-    for (int column = 0; column < 16; column++) {
-      var cell = sheet.cell(
-        xl.CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0),
-      );
-      cell.cellStyle = xl.CellStyle(bold: true, fontSize: 14);
-
-      // sheet.setColAutoFit(column);
-    }
-
-    for (var colData in ytdCollectionList.ytdColData) {
-      sheet.appendRow(
-        toCellRow([
-          colData.customerName,
-          colData.salesManager,
-          colData.salesRep,
-          colData.aprValue,
-          colData.mayValue,
-          colData.junValue,
-          colData.julValue,
-          colData.augValue,
-          colData.sepValue,
-          colData.octValue,
-          colData.novValue,
-          colData.decValue,
-          colData.janValue,
-          colData.febValue,
-          colData.marValue,
-          colData.ytdTotalValue,
-          xl.CellStyle(),
-        ]),
-      );
-    }
-
-    xl.CellStyle centerCellStyle = xl.CellStyle(
-      verticalAlign: xl.VerticalAlign.Center,
-      horizontalAlign: xl.HorizontalAlign.Center,
-    );
-
-    int numberOfRows = ytdCollectionList.ytdColData.length;
-
-    for (int rowIndex = 0; rowIndex <= numberOfRows; rowIndex++) {
-      for (int colIndex = 0; colIndex < 16; colIndex++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: colIndex,
-            rowIndex: rowIndex,
-          ),
-        );
-        if (rowIndex != 0) {
-          cell.cellStyle = centerCellStyle;
-        }
-      }
-    }
-
-    setState(() {
-      YtdColBarChartData = true;
-    });
-    if (kIsWeb) {
-      // var fileBytes = excel.encode();
-      // final blob = html.Blob([fileBytes]);
-      // final url = html.Url.createObjectUrlFromBlob(blob);
-      // final anchor = html.AnchorElement()
-      //   ..href = url
-      //   ..download = 'YTD_CollectionAnalysis_Report.xlsx'
-      //   ..style.display = 'none';
-      // html.document.body!.append(anchor);
-      // anchor.click();
-      // anchor.remove();
-      // html.Url.revokeObjectUrl(url);
-
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('YTD_CollectionAnalysis_Report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/YTD_CollectionAnalysis_Report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
   }
 
   Future<void> _loadYtdCollectionBarChartData() async {

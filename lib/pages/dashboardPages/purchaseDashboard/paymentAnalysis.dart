@@ -21,6 +21,8 @@ import 'package:excel/excel.dart' as xl;
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
 
+import '../../../notificationService.dart';
+
 class PaymentAnalysis extends StatefulWidget {
   const PaymentAnalysis({super.key});
 
@@ -688,14 +690,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         }
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading payment data",
       );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
     }
   }
 
@@ -760,14 +759,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         }
       });
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading mode of payment data.",
       );
-      if (mounted) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
     }
   }
 
@@ -1469,23 +1465,8 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'item_sales_report.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('modeOfPaymentCollection.xlsx', excelBytes);
-
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'item_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/modeOfPaymentCollection.xlsx');

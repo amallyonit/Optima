@@ -1,13 +1,11 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
@@ -15,13 +13,9 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import '../../../classes/dashBoard.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
-
-import '../../../notificationService.dart';
+final reportService = ReportService();
 
 class DayWiseProductionReportwrtMPPresent extends StatefulWidget {
   const DayWiseProductionReportwrtMPPresent({super.key});
@@ -490,52 +484,26 @@ class _DayWiseProductionReportwrtMPPresentState
     chartDataLoaded = true;
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generateDailyMPOrderExcel(
     DailyCompletedQtyDayWisewrtMPList dailyCompletedQtyDayWisewrtMPList,
   ) async {
-    double totalGownQty = 0, totalWrapsheetQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Date', 'Kits/Gown Qty.', 'Wrapsheet Qty.']));
-      for (var dailyData in dailyCompletedQtyDayWisewrtMPList.dailyData) {
-        sheet.appendRow(
-          toCellRow([
-            dailyData.date,
-            dailyData.gownQty,
-            dailyData.wrapSheetQty,
-          ]),
-        );
-        totalGownQty += dailyData.gownQty;
-        totalWrapsheetQty += dailyData.wrapSheetQty;
-      }
-      sheet.appendRow(toCellRow(["Total", totalGownQty, totalWrapsheetQty]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('daily_MP_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/daily_MP_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error generating excel file.",
-      );
-    }
+    await reportService.generateExcel(
+      sheetName: 'DailyMPOrderAnalysis',
+      headers: ['Date', 'Kits/Gown Qty.', 'Wrapsheet Qty.'],
+      rows: dailyCompletedQtyDayWisewrtMPList.dailyData
+          .map(
+            (dailyData) => [
+              dailyData.date,
+              dailyData.gownQty,
+              dailyData.wrapSheetQty,
+            ],
+          )
+          .toList(),
+      fileName: 'daily_mp_order_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Daily MP Order Analysis',
+    );
   }
 
   @override

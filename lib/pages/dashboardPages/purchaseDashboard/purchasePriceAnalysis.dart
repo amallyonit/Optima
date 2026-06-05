@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/leads.dart';
 import '../../../classes/globals.dart';
+import '../../../notificationService.dart';
 
 class PurchasePriceAnalysis extends StatefulWidget {
   const PurchasePriceAnalysis({super.key});
@@ -596,12 +597,11 @@ class _PurchasePriceAnalysisState extends State<PurchasePriceAnalysis> {
       if (kDebugMode) {
         print(e);
       }
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading purchase price details.",
+      );
     }
   }
 

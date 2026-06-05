@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../notificationService.dart';
 import '../pages/footer.dart';
 import '../pages/header.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -182,29 +183,27 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading distributor.",
+      );
     }
   }
 
@@ -262,29 +261,27 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading lead products.",
+      );
     }
   }
 
@@ -448,41 +445,35 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
             productList.clear();
             selectedProductList.clear();
           });
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(
-              'Saved Successfully...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.success(
+            title: "Success",
+            message: "Saved successfully.",
+          );
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while submitting stage 5.",
+      );
     }
   }
 
@@ -543,44 +534,35 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
             selectedParticipantFooter.clear();
             selectedParticipantFooter = [];
           });
-          const snackBar = SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(
-              'Saved Successfully...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+          NotificationService.success(
+            title: "Success",
+            message: "Saved successfully.",
+          );
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 1),
-        content: Text('$e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while submitting stage summary.",
+      );
     }
   }
 
@@ -1460,21 +1442,13 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                     loadSelectedProducts();
                     if (locationControllerFooter.text == "" ||
                         selectedProductList.isEmpty) {
-                      final snackBar = SnackBar(
-                        backgroundColor: const Color(0xFF2CA9DF),
-                        duration: const Duration(seconds: 2),
-                        content: Text(
-                          selectedProductList.isEmpty
-                              ? 'Select at least one product from the list to proceed..'
-                              : 'Location is missing, Please add location and try again...',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      );
                       if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                      NotificationService.info(
+                        title: "Info",
+                        message: selectedProductList.isEmpty
+                            ? 'Select at least one product from the list to proceed..'
+                            : 'Location is missing, Please add location and try again...',
+                      );
                     } else {
                       BuildContext? dialogContext;
                       showDialog(
@@ -1491,16 +1465,10 @@ class StageFourLeadEntryPageState extends State<StageFourLeadEntryPage> {
                           );
                         },
                       );
-                      try {
-                        await submitStageFive();
-                        await submitStageSummary();
-                        Navigator.of(dialogContext!).pop();
-                        navigateToHomePage();
-                      } catch (e) {
-                        final snackBar = SnackBar(content: Text('$e'));
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                      }
+                      await submitStageFive();
+                      await submitStageSummary();
+                      Navigator.of(dialogContext!).pop();
+                      navigateToHomePage();
                     }
                   },
                   child: Container(

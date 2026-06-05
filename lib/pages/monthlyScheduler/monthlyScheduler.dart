@@ -19,6 +19,8 @@ import 'package:optima/classes/scheduler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:translator/translator.dart';
 
+import '../../notificationService.dart';
+
 class CustomerCommon {
   final String name;
   final String code;
@@ -253,35 +255,27 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
-      } else {
-        final snackBar = SnackBar(
-          content: Text('HTTP Error: ${response.statusCode}'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text(e.toString()));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading customer.",
+      );
     }
   }
 
@@ -325,35 +319,27 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
-      } else {
-        final snackBar = SnackBar(
-          content: Text('HTTP Error: ${response.statusCode}'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading distributor.",
+      );
     }
   }
 
@@ -395,33 +381,27 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            const snackBar = SnackBar(
-              content: Text('Participant loading failed'),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: "Participant list not found.",
+            );
           }
         }
-      } else {
-        const snackBar = SnackBar(content: Text('Participant loading failed'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading participant list.",
+      );
     }
   }
 
@@ -471,23 +451,21 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           }
         }
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('$e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.warning(
+        title: "Warning",
+        message: "Error occured while adding new schedule.",
+      );
     }
   }
 
@@ -656,38 +634,33 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         } else {
           if (responseJson.containsKey("Error") &&
               responseJson["Error"].toString() == "Invalid or Expired Token") {
-            final snackBar = SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(
-                responseJson["Error"].toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
             navigateToLoginScreen();
           } else {
-            final snackBar = SnackBar(
-              content: Text(responseJson["Error"].toString()),
-            );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
           }
         }
       } else {
-        const snackBar = SnackBar(
-          content: Text('Monthly schedules are not available.'),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.error(
+          title: "Error",
+          message: "Monthly schedules are not available.",
+        );
       }
     } catch (e) {
-      final snackBar = SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('Error: $e'),
-      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading monthly schedule data.",
+      );
     }
   }
 
@@ -721,9 +694,6 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
     for (int day = 1; day <= lastDay; day++) {
       final currentDate = DateTime(year, month, day);
 
-      // Skip Sundays
-      //if (currentDate.weekday == DateTime.sunday) continue;
-
       final formattedDate = DateFormat('yyyy/MM/dd').format(currentDate);
 
       final exists = monthlyScheduleList.any(
@@ -756,15 +726,8 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         saveStatus = "Monthly schedule saved successfully!";
       }
       if (saveStatus != "") {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 1),
-          content: Text(
-            saveStatus,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        NotificationService.success(title: "Success", message: saveStatus);
 
         // Call setState after all addSchedule calls are complete
         setState(() {
@@ -773,9 +736,11 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while saving monthly schedule.",
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -1158,18 +1123,21 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
       final res = jsonDecode(response.body);
 
       if (res["Status"] == true) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Deleted successfully")));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res["Error"] ?? "Delete failed")),
+        if (!mounted) return;
+        NotificationService.success(
+          title: "Success",
+          message: "Deleted successfully.",
         );
+      } else {
+        if (!mounted) return;
+        NotificationService.error(title: "Error", message: "Delete failed.");
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while deleting schedule.",
+      );
     }
   }
 

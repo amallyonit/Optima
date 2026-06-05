@@ -14,6 +14,8 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 
+import '../../../../notificationService.dart';
+
 class ItemGroupAgeingSummary {
   String groupName;
 
@@ -526,14 +528,11 @@ class _TopProductsPageState extends State<TopProductsPage> {
         jobCardDetailsTemp = salesList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading job card details.",
+      );
     }
   }
 
@@ -580,14 +579,11 @@ class _TopProductsPageState extends State<TopProductsPage> {
         itemCostList = salesList.toList();
       });
     } catch (e) {
-      if (mounted) {
-        final snackBar = SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading item cost.",
+      );
     }
   }
 
