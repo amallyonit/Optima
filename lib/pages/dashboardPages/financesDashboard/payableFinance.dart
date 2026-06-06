@@ -5079,43 +5079,7 @@ class _PayableFinanceState extends State<PayableFinance> {
                                 child:
                                     selectedCategoryIndex ==
                                         categories.indexOf('Date')
-                                    ?
-                                      // Column(
-                                      //     children: [
-                                      //       ListTile(
-                                      //         title: const Text("To Date"),
-                                      //         subtitle: Text(
-                                      //           toDateFilter != null
-                                      //               ? "${toDateFilter!.day}/${toDateFilter!.month}/${toDateFilter!.year}"
-                                      //               : formatDateString(
-                                      //                   currentDate!,
-                                      //                 ),
-                                      //         ),
-                                      //         trailing: const Icon(
-                                      //           Icons.calendar_today,
-                                      //         ),
-                                      //         onTap: () async {
-                                      //           final picked =
-                                      //               await showDatePicker(
-                                      //                 context: context,
-                                      //                 initialDate:
-                                      //                     toDateFilter ??
-                                      //                     DateTime.now(),
-                                      //                 firstDate:
-                                      //                     fiscalYearStartDate!,
-                                      //                 lastDate: currentDate!,
-                                      //               );
-                                      //           if (picked != null) {
-                                      //             modalSetState(() {
-                                      //               toDateFilter = picked;
-                                      //               dateFilterFlag = true;
-                                      //             });
-                                      //           }
-                                      //         },
-                                      //       ),
-                                      //     ],
-                                      //   )
-                                      Column(
+                                    ? Column(
                                         children: [
                                           // FROM DATE
                                           ListTile(

@@ -1486,8 +1486,6 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                                           color: Color(0xff454545),
                                         ),
                                       ),
-                                      // Text(
-                                      //     'Product : ${item['leadProductName'] ?? ''}'),
                                       const Text(
                                         'Sample Purchased / Sent to Factory',
                                         style: TextStyle(
@@ -1497,7 +1495,7 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                                         ),
                                       ),
                                       const Text(
-                                        'on 04-03-2024 PM',
+                                        '',
                                         style: TextStyle(
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.w400,
@@ -1506,15 +1504,6 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                                       ),
                                     ],
                                   ),
-                                  // trailing: GestureDetector(
-                                  //   onTap: () {
-                                  //     loadProductDetails(item);
-                                  //     setState(() {
-                                  //       productList.remove(item);
-                                  //     });
-                                  //   },
-                                  //   child: const Icon(Icons.edit, size: 16.0),
-                                  // ),
                                 ),
                               );
                             },

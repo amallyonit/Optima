@@ -20,6 +20,8 @@ class SalaryInputTable extends StatefulWidget {
 }
 
 class _SalaryInputTableState extends State<SalaryInputTable> {
+  bool _isBusy = false;
+  String _loadingText = "Loading...";
   final List<String> headers = [
     "Department in Factory",
     "Salary including Production Incentive + OT",
@@ -113,41 +115,59 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
       return;
     }
 
-    String caption =
-        "${_selectedPlant ?? ''} "
-        "(${DateFormat('MMMM yyyy').format(selectedDate!)})";
+    setState(() {
+      _isBusy = true;
+      _loadingText = "Generating Excel...";
+    });
+    try {
+      String caption =
+          "${_selectedPlant ?? ''} "
+          "(${DateFormat('MMMM yyyy').format(selectedDate!)})";
 
-    List<List<dynamic>> rows = [];
+      List<List<dynamic>> rows = [];
 
-    for (int i = 0; i < departments.length; i++) {
-      List<dynamic> row = [departments[i]];
+      for (int i = 0; i < departments.length; i++) {
+        List<dynamic> row = [departments[i]];
 
-      for (int j = 0; j < headers.length - 1; j++) {
-        row.add(double.tryParse(controllers[i][j].text) ?? 0);
+        for (int j = 0; j < headers.length - 1; j++) {
+          row.add(double.tryParse(controllers[i][j].text) ?? 0);
+        }
+
+        rows.add(row);
       }
 
-      rows.add(row);
+      await reportService.generateExcel(
+        sheetName: 'CTC',
+        headers: headers,
+        rows: rows,
+        fileName: 'monthly_ctc_report.xlsx',
+        reportTitle: caption,
+
+        amountColumns: List.generate(headers.length - 1, (index) => index + 2),
+
+        addTotalRow: true,
+
+        footerRows: [
+          ["No. of Days", noOfDays],
+          ["Total ManPower", totalManPower],
+          ["Average Work Force", averageWorkForce],
+        ],
+
+        enableStyling: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while generating the excel.",
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+        });
+      }
     }
-
-    await reportService.generateExcel(
-      sheetName: 'CTC',
-      headers: headers,
-      rows: rows,
-      fileName: 'monthly_ctc_report.xlsx',
-      reportTitle: caption,
-
-      amountColumns: List.generate(headers.length - 1, (index) => index + 2),
-
-      addTotalRow: true,
-
-      footerRows: [
-        ["No. of Days", noOfDays],
-        ["Total ManPower", totalManPower],
-        ["Average Work Force", averageWorkForce],
-      ],
-
-      enableStyling: true,
-    );
   }
 
   Future<void> _saveToApi() async {
@@ -204,11 +224,18 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
       "NoOfDays": noOfDays,
       "TotalManPower": totalManPower,
       "AverageWorkForce": averageWorkForce,
+      "CtcPlant": _selectedPlant,
       "CTCData": cTCData,
     };
 
     const apiUrl = '${ApiHelper.baseUrl}insertorupdatemonthlyctcdetails';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
+
+    setState(() {
+      _isBusy = true;
+      _loadingText = "Saving data...";
+    });
+
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -232,6 +259,12 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
         title: "Error",
         message: "An error occured while saving the CTC details.",
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+        });
+      }
     }
   }
 
@@ -259,6 +292,13 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
 
     const apiUrl = '${ApiHelper.baseUrl}selectmonthlyctcdetails';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
+
+    if (mounted) {
+      setState(() {
+        _isBusy = true;
+        _loadingText = "Fetching data...";
+      });
+    }
 
     try {
       final response = await http.post(
@@ -350,6 +390,12 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
         title: "Error",
         message: "Failed to fetch CTC details.",
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+        });
+      }
     }
   }
 
@@ -452,108 +498,117 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
     if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        title: const Text(
-          "COMPUTATION OF AVERAGE MONTHLY CTC",
-          style: TextStyle(
-            color: Colors.blue,
-            fontFamily: "Poppins",
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: true,
+            backgroundColor: Colors.white,
+            elevation: 0.0,
+            title: const Text(
+              "COMPUTATION OF AVERAGE MONTHLY CTC",
+              style: TextStyle(
+                color: Colors.blue,
+                fontFamily: "Poppins",
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          body: SingleChildScrollView(
+            keyboardDismissBehavior: kIsWeb
+                ? ScrollViewKeyboardDismissBehavior.manual
+                : ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildHeader(),
+                      GestureDetector(
+                        onTap: () {
+                          selectMonth(context);
+                        },
+                        child: Text(
+                          '🗓 ${DateFormat('MMMM yyyy').format(selectedDate!)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF454545),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, right: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [_salaryInputTable(), _summaryInputTable()],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      /// SAVE BUTTON
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff2ca9df),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                          ),
+                          onPressed: () async {
+                            await _saveToApi();
+                          },
+                          child: const Text(
+                            "Save",
+                            style: TextStyle(fontSize: 14, color: Colors.white),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      /// DOWNLOAD EXCEL
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff2ca9df),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                          ),
+                          onPressed: _downloadExcel,
+                          child: const Text(
+                            "Download Excel",
+                            style: TextStyle(fontSize: 14, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        keyboardDismissBehavior: kIsWeb
-            ? ScrollViewKeyboardDismissBehavior.manual
-            : ScrollViewKeyboardDismissBehavior.onDrag,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildHeader(),
-                  GestureDetector(
-                    onTap: () {
-                      selectMonth(context);
-                    },
-                    child: Text(
-                      '🗓 ${DateFormat('MMMM yyyy').format(selectedDate!)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF454545),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [_salaryInputTable(), _summaryInputTable()],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-              child: Row(
-                children: [
-                  /// SAVE BUTTON
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xff2ca9df),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
-                      ),
-                      onPressed: () async {
-                        await _saveToApi();
-                      },
-                      child: const Text(
-                        "Save",
-                        style: TextStyle(fontSize: 14, color: Colors.white),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  /// DOWNLOAD EXCEL
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xff2ca9df),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
-                      ),
-                      onPressed: _downloadExcel,
-                      child: const Text(
-                        "Download Excel",
-                        style: TextStyle(fontSize: 14, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+        if (_isBusy) _buildLoader(),
+      ],
     );
   }
 
@@ -857,6 +912,51 @@ class _SalaryInputTableState extends State<SalaryInputTable> {
       await fetchCTCDetails(_selectedPlant!);
       await calculateTotals();
     }
+  }
+
+  Widget _buildLoader() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.25),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 25),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  blurRadius: 20,
+                  color: Colors.black12,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 50,
+                  width: 50,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 4,
+                    color: Color(0xff2ca9df),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  _loadingText,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override

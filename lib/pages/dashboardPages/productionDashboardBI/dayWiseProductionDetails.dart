@@ -13,6 +13,7 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/leads.dart';
 import '../../../classes/globals.dart';
+import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
 final reportService = ReportService();
@@ -39,27 +40,7 @@ DateTime? fiscalYearStartDate;
 DateTime? prevFiscalYearStartDate;
 DateTime? prevFiscalYearEndDate;
 int currentQuarter = 0;
-
-double totalPlannedProduction = 0;
-double totalCompletedProduction = 0;
-
 List<Users> usersList = [];
-
-DailyCompletedQtyAnalysisList dailyData = DailyCompletedQtyAnalysisList(
-  dailyData: [],
-);
-DailyProducedBoxAnalysisList dailyBoxData = DailyProducedBoxAnalysisList(
-  dailyProducedData: [],
-);
-ItemWiseQtyAnalysisList itemWiseData = ItemWiseQtyAnalysisList(
-  itemWiseData: [],
-);
-SterileStatusAnalysisList sterileData = SterileStatusAnalysisList(
-  sterileData: [],
-);
-
-String touchedDay = "";
-String touchedItem = "";
 
 class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   bool touchedMonthGoals = false;
@@ -77,6 +58,39 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   double dailyCompletedMaxY = 0;
   double dailyProducedBoxesMaxY = 0;
   double itemWiseMaxY = 0;
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _dailyCompletedHorizontalController =
+      ScrollController();
+  final ScrollController _dailyProducedHorizontalController =
+      ScrollController();
+
+  double totalPlannedProduction = 0;
+  double totalCompletedProduction = 0;
+  double totalOpenedProduction = 0;
+  String touchedDay = "";
+  String touchedItem = "";
+  DailyCompletedQtyAnalysisList dailyData = DailyCompletedQtyAnalysisList(
+    dailyData: [],
+  );
+  DailyProducedBoxAnalysisList dailyBoxData = DailyProducedBoxAnalysisList(
+    dailyProducedData: [],
+  );
+  ItemWiseQtyAnalysisList itemWiseData = ItemWiseQtyAnalysisList(
+    itemWiseData: [],
+  );
+  SterileStatusAnalysisList sterileData = SterileStatusAnalysisList(
+    sterileData: [],
+  );
+  final ScrollController _itemWiseQtyHorizontalController = ScrollController();
+
+  late String formattedFiscalYearStartDate;
+  late String formattedQuarterStartDate;
+  late String formattedQuarterLastDate;
+  late String formattedDateNow;
+  late String formattedDateFirstOfLastMonth;
+  late String formattedDateLastOfLastMonth;
+  late String formattedDateFirstOfThisMonth;
 
   final http.Client client = http.Client();
 
@@ -292,6 +306,26 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
     prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
     prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
+
+    formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(fiscalYearStartDate!);
+    formattedQuarterStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterFromDate!);
+    formattedQuarterLastDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterToDate!);
+    formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
+    formattedDateFirstOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
+    formattedDateLastOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
+    formattedDateFirstOfThisMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
   }
 
   String formatDate(DateTime date) {
@@ -323,6 +357,42 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     DateTime lastDayOfMonth = DateTime(yearForMonth, month + 1, 0);
 
     return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
+  }
+
+  Iterable<ProductionOrderList> getFilteredProductionList(
+    String selectedDay,
+    String itemCode,
+  ) {
+    Iterable<ProductionOrderList> productionList = dayWiseProduction;
+
+    if (selectedDay.isEmpty) {
+      final monthDates = getMonthStartEndDates(DateTime.now().month);
+
+      productionList = productionList.where((target) {
+        if (target.parsedOrderDate == null) return false;
+
+        return target.parsedOrderDate!.isAtLeast(monthDates['start']!) &&
+            target.parsedOrderDate!.isAtMost(monthDates['end']!);
+      });
+    } else {
+      final selectedDate = DateFormat('dd/MM/yyyy').parse(selectedDay);
+
+      productionList = productionList.where((target) {
+        if (target.parsedOrderDate == null) return false;
+
+        return target.parsedOrderDate!.year == selectedDate.year &&
+            target.parsedOrderDate!.month == selectedDate.month &&
+            target.parsedOrderDate!.day == selectedDate.day;
+      });
+    }
+
+    if (itemCode.isNotEmpty) {
+      productionList = productionList.where(
+        (e) => e.productDescription == itemCode,
+      );
+    }
+
+    return productionList;
   }
 
   SideTitles get _leftProducedBoxesTitles => SideTitles(
@@ -552,14 +622,16 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
         }
       } while (fetchedCount == limit);
 
-      dayWiseProduction = productionList;
+      dayWiseProduction = productionList
+          .where((e) => e.status != "Canceled")
+          .toList();
 
       var productSalesList = dayWiseProduction.where((target) {
         try {
-          final dueOn = target.parsedOrderDate;
-          if (dueOn == null) return false;
-          return dueOn.isAtLeast(fiscalYearStartDate!) &&
-              dueOn.isAtMost(currentDate!);
+          final orderDate = target.parsedOrderDate;
+          if (orderDate == null) return false;
+          return orderDate.isAtLeast(fiscalYearStartDate!) &&
+              orderDate.isAtMost(currentDate!);
         } catch (e) {
           return false;
         }
@@ -569,14 +641,21 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       double completedQty = 0;
       double plannedQtyTotal = 0;
       double completedQtyTotal = 0;
+      double openQty = 0;
+      double openQtyTotal = 0;
       for (var val in productSalesList) {
         plannedQty = double.tryParse(val.plannedQty) ?? 0;
         completedQty = double.tryParse(val.completedQty) ?? 0;
+        if (val.status == "Open") {
+          openQty = double.tryParse(val.plannedQty) ?? 0;
+        }
         plannedQtyTotal += plannedQty;
         completedQtyTotal += completedQty;
+        openQtyTotal += openQty;
       }
       totalPlannedProduction = plannedQtyTotal;
       totalCompletedProduction = completedQtyTotal;
+      totalOpenedProduction = openQtyTotal;
     } catch (e) {
       if (kDebugMode) {
         print(e);
@@ -584,18 +663,11 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     }
   }
 
-  Future<void> _loadDailyOrderQtyAnalysis() async {
+  Future<void> _loadDailyOrderQtyAnalysis(
+    Iterable<ProductionOrderList> productionList,
+  ) async {
     List<DailyCompletedQtyAnalysisData> dataList = [];
-    Map<String, DateTime> monthDates = getMonthStartEndDates(
-      DateTime.now().month,
-    );
-    final todayTarget = dayWiseProduction.where((target) {
-      final dueOn = target.parsedOrderDate;
-      if (dueOn == null) return false;
-      return dueOn.isAtLeast(monthDates['start']!) &&
-          dueOn.isAtMost(monthDates['end']!);
-    }).toList();
-
+    final todayTarget = productionList.toList();
     final Map<String, double> groupedData = {};
 
     for (final target in todayTarget) {
@@ -613,19 +685,11 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     dailyData = DailyCompletedQtyAnalysisList(dailyData: dataList);
   }
 
-  Future<void> _loadDailyProducedBoxAnalysis() async {
+  Future<void> _loadDailyProducedBoxAnalysis(
+    Iterable<ProductionOrderList> productionList,
+  ) async {
     List<DailyProducedBoxAnalysisData> dataList = [];
-    Map<String, DateTime> monthDates = getMonthStartEndDates(
-      DateTime.now().month,
-    );
-
-    final todayTarget = dayWiseProduction.where((target) {
-      final dueOn = target.parsedOrderDate;
-      if (dueOn == null) return false;
-      return dueOn.isAtLeast(monthDates['start']!) &&
-          dueOn.isAtMost(monthDates['end']!);
-    }).toList();
-
+    final todayTarget = productionList.toList();
     final Map<String, double> groupedBoxes = {};
 
     for (final target in todayTarget) {
@@ -648,40 +712,10 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   }
 
   Future<void> _loadItemWiseProductionAnalysis(
-    String selectedDay,
-    String itemCode,
+    Iterable<ProductionOrderList> productionList,
   ) async {
     List<ItemWiseQtyAnalysisData> productwiseDataList = [];
-    var tempList = dayWiseProduction;
 
-    var productionList = const Iterable.empty();
-    productionList = tempList;
-    if (selectedDay == "") {
-      Map<String, DateTime> monthDates = getMonthStartEndDates(
-        DateTime.now().month,
-      );
-      productionList = productionList.where((target) {
-        if (target.parsedOrderDate == null) return false;
-        DateTime invoiceDate = target.parsedOrderDate;
-        return (invoiceDate.isAtLeast(monthDates['start']!) &&
-            invoiceDate.isAtMost(monthDates['end']!));
-      });
-    } else {
-      final selectedDate = DateFormat('dd/MM/yyyy').parse(selectedDay);
-      productionList = productionList.where((target) {
-        if (target.parsedOrderDate == null) return false;
-        DateTime invoiceDate = target.parsedOrderDate;
-        return (invoiceDate.isAtLeast(selectedDate) &&
-            invoiceDate.isAtMost(selectedDate));
-      });
-    }
-    if (itemCode.isNotEmpty) {
-      productionList = productionList.where(
-        (e) => e.productDescription == itemCode,
-      );
-    } else {
-      productionList = productionList;
-    }
     final Map<String, ItemWiseQtyAnalysisData> groupedItems = {};
 
     for (final target in productionList) {
@@ -712,67 +746,38 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
 
     productwiseDataList = groupedItems.values.toList();
 
-    productwiseDataList.sort((a, b) => b.plannedQty.compareTo(a.plannedQty));
+    productwiseDataList.sort(
+      (a, b) => b.completedQty.compareTo(a.completedQty),
+    );
     itemWiseData = ItemWiseQtyAnalysisList(itemWiseData: productwiseDataList);
   }
 
   Future<void> _loadOrderStatusOpenProduction(
-    String selectedDay,
-    String itemCode,
+    Iterable<ProductionOrderList> productionList,
   ) async {
     List<SterileStatusAnalysisData> statusList = [];
-    var tempList = dayWiseProduction;
-    int categoryId = 0;
-    var productionList = const Iterable.empty();
-    productionList = tempList;
-
-    if (selectedDay == "") {
-      Map<String, DateTime> monthDates = getMonthStartEndDates(
-        DateTime.now().month,
-      );
-      productionList = productionList.where((target) {
-        if (target.parsedOrderDate == null) return false;
-        DateTime invoiceDate = target.parsedOrderDate;
-        return (invoiceDate.isAtLeast(monthDates['start']!) &&
-            invoiceDate.isAtMost(monthDates['end']!));
-      });
-    } else {
-      final selectedDate = DateFormat('dd/MM/yyyy').parse(selectedDay);
-      productionList = productionList.where((target) {
-        if (target.parsedOrderDate == null) return false;
-        DateTime invoiceDate = target.parsedOrderDate;
-        return (invoiceDate.isAtLeast(selectedDate) &&
-            invoiceDate.isAtMost(selectedDate));
-      });
-    }
-    if (itemCode.isNotEmpty) {
-      productionList = productionList.where(
-        (e) => e.productDescription == itemCode,
-      );
-    } else {
-      productionList = productionList;
-    }
 
     final Map<String, double> groupedStatus = {};
 
     for (final target in productionList) {
-      final plannedQty = double.tryParse(target.plannedQty) ?? 0;
+      final completedQty = double.tryParse(target.completedQty) ?? 0;
 
       groupedStatus.update(
         target.sterileStatus,
-        (value) => value + plannedQty,
-        ifAbsent: () => plannedQty,
+        (value) => value + completedQty,
+        ifAbsent: () => completedQty,
       );
     }
 
     statusList = groupedStatus.entries.map((e) {
       return SterileStatusAnalysisData(
-        categoryId: categoryId++,
+        categoryId: e.key.toString() == "US" ? 0 : 1,
         sterileStatus: e.key,
         amount: e.value,
         percentage: 0,
       );
     }).toList();
+
     double totalAmount = statusList.fold(
       0,
       (double previousValue, SterileStatusAnalysisData element) =>
@@ -790,6 +795,21 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     sterileData = SterileStatusAnalysisList(sterileData: statusList);
   }
 
+  Future<void> applyFilter() async {
+    chartDataLoaded = false;
+    final filteredList = getFilteredProductionList(touchedDay, touchedItem);
+    await _loadDailyOrderQtyAnalysis(filteredList);
+    await _loadDailyProducedBoxAnalysis(filteredList);
+    await _loadItemWiseProductionAnalysis(filteredList);
+    await _loadOrderStatusOpenProduction(filteredList);
+    prepareChartData();
+    if (mounted) {
+      setState(() {
+        chartDataLoaded = true;
+      });
+    }
+  }
+
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
@@ -797,10 +817,12 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
         : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadProductionOrderAnalysis(userName, userLevel);
-    await _loadDailyOrderQtyAnalysis();
-    await _loadDailyProducedBoxAnalysis();
-    await _loadItemWiseProductionAnalysis("", "");
-    await _loadOrderStatusOpenProduction("", "");
+
+    final filteredList = getFilteredProductionList("", "");
+    await _loadDailyOrderQtyAnalysis(filteredList);
+    await _loadDailyProducedBoxAnalysis(filteredList);
+    await _loadItemWiseProductionAnalysis(filteredList);
+    await _loadOrderStatusOpenProduction(filteredList);
     prepareChartData();
     chartDataLoaded = true;
     if (mounted) {
@@ -817,20 +839,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     touchedYTDGoals = false;
     clearVariables();
     LoadDates();
-    await _loadItemWiseProductionAnalysis("", "");
-    await _loadOrderStatusOpenProduction("", "");
-    prepareChartData();
-    chartDataLoaded = true;
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> loadDataWithFilter(String selectedDay, String itemCode) async {
-    clearVariablesForFilter();
-    LoadDates();
-    await _loadItemWiseProductionAnalysis(selectedDay, itemCode);
-    await _loadOrderStatusOpenProduction(selectedDay, itemCode);
+    await applyFilter();
     prepareChartData();
     chartDataLoaded = true;
     if (mounted) {
@@ -844,12 +853,6 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     sterileData = SterileStatusAnalysisList(sterileData: []);
     touchedDay = "";
     touchedItem = "";
-  }
-
-  void clearVariablesForFilter() {
-    chartDataLoaded = false;
-    itemWiseData = ItemWiseQtyAnalysisList(itemWiseData: []);
-    sterileData = SterileStatusAnalysisList(sterileData: []);
   }
 
   Future<void> generateDailyCompletedOrderExcel(
@@ -994,385 +997,233 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
   @override
   void dispose() {
     client.close();
+    _verticalScrollController.dispose();
+    _dailyCompletedHorizontalController.dispose();
+    _dailyProducedHorizontalController.dispose();
+    _itemWiseQtyHorizontalController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    String formattedFiscalYearStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(fiscalYearStartDate!);
-    String formattedQuarterStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterFromDate!);
-    String formattedQuarterLastDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterToDate!);
-    String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
+
     return chartDataLoaded == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        touchedMonthGoals == true
-                            ? Text(
-                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
-                              )
-                            : touchedQuarterGoals == true
-                            ? Text(
-                                "$formattedQuarterStartDate - $formattedQuarterLastDate",
-                              )
-                            : touchedYTDGoals == true
-                            ? Text(
-                                "$formattedFiscalYearStartDate - $formattedDateNow",
-                              )
-                            : Text(
-                                "$formattedDateFirstOfThisMonth - $formattedDateNow",
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_outlined,
+                            size: 20,
+                            color: Color(0xFF2CA9DF),
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          Expanded(
+                            child: Text(
+                              touchedMonthGoals
+                                  ? "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth"
+                                  : touchedQuarterGoals
+                                  ? "$formattedQuarterStartDate - $formattedQuarterLastDate"
+                                  : touchedYTDGoals
+                                  ? "$formattedFiscalYearStartDate - $formattedDateNow"
+                                  : "$formattedDateFirstOfThisMonth - $formattedDateNow",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
                               ),
-                      ],
+                            ),
+                          ),
+
+                          IconButton(
+                            tooltip: "Filter",
+                            onPressed: showPopupMenu,
+                            icon: const Icon(
+                              Icons.filter_alt_outlined,
+                              color: Color(0xFF2CA9DF),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            showPopupMenu();
-                          },
-                          icon: const Icon(Icons.filter_alt_outlined),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-                RepaintBoundary(
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(10),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const Text('Total Planned Production'),
-                                  Text(formatAmount(totalPlannedProduction)),
-                                ],
-                              ),
-                            ),
-                          ),
+                        buildKpiCard(
+                          icon: Icons.assignment_outlined,
+                          title: "Total Planned\nProduction",
+                          value: formatAmount(totalPlannedProduction),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(10),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const Text('Total Completed Production'),
-                                  Text(formatAmount(totalCompletedProduction)),
-                                ],
-                              ),
-                            ),
-                          ),
+                        buildKpiCard(
+                          icon: Icons.check_circle_outline,
+                          title: "Total Completed\nProduction",
+                          value: formatAmount(totalCompletedProduction),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(10),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const Text('Overall Production Achievement'),
-                                  Text(formatAmount(totalCompletedProduction)),
-                                ],
-                              ),
-                            ),
-                          ),
+                        buildKpiCard(
+                          icon: Icons.inventory_2_outlined,
+                          title: "Total Opened\nProduction",
+                          value: formatAmount(totalOpenedProduction),
                         ),
                       ],
                     ),
                   ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Daily Completed Qty \nAnalysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateDailyCompletedOrderExcel(dailyData);
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateDailyCompletedOrderPDF(dailyData);
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Daily Completed Qty \nAnalysis',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyCompletedOrderExcel(dailyData);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyCompletedOrderPDF(dailyData);
+                        },
+                        child: const Text('Download PDF'),
+                      ),
+                    ],
                     child: _dailyCompletedQtyAnalysis(screenWidth),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Daily Produced Boxes \nAnalysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateDailyCompletedBoxOrderExcel(
-                                    dailyBoxData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateDailyCompletedBoxOrderPDF(
-                                    dailyBoxData,
-                                  );
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Daily Produced Boxes \nAnalysis',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyCompletedBoxOrderExcel(dailyBoxData);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyCompletedBoxOrderPDF(dailyBoxData);
+                        },
+                        child: const Text('Download PDF'),
+                      ),
+                    ],
                     child: _dailyProducedBoxesAnalysis(screenWidth),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Sterile Status Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
+
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Sterile Status Analysis',
+
+                    trailing: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateSterileStatusExcel(sterileData);
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateSterileStatusPDF(sterileData);
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      RepaintBoundary(
-                        child: SizedBox(
-                          height: 250,
-                          width: 100,
-                          child: PieChart(
-                            PieChartData(
-                              pieTouchData: PieTouchData(
-                                touchCallback:
-                                    (FlTouchEvent event, pieTouchResponse) {},
-                              ),
-                              borderData: FlBorderData(show: false),
-                              sectionsSpace: 1,
-                              centerSpaceRadius: 0,
-                              startDegreeOffset: 180,
-                              sections: showingSections(),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Column(
-                                  children: [
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFFFF9F47),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF97D7F3),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFFFF9F47),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Sterile",
+                                  style: TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
-                          ),
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Sterile",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
+
+                            const SizedBox(height: 5),
+
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFF97D7F3),
                                 ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
+                                const SizedBox(width: 5),
+                                const Text(
                                   "Un Sterile",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
+                                  style: TextStyle(fontSize: 12),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item-wise Planned,\nRejected & completed\nQty Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    Row(
+
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateSterileStatusExcel(sterileData);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateSterileStatusPDF(sterileData);
+                        },
+                        child: const Text('Download PDF'),
+                      ),
+                    ],
+
+                    child: SizedBox(
+                      height: 220,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          borderData: FlBorderData(show: false),
+                          sections: showingSections(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title:
+                        'Item-wise Planned,\nRejected & completed\nQty Analysis',
+                    spacing: 20,
+                    trailing: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Column(
@@ -1410,38 +1261,25 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                             ),
                           ],
                         ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateProductwiseOrderExcel(itemWiseData);
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateProductwiseOrderPDF(itemWiseData);
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateProductwiseOrderExcel(itemWiseData);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateProductwiseOrderPDF(itemWiseData);
+                        },
+                        child: const Text('Download PDF'),
+                      ),
+                    ],
                     child: _itemWiseQtyAnalysis(screenWidth),
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
                 ),
               ],
             ),
@@ -1466,6 +1304,63 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     });
   }
 
+  Widget buildKpiCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      width: 168,
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2CA9DF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 18, color: const Color(0xFF2CA9DF)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 5),
+
+          Text(
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _dailyCompletedQtyAnalysis(double screenWidth) {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
@@ -1476,91 +1371,99 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
       chartWidth = screenWidth;
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _dailyCompletedHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(dailyCompletedMaxY),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesDailyCompletedQtyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: dailyCompletedChartBars,
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  if (flTouchEvent is FlTapUpEvent) {
-                    touchedDay = touchedDay == ""
-                        ? dailyData
-                              .dailyData[barTouchResponse.spot!.spot.x.toInt()]
-                              .date
-                        : "";
-
-                    await loadDataWithFilter(touchedDay, touchedItem);
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(dailyCompletedMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${dailyData.dailyData[grpIndex].date}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Completed Qty : ${formatAmount(dailyData.dailyData[grpIndex].completedQty)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesDailyCompletedQtyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: dailyCompletedChartBars,
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    if (flTouchEvent is FlTapUpEvent) {
+                      touchedDay = touchedDay == ""
+                          ? dailyData
+                                .dailyData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .date
+                          : "";
+                      await applyFilter();
+                    }
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${dailyData.dailyData[grpIndex].date}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Completed Qty : ${formatAmount(dailyData.dailyData[grpIndex].completedQty)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -1577,94 +1480,99 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _dailyProducedHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(dailyProducedBoxesMaxY),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(
-                sideTitles: _leftProducedBoxesTitles,
-                axisNameSize: 14,
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesDailyProducedBoxesAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: dailyProducedBoxesBars,
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  if (flTouchEvent is FlTapUpEvent) {
-                    touchedDay = touchedDay == ""
-                        ? dailyBoxData
-                              .dailyProducedData[barTouchResponse.spot!.spot.x
-                                  .toInt()]
-                              .date
-                        : "";
-                  }
-                  await loadDataWithFilter(touchedDay, touchedItem);
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(dailyProducedBoxesMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftProducedBoxesTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${dailyBoxData.dailyProducedData[grpIndex].date}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Completed Qty : ${dailyBoxData.dailyProducedData[grpIndex].producedQty}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesDailyProducedBoxesAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: dailyProducedBoxesBars,
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    if (flTouchEvent is FlTapUpEvent) {
+                      touchedDay = touchedDay == ""
+                          ? dailyBoxData
+                                .dailyProducedData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .date
+                          : "";
+                    }
+                    await applyFilter();
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${dailyBoxData.dailyProducedData[grpIndex].date}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Completed Qty : ${dailyBoxData.dailyProducedData[grpIndex].producedQty}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -1681,109 +1589,117 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemWiseQtyHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(itemWiseMaxY),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemWiseQtyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: itemWiseChartBars,
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  if (flTouchEvent is FlTapUpEvent) {
-                    touchedItem = touchedItem == ""
-                        ? itemWiseData
-                              .itemWiseData[barTouchResponse.spot!.spot.x
-                                  .toInt()]
-                              .itemName
-                        : "";
-                  }
-                  await loadDataWithFilter(touchedDay, touchedItem);
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(itemWiseMaxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${itemWiseData.itemWiseData[grpIndex].itemName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Planned Qty : ${formatAmount(itemWiseData.itemWiseData[grpIndex].plannedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Completed Qty : ${formatAmount(itemWiseData.itemWiseData[grpIndex].completedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Rejected Qty : ${formatAmount(itemWiseData.itemWiseData[grpIndex].rejectedQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemWiseQtyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: itemWiseChartBars,
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    if (flTouchEvent is FlTapUpEvent) {
+                      touchedItem = touchedItem == ""
+                          ? itemWiseData
+                                .itemWiseData[barTouchResponse.spot!.spot.x
+                                    .toInt()]
+                                .itemName
+                          : "";
+                    }
+                    await applyFilter();
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${itemWiseData.itemWiseData[grpIndex].itemName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Planned Qty : ${formatAmount(itemWiseData.itemWiseData[grpIndex].plannedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Completed Qty : ${formatAmount(itemWiseData.itemWiseData[grpIndex].completedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Rejected Qty : ${formatAmount(itemWiseData.itemWiseData[grpIndex].rejectedQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

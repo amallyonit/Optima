@@ -2256,7 +2256,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                         const SizedBox(width: 5),
                         const Text('DSO Off.', style: TextStyle(fontSize: 12)),
                       ],
-                    ),
+                    ),                    
                     menuItems: [
                       PopupMenuItem(
                         onTap: () {
@@ -2320,6 +2320,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                     child: _monthlyAnalysisGraph(),
                   ),
                 ),
+              
               ],
             ),
           )

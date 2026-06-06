@@ -1,5 +1,4 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously, strict_top_level_inference
-import 'package:optima/excel_helper.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -7,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
@@ -15,15 +13,9 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
+import '../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-import 'package:optima/pages/dashboardPages/pdf_helper_web.dart';
-
-import 'package:pdf/widgets.dart' as pw;
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
-
-import '../../../notificationService.dart';
+final reportService = ReportService();
 
 class SalesOrderVsProductionCompletedReport extends StatefulWidget {
   const SalesOrderVsProductionCompletedReport({super.key});
@@ -811,427 +803,130 @@ class _SalesOrderVsProductionCompletedReportState
     });
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> generatePriorityStatusExcel(
     PriorityStatusAnalysisList priorityStatusAnalysisList,
   ) async {
-    double totalStatusQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Priority', 'Priority Qty.', 'Priority %']));
-      for (var data in priorityStatusAnalysisList.priorityData) {
-        sheet.appendRow(
-          toCellRow([data.priority, data.amount, data.percentage]),
-        );
-        totalStatusQty += data.amount;
-      }
-      sheet.appendRow(toCellRow(["Total", totalStatusQty, ""]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('priority_status_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/priority_status_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating priority status excel.",
-      );
-    }
+    await reportService.generateExcel(
+      sheetName: 'SOVsProductionAnalysis',
+      headers: ['Priority', 'Priority Qty.', 'Priority %'],
+      rows: priorityStatusAnalysisList.priorityData
+          .map(
+            (priorityData) => [
+              priorityData.priority,
+              priorityData.amount,
+              priorityData.percentage,
+            ],
+          )
+          .toList(),
+      fileName: 'priority_status_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - SO Vs Production Analysis',
+    );
   }
 
   Future<void> generatePriorityStatusPDF(
     PriorityStatusAnalysisList priorityStatusAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Priority Status Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Priority',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Priority Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Priority %.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in priorityStatusAnalysisList.priorityData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.priority,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.amount.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.percentage.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/priority_status_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating priority status pdf.",
-      );
-    }
+    await reportService.generatePDF(
+      title: 'SOVsProductionAnalysis',
+      headers: ['Priority', 'Priority Qty.', 'Priority %'],
+      rows: priorityStatusAnalysisList.priorityData
+          .map(
+            (priorityData) => [
+              priorityData.priority,
+              priorityData.amount,
+              priorityData.percentage,
+            ],
+          )
+          .toList(),
+      fileName: 'priority_status_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateOrderStatusExcel(
     OrderStatusAnalysisList orderStatusAnalysisList,
   ) async {
-    double totalStatusQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(toCellRow(['Status', 'Status Qty.', 'Status %']));
-      for (var data in orderStatusAnalysisList.orderData) {
-        sheet.appendRow(
-          toCellRow([data.orderStatus, data.amount, data.percentage]),
-        );
-        totalStatusQty += data.amount;
-      }
-      sheet.appendRow(toCellRow(["Total", totalStatusQty, ""]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('order_status_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/order_status_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating order status excel.",
-      );
-    }
+    await reportService.generateExcel(
+      sheetName: 'OrderStatusAnalysis',
+      headers: ['Status', 'Status Qty.', 'Status %'],
+      rows: orderStatusAnalysisList.orderData
+          .map(
+            (orderData) => [
+              orderData.orderStatus,
+              orderData.amount,
+              orderData.percentage,
+            ],
+          )
+          .toList(),
+      fileName: 'order_status_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Order Status Analysis',
+    );
   }
 
   Future<void> generateOrderStatusPDF(
     OrderStatusAnalysisList orderStatusAnalysisList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Order Status Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Status',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Status Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Status %.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in orderStatusAnalysisList.orderData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.orderStatus,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.amount.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.percentage.toString(),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/order_status_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating order status pdf.",
-      );
-    }
+    await reportService.generatePDF(
+      title: 'OrderStatusAnalysis',
+      headers: ['Status', 'Status Qty.', 'Status %'],
+      rows: orderStatusAnalysisList.orderData
+          .map(
+            (orderData) => [
+              orderData.orderStatus,
+              orderData.amount,
+              orderData.percentage,
+            ],
+          )
+          .toList(),
+      fileName: 'order_status_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   Future<void> generateHospitalwiseOrderExcel(
     HospitalWiseCompletedReportList hospitalWiseCompletedReportList,
   ) async {
-    double totalPlannedQty = 0, totalCompletedQty = 0;
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow(['Hospital Name', 'Planned Qty.', 'Completed Qty.']),
-      );
-      for (var data in hospitalWiseCompletedReportList.hospitalData) {
-        sheet.appendRow(
-          toCellRow([data.hospitalName, data.plannedQty, data.completedQty]),
-        );
-        totalPlannedQty += data.plannedQty;
-        totalCompletedQty += data.completedQty;
-      }
-      sheet.appendRow(toCellRow(["Total", totalPlannedQty, totalCompletedQty]));
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('hospitalwise_order_report.xlsx', excelBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/hospitalwise_order_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating hospital wise excel.",
-      );
-    }
+    await reportService.generateExcel(
+      sheetName: 'HospitalWiseOrderAnalysis',
+      headers: ['Hospital Name', 'Planned Qty.', 'Completed Qty.'],
+      rows: hospitalWiseCompletedReportList.hospitalData
+          .map(
+            (hospitalData) => [
+              hospitalData.hospitalName,
+              hospitalData.plannedQty,
+              hospitalData.completedQty,
+            ],
+          )
+          .toList(),
+      fileName: 'hospitalwise_order_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production - Hospital Wise Order Analysis',
+    );
   }
 
   Future<void> generateHospitalwiseOrderPDF(
     HospitalWiseCompletedReportList hospitalWiseCompletedReportList,
   ) async {
-    try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Text(
-                'Hospitalwise Order Report',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            return pw.Table(
-              border: pw.TableBorder.all(),
-              children: [
-                // Table header
-                pw.TableRow(
-                  children: [
-                    pw.Text(
-                      'Hospital Name',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Planned Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Completed Qty.',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // Table data rows
-                for (var data in hospitalWiseCompletedReportList.hospitalData)
-                  pw.TableRow(
-                    children: [
-                      pw.Text(
-                        data.hospitalName,
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.plannedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                      pw.Text(
-                        data.completedQty.toStringAsFixed(2),
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      if (kIsWeb) {
-        final pdfBytes = await pdf.save();
-        saveAndOpenPDF(pdfBytes);
-      } else {
-        String storageDir = await getStorageDirectory();
-        final file = File('$storageDir/hospital_order_report.pdf');
-        await file.writeAsBytes(await pdf.save());
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating hospital wise pdf.",
-      );
-    }
+    await reportService.generatePDF(
+      title: 'HospitalWiseOrderAnalysis',
+      headers: ['Hospital Name', 'Planned Qty.', 'Completed Qty.'],
+      rows: hospitalWiseCompletedReportList.hospitalData
+          .map(
+            (hospitalData) => [
+              hospitalData.hospitalName,
+              hospitalData.plannedQty,
+              hospitalData.completedQty,
+            ],
+          )
+          .toList(),
+      fileName: 'hospitalwise_order_report.pdf',
+      amountColumns: [2, 3],
+    );
   }
 
   @override
