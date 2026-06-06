@@ -20,6 +20,46 @@ import '../dashboard_card_ui.dart';
 
 final reportService = ReportService();
 
+class SparklinePainter extends CustomPainter {
+  final Color color;
+
+  SparklinePainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..moveTo(0, 16)
+      ..lineTo(size.width * .15, 15)
+      ..lineTo(size.width * .30, 4)
+      ..lineTo(size.width * .45, 15)
+      ..lineTo(size.width * .60, 6)
+      ..lineTo(size.width * .75, 14)
+      ..lineTo(size.width * .90, 5)
+      ..lineTo(size.width, 4);
+
+    canvas.drawPath(path, paint);
+
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.10)
+      ..style = PaintingStyle.fill;
+
+    final fillPath = Path.from(path)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas.drawPath(fillPath, fillPaint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
 class ProductionOrderAnalysis extends StatefulWidget {
   const ProductionOrderAnalysis({super.key});
 
@@ -3213,7 +3253,6 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
   Widget build(BuildContext context) {
     final media = MediaQuery.sizeOf(context);
     final screenWidth = media.width;
-    final screenHeight = media.height;
     return chartDataLoaded == true
         ? FinanceVerticalScroll(
             controller: _verticalScrollController,
@@ -3256,690 +3295,693 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                   ],
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Production Order Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateMonthlyProductionExcel(
-                                    monthData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateMonthlyProductionPDF(monthData);
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: screenHeight / 2.67,
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: CircularPercentIndicator(
-                          arcType: ArcType.HALF,
-                          radius: 120.0,
-                          lineWidth: 50.0,
-                          animation: true,
-                          percent: CurrentMonthSalesPercentage / 100,
-                          center: Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 70.0),
-                                child: Text(
-                                  CurrentMonthSalesPercentageStr,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20.0,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                CurrentMonthSalesStr,
-                                style: const TextStyle(fontSize: 14.0),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                "${getMonthName(currentDate!.month)} Goal - $CurrentMonthTargetStr",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                          circularStrokeCap: CircularStrokeCap.butt,
-                          progressColor: Colors.red,
-                          arcBackgroundColor: Colors.grey.shade200,
-                        ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Production Order Analysis',
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateMonthlyProductionExcel(monthData);
+                        },
+                        child: const Text("Download Excel"),
                       ),
-                      Positioned.fill(
-                        top: screenHeight / 4.5,
-                        left: screenHeight / 35,
-                        child: SizedBox(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 4.0,
-                                  right: 4.0,
-                                ),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {});
-                                  },
-                                  child: CircularPercentIndicator(
-                                    arcType: ArcType.HALF,
-                                    radius: 55.0,
-                                    lineWidth: 20.0,
-                                    animation: true,
-                                    percent: LastMonthPercentage / 100,
-                                    center: Column(
-                                      children: [
-                                        const SizedBox(height: 30),
-                                        Text(
-                                          LastMonthPercentageStr,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedMonthGoals
-                                                ? 13.0
-                                                : 12.0,
-                                            color: touchedMonthGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          LastMonthSalesStr,
-                                          style: TextStyle(
-                                            fontSize: touchedMonthGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedMonthGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Center(
-                                          child: Text(
-                                            "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: touchedMonthGoals
-                                                  ? 11.0
-                                                  : 10.0,
-                                              color: touchedMonthGoals
-                                                  ? Colors.cyan
-                                                  : Colors.black,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    curve: Curves.linear,
-                                    circularStrokeCap: CircularStrokeCap.butt,
-                                    progressColor: Colors.red,
-                                    arcBackgroundColor: Colors.grey.shade200,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {});
-                                  },
-                                  child: CircularPercentIndicator(
-                                    arcType: ArcType.HALF,
-                                    radius: 55.0,
-                                    lineWidth: 20.0,
-                                    animation: true,
-                                    percent: CurrentQtrPercentage / 100,
-                                    center: Column(
-                                      children: [
-                                        const SizedBox(height: 30),
-                                        Text(
-                                          CurrentQtrPercentageStr,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedQuarterGoals
-                                                ? 13.0
-                                                : 12.0,
-                                            color: touchedQuarterGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          CurrentQtrSalesStr,
-                                          style: TextStyle(
-                                            fontSize: touchedQuarterGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedQuarterGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedQuarterGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedQuarterGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    curve: Curves.linear,
-                                    circularStrokeCap: CircularStrokeCap.butt,
-                                    progressColor: Colors.orange,
-                                    arcBackgroundColor: Colors.grey.shade200,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {});
-                                  },
-                                  child: CircularPercentIndicator(
-                                    arcType: ArcType.HALF,
-                                    radius: 55.0,
-                                    lineWidth: 20.0,
-                                    animation: true,
-                                    percent: YtdPercentage / 100,
-                                    center: Column(
-                                      children: [
-                                        const SizedBox(height: 30),
-                                        Text(
-                                          YtdPercentageStr,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedYTDGoals
-                                                ? 13.0
-                                                : 12.0,
-                                            color: touchedYTDGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          YtdSalesStr,
-                                          style: TextStyle(
-                                            fontSize: touchedYTDGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedYTDGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          "YTD \n($YtdTargetStr)",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: touchedYTDGoals
-                                                ? 11.0
-                                                : 10.0,
-                                            color: touchedYTDGoals
-                                                ? Colors.cyan
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    curve: Curves.linear,
-                                    circularStrokeCap: CircularStrokeCap.butt,
-                                    progressColor: Colors.green,
-                                    arcBackgroundColor: Colors.grey.shade200,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateMonthlyProductionPDF(monthData);
+                        },
+                        child: const Text("Download PDF"),
                       ),
                     ],
-                  ),
-                ),
-                RepaintBoundary(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+
+                    child: Column(
                       children: [
-                        Tooltip(
-                          preferBelow: false,
-                          richMessage: WidgetSpan(
-                            child: Column(
-                              children: [
-                                const Text(
-                                  "Quarter 1 Analysis",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                Column(
-                                  children: [
-                                    Text("Target : $Q1TargetStr"),
-                                    Text("Achieved : $Q1SalesStr"),
-                                    Text("Difference : $Q1DiffStr"),
-                                    Text("Percentage : $Q1PercentageStr"),
-                                    Text("Monthly Avg. : $Q1AverageStr"),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withValues(alpha: 0.5),
-                                spreadRadius: 5,
-                                blurRadius: 7,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                            color: Colors.white,
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(4),
-                            ),
-                          ),
-                          showDuration: const Duration(seconds: 7),
-                          triggerMode: TooltipTriggerMode.tap,
-                          child: Row(
+                        SizedBox(
+                          height: screenWidth < 600 ? 240 : 300,
+                          child: Stack(
                             children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xff6CCC3F,
-                                  ).withValues(alpha: 0.5),
-                                  border: const Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
+                              Center(
+                                child: CircularPercentIndicator(
+                                  arcType: ArcType.HALF,
+                                  radius: 100.0,
+                                  lineWidth: 35.0,
+                                  animation: true,
+                                  percent: CurrentMonthSalesPercentage / 100,
+                                  center: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 53.0,
+                                        ),
+                                        child: Text(
+                                          CurrentMonthSalesPercentageStr,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20.0,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        CurrentMonthSalesStr,
+                                        style: const TextStyle(fontSize: 14.0),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        "${getMonthName(currentDate!.month)} Goal - $CurrentMonthTargetStr",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14.0,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: Text(
-                                    "Q1",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  circularStrokeCap: CircularStrokeCap.butt,
+                                  progressColor: Colors.red,
+                                  arcBackgroundColor: Colors.grey.shade200,
                                 ),
                               ),
-                              Container(
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
+                              Positioned.fill(
+                                top: screenWidth < 600 ? 125 : 150,
+                                left: 0,
+                                child: SizedBox(
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final isMobile =
+                                          constraints.maxWidth < 360;
+
+                                      return isMobile
+                                          ? Wrap(
+                                              alignment: WrapAlignment.center,
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: [
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 4.0,
+                                                        right: 4.0,
+                                                      ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 45.0,
+                                                      lineWidth: 16.0,
+                                                      animation: true,
+                                                      percent:
+                                                          LastMonthPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 26,
+                                                          ),
+                                                          Text(
+                                                            LastMonthPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            LastMonthSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Center(
+                                                            child: Text(
+                                                              "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                              style: TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize:
+                                                                    touchedMonthGoals
+                                                                    ? 11.0
+                                                                    : 10.0,
+                                                                color:
+                                                                    touchedMonthGoals
+                                                                    ? Colors
+                                                                          .cyan
+                                                                    : Colors
+                                                                          .black,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor: Colors.red,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 45.0,
+                                                      lineWidth: 16.0,
+                                                      animation: true,
+                                                      percent:
+                                                          CurrentQtrPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 26,
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.orange,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 45.0,
+                                                      lineWidth: 16.0,
+                                                      animation: true,
+                                                      percent:
+                                                          YtdPercentage / 100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 26,
+                                                          ),
+                                                          Text(
+                                                            YtdPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            YtdSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "YTD \n($YtdTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.green,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 4.0,
+                                                        right: 4.0,
+                                                      ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 55.0,
+                                                      lineWidth: 20.0,
+                                                      animation: true,
+                                                      percent:
+                                                          LastMonthPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 30,
+                                                          ),
+                                                          Text(
+                                                            LastMonthPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            LastMonthSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Center(
+                                                            child: Text(
+                                                              "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                              style: TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize:
+                                                                    touchedMonthGoals
+                                                                    ? 11.0
+                                                                    : 10.0,
+                                                                color:
+                                                                    touchedMonthGoals
+                                                                    ? Colors
+                                                                          .cyan
+                                                                    : Colors
+                                                                          .black,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor: Colors.red,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 55.0,
+                                                      lineWidth: 20.0,
+                                                      animation: true,
+                                                      percent:
+                                                          CurrentQtrPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 30,
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.orange,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 55.0,
+                                                      lineWidth: 20.0,
+                                                      animation: true,
+                                                      percent:
+                                                          YtdPercentage / 100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 30,
+                                                          ),
+                                                          Text(
+                                                            YtdPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            YtdSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "YTD \n($YtdTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.green,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                    },
                                   ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Q1PercentageStr != ""
-                                      ? Text(Q1PercentageStr)
-                                      : const Text("      "),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Tooltip(
-                          preferBelow: false,
-                          richMessage: WidgetSpan(
-                            child: Column(
+                        RepaintBoundary(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text(
-                                  "Quarter 2 Analysis",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                Column(
-                                  children: [
-                                    Text("Target : $Q2TargetStr"),
-                                    Text("Achieved : $Q2SalesStr"),
-                                    Text("Difference : $Q2DiffStr"),
-                                    Text("Percentage : $Q2PercentageStr"),
-                                    Text("Monthly Avg. : $Q2AverageStr"),
-                                  ],
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      buildQuarterCard(
+                                        quarter: "Q1",
+                                        percentage: Q1PercentageStr,
+                                        color: const Color(0xFF6CCC3F),
+                                        target: Q1TargetStr,
+                                        achieved: Q1SalesStr,
+                                        difference: Q1DiffStr,
+                                        average: Q1AverageStr,
+                                      ),
+
+                                      const SizedBox(width: 10),
+
+                                      buildQuarterCard(
+                                        quarter: "Q2",
+                                        percentage: Q2PercentageStr,
+                                        color: const Color(0xFFF49136),
+                                        target: Q2TargetStr,
+                                        achieved: Q2SalesStr,
+                                        difference: Q2DiffStr,
+                                        average: Q2AverageStr,
+                                      ),
+
+                                      const SizedBox(width: 10),
+
+                                      buildQuarterCard(
+                                        quarter: "Q3",
+                                        percentage: Q3PercentageStr,
+                                        color: const Color(0xFFE92729),
+                                        target: Q3TargetStr,
+                                        achieved: Q3SalesStr,
+                                        difference: Q3DiffStr,
+                                        average: Q3AverageStr,
+                                      ),
+
+                                      const SizedBox(width: 10),
+
+                                      buildQuarterCard(
+                                        quarter: "Q4",
+                                        percentage: Q4PercentageStr,
+                                        color: const Color(0xFF6CCC3F),
+                                        target: Q4TargetStr,
+                                        achieved: Q4SalesStr,
+                                        difference: Q4DiffStr,
+                                        average: Q4AverageStr,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withValues(alpha: 0.5),
-                                spreadRadius: 5,
-                                blurRadius: 7,
-                                offset: const Offset(
-                                  0,
-                                  3,
-                                ), // changes position of shadow
-                              ),
-                            ],
-                            color: Colors.white,
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(4),
-                            ),
-                          ),
-                          triggerMode: TooltipTriggerMode.tap,
-                          child: Row(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFFF49136,
-                                  ).withValues(alpha: 0.5),
-                                  border: const Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: Text(
-                                    "Q2",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Q2PercentageStr != ""
-                                      ? Text(Q2PercentageStr)
-                                      : const Text("      "),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Tooltip(
-                          preferBelow: false,
-                          richMessage: WidgetSpan(
-                            child: Column(
-                              children: [
-                                const Text(
-                                  "Quarter 3 Analysis",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                Column(
-                                  children: [
-                                    Text("Target : $Q3TargetStr"),
-                                    Text("Achieved : $Q3SalesStr"),
-                                    Text("Difference : $Q3DiffStr"),
-                                    Text("Percentage : $Q3PercentageStr"),
-                                    Text("Monthly Avg. : $Q3AverageStr"),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withValues(alpha: 0.5),
-                                spreadRadius: 5,
-                                blurRadius: 7,
-                                offset: const Offset(
-                                  0,
-                                  3,
-                                ), // changes position of shadow
-                              ),
-                            ],
-                            color: Colors.white,
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(4),
-                            ),
-                          ),
-                          triggerMode: TooltipTriggerMode.tap,
-                          child: Row(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFFE92729,
-                                  ).withValues(alpha: 0.5),
-                                  border: const Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: Text(
-                                    "Q3",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Q3PercentageStr != ""
-                                      ? Text(Q3PercentageStr)
-                                      : const Text("      "),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Tooltip(
-                          preferBelow: false,
-                          richMessage: WidgetSpan(
-                            child: Column(
-                              children: [
-                                const Text(
-                                  "Quarter 4 Analysis",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                Column(
-                                  children: [
-                                    Text("Target : $Q4TargetStr"),
-                                    Text("Achieved : $Q4SalesStr"),
-                                    Text("Difference : $Q4DiffStr"),
-                                    Text("Percentage : $Q4PercentageStr"),
-                                    Text("Monthly Avg. : $Q4AverageStr"),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withValues(alpha: 0.5),
-                                spreadRadius: 5,
-                                blurRadius: 7,
-                                offset: const Offset(
-                                  0,
-                                  3,
-                                ), // changes position of shadow
-                              ),
-                            ],
-                            color: Colors.white,
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(4),
-                            ),
-                          ),
-                          triggerMode: TooltipTriggerMode.tap,
-                          child: Row(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF6CCC3F,
-                                  ).withValues(alpha: 0.5),
-                                  border: const Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: Text(
-                                    "Q4",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    right: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    top: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.black,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Q4PercentageStr != ""
-                                      ? Text(Q4PercentageStr)
-                                      : const Text("      "),
-                                ),
-                              ),
-                            ],
                           ),
                         ),
                       ],
@@ -4586,6 +4628,162 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         });
       }
     });
+  }
+
+  Widget buildQuarterCard({
+    required String quarter,
+    required String percentage,
+    required Color color,
+    required String target,
+    required String achieved,
+    required String difference,
+    required String average,
+  }) {
+    return Tooltip(
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: false,
+      richMessage: WidgetSpan(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "$quarter Analysis",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text("Target : $target"),
+            Text("Achieved : $achieved"),
+            Text("Difference : $difference"),
+            Text("Monthly Avg : $average"),
+          ],
+        ),
+      ),
+      child: Container(
+        width: 110,
+        height: 145,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: color.withValues(alpha: 0.12),
+              child: Text(
+                quarter,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              percentage,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              achieved,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+
+            const Spacer(),
+
+            SizedBox(
+              height: 20,
+              child: CustomPaint(
+                painter: SparklinePainter(color),
+                size: const Size(double.infinity, 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildQuarterCardOld({
+    required String quarter,
+    required String percentage,
+    required Color color,
+    required String target,
+    required String achieved,
+    required String difference,
+    required String average,
+  }) {
+    return Tooltip(
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: false,
+
+      richMessage: WidgetSpan(
+        child: Column(
+          children: [
+            Text(
+              "$quarter Analysis",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text("Target : $target"),
+            Text("Achieved : $achieved"),
+            Text("Difference : $difference"),
+            Text("Monthly Avg : $average"),
+          ],
+        ),
+      ),
+
+      child: Container(
+        width: 90,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color.withValues(alpha: 0.15),
+              child: Text(
+                quarter,
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              percentage,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _monthWiseProductionAnalysis(double screenWidth) {
