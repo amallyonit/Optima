@@ -4231,10 +4231,9 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
                     title: 'Order Status Analysis',
-
                     trailing: Row(
                       children: [
                         Padding(
@@ -4298,7 +4297,6 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                         ),
                       ],
                     ),
-
                     menuItems: [
                       PopupMenuItem(
                         onTap: () async {

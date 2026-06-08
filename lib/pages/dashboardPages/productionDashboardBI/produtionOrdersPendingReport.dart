@@ -14,6 +14,7 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import '../../../notificationService.dart';
 import '../ReportService.dart';
+import '../dashboard_card_ui.dart';
 
 class ProductionOrdersPendingReport extends StatefulWidget {
   const ProductionOrdersPendingReport({super.key});
@@ -210,11 +211,11 @@ class _ProductionOrdersPendingReportState
   Color getCategoryColor(int categoryId) {
     switch (categoryId) {
       case 0:
-        return const Color(0xFF97D7F3);
+        return const Color(0xFF6CCC3F);
       case 1:
         return const Color(0xFFF49136);
       case 2:
-        return const Color(0xFF6CCC3F);
+        return const Color(0xFF97D7F3);
       default:
         return const Color(0xFF6CCC3F);
     }
@@ -695,7 +696,8 @@ class _ProductionOrdersPendingReportState
   }
 
   Future<void> _loadDailyOrderQtyAnalysis() async {
-    Map<String, DailyOrderQtyAnalysisData> groupedData = {};
+    List<DailyOrderQtyAnalysisData> dailyOrderQtyDataList = [];
+    Map<String, DailyOrderQtyAnalysisData> dailyOrderQtyDataMap = {};
 
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       DateTime.now().month,
@@ -717,17 +719,17 @@ class _ProductionOrdersPendingReportState
 
       final pending = double.tryParse(target.pendingQuantity) ?? 0;
 
-      if (groupedData.containsKey(date)) {
-        final existing = groupedData[date]!;
+      if (dailyOrderQtyDataMap.containsKey(date)) {
+        final existing = dailyOrderQtyDataMap[date]!;
 
-        groupedData[date] = DailyOrderQtyAnalysisData(
+        dailyOrderQtyDataMap[date] = DailyOrderQtyAnalysisData(
           date: existing.date,
           orderedQty: existing.orderedQty + ordered,
           dispatchedQty: existing.dispatchedQty + dispatched,
           pendingQty: existing.pendingQty + pending,
         );
       } else {
-        groupedData[date] = DailyOrderQtyAnalysisData(
+        dailyOrderQtyDataMap[date] = DailyOrderQtyAnalysisData(
           date: date,
           orderedQty: ordered,
           dispatchedQty: dispatched,
@@ -735,10 +737,10 @@ class _ProductionOrdersPendingReportState
         );
       }
     }
+    dailyOrderQtyDataList = dailyOrderQtyDataMap.values.toList();
+    dailyOrderQtyDataList.sort((a, b) => a.date.compareTo(b.date));
 
-    dailyData = DailyOrderQtyAnalysisList(
-      dailyData: groupedData.values.toList(),
-    );
+    dailyData = DailyOrderQtyAnalysisList(dailyData: dailyOrderQtyDataList);
   }
 
   Future<void> _loadHospitalWiseAnalysis(
@@ -1239,6 +1241,12 @@ class _ProductionOrdersPendingReportState
     );
   }
 
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _dailyOrderHorizontalController = ScrollController();
+  final ScrollController _priorityWiseHorizontalController = ScrollController();
+  final ScrollController _hospitalWiseHorizontalController = ScrollController();
+  final ScrollController _productWiseHorizontalController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -1252,6 +1260,11 @@ class _ProductionOrdersPendingReportState
   @override
   void dispose() {
     client.close();
+    _verticalScrollController.dispose();
+    _dailyOrderHorizontalController.dispose();
+    _priorityWiseHorizontalController.dispose();
+    _hospitalWiseHorizontalController.dispose();
+    _productWiseHorizontalController.dispose();
     super.dispose();
   }
 
@@ -1260,497 +1273,395 @@ class _ProductionOrdersPendingReportState
     final media = MediaQuery.sizeOf(context);
     final screenWidth = media.width;
     return chartDataLoaded
-        ? ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        touchedMonthGoals == true
+                            ? Text(
+                                "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
+                              )
+                            : touchedQuarterGoals == true
+                            ? Text(
+                                "$formattedQuarterStartDate - $formattedQuarterLastDate",
+                              )
+                            : touchedYTDGoals == true
+                            ? Text(
+                                "$formattedFiscalYearStartDate - $formattedDateNow",
+                              )
+                            : Text(
+                                "$formattedDateFirstOfThisMonth - $formattedDateNow",
+                              ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                    ),
+                  ],
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          touchedMonthGoals == true
-                              ? Text(
-                                  "$formattedDateFirstOfLastMonth - $formattedDateLastOfLastMonth",
-                                )
-                              : touchedQuarterGoals == true
-                              ? Text(
-                                  "$formattedQuarterStartDate - $formattedQuarterLastDate",
-                                )
-                              : touchedYTDGoals == true
-                              ? Text(
-                                  "$formattedFiscalYearStartDate - $formattedDateNow",
-                                )
-                              : Text(
-                                  "$formattedDateFirstOfThisMonth - $formattedDateNow",
-                                ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              showPopupMenu();
-                            },
-                            icon: const Icon(Icons.filter_alt_outlined),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF49136),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
                           ),
-                          const SizedBox(width: 5),
-                        ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Order Quantity: ${formatAmount(orderedQtyHeader)}',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF97D7F3),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Dispatched Quantity: ${formatAmount(dispatchedQtyHeader)}',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF78E25D),
+                            border: Border.all(color: Colors.transparent),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(10),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Pending Quantity: ${formatAmount(pendingQtyHeader)}',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Center(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xff2ca9df),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
+                      ),
+                      onPressed: () {
+                        generatePendingOrderExcel();
+                      },
+                      child: const SizedBox(
+                        width: 400,
+                        child: Center(
+                          child: Text(
+                            "Download Pending Orders For Production",
+                            style: TextStyle(fontSize: 14, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Daily Order\nQty Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF49136),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(10),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Total Order Quantity: ${formatAmount(orderedQtyHeader)}',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFF2CA9DF),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF97D7F3),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(10),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Dispatched Quantity: ${formatAmount(dispatchedQtyHeader)}',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Ordered Qty.',
+                          style: TextStyle(fontSize: 12),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF78E25D),
-                              border: Border.all(color: Colors.transparent),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(10),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Total Pending Quantity: ${formatAmount(pendingQtyHeader)}',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Dispatched Qty.',
+                          style: TextStyle(fontSize: 12),
                         ),
                       ],
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff2ca9df),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5.0),
-                          ),
-                        ),
-                        onPressed: () {
-                          generatePendingOrderExcel();
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyOrderExcel(dailyData);
                         },
-                        child: const SizedBox(
-                          width: 400,
-                          child: Center(
-                            child: Text(
-                              "Download Pending Orders For Production",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
+                        child: const Text("Download Excel"),
                       ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Daily Order\nQty Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: const Color(0xFFFF9F47),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Ordered Qty.",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: const Color(0xFF97D7F3),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Dispatched Qty.",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          const SizedBox(width: 5),
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateDailyOrderExcel(dailyData);
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateDailyOrderPDF(dailyData);
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyOrderPDF(dailyData);
+                        },
+                        child: const Text("Download PDF"),
                       ),
                     ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                     child: _dailyOrderQtyAnalysis(screenWidth),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                    child: Divider(thickness: 2),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Priority wise Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generatePrioritywiseOrderExcel(
-                                      priorityList,
-                                    );
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generatePrioritywiseOrderPDF(priorityList);
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16.0,
-                      right: 16.0,
-                      bottom: 16.0,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Priority wise Analysis',
+                    trailing: Row(
                       children: [
-                        SizedBox(
-                          height: 250,
-                          width: 100,
-                          child: PieChart(
-                            PieChartData(
-                              pieTouchData: PieTouchData(
-                                touchCallback:
-                                    (FlTouchEvent event, pieTouchResponse) {},
-                              ),
-                              borderData: FlBorderData(show: false),
-                              sectionsSpace: 1,
-                              centerSpaceRadius: 0,
-                              startDegreeOffset: 180,
-                              sections: showingSections(),
-                            ),
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Column(
                                 children: [
-                                  Column(
-                                    children: [
-                                      Container(
-                                        height: 8,
-                                        width: 16,
-                                        color: const Color(0xFF78E25D),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Container(
-                                        height: 8,
-                                        width: 16,
-                                        color: const Color(0xFF97D7F3),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Container(
-                                        height: 8,
-                                        width: 16,
-                                        color: const Color(0xFFFF9F47),
-                                      ),
-                                      const SizedBox(height: 6),
-                                    ],
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(0),
                                   ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(2),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(1),
+                                  ),
+                                  const SizedBox(height: 6),
                                 ],
                               ),
+                            ],
+                          ),
+                        ),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Low",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
                             ),
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: EdgeInsets.only(left: 8.0),
-                                  child: Text(
-                                    "Low",
-                                    textAlign: TextAlign.left,
-                                    style: TextStyle(fontSize: 10),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: EdgeInsets.only(left: 8.0),
-                                  child: Text(
-                                    "Medium",
-                                    textAlign: TextAlign.left,
-                                    style: TextStyle(fontSize: 10),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: EdgeInsets.only(left: 8.0),
-                                  child: Text(
-                                    "High",
-                                    textAlign: TextAlign.left,
-                                    style: TextStyle(fontSize: 10),
-                                  ),
-                                ),
-                              ],
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Medium",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "High",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
                             ),
                           ],
                         ),
                       ],
                     ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                    child: Divider(thickness: 2),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Hospital Wise\nAnalysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generatePrioritywiseOrderExcel(priorityList);
+                        },
+                        child: const Text("Download Excel"),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: const Color(0xFFFF9F47),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Ordered Qty.",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: const Color(0xFF97D7F3),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Dispatched Qty.",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          const SizedBox(width: 5),
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateHospitalwiseOrderExcel(
-                                      hospitalData,
-                                    );
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateHospitalwiseOrderPDF(hospitalData);
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
+                      PopupMenuItem(
+                        onTap: () {
+                          generatePrioritywiseOrderPDF(priorityList);
+                        },
+                        child: const Text("Download PDF"),
                       ),
                     ],
+
+                    child: SizedBox(
+                      height: 220,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          borderData: FlBorderData(show: false),
+                          sections: showingSections(),
+                        ),
+                      ),
+                    ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Hospital\nWise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFF2CA9DF),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Ordered Qty.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Dispatched Qty.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateHospitalwiseOrderExcel(hospitalData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateHospitalwiseOrderPDF(hospitalData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
                     child: _hospitalWiseAnalysis(screenWidth),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                    child: Divider(thickness: 2),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Product Wise\nQty Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Product\nWise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFF2CA9DF),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Ordered Qty.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Dispatched Qty.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateProductwiseOrderExcel(productData);
+                        },
+                        child: const Text("Download Excel"),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: const Color(0xFFFF9F47),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Ordered Qty.",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: const Color(0xFF97D7F3),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Dispatched Qty.",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          const SizedBox(width: 5),
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateProductwiseOrderExcel(productData);
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    generateProductwiseOrderPDF(productData);
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
-                          ),
-                        ],
+                      PopupMenuItem(
+                        onTap: () {
+                          generateProductwiseOrderPDF(productData);
+                        },
+                        child: const Text("Download PDF"),
                       ),
                     ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                     child: _productWiseQtyAnalysis(screenWidth),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                    child: Divider(thickness: 2),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           )
         : const Center(child: CircularProgressIndicator());
   }
@@ -1780,12 +1691,14 @@ class _ProductionOrdersPendingReportState
     } else {
       chartWidth = screenWidth;
     }
-    return RepaintBoundary(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          height: 350,
-          width: chartWidth,
+    return FinanceHorizontalChartScroll(
+      controller: _dailyOrderHorizontalController,
+      verticalController: _verticalScrollController,
+      child: SizedBox(
+        height: 350,
+        width: chartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
               maxY: getMaxValue(dailyMaxY),
@@ -1909,12 +1822,14 @@ class _ProductionOrdersPendingReportState
     } else {
       chartWidth = screenWidth;
     }
-    return RepaintBoundary(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          height: 350,
-          width: chartWidth,
+    return FinanceHorizontalChartScroll(
+      controller: _hospitalWiseHorizontalController,
+      verticalController: _verticalScrollController,
+      child: SizedBox(
+        height: 350,
+        width: chartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
               maxY: getMaxValue(hospitalMaxY),
@@ -2040,12 +1955,14 @@ class _ProductionOrdersPendingReportState
     } else {
       chartWidth = screenWidth;
     }
-    return RepaintBoundary(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          height: 350,
-          width: chartWidth,
+    return FinanceHorizontalChartScroll(
+      controller: _productWiseHorizontalController,
+      verticalController: _verticalScrollController,
+      child: SizedBox(
+        height: 350,
+        width: chartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
               maxY: getMaxValue(productMaxY),

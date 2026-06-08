@@ -1015,7 +1015,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 8,
                     vertical: 8,
                   ),
                   child: Card(
@@ -1025,7 +1025,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: 8,
                         vertical: 12,
                       ),
                       child: Row(
@@ -1095,7 +1095,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
                     title: 'Daily Completed Qty \nAnalysis',
                     spacing: 20,
@@ -1118,7 +1118,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
                     title: 'Daily Produced Boxes \nAnalysis',
                     spacing: 20,
@@ -1141,7 +1141,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
                     title: 'Sterile Status Analysis',
 
@@ -1218,7 +1218,7 @@ class _DayWiseProductionDetailsState extends State<DayWiseProductionDetails> {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
                     title:
                         'Item-wise Planned,\nRejected & completed\nQty Analysis',
