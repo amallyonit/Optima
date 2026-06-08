@@ -3296,7 +3296,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
                     title: 'Production Order Analysis',
                     menuItems: [
@@ -3325,14 +3325,14 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                                 child: CircularPercentIndicator(
                                   arcType: ArcType.HALF,
                                   radius: 100.0,
-                                  lineWidth: 35.0,
+                                  lineWidth: 32.0,
                                   animation: true,
                                   percent: CurrentMonthSalesPercentage / 100,
                                   center: Column(
                                     children: [
                                       Padding(
                                         padding: const EdgeInsets.only(
-                                          top: 53.0,
+                                          top: 30.0,
                                         ),
                                         child: Text(
                                           CurrentMonthSalesPercentageStr,
@@ -3923,65 +3923,62 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                           ),
                         ),
                         RepaintBoundary(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      buildQuarterCard(
-                                        quarter: "Q1",
-                                        percentage: Q1PercentageStr,
-                                        color: const Color(0xFF6CCC3F),
-                                        target: Q1TargetStr,
-                                        achieved: Q1SalesStr,
-                                        difference: Q1DiffStr,
-                                        average: Q1AverageStr,
-                                      ),
-
-                                      const SizedBox(width: 10),
-
-                                      buildQuarterCard(
-                                        quarter: "Q2",
-                                        percentage: Q2PercentageStr,
-                                        color: const Color(0xFFF49136),
-                                        target: Q2TargetStr,
-                                        achieved: Q2SalesStr,
-                                        difference: Q2DiffStr,
-                                        average: Q2AverageStr,
-                                      ),
-
-                                      const SizedBox(width: 10),
-
-                                      buildQuarterCard(
-                                        quarter: "Q3",
-                                        percentage: Q3PercentageStr,
-                                        color: const Color(0xFFE92729),
-                                        target: Q3TargetStr,
-                                        achieved: Q3SalesStr,
-                                        difference: Q3DiffStr,
-                                        average: Q3AverageStr,
-                                      ),
-
-                                      const SizedBox(width: 10),
-
-                                      buildQuarterCard(
-                                        quarter: "Q4",
-                                        percentage: Q4PercentageStr,
-                                        color: const Color(0xFF6CCC3F),
-                                        target: Q4TargetStr,
-                                        achieved: Q4SalesStr,
-                                        difference: Q4DiffStr,
-                                        average: Q4AverageStr,
-                                      ),
-                                    ],
-                                  ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q1",
+                                  percentage: Q1PercentageStr,
+                                  color: const Color(0xFF6CCC3F),
+                                  target: Q1TargetStr,
+                                  achieved: Q1SalesStr,
+                                  difference: Q1DiffStr,
+                                  average: Q1AverageStr,
                                 ),
-                              ],
-                            ),
+                              ),
+
+                              const SizedBox(width: 6),
+
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q2",
+                                  percentage: Q2PercentageStr,
+                                  color: const Color(0xFFF49136),
+                                  target: Q2TargetStr,
+                                  achieved: Q2SalesStr,
+                                  difference: Q2DiffStr,
+                                  average: Q2AverageStr,
+                                ),
+                              ),
+
+                              const SizedBox(width: 6),
+
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q3",
+                                  percentage: Q3PercentageStr,
+                                  color: const Color(0xFFE92729),
+                                  target: Q3TargetStr,
+                                  achieved: Q3SalesStr,
+                                  difference: Q3DiffStr,
+                                  average: Q3AverageStr,
+                                ),
+                              ),
+
+                              const SizedBox(width: 6),
+
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q4",
+                                  percentage: Q4PercentageStr,
+                                  color: const Color(0xFF6CCC3F),
+                                  target: Q4TargetStr,
+                                  achieved: Q4SalesStr,
+                                  difference: Q4DiffStr,
+                                  average: Q4AverageStr,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -3990,7 +3987,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
                     title: 'Month wise\nProduction Analysis',
                     spacing: 20,
@@ -4037,573 +4034,437 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item-wise\nProduction Orders",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item-wise\nProduction Orders',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFF97D7F3),
+                          color: const Color(0xFF2CA9DF),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFFFF9F47),
+                          color: Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
                         const Text(
-                          "3 Months Avg.",
+                          '3 Months Avg.',
                           style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateItemProductionExcel(
-                                    itemWiseData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateItemProductionPDF(itemWiseData);
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateItemProductionExcel(itemWiseData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateItemProductionPDF(itemWiseData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
                     child: _itemWiseProductionOrders(screenWidth),
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Branch-wise\nProduction Orders",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Branch-wise\nProduction Orders',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFF97D7F3),
+                          color: const Color(0xFF2CA9DF),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFFFF9F47),
+                          color: Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
                         const Text(
-                          "3 Months Avg.",
+                          '3 Months Avg.',
                           style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateBranchProductionExcel(
-                                    branchWiseData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateBranchProductionPDF(
-                                    branchWiseData,
-                                  );
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateBranchProductionExcel(branchWiseData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateBranchProductionPDF(branchWiseData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
                     child: _branchWiseProductionOrders(screenWidth),
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Group Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateItemGroupProductionExcel(
-                                    itemGroupWiseData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateItemGroupProductionPDF(
-                                    itemGroupWiseData,
-                                  );
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Group Wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFF2CA9DF),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          '3 Months Avg.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateItemGroupProductionExcel(
+                            itemGroupWiseData,
+                          );
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateItemGroupProductionPDF(
+                            itemGroupWiseData,
+                          );
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
                     child: _itemGroupWiseAnalysis(screenWidth),
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Sub Group Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateItemSubGroupProductionExcel(
-                                    itemSubGroupWiseData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateItemSubGroupProductionPDF(
-                                    itemSubGroupWiseData,
-                                  );
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Sub Group Wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFF2CA9DF),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          '3 Months Avg.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateItemSubGroupProductionExcel(
+                            itemSubGroupWiseData,
+                          );
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateItemSubGroupProductionPDF(
+                            itemSubGroupWiseData,
+                          );
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
                     child: _itemSubGroupWiseAnalysis(screenWidth),
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Order Status Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateOrderStatusProductionExcel(
-                                    statusData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateOrderStatusProductionPDF(
-                                    statusData,
-                                  );
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      RepaintBoundary(
-                        child: SizedBox(
-                          height: 250,
-                          width: 100,
-                          child: PieChart(
-                            PieChartData(
-                              pieTouchData: PieTouchData(
-                                touchCallback:
-                                    (FlTouchEvent event, pieTouchResponse) {},
-                              ),
-                              borderData: FlBorderData(show: false),
-                              sectionsSpace: 1,
-                              centerSpaceRadius: 0,
-                              startDegreeOffset: 180,
-                              sections: showingSections(),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Column(
-                                  children: [
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: getCategoryColor(1),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: getCategoryColor(0),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: getCategoryColor(2),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Column(
+                  padding: const EdgeInsets.all(16),
+                  child: DashboardCardUI(
+                    title: 'Order Status Analysis',
+
+                    trailing: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // for (final categoryData
-                              // in receivablesCategoryList.categoryData)
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Closed",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Open",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Cancelled",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                              Column(
+                                children: [
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(1),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(0),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(2),
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Closed",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Open",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Cancelled",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateOrderStatusProductionExcel(statusData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateOrderStatusProductionPDF(statusData);
+                        },
+                        child: const Text("Download PDF"),
                       ),
                     ],
+
+                    child: SizedBox(
+                      height: 220,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          borderData: FlBorderData(show: false),
+                          sections: showingSections(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Plant wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Plant wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFF97D7F3),
+                          color: const Color(0xFF2CA9DF),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFFFF9F47),
+                          color: Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
                         const Text(
-                          "3 Months Avg.",
+                          '3 Months Avg.',
                           style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generatePlantProductionExcel(
-                                    plantWiseData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generatePlantProductionPDF(
-                                    plantWiseData,
-                                  );
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generatePlantProductionExcel(plantWiseData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generatePlantProductionPDF(plantWiseData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
                     child: _plantWiseAnalysis(screenWidth),
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Unit wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Unit wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFF97D7F3),
+                          color: const Color(0xFF2CA9DF),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFFFF9F47),
+                          color: Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
                         const Text(
-                          "3 Months Avg.",
+                          '3 Months Avg.',
                           style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateUnitProductionExcel(
-                                    unitWiseData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateUnitProductionPDF(unitWiseData);
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(child: _unitWiseAnalysis(screenWidth)),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateUnitProductionExcel(unitWiseData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateUnitProductionPDF(unitWiseData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _unitWiseAnalysis(screenWidth),
+                  ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Shift wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Shift wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFF97D7F3),
+                          color: const Color(0xFF2CA9DF),
                         ),
                         const SizedBox(width: 5),
-                        const Text("Actual", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
                         Container(
                           height: 8,
                           width: 8,
-                          color: const Color(0xFFFF9F47),
+                          color: Color(0xFFFF9F47),
                         ),
                         const SizedBox(width: 5),
                         const Text(
-                          "3 Months Avg.",
+                          '3 Months Avg.',
                           style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateShiftProductionExcel(
-                                    shiftWiseData,
-                                  );
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () async {
-                                  await generateShiftProductionPDF(
-                                    shiftWiseData,
-                                  );
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: RepaintBoundary(
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateShiftProductionExcel(shiftWiseData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateShiftProductionPDF(shiftWiseData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
                     child: _shiftWiseAnalysis(screenWidth),
                   ),
                 ),
@@ -4658,8 +4519,8 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         ),
       ),
       child: Container(
-        width: 110,
-        height: 145,
+        // width: 110,
+        height: 130,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -4675,7 +4536,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
         child: Column(
           children: [
             CircleAvatar(
-              radius: 20,
+              radius: 14,
               backgroundColor: color.withValues(alpha: 0.12),
               child: Text(
                 quarter,
@@ -4691,7 +4552,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
 
             Text(
               percentage,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 4),
@@ -4699,7 +4560,7 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
             Text(
               achieved,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 color: Colors.grey.shade700,
                 fontWeight: FontWeight.w500,
               ),
