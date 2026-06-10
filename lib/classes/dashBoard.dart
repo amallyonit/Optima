@@ -4454,16 +4454,16 @@ class ItemSubGroupWiseAnalysisJobCardData {
   });
 }
 
-class ItemDescriptionWiseAnalysisJobCardList {
-  final List<ItemDescriptionWiseAnalysisJobCardData> itemData;
-  ItemDescriptionWiseAnalysisJobCardList({required this.itemData});
+class ItemWiseAnalysisJobCardList {
+  final List<ItemWiseAnalysisJobCardData> itemData;
+  ItemWiseAnalysisJobCardList({required this.itemData});
 }
 
-class ItemDescriptionWiseAnalysisJobCardData {
+class ItemWiseAnalysisJobCardData {
   final String itemName;
   final double lineTotal;
   final double quantity;
-  ItemDescriptionWiseAnalysisJobCardData({
+  ItemWiseAnalysisJobCardData({
     required this.itemName,
     required this.lineTotal,
     required this.quantity,

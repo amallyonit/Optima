@@ -14,6 +14,7 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import '../ReportService.dart';
+import '../dashboard_card_ui.dart';
 
 final reportService = ReportService();
 
@@ -53,8 +54,9 @@ ItemGroupWiseAnalysisJobCardList itemGroupData =
     ItemGroupWiseAnalysisJobCardList(itemGroupData: []);
 ItemSubGroupWiseAnalysisJobCardList itemSubGroupData =
     ItemSubGroupWiseAnalysisJobCardList(itemSubGroupData: []);
-ItemDescriptionWiseAnalysisJobCardList itemData =
-    ItemDescriptionWiseAnalysisJobCardList(itemData: []);
+ItemWiseAnalysisJobCardList itemData = ItemWiseAnalysisJobCardList(
+  itemData: [],
+);
 WarehouseWiseAnalysisJobCardList warehouseData =
     WarehouseWiseAnalysisJobCardList(warehouseData: []);
 
@@ -85,6 +87,14 @@ class _JobCartEntryForAlternateMaterialsState
   bool touchedYTDGoals = false;
   bool showDrillDownChart = false;
   int touchedIndex = -1;
+
+  String? formattedFiscalYearStartDate;
+  String? formattedQuarterStartDate;
+  String? formattedQuarterLastDate;
+  String? formattedDateNow;
+  String? formattedDateFirstOfLastMonth;
+  String? formattedDateLastOfLastMonth;
+  String? formattedDateFirstOfThisMonth;
 
   double getMaxValue(double maxValue) {
     double divVal = 0;
@@ -310,6 +320,26 @@ class _JobCartEntryForAlternateMaterialsState
     int prevFiscalYearEndYear = prevFiscalYearStartYear + 1;
     prevFinancialYear =
         'FY${prevFiscalYearStartYear.toString().substring(2)}-${prevFiscalYearEndYear.toString().substring(2)}';
+
+    formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(fiscalYearStartDate!);
+    formattedQuarterStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterFromDate!);
+    formattedQuarterLastDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterToDate!);
+    formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
+    formattedDateFirstOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
+    formattedDateLastOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
+    formattedDateFirstOfThisMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
   }
 
   String formatDate(DateTime date) {
@@ -387,7 +417,7 @@ class _JobCartEntryForAlternateMaterialsState
     showTitles: true,
     getTitlesWidget: (value, meta) {
       String text = '';
-      List<ItemDescriptionWiseAnalysisJobCardData> mData = itemData.itemData;
+      List<ItemWiseAnalysisJobCardData> mData = itemData.itemData;
       text = mData.elementAt(value.toInt()).itemName;
       return Padding(
         padding: const EdgeInsets.only(top: 4.0),
@@ -516,8 +546,8 @@ class _JobCartEntryForAlternateMaterialsState
         .toList();
   }
 
-  List<BarChartGroupData> _itemDescriptionWiseAnalysisChartData(
-    List<ItemDescriptionWiseAnalysisJobCardData> data,
+  List<BarChartGroupData> _itemWiseAnalysisChartData(
+    List<ItemWiseAnalysisJobCardData> data,
   ) {
     return data
         .map(
@@ -960,14 +990,14 @@ class _JobCartEntryForAlternateMaterialsState
     );
   }
 
-  Future<void> _loadDescriptionWiseProductionOrders(
+  Future<void> _loadWiseProductionOrders(
     int monthIndex,
     String itemCode,
     String itemGroup,
     String itemSubGroup,
     String warehouseName,
   ) async {
-    List<ItemDescriptionWiseAnalysisJobCardData> itemDataList = [];
+    List<ItemWiseAnalysisJobCardData> itemDataList = [];
     var tempList = jobCardProduction;
     Map<String, double> productSalesMap = {};
     Map<String, double> productQuantityMap = {};
@@ -1023,7 +1053,7 @@ class _JobCartEntryForAlternateMaterialsState
     productSalesMap.forEach((itemName, totalSales) {
       double totalQuantity = productQuantityMap[itemName] ?? 0;
       itemDataList.add(
-        ItemDescriptionWiseAnalysisJobCardData(
+        ItemWiseAnalysisJobCardData(
           itemName: itemName,
           lineTotal: totalSales,
           quantity: totalQuantity,
@@ -1032,7 +1062,7 @@ class _JobCartEntryForAlternateMaterialsState
     });
 
     itemDataList.sort((a, b) => b.lineTotal.compareTo(a.lineTotal));
-    itemData = ItemDescriptionWiseAnalysisJobCardList(itemData: itemDataList);
+    itemData = ItemWiseAnalysisJobCardList(itemData: itemDataList);
   }
 
   Future<void> _loadWarehouseWiseProductionOrders(
@@ -1124,7 +1154,7 @@ class _JobCartEntryForAlternateMaterialsState
     await _loadBranchWiseProductionOrders(0, "", "", "", "");
     await _loadGroupWiseProductionOrders(0, "", "", "", "");
     await _loadSubGroupWiseProductionOrders(0, "", "", "", "");
-    await _loadDescriptionWiseProductionOrders(0, "", "", "", "");
+    await _loadWiseProductionOrders(0, "", "", "", "");
     await _loadWarehouseWiseProductionOrders(0, "", "", "", "");
     chartDataLoaded = true;
   }
@@ -1172,7 +1202,7 @@ class _JobCartEntryForAlternateMaterialsState
     await _loadBranchWiseProductionOrders(0, "", "", "", "");
     await _loadGroupWiseProductionOrders(0, "", "", "", "");
     await _loadSubGroupWiseProductionOrders(0, "", "", "", "");
-    await _loadDescriptionWiseProductionOrders(0, "", "", "", "");
+    await _loadWiseProductionOrders(0, "", "", "", "");
     await _loadWarehouseWiseProductionOrders(0, "", "", "", "");
     chartDataLoaded = true;
   }
@@ -1207,7 +1237,7 @@ class _JobCartEntryForAlternateMaterialsState
       itemSubGroup,
       warehouseName,
     );
-    await _loadDescriptionWiseProductionOrders(
+    await _loadWiseProductionOrders(
       monthIndex,
       itemCode,
       itemGroup,
@@ -1232,7 +1262,7 @@ class _JobCartEntryForAlternateMaterialsState
       itemSubGroupData = ItemSubGroupWiseAnalysisJobCardList(
         itemSubGroupData: [],
       );
-      itemData = ItemDescriptionWiseAnalysisJobCardList(itemData: []);
+      itemData = ItemWiseAnalysisJobCardList(itemData: []);
       warehouseData = WarehouseWiseAnalysisJobCardList(warehouseData: []);
       touchedMonthIndex = 0;
       touchedItemCode = "";
@@ -1250,7 +1280,7 @@ class _JobCartEntryForAlternateMaterialsState
       itemSubGroupData = ItemSubGroupWiseAnalysisJobCardList(
         itemSubGroupData: [],
       );
-      itemData = ItemDescriptionWiseAnalysisJobCardList(itemData: []);
+      itemData = ItemWiseAnalysisJobCardList(itemData: []);
       warehouseData = WarehouseWiseAnalysisJobCardList(warehouseData: []);
     });
   }
@@ -1411,9 +1441,8 @@ class _JobCartEntryForAlternateMaterialsState
     );
   }
 
-  Future<void> generateItemwiseJobcardExcel(
-    ItemDescriptionWiseAnalysisJobCardList
-    itemDescriptionWiseAnalysisJobCardList,
+  Future<void> generateItemWiseJobcardExcel(
+    ItemWiseAnalysisJobCardList itemDescriptionWiseAnalysisJobCardList,
   ) async {
     await reportService.generateExcel(
       sheetName: 'ItemWiseJobcard',
@@ -1434,9 +1463,8 @@ class _JobCartEntryForAlternateMaterialsState
     );
   }
 
-  Future<void> generateItemwiseJobcardPDF(
-    ItemDescriptionWiseAnalysisJobCardList
-    itemDescriptionWiseAnalysisJobCardList,
+  Future<void> generateItemWiseJobcardPDF(
+    ItemWiseAnalysisJobCardList itemDescriptionWiseAnalysisJobCardList,
   ) async {
     await reportService.generatePDF(
       title: 'ItemWiseJobcard',
@@ -1497,6 +1525,15 @@ class _JobCartEntryForAlternateMaterialsState
     );
   }
 
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _monthWiseHorizontalController = ScrollController();
+  final ScrollController _itemWiseHorizontalController = ScrollController();
+  final ScrollController _warehouseWiseHorizontalController =
+      ScrollController();
+  final ScrollController _itemGroupWiseHorizontalController =
+      ScrollController();
+  final ScrollController _itemSubGroupWiseHorizontalController =
+      ScrollController();
   @override
   void initState() {
     super.initState();
@@ -1507,28 +1544,21 @@ class _JobCartEntryForAlternateMaterialsState
   }
 
   @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _monthWiseHorizontalController.dispose();
+    _itemWiseHorizontalController.dispose();
+    _itemGroupWiseHorizontalController.dispose();
+    _itemSubGroupWiseHorizontalController.dispose();
+    _warehouseWiseHorizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    String formattedFiscalYearStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(fiscalYearStartDate!);
-    String formattedQuarterStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterFromDate!);
-    String formattedQuarterLastDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterToDate!);
-    String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
     return chartDataLoaded == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -1567,6 +1597,112 @@ class _JobCartEntryForAlternateMaterialsState
                     ),
                   ],
                 ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Month Wise Qty Analysis',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateMonthlyJobcardExcel(monthData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateMonthlyJobcardPDF(monthData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _monthWiseQtyAnalysis(),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Branch Wise Line Total Analysis',
+                    trailing: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Column(
+                                children: [
+                                  for (final categoryData
+                                      in branchWiseData.branchWiseData)
+                                    Column(
+                                      children: [
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: getCategoryColor(
+                                            categoryData.branchId,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final categoryData
+                                in branchWiseData.branchWiseData)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Text(
+                                  categoryData.branchName,
+                                  textAlign: TextAlign.left,
+                                  style: const TextStyle(fontSize: 10),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          setState(() {
+                            generateBranchJobcardExcel(branchWiseData);
+                          });
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          setState(() {
+                            generateBranchJobcardPDF(branchWiseData);
+                          });
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+
+                    child: SizedBox(
+                      height: 220,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          borderData: FlBorderData(show: false),
+                          sections: showingSectionsBranchWise(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1575,13 +1711,12 @@ class _JobCartEntryForAlternateMaterialsState
                       children: [
                         SizedBox(width: 15),
                         Text(
-                          "Month Wise\nQty Analysis",
+                          "Item Wise Analysis",
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         PopupMenuButton(
                           onSelected: (value) {},
@@ -1590,7 +1725,7 @@ class _JobCartEntryForAlternateMaterialsState
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generateMonthlyJobcardExcel(monthData);
+                                    generateItemWiseJobcardExcel(itemData);
                                   });
                                 },
                                 child: const Text("Download Excel"),
@@ -1598,7 +1733,7 @@ class _JobCartEntryForAlternateMaterialsState
                               PopupMenuItem(
                                 onTap: () {
                                   setState(() {
-                                    generateMonthlyJobcardPDF(monthData);
+                                    generateItemWiseJobcardPDF(itemData);
                                   });
                                 },
                                 child: const Text("Download PDF"),
@@ -1612,129 +1747,72 @@ class _JobCartEntryForAlternateMaterialsState
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _monthWiseQtyAnalysis(),
+                  child: _itemWiseAnalysis(),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Branch Wise Line Total Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateBranchJobcardExcel(branchWiseData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateBranchJobcardPDF(branchWiseData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFFFF9F47),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Line Total",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 5),
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFF97D7F3),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Quantity",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      SizedBox(
-                        height: 250,
-                        width: 100,
-                        child: PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback:
-                                  (FlTouchEvent event, pieTouchResponse) {},
-                            ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 1,
-                            centerSpaceRadius: 0,
-                            startDegreeOffset: 180,
-                            sections: showingSectionsBranchWise(),
-                          ),
-                        ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemWiseJobcardExcel(itemData);
+                        },
+                        child: const Text("Download Excel"),
                       ),
-                      Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (final categoryData
-                                    in branchWiseData.branchWiseData)
-                                  Column(
-                                    children: [
-                                      Container(
-                                        height: 8,
-                                        width: 16,
-                                        color: getCategoryColor(
-                                          categoryData.branchId,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              for (final categoryData
-                                  in branchWiseData.branchWiseData)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 8.0),
-                                  child: Text(
-                                    categoryData.branchName,
-                                    textAlign: TextAlign.left,
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemWiseJobcardPDF(itemData);
+                        },
+                        child: const Text("Download PDF"),
                       ),
                     ],
+                    child: _itemWiseAnalysis(),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1783,10 +1861,7 @@ class _JobCartEntryForAlternateMaterialsState
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemGroupWiseAnalysis(),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1837,60 +1912,7 @@ class _JobCartEntryForAlternateMaterialsState
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _itemSubGroupWiseAnalysis(),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Description Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemwiseJobcardExcel(itemData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemwiseJobcardPDF(itemData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemDescriptionWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1939,10 +1961,6 @@ class _JobCartEntryForAlternateMaterialsState
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: _warehouseWiseAnalysis(),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
               ],
             ),
           )
@@ -1984,116 +2002,124 @@ class _JobCartEntryForAlternateMaterialsState
               )
               .reduce((a, b) => a > b ? a : b) // Find the max value
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _monthWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesMonthWiseQtyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _monthWiseQtyAnalysisChartData(monthData.monthData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    touchedMonth = monthData
-                        .monthData[barTouchResponse.spot!.spot.x.toInt()]
-                        .monthName;
-                    List months = [
-                      'Jan',
-                      'Feb',
-                      'Mar',
-                      'Apr',
-                      'May',
-                      'Jun',
-                      'Jul',
-                      'Aug',
-                      'Sep',
-                      'Oct',
-                      'Nov',
-                      'Dec',
-                    ];
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedMonthIndex = (touchedMonthIndex == 0
-                          ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-                          : 0);
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedWarehouse,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxValue),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${monthData.monthData[grpIndex].monthName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: formatAmount(
-                          monthData.monthData[grpIndex].production,
-                        ),
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesMonthWiseQtyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _monthWiseQtyAnalysisChartData(monthData.monthData),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      touchedMonth = monthData
+                          .monthData[barTouchResponse.spot!.spot.x.toInt()]
+                          .monthName;
+                      List months = [
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec',
+                      ];
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedMonthIndex = (touchedMonthIndex == 0
+                            ? months.indexOf(touchedMonth.substring(0, 3)) + 1
+                            : 0);
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedItemCode,
+                          touchedItemGroup,
+                          touchedItemSubGroup,
+                          touchedWarehouse,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${monthData.monthData[grpIndex].monthName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: formatAmount(
+                            monthData.monthData[grpIndex].production,
+                          ),
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -2101,7 +2127,7 @@ class _JobCartEntryForAlternateMaterialsState
     );
   }
 
-  Widget _itemDescriptionWiseAnalysis() {
+  Widget _itemWiseAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
     int len = itemData.itemData.length;
@@ -2119,109 +2145,118 @@ class _JobCartEntryForAlternateMaterialsState
               )
               .reduce((a, b) => a > b ? a : b) // Find the max value
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemDescriptionWiseAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _itemDescriptionWiseAnalysisChartData(itemData.itemData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItemCode = touchedItemCode == ""
-                          ? itemData
-                                .itemData[barTouchResponse.spot!.spot.x.toInt()]
-                                .itemName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedWarehouse,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxValue),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${itemData.itemData[grpIndex].itemName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Line Total : ${formatAmount(itemData.itemData[grpIndex].lineTotal)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Quantity : ${formatAmount(itemData.itemData[grpIndex].quantity)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemDescriptionWiseAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemWiseAnalysisChartData(itemData.itemData),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedItemCode = touchedItemCode == ""
+                            ? itemData
+                                  .itemData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .itemName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedItemCode,
+                          touchedItemGroup,
+                          touchedItemSubGroup,
+                          touchedWarehouse,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${itemData.itemData[grpIndex].itemName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Line Total : ${formatAmount(itemData.itemData[grpIndex].lineTotal)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Quantity : ${formatAmount(itemData.itemData[grpIndex].quantity)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -2247,112 +2282,120 @@ class _JobCartEntryForAlternateMaterialsState
               )
               .reduce((a, b) => a > b ? a : b) // Find the max value
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemGroupWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemGroupWiseAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _itemGroupWiseAnalysisChartData(
-              itemGroupData.itemGroupData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItemGroup = touchedItemGroup == ""
-                          ? itemGroupData
-                                .itemGroupData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .itemGroupName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedWarehouse,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxValue),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${itemGroupData.itemGroupData[grpIndex].itemGroupName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Line Total : ${formatAmount(itemGroupData.itemGroupData[grpIndex].lineTotal)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Quantity : ${formatAmount(itemGroupData.itemGroupData[grpIndex].quantity)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemGroupWiseAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemGroupWiseAnalysisChartData(
+                itemGroupData.itemGroupData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedItemGroup = touchedItemGroup == ""
+                            ? itemGroupData
+                                  .itemGroupData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .itemGroupName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedItemCode,
+                          touchedItemGroup,
+                          touchedItemSubGroup,
+                          touchedWarehouse,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${itemGroupData.itemGroupData[grpIndex].itemGroupName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Line Total : ${formatAmount(itemGroupData.itemGroupData[grpIndex].lineTotal)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Quantity : ${formatAmount(itemGroupData.itemGroupData[grpIndex].quantity)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -2378,112 +2421,123 @@ class _JobCartEntryForAlternateMaterialsState
               )
               .reduce((a, b) => a > b ? a : b) // Find the max value
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemSubGroupWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemSubGroupWiseAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _itemSubGroupWiseAnalysisChartData(
-              itemSubGroupData.itemSubGroupData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedItemSubGroup = touchedItemSubGroup == ""
-                          ? itemSubGroupData
-                                .itemSubGroupData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .itemSubGroupName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedWarehouse,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxValue),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${itemSubGroupData.itemSubGroupData[grpIndex].itemSubGroupName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Line Total : ${formatAmount(itemSubGroupData.itemSubGroupData[grpIndex].lineTotal)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Quantity : ${formatAmount(itemSubGroupData.itemSubGroupData[grpIndex].quantity)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemSubGroupWiseAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemSubGroupWiseAnalysisChartData(
+                itemSubGroupData.itemSubGroupData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedItemSubGroup = touchedItemSubGroup == ""
+                            ? itemSubGroupData
+                                  .itemSubGroupData[barTouchResponse
+                                      .spot!
+                                      .spot
+                                      .x
+                                      .toInt()]
+                                  .itemSubGroupName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedItemCode,
+                          touchedItemGroup,
+                          touchedItemSubGroup,
+                          touchedWarehouse,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${itemSubGroupData.itemSubGroupData[grpIndex].itemSubGroupName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Line Total : ${formatAmount(itemSubGroupData.itemSubGroupData[grpIndex].lineTotal)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Quantity : ${formatAmount(itemSubGroupData.itemSubGroupData[grpIndex].quantity)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -2509,112 +2563,120 @@ class _JobCartEntryForAlternateMaterialsState
               )
               .reduce((a, b) => a > b ? a : b) // Find the max value
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _warehouseWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesWarehouseWiseAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _warehouseWiseAnalysisChartData(
-              warehouseData.warehouseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedWarehouse = touchedWarehouse == ""
-                          ? warehouseData
-                                .warehouseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .warehouseName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedItemCode,
-                        touchedItemGroup,
-                        touchedItemSubGroup,
-                        touchedWarehouse,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxValue),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${warehouseData.warehouseData[grpIndex].warehouseName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Line Total : ${formatAmount(warehouseData.warehouseData[grpIndex].lineTotal)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Quantity : ${formatAmount(warehouseData.warehouseData[grpIndex].quantity)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesWarehouseWiseAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _warehouseWiseAnalysisChartData(
+                warehouseData.warehouseData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedWarehouse = touchedWarehouse == ""
+                            ? warehouseData
+                                  .warehouseData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .warehouseName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedItemCode,
+                          touchedItemGroup,
+                          touchedItemSubGroup,
+                          touchedWarehouse,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${warehouseData.warehouseData[grpIndex].warehouseName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Line Total : ${formatAmount(warehouseData.warehouseData[grpIndex].lineTotal)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Quantity : ${formatAmount(warehouseData.warehouseData[grpIndex].quantity)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

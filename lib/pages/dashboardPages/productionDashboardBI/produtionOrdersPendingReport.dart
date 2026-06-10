@@ -908,23 +908,31 @@ class _ProductionOrdersPendingReportState
       hospitalCode: hospitalCode,
     );
 
+    final priorityOrder = {'High': 1, 'Medium': 2, 'Low': 0};
+    final sortedProducts = [...productSalesList]
+      ..sort(
+        (a, b) => (priorityOrder[a.priority] ?? 0).compareTo(
+          priorityOrder[b.priority] ?? 0,
+        ),
+      );
+
     int categoryId = 0;
-    for (var product in productSalesList) {
+    for (var product in sortedProducts) {
       String statusName = product.priority;
-      double salesAmt = double.tryParse(product.orderQuantity) ?? 0;
+      double ordQty = double.tryParse(product.orderQuantity) ?? 0;
 
       if (priorityDataMap.containsKey(statusName)) {
         var existingData = priorityDataMap[statusName]!;
         priorityDataMap[statusName] = PriorityWiseAnalysisData(
           priorityId: existingData.priorityId,
-          priorityQty: existingData.priorityQty + salesAmt,
+          priorityQty: existingData.priorityQty + ordQty,
           priorityName: existingData.priorityName,
           priorityPercentage: 0,
         );
       } else {
         priorityDataMap[statusName] = PriorityWiseAnalysisData(
           priorityId: categoryId++,
-          priorityQty: salesAmt,
+          priorityQty: ordQty,
           priorityName: statusName,
           priorityPercentage: 0,
         );

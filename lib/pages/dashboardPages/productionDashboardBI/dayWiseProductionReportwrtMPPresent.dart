@@ -14,6 +14,7 @@ import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
 import '../../../classes/dashBoard.dart';
 import '../ReportService.dart';
+import '../dashboard_card_ui.dart';
 
 final reportService = ReportService();
 
@@ -44,7 +45,6 @@ String prevFinancialYear = "";
 int currentQuarter = 0;
 
 bool chartDataLoaded = false;
-
 List<ProductionOrderList> dayWiseProductionMP = [];
 List<Users> usersList = [];
 
@@ -66,8 +66,15 @@ class _DayWiseProductionReportwrtMPPresentState
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
   bool touchedYTDGoals = false;
-
   int touchedIndex = -1;
+
+  String? formattedFiscalYearStartDate;
+  String? formattedQuarterStartDate;
+  String? formattedQuarterLastDate;
+  String? formattedDateNow;
+  String? formattedDateFirstOfLastMonth;
+  String? formattedDateLastOfLastMonth;
+  String? formattedDateFirstOfThisMonth;
 
   String formatAmount(double amount) {
     if (amount >= 10000000) {
@@ -92,19 +99,6 @@ class _DayWiseProductionReportwrtMPPresentState
     } else {
       // Amount in thousands
       return double.parse((amount / 1000).toStringAsFixed(2));
-    }
-  }
-
-  Color getCategoryColor(int categoryId) {
-    switch (categoryId) {
-      case 0:
-        return const Color(0xFF97D7F3);
-      case 1:
-        return const Color(0xFFF49136);
-      case 2:
-        return const Color(0xFF6CCC3F);
-      default:
-        return const Color(0xFF6CCC3F);
     }
   }
 
@@ -238,6 +232,26 @@ class _DayWiseProductionReportwrtMPPresentState
     int prevFiscalYearEndYear = prevFiscalYearStartYear + 1;
     prevFinancialYear =
         'FY${prevFiscalYearStartYear.toString().substring(2)}-${prevFiscalYearEndYear.toString().substring(2)}';
+
+    formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(fiscalYearStartDate!);
+    formattedQuarterStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterFromDate!);
+    formattedQuarterLastDate = DateFormat(
+      'dd/MM/yy',
+    ).format(currentQuarterToDate!);
+    formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
+    formattedDateFirstOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
+    formattedDateLastOfLastMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
+    formattedDateFirstOfThisMonth = DateFormat(
+      'dd/MM/yy',
+    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
   }
 
   String formatDate(DateTime date) {
@@ -315,27 +329,31 @@ class _DayWiseProductionReportwrtMPPresentState
   List<BarChartGroupData> _dailyCompletedQtyAnalysisChartData(
     List<DailyCompletedQtyDayWisewrtMPData> data,
   ) {
-    return data
-        .map(
-          (chartData) => BarChartGroupData(
-            x: data.indexOf(chartData),
-            barRods: [
-              BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: chartData.wrapSheetQty,
-                  show: true,
-                  color: const Color(0xFF97D7F3),
-                ),
-                color: const Color(0xFFFF9F47),
-                borderRadius: BorderRadius.zero,
-                toY: chartData.gownQty,
-                width: 30,
-              ),
-            ],
+    return data.asMap().entries.map((entry) {
+      final index = entry.key;
+      final chartData = entry.value;
+
+      return BarChartGroupData(
+        x: index,
+        barsSpace: 4, // space between bars
+        barRods: [
+          // Gown Qty
+          BarChartRodData(
+            toY: chartData.gownQty,
+            width: 20,
+            color: const Color.fromARGB(255, 172, 17, 174),
+            borderRadius: BorderRadius.zero,
           ),
-        )
-        .toList();
+          // Wrap Sheet Qty
+          BarChartRodData(
+            toY: chartData.wrapSheetQty,
+            width: 20,
+            color: const Color.fromARGB(255, 172, 172, 43),
+            borderRadius: BorderRadius.zero,
+          ),
+        ],
+      );
+    }).toList();
   }
 
   Future<void> _loadProductionOrderAnalysis(
@@ -361,11 +379,7 @@ class _DayWiseProductionReportwrtMPPresentState
         const apiUrl = '${ApiHelper.baseUrl}BicxoProductionAnalysis';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -506,6 +520,9 @@ class _DayWiseProductionReportwrtMPPresentState
     );
   }
 
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _dailyHorizontalController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -516,28 +533,17 @@ class _DayWiseProductionReportwrtMPPresentState
   }
 
   @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _dailyHorizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    String formattedFiscalYearStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(fiscalYearStartDate!);
-    String formattedQuarterStartDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterFromDate!);
-    String formattedQuarterLastDate = DateFormat(
-      'dd/MM/yy',
-    ).format(currentQuarterToDate!);
-    String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
-    String formattedDateFirstOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month - 1, 1));
-    String formattedDateLastOfLastMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 0));
-    String formattedDateFirstOfThisMonth = DateFormat(
-      'dd/MM/yy',
-    ).format(DateTime(currentDate!.year, currentDate!.month, 1));
     return chartDataLoaded == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -576,91 +582,71 @@ class _DayWiseProductionReportwrtMPPresentState
                     ),
                   ],
                 ),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Daily Completed \nQty Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Daily Completed \nQty Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color.fromARGB(
+                                    255,
+                                    172,
+                                    17,
+                                    174,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Kits/Gowns",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 5),
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color.fromARGB(
+                                    255,
+                                    172,
+                                    172,
+                                    43,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Wrap Sheet",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                height: 8,
-                                width: 8,
-                                color: const Color(0xFFFF9F47),
-                              ),
-                              const SizedBox(width: 5),
-                              const Text(
-                                "Kits/Gowns",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 5),
-                          Row(
-                            children: [
-                              Container(
-                                height: 8,
-                                width: 8,
-                                color: const Color(0xFF97D7F3),
-                              ),
-                              const SizedBox(width: 5),
-                              const Text(
-                                "Wrap Sheet",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 20),
-                        ],
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateDailyMPOrderExcel(dailyData);
+                        },
+                        child: const Text("Download Excel"),
                       ),
                     ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _dailyCompletedQtyAnalysis(),
-                ),
-                Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff2ca9df),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5.0),
-                      ),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        generateDailyMPOrderExcel(dailyData);
-                      });
-                    },
-                    child: const SizedBox(
-                      width: 400,
-                      child: Center(
-                        child: Text(
-                          "Download Reports",
-                          style: TextStyle(fontSize: 14, color: Colors.white),
-                        ),
-                      ),
-                    ),
+                    child: _dailyCompletedQtyAnalysis(),
                   ),
                 ),
               ],
@@ -680,6 +666,7 @@ class _DayWiseProductionReportwrtMPPresentState
     ).then((value) {
       if (value == '1') {
         setState(() {
+          LoadDates();
           loadDataFuture = removeFilter();
         });
       }
@@ -691,98 +678,108 @@ class _DayWiseProductionReportwrtMPPresentState
     double chartWidth = 0.0;
     int len = dailyData.dailyData.length;
     if (len > 5) {
-      chartWidth = screenWidth + (50 * len);
+      chartWidth = screenWidth + (25 * len);
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _dailyHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            // maxY: getAgingMaxValue(receivablesAgingList),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesDailyCompletedQtyAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _dailyCompletedQtyAnalysisChartData(dailyData.dailyData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {}
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              groupsSpace: 4,
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${dailyData.dailyData[grpIndex].date}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Kits/Gown Qty : ${formatAmount(dailyData.dailyData[grpIndex].gownQty)}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Wrap Sheet Qty : ${formatAmount(dailyData.dailyData[grpIndex].wrapSheetQty)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesDailyCompletedQtyAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _dailyCompletedQtyAnalysisChartData(
+                dailyData.dailyData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {}
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${dailyData.dailyData[grpIndex].date}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Kits/Gown Qty : ${formatAmount(dailyData.dailyData[grpIndex].gownQty)}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Wrap Sheet Qty : ${formatAmount(dailyData.dailyData[grpIndex].wrapSheetQty)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

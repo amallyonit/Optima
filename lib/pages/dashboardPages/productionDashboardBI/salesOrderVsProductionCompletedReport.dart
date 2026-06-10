@@ -14,6 +14,7 @@ import 'package:optima/classes/dataManager.dart';
 import '../../../classes/globals.dart';
 import '../../../classes/leads.dart';
 import '../ReportService.dart';
+import '../dashboard_card_ui.dart';
 
 final reportService = ReportService();
 
@@ -150,11 +151,11 @@ class _SalesOrderVsProductionCompletedReportState
   Color getCategoryColor(int categoryId) {
     switch (categoryId) {
       case 0:
-        return const Color(0xFF97D7F3);
+        return const Color(0xFF6CCC3F);
       case 1:
         return const Color(0xFFF49136);
       case 2:
-        return const Color(0xFF6CCC3F);
+        return const Color(0xFF97D7F3);
       default:
         return const Color(0xFF6CCC3F);
     }
@@ -366,8 +367,10 @@ class _SalesOrderVsProductionCompletedReportState
 
       final sectionData = PieChartSectionData(
         color: getCategoryColor(categoryData.priorityId),
-        value: categoryData.percentage,
-        title: '${categoryData.percentage.toStringAsFixed(2)} %',
+        value: categoryData.percentage.abs() <= .5
+            ? categoryData.percentage.abs() + .29
+            : categoryData.percentage.abs(),
+        title: '${categoryData.percentage.abs().toStringAsFixed(2)} %',
         radius: radius,
         titleStyle: TextStyle(
           fontSize: fontSize,
@@ -452,11 +455,7 @@ class _SalesOrderVsProductionCompletedReportState
         const apiUrl = '${ApiHelper.baseUrl}BicxoDeliveryReportList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -484,34 +483,32 @@ class _SalesOrderVsProductionCompletedReportState
         context.read<SalesOrderVsProductionProvider>().updateProductionList(
           salesList,
         );
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          productionCompleted = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          productionCompleted = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          productionCompleted = salesList.toList();
-        } else {
-          productionCompleted = salesList.toList();
-        }
       });
+
       var totalSO = productionCompleted.where((target) {
-        DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
+        DateTime invoiceDate = DateFormat(
+          'dd/MM/yyyy',
+        ).parse(target.actualDeliveryDate);
         return invoiceDate.isAtLeast(currentMonthFromDate!) &&
             invoiceDate.isAtMost(currentDate!);
       });
       double soQty = 0, pendingQty = 0, boxQty = 0;
+      int actDDSum = 0, actDDCount = 0, soToDDSum = 0;
       for (var target in totalSO.toList()) {
         soQty += (double.tryParse(target.soQuantity) ?? 0);
         pendingQty += (double.tryParse(target.pendingQuantity) ?? 0);
         boxQty +=
             (double.tryParse(target.dnQuantity) ?? 0) ~/
             (double.tryParse(target.boxQuantity) ?? 0);
+        actDDSum +=
+            int.tryParse(
+              target.actualDDtoEstimatedDD.replaceAll(" Days", ""),
+            ) ??
+            0;
+        soToDDSum +=
+            int.tryParse(target.sOtoDDLeadtime.replaceAll(" Days", "")) ?? 0;
       }
+      actDDCount = totalSO.toList().length;
 
       totalSalesOrderQty = soQty;
       totalSalesOrderQtyStr =
@@ -521,7 +518,10 @@ class _SalesOrderVsProductionCompletedReportState
       totalPendingQtyStr = "${(totalPendingQty / 1000).toStringAsFixed(2)} K";
 
       totalBoxQty = boxQty;
-      totalBoxQtyStr = totalBoxQty.toString();
+      totalBoxQtyStr = "${(totalBoxQty / 1000).toStringAsFixed(2)} K";
+
+      avgDaysTakenToClose = (soToDDSum / actDDCount).toInt();
+      avgOrderCompletionDays = (actDDSum / actDDCount).toInt();
     } catch (e) {
       if (kDebugMode) {
         print(e);
@@ -531,10 +531,8 @@ class _SalesOrderVsProductionCompletedReportState
 
   Future<void> _loadPriorityStatusAnalysis(String hospitalCode) async {
     List<PriorityStatusAnalysisData> statusList = [];
+    Map<String, PriorityStatusAnalysisData> priorityDataMap = {};
     var tempList = productionCompleted;
-    String statusName = "";
-    double productActual = 0.00;
-    int categoryId = 0;
 
     var saleList = const Iterable.empty();
     saleList = tempList.toList();
@@ -555,31 +553,85 @@ class _SalesOrderVsProductionCompletedReportState
       hospitalCode: hospitalCode,
     );
 
-    Set<String> processedProductCodes = {};
-    for (var product in saleList.toList().toList()) {
-      if (!processedProductCodes.contains(product.priority)) {
-        statusName = product.priority;
-        for (var target in saleList.toList().where(
-          (prdelement) => prdelement.priority == statusName,
-        )) {
-          double salesAmt = 0;
-          salesAmt = double.tryParse(target.pendingQuantity) ?? 0;
-          productActual += salesAmt;
-        }
+    // int categoryId = 0;
+    // final priorityOrder = {'High': 1, 'Medium': 2, 'Low': 0};
+    // final sortedProducts = [...saleList]
+    //   ..sort(
+    //     (a, b) => (priorityOrder[a.priority] ?? 0).compareTo(
+    //       priorityOrder[b.priority] ?? 0,
+    //     ),
+    //   );
+    // for (var product in sortedProducts) {
+    //   String statusName = product.priority;
+    //   double PendingQty = double.tryParse(product.pendingQuantity) ?? 0;
 
-        statusList.add(
-          PriorityStatusAnalysisData(
-            priorityId: categoryId++,
-            amount: productActual,
-            priority: statusName,
-            percentage: 0,
-          ),
-        );
-        processedProductCodes.add(product.priority);
+    //   if (priorityDataMap.containsKey(statusName)) {
+    //     var existingData = priorityDataMap[statusName]!;
+    //     priorityDataMap[statusName] = PriorityStatusAnalysisData(
+    //       priorityId: existingData.priorityId,
+    //       amount: existingData.amount + PendingQty,
+    //       priority: existingData.priority,
+    //       percentage: 0,
+    //     );
+    //   } else {
+    //     priorityDataMap[statusName] = PriorityStatusAnalysisData(
+    //       priorityId: categoryId++,
+    //       amount: PendingQty,
+    //       priority: statusName,
+    //       percentage: 0,
+    //     );
+    //   }
+    // }
+
+    // statusList = priorityDataMap.values.toList();
+
+    int categoryId = 0;
+    final countedItems = <String>{};
+
+    for (var product in saleList) {
+      // Only Open SOs
+      if (product.soStatus != 'Open') {
+        continue;
       }
-      productActual = 0;
-      statusName = "";
+
+      final key = '${product.soNo}_${product.productCode}';
+
+      // Skip duplicate batch rows of same SO + Product
+      if (countedItems.contains(key)) {
+        continue;
+      }
+
+      countedItems.add(key);
+
+      String statusName = product.priority;
+      double pendingQty = double.tryParse(product.pendingQuantity) ?? 0;
+
+      if (priorityDataMap.containsKey(statusName)) {
+        var existingData = priorityDataMap[statusName]!;
+
+        priorityDataMap[statusName] = PriorityStatusAnalysisData(
+          priorityId: existingData.priorityId,
+          amount: existingData.amount + pendingQty,
+          priority: existingData.priority,
+          percentage: 0,
+        );
+      } else {
+        priorityDataMap[statusName] = PriorityStatusAnalysisData(
+          priorityId: categoryId++,
+          amount: pendingQty,
+          priority: statusName,
+          percentage: 0,
+        );
+      }
     }
+    final priorityOrder = {'High': 1, 'Medium': 2, 'Low': 0};
+
+    statusList = priorityDataMap.values.toList()
+      ..sort(
+        (a, b) => (priorityOrder[a.priority] ?? 0).compareTo(
+          priorityOrder[b.priority] ?? 0,
+        ),
+      );
 
     double totalAmount = statusList.fold(
       0,
@@ -593,9 +645,6 @@ class _SalesOrderVsProductionCompletedReportState
             ((categoryData.amount / totalAmount) * 100).toStringAsFixed(2),
           ) ??
           0;
-      // categoryData.percentage = double.tryParse(
-      //     (categoryData.amount / 100000).toStringAsFixed(2)) ??
-      //     0;
     }
 
     priorityData = PriorityStatusAnalysisList(priorityData: statusList);
@@ -603,10 +652,8 @@ class _SalesOrderVsProductionCompletedReportState
 
   Future<void> _loadOrderStatusAnalysis(String hospitalCode) async {
     List<OrderStatusAnalysisData> statusList = [];
+    Map<String, OrderStatusAnalysisData> priorityDataMap = {};
     var tempList = productionCompleted;
-    String statusName = "";
-    double productActual = 0.00;
-    int categoryId = 0;
 
     var saleList = const Iterable.empty();
     saleList = tempList.toList();
@@ -627,31 +674,45 @@ class _SalesOrderVsProductionCompletedReportState
       hospitalCode: hospitalCode,
     );
 
-    Set<String> processedProductCodes = {};
-    for (var product in saleList.toList().toList()) {
-      if (!processedProductCodes.contains(product.soStatus)) {
-        statusName = product.soStatus;
-        for (var target in saleList.toList().where(
-          (prdelement) => prdelement.soStatus == statusName,
-        )) {
-          double salesAmt = 0;
-          salesAmt = double.tryParse(target.soQuantity) ?? 0;
-          productActual += salesAmt;
+    final countedItems = <String>{};
+    int categoryId = 0;
+    for (var product in saleList) {
+      String statusName = product.soStatus;
+
+      double qty = 0;
+
+      if (statusName == 'Open') {
+        final key = '${product.soNo}_${product.productCode}';
+
+        if (countedItems.contains(key)) {
+          continue;
         }
 
-        statusList.add(
-          OrderStatusAnalysisData(
-            orderStatusId: categoryId++,
-            amount: productActual,
-            orderStatus: statusName,
-            percentage: 0,
-          ),
-        );
-        processedProductCodes.add(product.soStatus);
+        countedItems.add(key);
+        qty = double.tryParse(product.pendingQuantity) ?? 0;
+      } else {
+        qty = double.tryParse(product.soQuantity) ?? 0;
       }
-      productActual = 0;
-      statusName = "";
+
+      if (priorityDataMap.containsKey(statusName)) {
+        var existingData = priorityDataMap[statusName]!;
+
+        priorityDataMap[statusName] = OrderStatusAnalysisData(
+          orderStatusId: existingData.orderStatusId,
+          amount: existingData.amount + qty,
+          orderStatus: existingData.orderStatus,
+          percentage: 0,
+        );
+      } else {
+        priorityDataMap[statusName] = OrderStatusAnalysisData(
+          orderStatusId: categoryId++,
+          amount: qty,
+          orderStatus: statusName,
+          percentage: 0,
+        );
+      }
     }
+    statusList = priorityDataMap.values.toList();
 
     double totalAmount = statusList.fold(
       0,
@@ -665,9 +726,6 @@ class _SalesOrderVsProductionCompletedReportState
             ((categoryData.amount / totalAmount) * 100).toStringAsFixed(2),
           ) ??
           0;
-      // categoryData.percentage = double.tryParse(
-      //     (categoryData.amount / 100000).toStringAsFixed(2)) ??
-      //     0;
     }
 
     orderData = OrderStatusAnalysisList(orderData: statusList);
@@ -929,6 +987,9 @@ class _SalesOrderVsProductionCompletedReportState
     );
   }
 
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _hospitalHorizontalController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -939,15 +1000,30 @@ class _SalesOrderVsProductionCompletedReportState
   }
 
   @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _hospitalHorizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return chartDataLoaded == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(children: [SizedBox(width: 15)]),
+                    Row(
+                      children: [
+                        const SizedBox(width: 5),
+                        Text(
+                          "${DateFormat('dd/MM/yy').format(currentDate!.month == 4 ? lastMonthFromDate! : fiscalYearStartDate!)} - ${DateFormat('dd/MM/yy').format(currentDate!)}",
+                        ),
+                      ],
+                    ),
                     Row(
                       children: [
                         IconButton(
@@ -961,422 +1037,267 @@ class _SalesOrderVsProductionCompletedReportState
                     ),
                   ],
                 ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(6.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Total Sales Orders: $totalSalesOrderQtyStr",
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(6.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Total Pending Quantity: $totalPendingQtyStr',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(6.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text('Total Box Quantity: $totalBoxQtyStr'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Avg Order Completion Days - \n$avgOrderCompletionDays',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Avg Days taken to close - \n$avgDaysTakenToClose',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Priority Status Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generatePriorityStatusExcel(priorityData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generatePriorityStatusPDF(priorityData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+
                 Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      SizedBox(
-                        height: 250,
-                        width: 100,
-                        child: PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback:
-                                  (FlTouchEvent event, pieTouchResponse) {},
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: '',
+                    spacing: 0,
+                    menuItems: [],
+                    child: Column(
+                      children: [
+                        // First Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryCard(
+                                title: "SO Qty",
+                                value: totalSalesOrderQtyStr,
+                                icon: Icons.shopping_cart_outlined,
+                              ),
                             ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 1,
-                            centerSpaceRadius: 0,
-                            startDegreeOffset: 180,
-                            sections: showingSections(),
-                          ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSummaryCard(
+                                title: "Pending Qty",
+                                value: totalPendingQtyStr,
+                                icon: Icons.pending_actions_outlined,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSummaryCard(
+                                title: "Completed Boxes",
+                                value: totalBoxQtyStr,
+                                icon: Icons.inventory_2_outlined,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // for (final categoryData in receivablesCategoryList.categoryData)
-                                Column(
-                                  children: [
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF97D7F3),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF78E25D),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFFFF9F47),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
-                                ),
-                              ],
+
+                        const SizedBox(height: 12),
+
+                        // Second Row
+                        Row(
+                          children: [
+                            Expanded(child: SizedBox()),
+                            Expanded(
+                              flex: 2,
+                              child: _buildSummaryCard(
+                                title: "Avg Days To Complete",
+                                value: avgOrderCompletionDays.toString(),
+                                icon: Icons.timelapse,
+                              ),
                             ),
-                          ),
-                          const Column(
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 2,
+                              child: _buildSummaryCard(
+                                title: "Avg Days To Close",
+                                value: avgDaysTakenToClose.toString(),
+                                icon: Icons.event_available,
+                              ),
+                            ),
+                            Expanded(child: SizedBox()),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Priority wise Analysis',
+                    trailing: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // for (final categoryData
-                              // in receivablesCategoryList.categoryData)
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Low",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Medium",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "High",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                              Column(
+                                children: [
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(0),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(2),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(1),
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Low",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Medium",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "High",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          setState(() {
+                            generatePriorityStatusExcel(priorityData);
+                          });
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          setState(() {
+                            generatePriorityStatusPDF(priorityData);
+                          });
+                        },
+                        child: const Text("Download PDF"),
                       ),
                     ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Order Status Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateOrderStatusExcel(orderData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateOrderStatusPDF(orderData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      SizedBox(
-                        height: 250,
-                        width: 100,
-                        child: PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback:
-                                  (FlTouchEvent event, pieTouchResponse) {},
-                            ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 1,
-                            centerSpaceRadius: 0,
-                            startDegreeOffset: 180,
-                            sections: showingSectionsSOStatus(),
-                          ),
+
+                    child: SizedBox(
+                      height: 220,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          borderData: FlBorderData(show: false),
+                          sections: showingSections(),
                         ),
                       ),
-                      Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // for (final categoryData in receivablesCategoryList.categoryData)
-                                Column(
-                                  children: [
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFFFF9F47),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      height: 8,
-                                      width: 16,
-                                      color: const Color(0xFF97D7F3),
-                                      // color: getCategoryColor(categoryData.categoryId),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Column(
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Order Status Analysis',
+                    trailing: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // for (final categoryData
-                              // in receivablesCategoryList.categoryData)
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Open",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  "Closed",
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 10),
-                                ),
+                              Column(
+                                children: [
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(1),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    height: 8,
+                                    width: 16,
+                                    color: getCategoryColor(0),
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Hospital Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Open",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                "Closed",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(fontSize: 10),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    Row(
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          setState(() {
+                            generateOrderStatusExcel(orderData);
+                          });
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          setState(() {
+                            generateOrderStatusPDF(orderData);
+                          });
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+
+                    child: SizedBox(
+                      height: 220,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          borderData: FlBorderData(show: false),
+                          sections: showingSectionsSOStatus(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Hospital\nWise Analysis',
+                    spacing: 20,
+                    trailing: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Column(
@@ -1414,39 +1335,26 @@ class _SalesOrderVsProductionCompletedReportState
                             ),
                           ],
                         ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateHospitalwiseOrderExcel(
-                                      hospitalData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateHospitalwiseOrderPDF(hospitalData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
                       ],
                     ),
-                  ],
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateHospitalwiseOrderExcel(hospitalData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateHospitalwiseOrderPDF(hospitalData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _hospitalWiseAnalysis(),
+                  ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _hospitalWiseAnalysis(),
-                ),
+              
               ],
             ),
           )
@@ -1470,6 +1378,55 @@ class _SalesOrderVsProductionCompletedReportState
     });
   }
 
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      height: 95,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4FC3F7), Color(0xFF29B6F6)],
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _hospitalWiseAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = 0.0;
@@ -1488,105 +1445,113 @@ class _SalesOrderVsProductionCompletedReportState
               )
               .reduce((a, b) => a > b ? a : b) // Find the max value
         : 0;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _hospitalHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(maxValue),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesHospitalWiseAnalysis,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _hospitalWiseAnalysisChartData(
-              hospitalData.hospitalData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedHospital = touchedHospital == ""
-                          ? hospitalData
-                                .hospitalData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .hospitalName
-                          : "";
-                      showDrillDownChart = true;
-                      loadDataWithFilter(touchedHospital);
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxValue),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${hospitalData.hospitalData[grpIndex].hospitalName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Planned Qty : ${hospitalData.hospitalData[grpIndex].plannedQty}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Completed Qty : ${hospitalData.hospitalData[grpIndex].completedQty}\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesHospitalWiseAnalysis,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _hospitalWiseAnalysisChartData(
+                hospitalData.hospitalData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedHospital = touchedHospital == ""
+                            ? hospitalData
+                                  .hospitalData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .hospitalName
+                            : "";
+                        showDrillDownChart = true;
+                        loadDataWithFilter(touchedHospital);
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${hospitalData.hospitalData[grpIndex].hospitalName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Planned Qty : ${hospitalData.hospitalData[grpIndex].plannedQty}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Completed Qty : ${hospitalData.hospitalData[grpIndex].completedQty}\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

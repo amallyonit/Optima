@@ -1530,9 +1530,13 @@ class _PayableFinanceState extends State<PayableFinance> {
             break;
 
           case "Future":
-            vendorData['future'] = (vendorData['future'] as double) + balance;
+            // As per finance team, Future will have to move in to 0-30 bracket.(10-06-2026)
+            vendorData['a0to30'] = (vendorData['a0to30'] as double) + balance;
 
             vendorData['balance'] = (vendorData['balance'] as double) + balance;
+            // vendorData['future'] = (vendorData['future'] as double) + balance;
+
+            // vendorData['balance'] = (vendorData['balance'] as double) + balance;
             break;
 
           default:

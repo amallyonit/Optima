@@ -28,13 +28,14 @@ class DashboardCardUI extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DashboardCardHeader(
-            title: title,
-            menuItems: menuItems,
-            trailing: trailing,
-          ),
+          if (title.isNotEmpty)
+            DashboardCardHeader(
+              title: title,
+              menuItems: menuItems,
+              trailing: trailing,
+            ),
 
-          SizedBox(height: spacing),
+          if (title.isNotEmpty) SizedBox(height: spacing),
 
           child,
         ],
