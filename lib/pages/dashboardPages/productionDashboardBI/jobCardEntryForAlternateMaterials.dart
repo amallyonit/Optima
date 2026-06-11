@@ -555,10 +555,16 @@ class _JobCartEntryForAlternateMaterialsState
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
+                toY: chartData.lineTotal,
+                width: 10,
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+              ),
+              BarChartRodData(
+                toY: chartData.quantity,
+                width: 10,
                 color: const Color(0xFF97D7F3),
                 borderRadius: BorderRadius.zero,
-                toY: chartData.lineTotal,
-                width: 30,
               ),
             ],
           ),
@@ -575,10 +581,16 @@ class _JobCartEntryForAlternateMaterialsState
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
+                toY: chartData.lineTotal,
+                width: 15,
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+              ),
+              BarChartRodData(
+                toY: chartData.quantity,
+                width: 15,
                 color: const Color(0xFF97D7F3),
                 borderRadius: BorderRadius.zero,
-                toY: chartData.lineTotal,
-                width: 30,
               ),
             ],
           ),
@@ -595,10 +607,16 @@ class _JobCartEntryForAlternateMaterialsState
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
+                toY: chartData.lineTotal,
+                width: 15,
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+              ),
+              BarChartRodData(
+                toY: chartData.quantity,
+                width: 15,
                 color: const Color(0xFF97D7F3),
                 borderRadius: BorderRadius.zero,
-                toY: chartData.lineTotal,
-                width: 30,
               ),
             ],
           ),
@@ -615,10 +633,16 @@ class _JobCartEntryForAlternateMaterialsState
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
+                toY: chartData.lineTotal,
+                width: 15,
+                color: const Color(0xFFFF9F47),
+                borderRadius: BorderRadius.zero,
+              ),
+              BarChartRodData(
+                toY: chartData.quantity,
+                width: 15,
                 color: const Color(0xFF97D7F3),
                 borderRadius: BorderRadius.zero,
-                toY: chartData.lineTotal,
-                width: 30,
               ),
             ],
           ),
@@ -1703,53 +1727,6 @@ class _JobCartEntryForAlternateMaterialsState
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemWiseJobcardExcel(itemData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemWiseJobcardPDF(itemData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemWiseAnalysis(),
-                ),
-
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
@@ -1813,153 +1790,193 @@ class _JobCartEntryForAlternateMaterialsState
                   ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Group Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupJobcardExcel(
-                                      itemGroupData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupJobcardPDF(itemGroupData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemGroupWiseAnalysis(),
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Group Wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFFFF9F47),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Line Total",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 5),
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFF97D7F3),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Quantity",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemGroupJobcardExcel(itemGroupData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemGroupJobcardPDF(itemGroupData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _itemGroupWiseAnalysis(),
+                  ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Sub Group Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSubGroupJobcardExcel(
-                                      itemSubGroupData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSubGroupJobcardPDF(
-                                      itemSubGroupData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemSubGroupWiseAnalysis(),
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Sub Group Wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFFFF9F47),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Line Total",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 5),
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFF97D7F3),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Quantity",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemSubGroupJobcardExcel(itemSubGroupData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemSubGroupJobcardExcel(itemSubGroupData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _itemSubGroupWiseAnalysis(),
+                  ),
                 ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Warehouse Wise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateWarehouseJobcardExcel(
-                                      warehouseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateWarehouseJobcardPDF(warehouseData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _warehouseWiseAnalysis(),
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Warehouse Wise Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFFFF9F47),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Line Total",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 5),
+                            Row(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: 8,
+                                  color: const Color(0xFF97D7F3),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Quantity",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateWarehouseJobcardExcel(warehouseData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                      PopupMenuItem(
+                        onTap: () {
+                          generateWarehouseJobcardPDF(warehouseData);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _warehouseWiseAnalysis(),
+                  ),
                 ),
               ],
             ),

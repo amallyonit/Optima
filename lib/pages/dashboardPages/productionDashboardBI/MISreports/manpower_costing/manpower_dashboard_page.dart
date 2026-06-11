@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:optima/classes/dashBoard.dart';
+import '../../../dashboard_card_ui.dart';
 import 'manpower_charts.dart';
 import 'manpower_controller.dart';
 import 'manpower_table.dart';
@@ -364,41 +365,31 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
 
     return Column(
       children: [
-        const SizedBox(height: 10),
-
-        Row(children: [const SizedBox(width: 15), Text("$start - $end")]),
-
-        const SizedBox(height: 10),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
+            Row(
               children: [
-                SizedBox(width: 15),
-                Text(
-                  "Manpower Costing Report",
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                const SizedBox(height: 10),
+                Row(
+                  children: [const SizedBox(width: 15), Text("$start - $end")],
                 ),
               ],
             ),
-
-            PopupMenuButton(
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  child: Text("Download Excel"),
-                  onTap: () {
-                    ManpowerExcelExporter.exportManpowerExcel(
-                      controller.table.particulars,
-                      controller.table.rows,
-                    );
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    showPopupMenu();
                   },
+                  icon: const Icon(Icons.filter_alt_outlined),
                 ),
-                // const PopupMenuItem(child: Text("Download PDF")),
+                const SizedBox(width: 5),
               ],
             ),
           ],
         ),
+        const SizedBox(height: 10),
       ],
     );
   }
@@ -408,6 +399,27 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
     super.initState();
     controller.loadDashboard().then((_) {
       setState(() {});
+    });
+  }
+
+  void showPopupMenu() {
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(25.0, 50.0, 0.0, 0.0),
+      elevation: 8.0,
+      items: [
+        const PopupMenuItem<String>(value: '1', child: Text('Remove Filter?')),
+      ],
+    ).then((value) {
+      if (value == '1') {
+        setState(() {
+          controller.loaded = false;
+        });
+
+        controller.loadDashboard().then((_) {
+          setState(() {});
+        });
+      }
     });
   }
 
@@ -449,27 +461,6 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
         ),
 
         const SizedBox(height: 10),
-
-        _buildTargetLegend(),
-      ],
-    );
-  }
-
-  Widget _buildTargetLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Container(height: 8, width: 8, color: const Color(0xFFFF9F47)),
-        const SizedBox(width: 5),
-        const Text("Target"),
-
-        const SizedBox(width: 5),
-
-        Container(height: 8, width: 8, color: const Color(0xFF97D7F3)),
-        const SizedBox(width: 5),
-        const Text("Achievement"),
-
-        const SizedBox(width: 15),
       ],
     );
   }
@@ -488,10 +479,7 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
           ),
         ),
 
-        const Padding(
-          padding: EdgeInsets.only(left: 16.0, right: 16.0),
-          child: Divider(thickness: 2),
-        ),
+        SizedBox(height: 20),
         Padding(
           padding: const EdgeInsets.only(right: 16),
           child: Row(
@@ -535,10 +523,7 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
           ),
         ),
 
-        const Padding(
-          padding: EdgeInsets.only(left: 16.0, right: 16.0),
-          child: Divider(thickness: 2),
-        ),
+        SizedBox(height: 10),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -570,10 +555,8 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
           ),
         ),
 
-        const Padding(
-          padding: EdgeInsets.only(left: 16.0, right: 16.0),
-          child: Divider(thickness: 2),
-        ),
+        SizedBox(height: 20),
+
         Padding(
           padding: const EdgeInsets.only(right: 16),
           child: Row(
@@ -593,6 +576,7 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
             ],
           ),
         ),
+
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -631,16 +615,101 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          _buildHeader(),
-          _buildBranchFilter(),
-          _buildTargetAchievement(),
-          _buildMonthlyCharts(),
-          _buildDailyCharts(),
-          _buildTable(),
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: true,
+        backgroundColor: Colors.white,
+        elevation: 0.0,
+        title: const Text(
+          "Manpower Costing Report",
+          style: TextStyle(
+            color: Colors.blue,
+            fontFamily: "Poppins",
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildHeader(),
+
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: DashboardCardUI(
+                title: 'Summary',
+                spacing: 20,
+                menuItems: [
+                  PopupMenuItem(
+                    onTap: () {
+                      ManpowerExcelExporter.exportManpowerExcel(
+                        controller.table.particulars,
+                        controller.table.rows,
+                      );
+                    },
+                    child: const Text("Download Excel"),
+                  ),
+                ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildBranchFilter(),
+                    const SizedBox(height: 16),
+                    _buildTargetAchievement(),
+                  ],
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: DashboardCardUI(
+                title: 'Monthly Analysis',
+                spacing: 20,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(height: 8, width: 8, color: Color(0xFFFF9F47)),
+                    const SizedBox(width: 5),
+                    const Text('Target', style: TextStyle(fontSize: 12)),
+                    const SizedBox(width: 10),
+                    Container(height: 8, width: 8, color: Colors.blue),
+                    const SizedBox(width: 5),
+                    const Text('Achievement', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+                menuItems: [],
+                child: _buildMonthlyCharts(),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: DashboardCardUI(
+                title: 'Daily Analysis',
+                spacing: 20,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(height: 8, width: 8, color: Color(0xFFFF9F47)),
+                    const SizedBox(width: 5),
+                    const Text('Avg Boxes', style: TextStyle(fontSize: 12)),
+                    const SizedBox(width: 10),
+                    Container(height: 8, width: 8, color: Colors.blue),
+                    const SizedBox(width: 5),
+                    const Text('Actual Boxes', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+                menuItems: [],
+                child: _buildDailyCharts(),
+              ),
+            ),
+
+            _buildTable(),
+          ],
+        ),
       ),
     );
   }

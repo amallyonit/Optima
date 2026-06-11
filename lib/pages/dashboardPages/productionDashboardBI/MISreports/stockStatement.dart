@@ -1,25 +1,22 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
-import 'package:excel/excel.dart' as xl;
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-
 import '../../../../notificationService.dart';
+import '../../dashboard_card_ui.dart';
+import '../../ReportService.dart';
+
+final reportService = ReportService();
 
 late Future<void> loadDataFuture;
 
@@ -479,127 +476,34 @@ class _StockStatementPageState extends State<StockStatementPage> {
     setState(() {});
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
-  String _formatIndian(double value) {
-    try {
-      final formatter = NumberFormat('#,##,##0.00', 'en_IN');
-      return formatter.format(value);
-    } catch (_) {
-      final negative = value < 0;
-      final absVal = value.abs();
-      final rupee = absVal.floor();
-      final paise = ((absVal - rupee) * 100).round().toString().padLeft(2, '0');
-
-      String intPart = rupee.toString();
-      if (intPart.length <= 3) {
-        final result = '$intPart.$paise';
-        return negative ? '-$result' : result;
-      }
-
-      final last3 = intPart.substring(intPart.length - 3);
-      String rest = intPart.substring(0, intPart.length - 3);
-
-      final parts = <String>[];
-      while (rest.length > 2) {
-        parts.insert(0, rest.substring(rest.length - 2));
-        rest = rest.substring(0, rest.length - 2);
-      }
-      if (rest.isNotEmpty) parts.insert(0, rest);
-
-      final formattedInt = '${parts.join(',')},$last3';
-      final result = '$formattedInt.$paise';
-      return negative ? '-$result' : result;
-    }
-  }
-
   Future<void> generateStockStatementExcel(
     BuildContext context,
     StockItemList stockStatementData,
   ) async {
-    try {
-      final excel = xl.Excel.createExcel();
-      final sheet = excel['Stock Statement'];
-
-      try {
-        if (excel.sheets.containsKey('Sheet1')) {
-          excel.delete('Sheet1');
-        }
-      } catch (_) {}
-
-      sheet.appendRow(toCellRow(['', 'Jan-25', '', 'Grand Total', '', '']));
-      sheet.appendRow(
-        toCellRow([
-          'SL NO',
-          'Row Labels',
-          'Target',
-          'Actual stock',
-          'Difference',
-        ]),
-      );
-
-      double totalTarget = 0.0;
-      double totalActual = 0.0;
-      double totalDiff = 0.0;
-      int slNo = 1;
-
-      for (final item in stockStatementData.stockData) {
-        totalTarget += item.targetStock;
-        totalActual += item.actualStock;
-        totalDiff += item.difference;
-
-        final targetStr = _formatIndian(item.targetStock);
-        final actualStr = _formatIndian(item.actualStock);
-        final diffStr = _formatIndian(item.difference);
-
-        sheet.appendRow(
-          toCellRow([
-            slNo.toString(),
-            item.itemSubGroup,
-            targetStr,
-            actualStr,
-            diffStr,
-          ]),
-        );
-
-        slNo++;
-      }
-
-      sheet.appendRow(toCellRow([]));
-      sheet.appendRow(
-        toCellRow([
-          '',
-          'Grand Total',
-          _formatIndian(totalTarget),
-          _formatIndian(totalActual),
-          _formatIndian(totalDiff),
-        ]),
-      );
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('stock_statement.xlsx', excelBytes);
-      } else {
-        final storageDir = await getStorageDirectory();
-        final file = File('$storageDir/stock_statement.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating excel.",
-      );
-    }
+    int slNo = 1;
+    await reportService.generateExcel(
+      sheetName: 'StockStatement',
+      headers: ['SL NO', 'Row Labels', 'Target', 'Actual stock', 'Difference'],
+      rows: stockStatementData.stockData
+          .map(
+            (stkData) => [
+              slNo++,
+              stkData.itemSubGroup,
+              stkData.targetStock,
+              stkData.actualStock,
+              stkData.difference,
+            ],
+          )
+          .toList(),
+      fileName: 'stock_statement.xlsx',
+      amountColumns: [3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - Stock Statement',
+    );
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
 
   @override
   void initState() {
@@ -611,173 +515,133 @@ class _StockStatementPageState extends State<StockStatementPage> {
   }
 
   @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  double getMaxValue(double maxValue) {
+    return ((maxValue * 1.1) / 5000000).ceil() * 5000000;
+  }
+
+  @override
   Widget build(BuildContext context) {
     String formattedFiscalYearStartDate = DateFormat(
       'dd/MM/yy',
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        Text(
-                          "$formattedFiscalYearStartDate - $formattedDateNow",
-                        ),
-                      ],
-                    ),
-                    const Row(
-                      children: [
-                        // IconButton(
-                        //     onPressed: () {
-                        //       showPopupMenu();
-                        //     },
-                        //     icon: const Icon(Icons.filter_alt_outlined)),
-                        SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
+        ? Scaffold(
+            appBar: AppBar(
+              automaticallyImplyLeading: true,
+              backgroundColor: Colors.white,
+              elevation: 0.0,
+              title: const Text(
+                "Stock Statement",
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontFamily: "Poppins",
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Stock Statement",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateStockStatementExcel(
-                                      context,
-                                      stockStatementData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    // generateMonthlyProductionPDF(monthData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+              ),
+              centerTitle: true,
+            ),
+            body: FinanceVerticalScroll(
+              controller: _verticalScrollController,
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
+                      Row(
+                        children: [
+                          const SizedBox(width: 15),
+                          Text(
+                            "$formattedFiscalYearStartDate - $formattedDateNow",
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Target Stock:\n${formatAmount(targetStockHeader)}',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Actual Stock\n${formatAmount(actualStockHeader)}',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF97D7F3),
-                            border: Border.all(color: Colors.transparent),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Difference\n${formatAmount(differenceStockHeader)}',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      const Row(children: [SizedBox(width: 5)]),
                     ],
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemSubGroupGraph(),
-                ),
-              ],
+                  const SizedBox(height: 10),
+
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Stock Statement',
+                      spacing: 10,
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () {
+                            generateStockStatementExcel(
+                              context,
+                              stockStatementData,
+                            );
+                          },
+                          child: const Text("Download Excel"),
+                        ),
+                      ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildInfoCard(
+                                    'Target Stock',
+                                    formatAmount(targetStockHeader),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _buildInfoCard(
+                                    'Actual Stock',
+                                    formatAmount(actualStockHeader),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _buildInfoCard(
+                                    'Difference',
+                                    formatAmount(differenceStockHeader),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _itemSubGroupGraph(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           )
         : const Center(child: CircularProgressIndicator());
+  }
+
+  Widget _buildInfoCard(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Container(
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFF97D7F3),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Center(
+            child: Text('$title\n$value', textAlign: TextAlign.center),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _itemSubGroupGraph() {
@@ -789,120 +653,137 @@ class _StockStatementPageState extends State<StockStatementPage> {
     } else {
       chartWidth = screenWidth;
     }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    double? maxY = stockStatementData.stockData.isNotEmpty
+        ? stockStatementData.stockData
+              .map(
+                (e) => e.actualStock > e.targetStock
+                    ? e.actualStock
+                    : e.targetStock,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesWarehouseLocationInventory,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _warehouseLocationInventoryChartData(
-              stockStatementData.stockData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      // touchedWarehouseLocation = touchedWarehouseLocation == ""
-                      //     ? warehouseLocationList
-                      //     .warehouseData[
-                      // barTouchResponse.spot!.spot.x.toInt()]
-                      //     .warehouseName
-                      //     : "";
-                      // selectedChart = barTouchResponse.spot!.spot.x;
-                      // showDrillDownChart = true;
-                      // loadDataWithFilter(
-                      //   touchedAging,
-                      //   touchedWarehouseLocation,
-                      //   touchedItemGroup,
-                      //   touchedItemSubGroup,
-                      // );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    stockStatementData.stockData[grpIndex].itemSubGroup,
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "\nTarget Stock : ${formatAmount(stockStatementData.stockData[grpIndex].targetStock)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nActual Stock : ${formatAmount(stockStatementData.stockData[grpIndex].actualStock)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nDifference : ${formatAmount(stockStatementData.stockData[grpIndex].difference)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesWarehouseLocationInventory,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _warehouseLocationInventoryChartData(
+                stockStatementData.stockData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        // touchedWarehouseLocation = touchedWarehouseLocation == ""
+                        //     ? warehouseLocationList
+                        //     .warehouseData[
+                        // barTouchResponse.spot!.spot.x.toInt()]
+                        //     .warehouseName
+                        //     : "";
+                        // selectedChart = barTouchResponse.spot!.spot.x;
+                        // showDrillDownChart = true;
+                        // loadDataWithFilter(
+                        //   touchedAging,
+                        //   touchedWarehouseLocation,
+                        //   touchedItemGroup,
+                        //   touchedItemSubGroup,
+                        // );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      stockStatementData.stockData[grpIndex].itemSubGroup,
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "\nTarget Stock : ${formatAmount(stockStatementData.stockData[grpIndex].targetStock)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nActual Stock : ${formatAmount(stockStatementData.stockData[grpIndex].actualStock)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nDifference : ${formatAmount(stockStatementData.stockData[grpIndex].difference)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

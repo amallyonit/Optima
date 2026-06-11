@@ -3368,6 +3368,7 @@ class _OpenProductionOrderAnalysisState
                     child: _shiftWiseAnalysis(screenWidth),
                   ),
                 ),
+              
               ],
             ),
           )

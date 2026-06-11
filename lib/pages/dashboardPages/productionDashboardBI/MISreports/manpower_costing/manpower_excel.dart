@@ -1,30 +1,14 @@
-import 'dart:io';
-import 'package:excel/excel.dart' as xl;
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
-import 'package:optima/excel_helper.dart';
-import 'package:path_provider/path_provider.dart';
+import '../../../ReportService.dart';
 
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+final reportService = ReportService();
 
 class ManpowerExcelExporter {
   static Future<void> exportManpowerExcel(
     List<String> particulars,
     List<List<String>> rows,
   ) async {
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Manpower Costing'];
-
     String monthYear = DateFormat('MMMM yyyy').format(DateTime.now());
-
-    /// Caption
-    sheet.appendRow(toCellRow(["Working for the Month of $monthYear"]));
-
-    /// Blank row
-    sheet.appendRow([]);
-
-    /// Headers
     final headers = [
       'Particulars',
       'Total',
@@ -36,44 +20,19 @@ class ManpowerExcelExporter {
       'Last 12 Months Total',
       'Last 12 Months % w.r.t Current Month',
     ];
+    await reportService.generateExcel(
+      sheetName: 'Manpower Costing',
+      headers: headers,
+      rows: rows.asMap().entries.map((entry) {
+        final index = entry.key;
+        final rowData = entry.value;
 
-    sheet.appendRow(toCellRow(headers));
-
-    /// Data rows
-    for (int r = 0; r < particulars.length; r++) {
-      List<dynamic> row = [particulars[r]];
-
-      for (int c = 0; c < headers.length - 1; c++) {
-        if (r < rows.length && c < rows[r].length) {
-          row.add(rows[r][c]);
-        } else {
-          row.add("");
-        }
-      }
-
-      sheet.appendRow(toCellRow(row));
-    }
-
-    /// Save file
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('manpower_costing_report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/manpower_costing_report.xlsx');
-
-      await file.writeAsBytes(excel.encode()!);
-
-      OpenFile.open(file.path);
-    }
-  }
-
-  static Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
+        return [particulars[index], ...rowData];
+      }).toList(),
+      fileName: 'manpower_costing_report.xlsx',
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - Working for the Month of $monthYear',
+    );
   }
 }

@@ -324,10 +324,15 @@ class ManpowerController extends ChangeNotifier {
     selectedMonth = month == -1 ? currentDate!.month : month;
 
     final int fyStartYear = fiscalYearStartDate!.year;
-    selectedYear = (month >= 4) ? fyStartYear : fyStartYear + 1;
+    selectedYear = month != -1
+        ? (month >= 4)
+              ? fyStartYear
+              : fyStartYear + 1
+        : currentDate!.year;
     LoadDates();
     if (month < 0) {
       clearMonthFilter();
+
       return;
     }
 

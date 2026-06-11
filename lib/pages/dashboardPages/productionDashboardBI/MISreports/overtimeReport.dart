@@ -3,23 +3,18 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:month_picker_dialog/month_picker_dialog.dart';
-import 'package:open_file/open_file.dart';
 import 'package:optima/classes/dashBoard.dart';
-import 'package:optima/excel_helper.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
-import 'package:excel/excel.dart' as xl;
-
 import '../../../../notificationService.dart';
+import '../../ReportService.dart';
+import '../../dashboard_card_ui.dart';
+
+final reportService = ReportService();
 
 class DepartmentOvertimeData {
   final String departmentName;
@@ -81,6 +76,9 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
   final DateFormat displayFormat = DateFormat('MMM/yyyy');
   bool isLoading = true;
 
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -98,8 +96,10 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
 
   Future<void> selectOvertimeDetails() async {
     if (selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month first.")),
+      if (!mounted) return;
+      NotificationService.info(
+        title: "Info",
+        message: "Please select a month first.",
       );
       return;
     }
@@ -168,19 +168,20 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
           }
         } else {
           clearValues();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("No data found or status is false.")),
+
+          if (!mounted) return;
+          NotificationService.error(
+            title: "Error",
+            message: "Overtime data not found.",
           );
         }
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to fetch: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading overtime data.",
+      );
     }
   }
 
@@ -296,9 +297,8 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
     totals = List.filled(headers.length - 1, 0.0);
     remainingCells = headers.length - 3;
 
-    // if (selectedDate != null) {
     await selectOvertimeDetails();
-    // }
+
     setState(() {
       isLoading = false;
     });
@@ -379,148 +379,35 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
   Future<void> generateOvertimeExcel(BuildContext context) async {
     // 1. Check if data exists
     if (overtimeGraphData.data.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No Overtime data available to export.')),
+      if (!mounted) return;
+      NotificationService.info(
+        title: "Info",
+        message: "No Overtime data available to export.",
       );
       return;
     }
-
-    try {
-      final excel = xl.Excel.createExcel();
-
-      // 2. Create Sheet
-      final sheet = excel['Overtime Report'];
-      try {
-        if (excel.sheets.containsKey('Sheet1')) {
-          excel.delete('Sheet1');
-        }
-      } catch (_) {}
-
-      // 3. Define Styles
-      final headerStyle = xl.CellStyle(
-        bold: true,
-        verticalAlign: xl.VerticalAlign.Center,
-        textWrapping: xl.TextWrapping.WrapText,
-      );
-
-      final cellStyle = xl.CellStyle(
-        verticalAlign: xl.VerticalAlign.Top,
-        textWrapping: xl.TextWrapping.WrapText,
-      );
-
-      // Style for the Total row at the bottom (Bold)
-      final totalRowStyle = xl.CellStyle(
-        bold: true,
-        verticalAlign: xl.VerticalAlign.Center,
-        backgroundColorHex: xl.ExcelColor.fromHexString(
-          "#D3D3D3",
-        ), // Optional: Light Grey
-      );
-
-      // 4. Add Title
-      sheet.appendRow(toCellRow(['Overtime Report', '']));
-      sheet.appendRow(toCellRow([])); // Empty spacer row
-
-      int currentRowIndex = 2; // Starting index after title
-
-      // 5. Add Headers
-      final headers = ['DIVISION', 'OT HOURS', 'OT AMOUNT'];
-
-      sheet.appendRow(toCellRow(headers));
-
-      // Apply Header Style
-      for (int i = 0; i < headers.length; i++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: i,
-            rowIndex: currentRowIndex,
-          ),
-        );
-        cell.cellStyle = headerStyle;
-      }
-      currentRowIndex++;
-
-      // 6. Variables for Totals
-      double totalHours = 0.0;
-      double totalAmount = 0.0;
-
-      // 7. Loop Data and Add Rows
-      for (final item in overtimeGraphData.data) {
-        // Calculate totals
-        totalHours += item.otHours;
-        totalAmount += item.otAmount;
-
-        final rowData = <Object?>[
-          item.departmentName,
-          item.otHours,
-          item.otAmount,
-        ];
-
-        sheet.appendRow(toCellRow(rowData));
-
-        // Apply Data Style
-        for (int i = 0; i < rowData.length; i++) {
-          var cell = sheet.cell(
-            xl.CellIndex.indexByColumnRow(
-              columnIndex: i,
-              rowIndex: currentRowIndex,
-            ),
-          );
-          cell.cellStyle = cellStyle;
-        }
-        currentRowIndex++;
-      }
-
-      // 8. Add TOTAL Row at the bottom
-      final totalRowData = <Object?>[
-        'TOTAL', // Division Column
-        totalHours, // OT Hours Column
-        totalAmount, // OT Amount Column
-      ];
-
-      sheet.appendRow(toCellRow(totalRowData));
-
-      // Apply Total Row Style
-      for (int i = 0; i < totalRowData.length; i++) {
-        var cell = sheet.cell(
-          xl.CellIndex.indexByColumnRow(
-            columnIndex: i,
-            rowIndex: currentRowIndex,
-          ),
-        );
-        cell.cellStyle = totalRowStyle;
-      }
-
-      // 9. Save and Open
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('overtime_report.xlsx', excelBytes);
-      } else {
-        final storageDir = await getStorageDirectory();
-        final file = File('$storageDir/overtime_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Overtime Report exported successfully')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while generating excel.",
-      );
-    }
+    final headers = ['DIVISION', 'OT HOURS', 'OT AMOUNT'];
+    await reportService.generateExcel(
+      sheetName: 'Overtime Report',
+      headers: headers,
+      rows: overtimeGraphData.data
+          .map(
+            (otData) => [
+              otData.departmentName,
+              otData.otHours,
+              otData.otAmount,
+            ],
+          )
+          .toList(),
+      fileName: 'overtime_report.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - Overtime Report',
+    );
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
+  double getMaxValue(double maxValue) {
+    return ((maxValue * 1.1) / 1000).ceil() * 1000;
   }
 
   @override
@@ -544,24 +431,20 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        keyboardDismissBehavior: kIsWeb
-            ? ScrollViewKeyboardDismissBehavior.manual
-            : ScrollViewKeyboardDismissBehavior.onDrag,
+      body: FinanceVerticalScroll(
+        controller: _verticalScrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.all(8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildHeader(),
+                  Flexible(child: _buildHeader()),
                   GestureDetector(
-                    onTap: () {
-                      selectMonth(context);
-                    },
+                    onTap: () => selectMonth(context),
                     child: Text(
                       '🗓 ${DateFormat('MMMM yyyy').format(selectedDate!)}',
                       style: const TextStyle(
@@ -575,44 +458,23 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    SizedBox(width: 15),
-                    Text(
-                      "Overtime Report",
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    PopupMenuButton(
-                      onSelected: (value) {},
-                      itemBuilder: (BuildContext bc) {
-                        return [
-                          PopupMenuItem(
-                            onTap: () {
-                              setState(() {
-                                generateOvertimeExcel(context);
-                              });
-                            },
-                            child: const Text("Download Excel"),
-                          ),
-                        ];
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
+
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-              child: _itemSubGroupGraph(),
+              padding: const EdgeInsets.all(8),
+              child: DashboardCardUI(
+                title: 'Overtime Report',
+                spacing: 20,
+
+                menuItems: [
+                  PopupMenuItem(
+                    onTap: () async {
+                      await generateOvertimeExcel(context);
+                    },
+                    child: const Text("Download Excel"),
+                  ),
+                ],
+                child: _itemSubGroupGraph(),
+              ),
             ),
           ],
         ),
@@ -621,13 +483,10 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
   }
 
   Widget _buildHeader() {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    _selectedPlant ??= 'Rajapalayam Plant';
 
-    _selectedPlant ??= 'Rajapalayam Plant'; // default selection
-
-    final dropdown = SizedBox(
-      width: 194,
+    return SizedBox(
+      width: 200,
       height: 40,
       child: DropdownButtonFormField<String>(
         initialValue: _selectedPlant,
@@ -660,25 +519,6 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
         },
       ),
     );
-
-    // Layout changes with orientation
-    if (isLandscape) {
-      // In landscape mode, everything stays in ONE horizontal line with scroll
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [dropdown, const SizedBox(width: 12)],
-        ),
-      );
-    } else {
-      // Portrait → stacked layout
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [dropdown, const SizedBox(height: 12)],
-      );
-    }
   }
 
   TableRow buildRow(int rowIndex) {
@@ -749,109 +589,108 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
     } else {
       chartWidth = screenWidth;
     }
+    double maxY = overtimeGraphData.data.isNotEmpty
+        ? overtimeGraphData.data
+              .map((e) => e.otAmount > e.otHours ? e.otAmount : e.otHours)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesOvertime,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: monthlyChartData(overtimeGraphData.data),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      // touchedWarehouseLocation = touchedWarehouseLocation == ""
-                      //     ? warehouseLocationList
-                      //     .warehouseData[
-                      // barTouchResponse.spot!.spot.x.toInt()]
-                      //     .warehouseName
-                      //     : "";
-                      // selectedChart = barTouchResponse.spot!.spot.x;
-                      // showDrillDownChart = true;
-                      // loadDataWithFilter(
-                      //   touchedAging,
-                      //   touchedWarehouseLocation,
-                      //   touchedItemGroup,
-                      //   touchedItemSubGroup,
-                      // );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    overtimeGraphData.data[grpIndex].departmentName,
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "\nOT Hours: ${overtimeGraphData.data[grpIndex].otHours}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nOT Amount: ${overtimeGraphData.data[grpIndex].otAmount}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesOvertime,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: monthlyChartData(overtimeGraphData.data),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {}
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      overtimeGraphData.data[grpIndex].departmentName,
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "\nOT Hours: ${overtimeGraphData.data[grpIndex].otHours}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nOT Amount: ${overtimeGraphData.data[grpIndex].otAmount}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -873,6 +712,9 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
       }
     }
     targetFocusNode.dispose();
+    _verticalScrollController.dispose();
+    _horizontalController.dispose();
+
     super.dispose();
   }
 }

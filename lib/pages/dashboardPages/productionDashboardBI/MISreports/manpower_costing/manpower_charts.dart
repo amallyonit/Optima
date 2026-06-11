@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 
+import '../../../dashboard_card_ui.dart';
 import 'manpower_controller.dart';
 
 double niceDivVal(double maxValue, {int targetSteps = 5}) {
@@ -79,9 +80,15 @@ List<BarChartGroupData> dailyProductionBarGroups(
       BarChartGroupData(
         x: i,
         barRods: [
+          //   BarChartRodData(
+          //     toY: avgBoxes,
+          //     width: 14,
+          //     color: const Color(0xFFFF9F47),
+          //     borderRadius: BorderRadius.circular(3),
+          //   ),
           BarChartRodData(
             toY: item.boxNo.toDouble(),
-            width: 14,
+            width: 30,
             color: Colors.blue,
             borderRadius: BorderRadius.circular(3),
           ),
@@ -196,7 +203,9 @@ class MonthlyProductionBarChart extends StatelessWidget {
   final ManpowerController controller;
   final List<MonthlyProductionData> data;
   final VoidCallback onFilterApplied;
-  const MonthlyProductionBarChart({
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+  MonthlyProductionBarChart({
     super.key,
     required this.controller,
     required this.data,
@@ -206,7 +215,7 @@ class MonthlyProductionBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    double barChartWidth = data.length > 6 ? screenWidth * 1.4 : screenWidth;
+    double barChartWidth = data.length > 6 ? screenWidth * 1.9 : screenWidth;
     int len = data.length;
     double maxProduction = len > 0
         ? data
@@ -214,112 +223,122 @@ class MonthlyProductionBarChart extends StatelessWidget {
               .reduce((a, b) => a > b ? a : b)
         : 0;
     final step = niceDivVal(maxProduction);
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: barChartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getNiceMaxY(maxProduction),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitles(data),
-                axisNameSize: 20,
-              ),
-            ),
-
-            gridData: FlGridData(
-              show: true,
-              // checkToShowHorizontalLine: (value) => value % 10 == 0,
-              checkToShowHorizontalLine: (value) => value % step == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-
-            barGroups: monthWiseProductionAnalysisChartData(data),
-
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getNiceMaxY(maxProduction),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  final item = data[grpIndex];
-
-                  return BarTooltipItem(
-                    '${item.monthName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: [
-                      TextSpan(
-                        text:
-                            "Achievement : ${formatAmount(item.production)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Target : ${(rodData.backDrawRodData.toY / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitles(data),
+                  axisNameSize: 20,
+                ),
               ),
-              touchCallback: (event, response) {
-                if (response != null && response.spot != null) {
-                  if (event is! FlTapDownEvent) return;
-                  final index = response.spot!.touchedBarGroupIndex;
 
-                  if (index < 0 || index >= data.length) return;
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % step == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
 
-                  final item = data[index];
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
 
-                  final int month = DateFormat(
-                    'MMMM',
-                  ).parse(item.monthName).month;
-                  controller.selectedMonthIndex == month
-                      ? controller.selectedMonthIndex = -1
-                      : controller.selectedMonthIndex = month;
-                  controller.applyMonthFilter(controller.selectedMonthIndex);
-                  onFilterApplied();
-                }
-              },
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              barGroups: monthWiseProductionAnalysisChartData(data),
+
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    final item = data[grpIndex];
+
+                    return BarTooltipItem(
+                      '${item.monthName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: [
+                        TextSpan(
+                          text:
+                              "Achievement : ${formatAmount(item.production)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Target : ${(rodData.backDrawRodData.toY / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                touchCallback: (flTouchEvent, barTouchResponse) {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    if (flTouchEvent is FlTapUpEvent) {
+                      final index = barTouchResponse.spot!.spot.x.toInt();
+
+                      if (index < 0 || index >= data.length) return;
+
+                      final item = data[index];
+
+                      final int month = DateFormat(
+                        'MMMM',
+                      ).parse(item.monthName).month;
+                      controller.selectedMonthIndex == month
+                          ? controller.selectedMonthIndex = -1
+                          : controller.selectedMonthIndex = month;
+                      controller.applyMonthFilter(
+                        controller.selectedMonthIndex,
+                      );
+                      onFilterApplied();
+                    }
+                  }
+                },
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -331,8 +350,9 @@ class MonthlyProductionBarChart extends StatelessWidget {
 class DailyProductionBarChart extends StatelessWidget {
   final List<DailyProductionData> data;
   final double avgBoxes;
-
-  const DailyProductionBarChart({
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+  DailyProductionBarChart({
     super.key,
     required this.data,
     required this.avgBoxes,
@@ -350,102 +370,109 @@ class DailyProductionBarChart extends StatelessWidget {
               .reduce((a, b) => a > b ? a : b)
         : 0;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getNiceMaxY(maxProduction.toDouble()),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 42,
-                  interval: 1,
-                  getTitlesWidget: (value, meta) =>
-                      bottomTitleWidgets(value, meta, data),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getNiceMaxY(maxProduction.toDouble()),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 42,
+                    interval: 1,
+                    getTitlesWidget: (value, meta) =>
+                        bottomTitleWidgets(value, meta, data),
+                  ),
                 ),
               ),
-            ),
 
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
 
-            barGroups: dailyProductionBarGroups(data),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
 
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
+              barGroups: dailyProductionBarGroups(data),
 
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
 
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    final item = data[grpIndex];
+
+                    return BarTooltipItem(
+                      '${item.dayLabel}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: "Avg Box : ${formatAmount(avgBoxes)}\n",
+                          style: const TextStyle(
+                            color: Color(0xFFFF9F47),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Actual Boxes : ${formatAmount(item.boxNo.toDouble())}\n",
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
                 ),
 
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  final item = data[grpIndex];
-
-                  return BarTooltipItem(
-                    '${item.dayLabel}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: "Avg Box : ${formatAmount(avgBoxes)}\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Actual Boxes : ${formatAmount(item.boxNo.toDouble())}\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
             ),
           ),
         ),
@@ -456,8 +483,9 @@ class DailyProductionBarChart extends StatelessWidget {
 
 class MonthlyProductionLineChart extends StatelessWidget {
   final List<MonthlyProductionData> data;
-
-  const MonthlyProductionLineChart({super.key, required this.data});
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+  MonthlyProductionLineChart({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -569,55 +597,59 @@ class MonthlyProductionLineChart extends StatelessWidget {
       ],
     );
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
-        height: 400,
+        height: 350,
         width: chartWidth,
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              legend,
-              const SizedBox(height: 15),
-              Expanded(
-                child: LineChart(
-                  LineChartData(
-                    minX: 0,
-                    maxX: (len - 1).toDouble(),
-                    minY: 0,
-                    maxY: getNiceMaxY(maxY ?? 0),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          interval: 1,
-                          getTitlesWidget: bottomTitleWidgets,
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                legend,
+                const SizedBox(height: 15),
+                Expanded(
+                  child: LineChart(
+                    LineChartData(
+                      minX: 0,
+                      maxX: (len - 1).toDouble(),
+                      minY: 0,
+                      maxY: getNiceMaxY(maxY ?? 0),
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            interval: 1,
+                            getTitlesWidget: bottomTitleWidgets,
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: _leftTitles,
+                          axisNameSize: 14,
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
                         ),
                       ),
-                      leftTitles: AxisTitles(
-                        sideTitles: _leftTitles,
-                        axisNameSize: 14,
+                      gridData: const FlGridData(show: false),
+                      borderData: FlBorderData(
+                        show: true,
+                        border: Border.all(color: Colors.black12),
                       ),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
+                      lineBarsData: lines,
                     ),
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(
-                      show: true,
-                      border: Border.all(color: Colors.black12),
-                    ),
-                    lineBarsData: lines,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -627,8 +659,9 @@ class MonthlyProductionLineChart extends StatelessWidget {
 
 class DailyProductionLineChart extends StatelessWidget {
   final List<DailyProductionData> data;
-
-  const DailyProductionLineChart({super.key, required this.data});
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+  DailyProductionLineChart({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -743,55 +776,59 @@ class DailyProductionLineChart extends StatelessWidget {
       ],
     );
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
-        height: 400,
+        height: 350,
         width: chartWidth,
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              legend,
-              const SizedBox(height: 15),
-              Expanded(
-                child: LineChart(
-                  LineChartData(
-                    minX: 0,
-                    maxX: (len - 1).toDouble(),
-                    minY: 0,
-                    maxY: getNiceMaxY(maxY ?? 0),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          interval: 1,
-                          getTitlesWidget: bottomTitleWidgets,
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                legend,
+                const SizedBox(height: 15),
+                Expanded(
+                  child: LineChart(
+                    LineChartData(
+                      minX: 0,
+                      maxX: (len - 1).toDouble(),
+                      minY: 0,
+                      maxY: getNiceMaxY(maxY ?? 0),
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            interval: 1,
+                            getTitlesWidget: bottomTitleWidgets,
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: _leftTitles,
+                          axisNameSize: 14,
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
                         ),
                       ),
-                      leftTitles: AxisTitles(
-                        sideTitles: _leftTitles,
-                        axisNameSize: 14,
+                      gridData: const FlGridData(show: false),
+                      borderData: FlBorderData(
+                        show: true,
+                        border: Border.all(color: Colors.black12),
                       ),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
+                      lineBarsData: lines,
                     ),
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(
-                      show: true,
-                      border: Border.all(color: Colors.black12),
-                    ),
-                    lineBarsData: lines,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -820,44 +857,18 @@ List<BarChartGroupData> monthWiseProductionAnalysisChartData(
       x: index,
       barRods: [
         BarChartRodData(
-          backDrawRodData: BackgroundBarChartRodData(
-            fromY: 0,
-            toY: chartData.target,
-            show: true,
-            color: const Color(0xFFF49136),
-          ),
+          toY: chartData.production.toDouble(),
+          width: 15,
           color: const Color(0xFF97D7F3),
-          borderRadius: BorderRadius.zero,
-          toY: chartData.production,
-          width: 30,
+          borderRadius: BorderRadius.circular(1),
+        ),
+        BarChartRodData(
+          toY: chartData.target.toDouble(),
+          width: 15,
+          color: const Color(0xFFFF9F47),
+          borderRadius: BorderRadius.circular(1),
         ),
       ],
     );
   }).toList();
-}
-
-List<BarChartGroupData> monthWiseProductionAnalysisDailyChartData(
-  List<DailyProductionData> data,
-) {
-  final List<BarChartGroupData> groups = [];
-
-  for (int i = 0; i < data.length; i++) {
-    final item = data[i];
-
-    groups.add(
-      BarChartGroupData(
-        x: i,
-        barRods: [
-          BarChartRodData(
-            toY: item.boxNo.toDouble(),
-            width: 14,
-            color: Colors.blue,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ],
-      ),
-    );
-  }
-
-  return groups;
 }

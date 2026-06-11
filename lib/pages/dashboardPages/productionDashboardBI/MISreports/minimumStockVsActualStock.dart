@@ -1,14 +1,11 @@
 // ignore_for_file: file_names, non_constant_identifier_names, use_build_context_synchronously
-import 'package:optima/excel_helper.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:excel/excel.dart' as xl;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:provider/provider.dart';
@@ -17,107 +14,11 @@ import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
-
 import '../../../../notificationService.dart';
+import '../../dashboard_card_ui.dart';
+import '../../ReportService.dart';
 
-late Future<void> loadDataFuture;
-
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
-int currentQuarter = 0;
-
-int CurrentMonthSalesPercentage = 0;
-String CurrentMonthSalesPercentageStr = "";
-String CurrentMonthSalesStr = "";
-String SalesGoalStr = "";
-int LastMonthPercentage = 0;
-String LastMonthPercentageStr = "";
-double LastMonthSales = 0;
-String LastMonthSalesStr = "";
-double LastMonthTarget = 0;
-String LastMonthTargetStr = "";
-double CurrentQtrSales = 0;
-String CurrentQtrSalesStr = "";
-double CurrentQtrTarget = 0;
-String CurrentQtrTargetStr = "";
-int CurrentQtrPercentage = 0;
-String CurrentQtrPercentageStr = "";
-int YtdPercentage = 0;
-String YtdPercentageStr = "";
-double YtdSales = 0;
-String YtdSalesStr = "";
-double YtdTarget = 0;
-String YtdTargetStr = "";
-double CurrentMonthTarget = 0;
-String CurrentMonthTargetStr = "";
-int CurrentMonthPercentage = 0;
-double Q1Sales = 0;
-double Q1Target = 0;
-double Q1Diff = 0;
-int Q1Percentage = 0;
-String Q1SalesStr = "";
-String Q1TargetStr = "";
-String Q1DiffStr = "";
-String Q1PercentageStr = "";
-double Q2Sales = 0;
-double Q2Target = 0;
-double Q2Diff = 0;
-int Q2Percentage = 0;
-String Q2SalesStr = "";
-String Q2TargetStr = "";
-String Q2DiffStr = "";
-String Q2PercentageStr = "";
-double Q3Sales = 0;
-double Q3Target = 0;
-double Q3Diff = 0;
-int Q3Percentage = 0;
-String Q3SalesStr = "";
-String Q3TargetStr = "";
-String Q3DiffStr = "";
-String Q3PercentageStr = "";
-double Q4Sales = 0;
-double Q4Target = 0;
-double Q4Diff = 0;
-int Q4Percentage = 0;
-String Q4SalesStr = "";
-String Q4TargetStr = "";
-String Q4DiffStr = "";
-String Q4PercentageStr = "";
-double Q1Average = 0;
-String Q1AverageStr = "";
-double Q2Average = 0;
-String Q2AverageStr = "";
-double Q3Average = 0;
-String Q3AverageStr = "";
-double Q4Average = 0;
-String Q4AverageStr = "";
-DateTime? q1FromDate;
-DateTime? q1ToDate;
-DateTime? q2FromDate;
-DateTime? q2ToDate;
-DateTime? q3FromDate;
-DateTime? q3ToDate;
-DateTime? q4FromDate;
-DateTime? q4ToDate;
-
-bool chartDataLoaded = false;
-
-List<InventoryLevelList> inventoryLevel = [];
-List<InventoryLevelList> inventoryLevelTemp = [];
+final reportService = ReportService();
 
 WarehouseInventoryList warehouseLocationList = WarehouseInventoryList(
   warehouseData: [],
@@ -142,25 +43,19 @@ class MinimumStockVsActualStockPage extends StatefulWidget {
 
 class _MinimumStockVsActualStockPageState
     extends State<MinimumStockVsActualStockPage> {
-  void LoadAllQuarterFromToDates() {
-    DateTime now = DateTime.now();
+  late Future<void> loadDataFuture;
+  DateTime? currentDate;
+  DateTime? fiscalYearStartDate;
+  bool chartDataLoaded = false;
+  List<InventoryLevelList> inventoryLevel = [];
+  List<InventoryLevelList> inventoryLevelTemp = [];
 
-    // Determine the financial year start
-    int financialYearStart = (now.month >= 4) ? now.year : now.year - 1;
-
-    // Define quarters
-    q1FromDate = DateTime(financialYearStart, 4, 1);
-    q1ToDate = DateTime(financialYearStart, 7, 0);
-
-    q2FromDate = DateTime(financialYearStart, 7, 1);
-    q2ToDate = DateTime(financialYearStart, 10, 0);
-
-    q3FromDate = DateTime(financialYearStart, 10, 1);
-    q3ToDate = DateTime(financialYearStart + 1, 1, 0); // December 31
-
-    q4FromDate = DateTime(financialYearStart + 1, 1, 1);
-    q4ToDate = DateTime(financialYearStart + 1, 4, 0); // March 31
-  }
+  double targetStock = 0,
+      actualStock = 0,
+      stockPercentage = 0,
+      targetVal = 0,
+      actualVal = 0,
+      valPercentage = 0;
 
   String formatDate(DateTime date) {
     final formatter = DateFormat('yyyyMMdd');
@@ -187,101 +82,13 @@ class _MinimumStockVsActualStockPageState
     return DateTime(nextYear, nextMonth, originalDay);
   }
 
-  int getCurrentQuarter() {
-    int monthIndex = DateTime.now().month;
-    switch (monthIndex) {
-      case 4:
-      case 5:
-      case 6:
-        return 1;
-      case 7:
-      case 8:
-      case 9:
-        return 2;
-      case 10:
-      case 11:
-      case 12:
-        return 3;
-      case 1:
-      case 2:
-      case 3:
-        return 4;
-      default:
-        throw Error();
-    }
-  }
-
-  void getLastQuarterDates() {
-    DateTime now = DateTime.now();
-    switch (getCurrentQuarter()) {
-      case 1:
-        lastQuarterFromDate = DateTime(now.year, 1, 1);
-        lastQuarterToDate = DateTime(now.year, 3, 31);
-        break;
-      case 2:
-        lastQuarterFromDate = DateTime(now.year, 4, 1);
-        lastQuarterToDate = DateTime(now.year, 6, 30);
-        break;
-      case 3:
-        lastQuarterFromDate = DateTime(now.year, 7, 1);
-        lastQuarterToDate = DateTime(now.year, 9, 30);
-        break;
-      case 4:
-        lastQuarterFromDate = DateTime(now.year - 1, 10, 1);
-        lastQuarterToDate = DateTime(now.year - 1, 12, 31);
-        break;
-      default:
-        throw Error();
-    }
-  }
-
   void LoadDates() {
     currentDate = DateTime.now();
-    currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate = addMonth(
-      currentMonthFromDate!,
-      1,
-    ).add(const Duration(days: -1));
-    lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
-    lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
-    currentQuarter = getCurrentQuarter();
-    getLastQuarterDates();
-    DateTime now = DateTime.now();
-    switch (currentQuarter) {
-      case 1:
-        currentQuarterFromDate = DateTime(now.year, 4, 1);
-        currentQuarterToDate = DateTime(now.year, 6, 30);
-      case 2:
-        currentQuarterFromDate = DateTime(now.year, 7, 1);
-        currentQuarterToDate = DateTime(now.year, 9, 30);
-      case 3:
-        currentQuarterFromDate = DateTime(now.year, 10, 1);
-        currentQuarterToDate = DateTime(now.year, 12, 31);
-      case 4:
-        currentQuarterFromDate = DateTime(now.year, 1, 1);
-        currentQuarterToDate = DateTime(now.year, 3, 31);
-      default:
-        throw Error();
-    }
     int fiscalYear = currentDate!.month >= fiscalYearStartMonth
         ? currentDate!.year
         : currentDate!.year - 1;
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
-    prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
-    prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear = currentDate!.month >= 4
-        ? currentDate!.year
-        : currentDate!.year - 1;
-
-    int fiscalYearEndYear = fiscalYearStartYear + 1;
-    financialYear =
-        'FY${fiscalYearStartYear.toString().substring(2)}-${fiscalYearEndYear.toString().substring(2)}';
-
-    int prevFiscalYearStartYear = fiscalYearStartYear - 1;
-    int prevFiscalYearEndYear = prevFiscalYearStartYear + 1;
-    prevFinancialYear =
-        'FY${prevFiscalYearStartYear.toString().substring(2)}-${prevFiscalYearEndYear.toString().substring(2)}';
   }
 
   SideTitles get _leftTitles => SideTitles(
@@ -359,11 +166,7 @@ class _MinimumStockVsActualStockPageState
         const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -483,7 +286,31 @@ class _MinimumStockVsActualStockPageState
     warehouseLocationList = WarehouseInventoryList(
       warehouseData: warehouseData,
     );
-    chartDataLoaded = true;
+    targetStock = warehouseLocationList.warehouseData
+        .map((e) => e.targetMinimumStockValue ?? 0)
+        .fold(0.0, (a, b) => a + b);
+
+    actualStock = warehouseLocationList.warehouseData
+        .map((e) => e.actualMinimumStockValue ?? 0)
+        .fold(0.0, (a, b) => a + b);
+
+    stockPercentage = targetStock > 0 ? (actualStock / targetStock) * 100 : 0;
+
+    targetVal = warehouseLocationList.warehouseData
+        .map(
+          (e) =>
+              (e.totalStockValue ?? 0) - (e.stockValueOtherThanMinValue ?? 0),
+        )
+        .fold(0.0, (a, b) => a + b);
+
+    actualVal = warehouseLocationList.warehouseData
+        .map((e) => e.totalStockValue ?? 0)
+        .fold(0.0, (a, b) => a + b);
+
+    valPercentage = targetVal > 0 ? (actualVal / targetVal) * 100 : 0;
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> loadData(String selectedUser) async {
@@ -495,11 +322,12 @@ class _MinimumStockVsActualStockPageState
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadInventoryLevel(userName, userLevel);
     await _loadWarehouseLocationWiseInventory();
-    chartDataLoaded = true;
   }
 
   Future<void> loadDataWithBranchFilter(String branch) async {
-    chartDataLoaded = false;
+    setState(() {
+      chartDataLoaded = false;
+    });
     inventoryLevel = inventoryLevelTemp;
     inventoryLevel = inventoryLevel
         .where((test) => test.warehouseName == branch)
@@ -510,7 +338,9 @@ class _MinimumStockVsActualStockPageState
   }
 
   Future<void> loadDataClearFilter() async {
-    chartDataLoaded = false;
+    setState(() {
+      chartDataLoaded = false;
+    });
     inventoryLevel = inventoryLevelTemp;
     await _loadWarehouseLocationWiseInventory();
 
@@ -518,77 +348,36 @@ class _MinimumStockVsActualStockPageState
   }
 
   Future<void> generateMinStockVsActualStock(BuildContext context) async {
-    try {
-      final excel = xl.Excel.createExcel();
-
-      final sheet = excel['Minimum Stock with Actual Stock'];
-      try {
-        if (excel.sheets.containsKey('Sheet1')) {
-          excel.delete('Sheet1');
-        }
-      } catch (_) {}
-
-      sheet.appendRow(
-        toCellRow([
-          'FINISHED GOODS MINIMUM STOCK TARGET WITH ACTUAL STOCK',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-          '',
-        ]),
-      );
-
-      sheet.appendRow(toCellRow([])); // spacer
-
-      final headers = [
-        'Branch',
-        'Target Minimum stock value',
-        'Actual minimum stock value',
-        'Excess/Short stock value',
-        'Stock value other than minimum stock',
-        'Total stock value',
-        'Target vs Actual stock %',
-      ];
-      sheet.appendRow(toCellRow(headers));
-
-      for (var data in warehouseLocationList.warehouseData) {
-        sheet.appendRow(
-          toCellRow([
-            data.warehouseName,
-            data.targetMinimumStockValue,
-            data.actualMinimumStockValue,
-            data.excessValue,
-            data.stockValueOtherThanMinValue,
-            data.totalStockValue,
-            data.targetVsActualValuePercent,
-          ]),
-        );
-      }
-
-      if (kIsWeb) {
-        final excelBytes = excel.encode()!;
-        saveAndOpenExcel('manpower_report.xlsx', excelBytes);
-      } else {
-        final storageDir = await getStorageDirectory();
-        final file = File('$storageDir/manpower_report.xlsx');
-        await file.writeAsBytes(excel.encode()!);
-        OpenFile.open(file.path);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      NotificationService.error(
-        title: "Error",
-        message: "Error occured while creating excel.",
-      );
-    }
+    final headers = [
+      'Branch',
+      'Target Minimum stock value',
+      'Actual minimum stock value',
+      'Excess/Short stock value',
+      'Stock value other than minimum stock',
+      'Total stock value',
+      'Target vs Actual stock %',
+    ];
+    await reportService.generateExcel(
+      sheetName: 'MinimumVsActualStock',
+      headers: headers,
+      rows: warehouseLocationList.warehouseData
+          .map(
+            (whData) => [
+              whData.warehouseName,
+              whData.targetMinimumStockValue,
+              whData.actualMinimumStockValue,
+              whData.excessValue,
+              whData.stockValueOtherThanMinValue,
+              whData.totalStockValue,
+              whData.targetVsActualValuePercent,
+            ],
+          )
+          .toList(),
+      fileName: 'minimum_vs_actual_stock.xlsx',
+      amountColumns: [2, 3, 4, 5, 6, 7],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - Minimum Vs Actual Stock Analysis',
+    );
   }
 
   Future<String> getStorageDirectory() async {
@@ -600,13 +389,38 @@ class _MinimumStockVsActualStockPageState
     }
   }
 
+  double getMaxValue(double maxValue) {
+    return ((maxValue * 1.1) / 5000000).ceil() * 5000000;
+  }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+
+  void clearVariables() {
+    targetStock = 0;
+    actualStock = 0;
+    stockPercentage = 0;
+    targetVal = 0;
+    actualVal = 0;
+    valPercentage = 0;
+  }
+
   @override
   void initState() {
     super.initState();
     LoadDates();
+    clearVariables();
     if (isUserLoggedIn && isBiDashboardStart) {
       loadDataFuture = loadData("");
     }
+  }
+
+  @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _horizontalController.dispose();
+    clearVariables();
+    super.dispose();
   }
 
   @override
@@ -616,234 +430,255 @@ class _MinimumStockVsActualStockPageState
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        Text(
-                          "$formattedFiscalYearStartDate - $formattedDateNow",
-                        ),
-                      ],
-                    ),
-                    const Row(
-                      children: [
-                        // IconButton(
-                        //     onPressed: () {
-                        //       showPopupMenu();
-                        //     },
-                        //     icon: const Icon(Icons.filter_alt_outlined)),
-                        SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
+        ? Scaffold(
+            appBar: AppBar(
+              automaticallyImplyLeading: true,
+              backgroundColor: Colors.white,
+              elevation: 0.0,
+              title: const Text(
+                "Minimum Vs Actual Stock",
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontFamily: "Poppins",
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Finished Goods Minimum Stock\nwith Actual Stock",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMinStockVsActualStock(context);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: BranchPicker(
-                    production: inventoryLevel,
-                    onChanged: (b) {
-                      if (b != null) {
-                        loadDataWithBranchFilter(b);
-                      }
-                    },
-                    onClear: () {
-                      loadDataClearFilter();
-                    },
-                  ),
-                ),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+              ),
+              centerTitle: true,
+            ),
+            body: FinanceVerticalScroll(
+              controller: _verticalScrollController,
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      SizedBox(
-                        child: Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 4.0,
-                                right: 4.0,
-                              ),
-                              child: CircularPercentIndicator(
-                                arcType: ArcType.HALF,
-                                radius: 70.0,
-                                lineWidth: 27.0,
-                                animation: true,
-                                percent: 88 / 100,
-                                curve: Curves.linear,
-                                circularStrokeCap: CircularStrokeCap.butt,
-                                progressColor: const Color(0xFF2CA9DF),
-                                arcBackgroundColor: const Color(0xFFB8ECFF),
-                                center: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "88%",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "7,50,000",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "Target : 1,53,46,256",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 30),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 4.0,
-                                right: 4.0,
-                              ),
-                              child: CircularPercentIndicator(
-                                arcType: ArcType.HALF,
-                                radius: 70.0,
-                                lineWidth: 27.0,
-                                animation: true,
-                                percent: 88 / 100,
-                                curve: Curves.linear,
-                                circularStrokeCap: CircularStrokeCap.butt,
-                                progressColor: const Color(0xFF2CA9DF),
-                                arcBackgroundColor: const Color(0xFFB8ECFF),
-                                center: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "88%",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "7,50,000",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "Target : 1,53,46,256",
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 10.0,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      Row(
+                        children: [
+                          const SizedBox(width: 15),
+                          Text(
+                            "$formattedFiscalYearStartDate - $formattedDateNow",
+                          ),
+                        ],
                       ),
+                      const Row(children: [SizedBox(width: 5)]),
                     ],
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _warehouseLocationWiseInventory(),
-                ),
-              ],
+                  const SizedBox(height: 10),
+
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Finished Goods Minimum Stock\nwith Actual Stock',
+                      spacing: 20,
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () {
+                            generateMinStockVsActualStock(context);
+                          },
+                          child: const Text("Download Excel"),
+                        ),
+                      ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          BranchPicker(
+                            production: inventoryLevel,
+                            onChanged: (b) {
+                              if (b != null) {
+                                loadDataWithBranchFilter(b);
+                              }
+                            },
+                            onClear: () {
+                              loadDataClearFilter();
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  child: Row(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 4.0,
+                                          right: 4.0,
+                                        ),
+                                        child: CircularPercentIndicator(
+                                          arcType: ArcType.HALF,
+                                          radius: 70.0,
+                                          lineWidth: 27.0,
+                                          animation: true,
+                                          percent:
+                                              (stockPercentage > 100
+                                                  ? 100
+                                                  : stockPercentage) /
+                                              100,
+                                          curve: Curves.linear,
+                                          circularStrokeCap:
+                                              CircularStrokeCap.butt,
+                                          progressColor: const Color(
+                                            0xFF2CA9DF,
+                                          ),
+                                          arcBackgroundColor: const Color(
+                                            0xFFB8ECFF,
+                                          ),
+                                          center: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    "${stockPercentage.toStringAsFixed(2)}%",
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 11.0,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 5),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    formatAmount(actualStock),
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 10.0,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 5),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    "Target : ${formatAmount(targetStock)}",
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 10.0,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 30),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 4.0,
+                                          right: 4.0,
+                                        ),
+                                        child: CircularPercentIndicator(
+                                          arcType: ArcType.HALF,
+                                          radius: 70.0,
+                                          lineWidth: 27.0,
+                                          animation: true,
+                                          percent:
+                                              (valPercentage > 100
+                                                  ? 100
+                                                  : valPercentage) /
+                                              100,
+                                          curve: Curves.linear,
+                                          circularStrokeCap:
+                                              CircularStrokeCap.butt,
+                                          progressColor: const Color(
+                                            0xFF2CA9DF,
+                                          ),
+                                          arcBackgroundColor: const Color(
+                                            0xFFB8ECFF,
+                                          ),
+                                          center: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    "${valPercentage.toStringAsFixed(2)}%",
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 11.0,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 5),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    formatAmount(actualVal),
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 10.0,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 5),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    "Target : ${formatAmount(targetVal)}",
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 10.0,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Warehouse Wise Analysis',
+                      spacing: 20,
+                      menuItems: [],
+                      child: _warehouseLocationWiseInventory(),
+                    ),
+                  ),
+                ],
+              ),
             ),
           )
         : const Center(child: CircularProgressIndicator());
@@ -859,146 +694,148 @@ class _MinimumStockVsActualStockPageState
       chartWidth = screenWidth;
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    double? maxY = warehouseLocationList.warehouseData.isNotEmpty
+        ? warehouseLocationList.warehouseData
+              .map((e) => e.quantity > e.quantity ? e.quantity : e.quantity)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesWarehouseLocationInventory,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _warehouseLocationInventoryChartData(
-              warehouseLocationList.warehouseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      // touchedWarehouseLocation = touchedWarehouseLocation == ""
-                      //     ? warehouseLocationList
-                      //     .warehouseData[
-                      // barTouchResponse.spot!.spot.x.toInt()]
-                      //     .warehouseName
-                      //     : "";
-                      // selectedChart = barTouchResponse.spot!.spot.x;
-                      // showDrillDownChart = true;
-                      // loadDataWithFilter(
-                      //   touchedAging,
-                      //   touchedWarehouseLocation,
-                      //   touchedItemGroup,
-                      //   touchedItemSubGroup,
-                      // );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    warehouseLocationList.warehouseData[grpIndex].warehouseName,
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "\nTarget Min.Stock : ${formatAmount(warehouseLocationList.warehouseData[grpIndex].targetMinimumStockValue ?? 0)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nMinimum Stock: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].actualMinimumStockValue ?? 0)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nDifference: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].excessValue ?? 0)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nStock value other\nthan minimum stock: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].stockValueOtherThanMinValue ?? 0)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nTotal Stock Value: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].totalStockValue ?? 0)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "\nTarget vs Actual stock %: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].targetVsActualValuePercent ?? 0)}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesWarehouseLocationInventory,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _warehouseLocationInventoryChartData(
+                warehouseLocationList.warehouseData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {}
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      warehouseLocationList
+                          .warehouseData[grpIndex]
+                          .warehouseName,
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "\nTarget Min.Stock : ${formatAmount(warehouseLocationList.warehouseData[grpIndex].targetMinimumStockValue ?? 0)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nMinimum Stock: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].actualMinimumStockValue ?? 0)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nDifference: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].excessValue ?? 0)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nStock value other\nthan minimum stock: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].stockValueOtherThanMinValue ?? 0)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nTotal Stock Value: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].totalStockValue ?? 0)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nTarget vs Actual stock %: ${formatAmount(warehouseLocationList.warehouseData[grpIndex].targetVsActualValuePercent ?? 0)}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

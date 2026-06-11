@@ -23,18 +23,19 @@ class DashboardCardHeader extends StatelessWidget {
           ),
         ),
         if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
-        PopupMenuButton(
-          padding: EdgeInsets.zero,
-          itemBuilder: (context) => menuItems,
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
+        if (menuItems.isNotEmpty)
+          PopupMenuButton(
+            padding: EdgeInsets.zero,
+            itemBuilder: (context) => menuItems,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.more_vert, size: 18),
             ),
-            child: const Icon(Icons.more_vert, size: 18),
           ),
-        ),
       ],
     );
   }
