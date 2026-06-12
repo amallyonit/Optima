@@ -108,7 +108,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       pageBuilder: () => const StockStatementPage(),
     ),
     ReportItem(
-      title: 'RM Day Inventory Vs Current Stock',
+      title: 'RM - Day Inventory Vs Current Stock',
       pageBuilder: () => const SummaryOfRawMaterials(),
     ),
     ReportItem(

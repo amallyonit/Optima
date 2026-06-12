@@ -18,107 +18,6 @@ import '../../ReportService.dart';
 
 final reportService = ReportService();
 
-late Future<void> loadDataFuture;
-
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
-int currentQuarter = 0;
-
-int CurrentMonthSalesPercentage = 0;
-String CurrentMonthSalesPercentageStr = "";
-String CurrentMonthSalesStr = "";
-String SalesGoalStr = "";
-int LastMonthPercentage = 0;
-String LastMonthPercentageStr = "";
-double LastMonthSales = 0;
-String LastMonthSalesStr = "";
-double LastMonthTarget = 0;
-String LastMonthTargetStr = "";
-double CurrentQtrSales = 0;
-String CurrentQtrSalesStr = "";
-double CurrentQtrTarget = 0;
-String CurrentQtrTargetStr = "";
-int CurrentQtrPercentage = 0;
-String CurrentQtrPercentageStr = "";
-int YtdPercentage = 0;
-String YtdPercentageStr = "";
-double YtdSales = 0;
-String YtdSalesStr = "";
-double YtdTarget = 0;
-String YtdTargetStr = "";
-double CurrentMonthTarget = 0;
-String CurrentMonthTargetStr = "";
-int CurrentMonthPercentage = 0;
-double Q1Sales = 0;
-double Q1Target = 0;
-double Q1Diff = 0;
-int Q1Percentage = 0;
-String Q1SalesStr = "";
-String Q1TargetStr = "";
-String Q1DiffStr = "";
-String Q1PercentageStr = "";
-double Q2Sales = 0;
-double Q2Target = 0;
-double Q2Diff = 0;
-int Q2Percentage = 0;
-String Q2SalesStr = "";
-String Q2TargetStr = "";
-String Q2DiffStr = "";
-String Q2PercentageStr = "";
-double Q3Sales = 0;
-double Q3Target = 0;
-double Q3Diff = 0;
-int Q3Percentage = 0;
-String Q3SalesStr = "";
-String Q3TargetStr = "";
-String Q3DiffStr = "";
-String Q3PercentageStr = "";
-double Q4Sales = 0;
-double Q4Target = 0;
-double Q4Diff = 0;
-int Q4Percentage = 0;
-String Q4SalesStr = "";
-String Q4TargetStr = "";
-String Q4DiffStr = "";
-String Q4PercentageStr = "";
-double Q1Average = 0;
-String Q1AverageStr = "";
-double Q2Average = 0;
-String Q2AverageStr = "";
-double Q3Average = 0;
-String Q3AverageStr = "";
-double Q4Average = 0;
-String Q4AverageStr = "";
-DateTime? q1FromDate;
-DateTime? q1ToDate;
-DateTime? q2FromDate;
-DateTime? q2ToDate;
-DateTime? q3FromDate;
-DateTime? q3ToDate;
-DateTime? q4FromDate;
-DateTime? q4ToDate;
-
-bool chartDataLoaded = false;
-
-List<InventoryLevelList> stockData = [];
-List<InventoryLevelList> stockDataTemp = [];
-
-double targetStockHeader = 0;
-double actualStockHeader = 0;
-double differenceStockHeader = 0;
-
 StockItemList stockStatementData = StockItemList(stockData: []);
 
 class StockStatementMISProvider with ChangeNotifier {
@@ -138,23 +37,17 @@ class StockStatementPage extends StatefulWidget {
 }
 
 class _StockStatementPageState extends State<StockStatementPage> {
-  void LoadAllQuarterFromToDates() {
-    DateTime now = DateTime.now();
+  late Future<void> loadDataFuture;
+  DateTime? currentDate;
+  DateTime? fiscalYearStartDate;
+  bool chartDataLoaded = false;
 
-    int financialYearStart = (now.month >= 4) ? now.year : now.year - 1;
+  List<InventoryLevelList> stockData = [];
+  List<InventoryLevelList> stockDataTemp = [];
 
-    q1FromDate = DateTime(financialYearStart, 4, 1);
-    q1ToDate = DateTime(financialYearStart, 7, 0);
-
-    q2FromDate = DateTime(financialYearStart, 7, 1);
-    q2ToDate = DateTime(financialYearStart, 10, 0);
-
-    q3FromDate = DateTime(financialYearStart, 10, 1);
-    q3ToDate = DateTime(financialYearStart + 1, 1, 0); // December 31
-
-    q4FromDate = DateTime(financialYearStart + 1, 1, 1);
-    q4ToDate = DateTime(financialYearStart + 1, 4, 0); // March 31
-  }
+  double targetStockHeader = 0;
+  double actualStockHeader = 0;
+  double differenceStockHeader = 0;
 
   String formatDate(DateTime date) {
     final formatter = DateFormat('yyyyMMdd');
@@ -181,101 +74,13 @@ class _StockStatementPageState extends State<StockStatementPage> {
     return DateTime(nextYear, nextMonth, originalDay);
   }
 
-  int getCurrentQuarter() {
-    int monthIndex = DateTime.now().month;
-    switch (monthIndex) {
-      case 4:
-      case 5:
-      case 6:
-        return 1;
-      case 7:
-      case 8:
-      case 9:
-        return 2;
-      case 10:
-      case 11:
-      case 12:
-        return 3;
-      case 1:
-      case 2:
-      case 3:
-        return 4;
-      default:
-        throw Error();
-    }
-  }
-
-  void getLastQuarterDates() {
-    DateTime now = DateTime.now();
-    switch (getCurrentQuarter()) {
-      case 1:
-        lastQuarterFromDate = DateTime(now.year, 1, 1);
-        lastQuarterToDate = DateTime(now.year, 3, 31);
-        break;
-      case 2:
-        lastQuarterFromDate = DateTime(now.year, 4, 1);
-        lastQuarterToDate = DateTime(now.year, 6, 30);
-        break;
-      case 3:
-        lastQuarterFromDate = DateTime(now.year, 7, 1);
-        lastQuarterToDate = DateTime(now.year, 9, 30);
-        break;
-      case 4:
-        lastQuarterFromDate = DateTime(now.year - 1, 10, 1);
-        lastQuarterToDate = DateTime(now.year - 1, 12, 31);
-        break;
-      default:
-        throw Error();
-    }
-  }
-
   void LoadDates() {
     currentDate = DateTime.now();
-    currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate = addMonth(
-      currentMonthFromDate!,
-      1,
-    ).add(const Duration(days: -1));
-    lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
-    lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
-    currentQuarter = getCurrentQuarter();
-    getLastQuarterDates();
-    DateTime now = DateTime.now();
-    switch (currentQuarter) {
-      case 1:
-        currentQuarterFromDate = DateTime(now.year, 4, 1);
-        currentQuarterToDate = DateTime(now.year, 6, 30);
-      case 2:
-        currentQuarterFromDate = DateTime(now.year, 7, 1);
-        currentQuarterToDate = DateTime(now.year, 9, 30);
-      case 3:
-        currentQuarterFromDate = DateTime(now.year, 10, 1);
-        currentQuarterToDate = DateTime(now.year, 12, 31);
-      case 4:
-        currentQuarterFromDate = DateTime(now.year, 1, 1);
-        currentQuarterToDate = DateTime(now.year, 3, 31);
-      default:
-        throw Error();
-    }
     int fiscalYear = currentDate!.month >= fiscalYearStartMonth
         ? currentDate!.year
         : currentDate!.year - 1;
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
-    prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
-    prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear = currentDate!.month >= 4
-        ? currentDate!.year
-        : currentDate!.year - 1;
-
-    int fiscalYearEndYear = fiscalYearStartYear + 1;
-    financialYear =
-        'FY${fiscalYearStartYear.toString().substring(2)}-${fiscalYearEndYear.toString().substring(2)}';
-
-    int prevFiscalYearStartYear = fiscalYearStartYear - 1;
-    int prevFiscalYearEndYear = prevFiscalYearStartYear + 1;
-    prevFinancialYear =
-        'FY${prevFiscalYearStartYear.toString().substring(2)}-${prevFiscalYearEndYear.toString().substring(2)}';
   }
 
   SideTitles get _leftTitles => SideTitles(
@@ -295,7 +100,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
     return const Text("");
   }
 
-  SideTitles get _bottomTitlesWarehouseLocationInventory => SideTitles(
+  SideTitles get _bottomTitlesStock => SideTitles(
     reservedSize: 30,
     showTitles: true,
     getTitlesWidget: (value, meta) {
@@ -317,9 +122,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
     },
   );
 
-  List<BarChartGroupData> _warehouseLocationInventoryChartData(
-    List<StockItemData> data,
-  ) {
+  List<BarChartGroupData> _stockChartData(List<StockItemData> data) {
     return data
         .map(
           (chartData) => BarChartGroupData(
@@ -353,11 +156,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
         const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            //     'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
@@ -521,8 +320,8 @@ class _StockStatementPageState extends State<StockStatementPage> {
     super.dispose();
   }
 
-  double getMaxValue(double maxValue) {
-    return ((maxValue * 1.1) / 5000000).ceil() * 5000000;
+  double getMaxValue(double maxValue, double divVal) {
+    return (maxValue / divVal).ceil() * divVal;
   }
 
   @override
@@ -672,7 +471,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
           padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
-              maxY: getMaxValue(maxY),
+              maxY: getMaxValue(maxY, 10000000),
               titlesData: FlTitlesData(
                 show: true,
                 leftTitles: AxisTitles(
@@ -684,7 +483,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
                 ),
                 topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
                 bottomTitles: AxisTitles(
-                  sideTitles: _bottomTitlesWarehouseLocationInventory,
+                  sideTitles: _bottomTitlesStock,
                   axisNameSize: 20,
                 ),
               ),
@@ -702,9 +501,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
                   top: BorderSide(color: Colors.grey.shade400, width: 0.7),
                 ),
               ),
-              barGroups: _warehouseLocationInventoryChartData(
-                stockStatementData.stockData,
-              ),
+              barGroups: _stockChartData(stockStatementData.stockData),
               barTouchData: BarTouchData(
                 allowTouchBarBackDraw: true,
                 touchCallback: (flTouchEvent, barTouchResponse) async {

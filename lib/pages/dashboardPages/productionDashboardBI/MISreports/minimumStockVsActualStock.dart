@@ -6,7 +6,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -380,17 +379,8 @@ class _MinimumStockVsActualStockPageState
     );
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
-  double getMaxValue(double maxValue) {
-    return ((maxValue * 1.1) / 5000000).ceil() * 5000000;
+  double getMaxValue(double maxValue, double divVal) {
+    return (maxValue / divVal).ceil() * divVal;
   }
 
   final ScrollController _verticalScrollController = ScrollController();
@@ -710,7 +700,7 @@ class _MinimumStockVsActualStockPageState
           padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
-              maxY: getMaxValue(maxY),
+              maxY: getMaxValue(maxY, 5000000),
               titlesData: FlTitlesData(
                 show: true,
                 leftTitles: AxisTitles(
