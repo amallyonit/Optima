@@ -965,6 +965,9 @@ String formatAmount(double amount) {
     String formattedAmount =
         '${(positiveAmount / 100000).toStringAsFixed(2)} L';
     return isNegative ? '-$formattedAmount' : formattedAmount;
+  } else if (positiveAmount >= 10000) {
+    String formattedAmount = '${(positiveAmount / 10000).toStringAsFixed(2)} K';
+    return isNegative ? '-$formattedAmount' : formattedAmount;
   } else {
     String formattedAmount = '${(positiveAmount / 1000).toStringAsFixed(2)} K';
     return isNegative ? '-$formattedAmount' : formattedAmount;
@@ -5953,9 +5956,22 @@ class JobCardDetails {
 
 class ProductBarData {
   final String fgProductName;
-  final double sumCompletedQty;
+  final double bomQty;
+  final double bomCost;
+  final double productionQty;
+  final double actualCost;
+  final double deviation;
+  final double percentage;
 
-  ProductBarData({required this.fgProductName, required this.sumCompletedQty});
+  ProductBarData({
+    required this.fgProductName,
+    required this.bomQty,
+    required this.bomCost,
+    required this.productionQty,
+    required this.actualCost,
+    required this.deviation,
+    required this.percentage,
+  });
 }
 
 class ProductBarDataList {
@@ -6391,4 +6407,131 @@ class CCCAuditRow {
     required this.postingDate,
     required this.amount,
   });
+}
+
+class CarriageOutwardList {
+  final String invoiceNo;
+  final String postingDate;
+  final String customerCode;
+  final String customerName;
+  final String termsofDelivery;
+  final String dispatchThrough;
+  final String destinationDetails;
+  final String state;
+  final String lrNo;
+  final String lrDate;
+  final String totalNoofBoxes;
+  final String totalNoofBundles;
+  final String deliveryDate;
+  final String totalFreightCharges;
+  final String freightCharges;
+  final String branchName;
+  final String confirmationStatus;
+  final String minimumOrderValue;
+  final String customerCity;
+  final String bpSubSubGroup;
+  final String bpReferenceNo;
+  final String documentDate;
+  final String totalTax;
+  final String totalDiscount;
+  final String documentTotal;
+  final String paidtoDate;
+  final String difference;
+  final String invStatus;
+  final String remarks;
+
+  CarriageOutwardList({
+    required this.invoiceNo,
+    required this.postingDate,
+    required this.customerCode,
+    required this.customerName,
+    required this.termsofDelivery,
+    required this.dispatchThrough,
+    required this.destinationDetails,
+    required this.state,
+    required this.lrNo,
+    required this.lrDate,
+    required this.totalNoofBoxes,
+    required this.totalNoofBundles,
+    required this.deliveryDate,
+    required this.totalFreightCharges,
+    required this.freightCharges,
+    required this.branchName,
+    required this.confirmationStatus,
+    required this.minimumOrderValue,
+    required this.customerCity,
+    required this.bpSubSubGroup,
+    required this.bpReferenceNo,
+    required this.documentDate,
+    required this.totalTax,
+    required this.totalDiscount,
+    required this.documentTotal,
+    required this.paidtoDate,
+    required this.difference,
+    required this.invStatus,
+    required this.remarks,
+  });
+
+  factory CarriageOutwardList.fromJson(Map<String, dynamic> json) {
+    return CarriageOutwardList(
+      invoiceNo: json['invoiceNo']?.toString() ?? '',
+      postingDate: json['postingDate']?.toString() ?? '',
+      customerCode: json['customerCode']?.toString() ?? '',
+      customerName: json['customerName']?.toString() ?? '',
+      termsofDelivery: json['termsofDelivery']?.toString() ?? '',
+      dispatchThrough: json['dispatchThrough']?.toString() ?? '',
+      destinationDetails: json['destinationDetails']?.toString() ?? '',
+      state: json['state']?.toString() ?? '',
+      lrNo: json['lrNo']?.toString() ?? '',
+      lrDate: json['lrDate']?.toString() ?? '',
+      totalNoofBoxes: json['totalNoofBoxes']?.toString() ?? '',
+      totalNoofBundles: json['totalNoofBundles']?.toString() ?? '',
+      deliveryDate: json['deliveryDate']?.toString() ?? '',
+      totalFreightCharges: json['totalFreightCharges']?.toString() ?? '0.0',
+      freightCharges: json['freightCharges']?.toString() ?? '',
+      branchName: json['branchName']?.toString() ?? '',
+      confirmationStatus: json['confirmationStatus']?.toString() ?? '',
+      minimumOrderValue: json['minimumOrderValue']?.toString() ?? '',
+      customerCity: json['customerCity']?.toString() ?? '',
+      bpSubSubGroup: json['bpSubSubGroup']?.toString() ?? '',
+      bpReferenceNo: json['bpReferenceNo']?.toString() ?? '',
+      documentDate: json['documentDate']?.toString() ?? '',
+      totalTax: json['totalTax']?.toString() ?? '',
+      totalDiscount: json['totalDiscount']?.toString() ?? '',
+      documentTotal: json['documentTotal']?.toString() ?? '',
+      paidtoDate: json['paidtoDate']?.toString() ?? '',
+      difference: json['difference']?.toString() ?? '',
+      invStatus: json['invStatus']?.toString() ?? '',
+      remarks: json['remarks']?.toString() ?? '',
+    );
+  }
+}
+
+class CarriageInwardList {
+  final String invoiceNo;
+  final String postingDate;
+  final String vendorCode;
+  final String vendorName;
+  final String branchName;
+  final String totalFreightCharges;
+
+  CarriageInwardList({
+    required this.invoiceNo,
+    required this.postingDate,
+    required this.vendorCode,
+    required this.vendorName,
+    required this.branchName,
+    required this.totalFreightCharges,
+  });
+
+  factory CarriageInwardList.fromJson(Map<String, dynamic> json) {
+    return CarriageInwardList(
+      invoiceNo: json['invoiceNo']?.toString() ?? '',
+      postingDate: json['postingDate']?.toString() ?? '',
+      vendorCode: json['vendorCode']?.toString() ?? '',
+      vendorName: json['vendorName']?.toString() ?? '',
+      branchName: json['branchName']?.toString() ?? '',
+      totalFreightCharges: json['totalFreightCharges']?.toString() ?? '0.0',
+    );
+  }
 }

@@ -1,21 +1,21 @@
 // ignore_for_file: non_constant_identifier_names, file_names, use_build_context_synchronously, library_private_types_in_public_api
 import 'dart:convert';
 import 'dart:io';
-import 'package:optima/classes/globals.dart';
-import 'package:provider/provider.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart'; // For kIsWeb check
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:excel/excel.dart' as xl;
-import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import '../../../../classes/dashBoard.dart';
+import '../../../../notificationService.dart';
+import '../../dashboard_card_ui.dart';
+import '../../ReportService.dart';
 
-// --- Global Variables ---
+final reportService = ReportService();
 List<CarriageInwardList> carriageInwardList = [];
 late Future<void> loadDataFuture;
 bool chartDataLoaded = false;
@@ -26,60 +26,17 @@ DateTime? currentMonthFromDate;
 DateTime? currentMonthToDate;
 DateTime? lastMonthFromDate;
 DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
 DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
 int currentQuarter = 0;
+String? formattedFiscalYearStartDate;
+String? formattedDateNow;
 
-class CarriageInwardList {
-  final String invoiceNo;
-  final String postingDate;
-  final String vendorCode;
-  final String vendorName;
-  final String branchName;
-  final String totalFreightCharges;
-
-  CarriageInwardList({
-    required this.invoiceNo,
-    required this.postingDate,
-    required this.vendorCode,
-    required this.vendorName,
-    required this.branchName,
-    required this.totalFreightCharges,
-  });
-
-  factory CarriageInwardList.fromJson(Map<String, dynamic> json) {
-    return CarriageInwardList(
-      invoiceNo: json['invoiceNo']?.toString() ?? '',
-      postingDate: json['postingDate']?.toString() ?? '',
-      vendorCode: json['vendorCode']?.toString() ?? '',
-      vendorName: json['vendorName']?.toString() ?? '',
-      branchName: json['branchName']?.toString() ?? '',
-      totalFreightCharges: json['totalFreightCharges']?.toString() ?? '0.0',
-    );
-  }
-}
-
+// Helper class for Graphing
 class VendorFreightData {
   final String vendorName;
   final double totalFreight;
 
   VendorFreightData({required this.vendorName, required this.totalFreight});
-}
-
-class CarriageInwardMISProvider with ChangeNotifier {
-  List<CarriageInwardList> _salesList = [];
-  List<CarriageInwardList> get salesList => _salesList;
-  void updateProductionList(List<CarriageInwardList> newSalesList) {
-    _salesList = newSalesList;
-    notifyListeners();
-  }
 }
 
 class CarriageInwardPage extends StatefulWidget {
@@ -90,55 +47,50 @@ class CarriageInwardPage extends StatefulWidget {
 }
 
 class _CarriageInwardPageState extends State<CarriageInwardPage> {
-  DateTime _selectedMonth = DateTime.now();
-
-  // Graph Data
-  List<VendorFreightData> _graphData = [];
-  List<String> _availableBranches = [];
-
-  bool isLoading = false;
+  // UI State
+  DateTime selectedDate = DateTime.now();
   String? _selectedBranch;
+  List<VendorFreightData> _graphData = [];
+  bool isLoading = false; // Internal loading for graph processing
 
-  double _totalFreight = 0;
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     LoadDates();
-
-    if (isUserLoggedIn && isBiDashboardStart) {
-      if (!chartDataLoaded || carriageInwardList.isEmpty) {
-        loadDataFuture = loadData("");
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _extractBranches();
-          _processDataAndGenerateGraph();
-        });
-      }
-    }
+    loadDataFuture = loadData("");
   }
 
-  // --- API Loading Logic ---
+  @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  double getMaxValue(double maxValue, double divVal) {
+    return (maxValue / divVal).ceil() * divVal;
+  }
+
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
         ? prefs.getString('userName') ?? ''
         : selectedUser;
-    final userLevel = prefs.getString('userLevel') ?? '';
-    await _loadProductionOrderAnalysis(userName, userLevel);
+
+    // Call the specific API function
+    await _fetchCarriageInwardApi(userName);
   }
 
-  Future<void> _loadProductionOrderAnalysis(
-    String UserName,
-    String UserLevel,
-  ) async {
+  Future<void> _fetchCarriageInwardApi(String userName) async {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
-    List<CarriageInwardList> salesList = [];
+    List<CarriageInwardList> fetchedList = [];
     int monthIndex = DateTime.now().month;
 
-    // Use global date logic for API Request
     DateTime fromDate = monthIndex == 4
         ? lastMonthFromDate!
         : fiscalYearStartDate!;
@@ -146,7 +98,7 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
     try {
       do {
         var body = {
-          "FromDate": formatApiRequestDate(fromDate), // yyyyMMdd for request
+          "FromDate": formatApiRequestDate(fromDate),
           "ToDate": formatApiRequestDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
@@ -154,6 +106,7 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
         };
 
         const apiUrl = '${ApiHelper.baseUrl}CRM_PurchaseTransportCostList';
+
         final response = await http.post(
           Uri.parse(apiUrl),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
@@ -161,117 +114,86 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseJson = jsonDecode(response.body);
-          if (responseJson["responseData"].toString().isNotEmpty) {
-            List<CarriageInwardList> newSalesList =
-                (responseJson['responseData'] as List)
-                    .map((item) => CarriageInwardList.fromJson(item))
-                    .toList();
+          final json = jsonDecode(response.body);
+          final List list = json['responseData'] ?? [];
+          final newList = list
+              .map((e) => CarriageInwardList.fromJson(e))
+              .toList();
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
-            index++;
-          } else {
-            fetchedCount = 0;
-          }
+          fetchedList.addAll(newList);
+          fetchedCount = newList.length;
+          index++;
         } else {
           fetchedCount = 0;
+          if (kDebugMode) print("API Error: ${response.statusCode}");
         }
       } while (fetchedCount == limit);
 
       if (mounted) {
         setState(() {
-          carriageInwardList = salesList;
-          context.read<CarriageInwardMISProvider>().updateProductionList(
-            salesList,
-          );
+          carriageInwardList = fetchedList;
           chartDataLoaded = true;
-
-          _extractBranches();
-          if (_availableBranches.isNotEmpty) {
-            _selectedBranch ??= _availableBranches.first;
-            _processDataAndGenerateGraph();
-          }
+          _selectedBranch = "Karnataka State";
         });
+        await _processDataAndGenerateGraph();
       }
     } catch (e) {
       if (kDebugMode) {
         print("Error loading data: $e");
+      } else {
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message:
+              "Error occured while loading inward transportation cost data.",
+        );
       }
     }
   }
 
   String formatApiRequestDate(DateTime date) {
-    // Format for API Payload (usually yyyyMMdd)
     final formatter = DateFormat('yyyyMMdd');
     return formatter.format(date);
   }
 
-  // --- Data Processing ---
-
-  void _extractBranches() {
-    final Set<String> branches = carriageInwardList
-        .map((e) => e.branchName)
-        .where((element) => element.isNotEmpty)
-        .toSet();
-
-    if (mounted) {
-      setState(() {
-        _availableBranches = branches.toList()..sort();
-        // Default to first branch if selection is invalid/empty
-        if (_selectedBranch == null && _availableBranches.isNotEmpty) {
-          _selectedBranch = _availableBranches.first;
-        } else if (_selectedBranch != null &&
-            !_availableBranches.contains(_selectedBranch)) {
-          _selectedBranch = _availableBranches.isNotEmpty
-              ? _availableBranches.first
-              : null;
-        }
-      });
-    }
-  }
-
-  void _processDataAndGenerateGraph() {
-    if (carriageInwardList.isEmpty) return;
+  Future<void> _processDataAndGenerateGraph() async {
+    if (carriageInwardList.isEmpty || _selectedBranch == null) return;
 
     setState(() => isLoading = true);
 
-    Map<String, double> groupedData = {};
-    double totalFreightSum = 0;
+    await Future.delayed(Duration(milliseconds: 50));
 
-    // **CRITICAL CHANGE**:
-    // Format: "4/14/2025 12:00:00 AM" => "M/d/yyyy hh:mm:ss a"
-    // 'M' handles 4 and 10. 'd' handles 4 and 14.
+    Map<String, double> groupedData = {};
+
+    // 'M' handles single digits, 'd' handles single digits.
     final apiDateFormatter = DateFormat("M/d/yyyy hh:mm:ss a");
 
     for (var item in carriageInwardList) {
-      // 1. Filter by Branch
+      // Filter 1: Branch
       if (item.branchName != _selectedBranch) continue;
 
-      // 2. Parse Date
-      DateTime? orderDate;
+      // Filter 2: Date Parsing
+      DateTime? postingDate;
       try {
-        // Parse "4/14/2025 12:00:00 AM"
-        orderDate = apiDateFormatter.parse(item.postingDate);
+        postingDate = apiDateFormatter.parse(item.postingDate);
       } catch (e) {
-        // Fallback in case of empty or malformed strings
         continue;
       }
 
-      // 3. Filter by Selected Month
-      if (orderDate.year == _selectedMonth.year &&
-          orderDate.month == _selectedMonth.month) {
+      // Filter 3: Selected Month/Year
+      if (postingDate.year == selectedDate.year &&
+          postingDate.month == selectedDate.month) {
         double cost = double.tryParse(item.totalFreightCharges) ?? 0.0;
         String key = item.vendorName.isEmpty
             ? "Unknown Vendor"
             : item.vendorName;
 
+        // Summation
         groupedData[key] = (groupedData[key] ?? 0) + cost;
-        totalFreightSum += cost;
       }
     }
 
-    // 4. Map to Chart Data
+    // Convert to Graph Data List
     List<VendorFreightData> resultList = groupedData.entries.map((entry) {
       return VendorFreightData(
         vendorName: entry.key,
@@ -279,437 +201,351 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
       );
     }).toList();
 
-    // 5. Sort by Freight Cost Descending
+    // Sort descending
     resultList.sort((a, b) => b.totalFreight.compareTo(a.totalFreight));
+
+    if (!mounted) return;
 
     setState(() {
       _graphData = resultList;
-      _totalFreight = totalFreightSum;
       isLoading = false;
     });
   }
 
-  String formatAmount(double amount) {
-    if (amount >= 100000) {
-      return "${(amount / 1000).toStringAsFixed(1)}k";
+  Map<String, DateTime> getMonthStartEndDates(int month) {
+    DateTime now = DateTime.now();
+
+    int currentYear = now.year;
+
+    int yearForMonth;
+    if (now.month >= 1 && now.month <= 3) {
+      yearForMonth = (month >= 4 && month <= 12)
+          ? currentYear - 1
+          : currentYear;
+    } else {
+      yearForMonth = (month >= 4 && month <= 12)
+          ? currentYear
+          : currentYear + 1;
     }
-    if (amount % 1 == 0) return amount.toInt().toString();
-    return amount.toStringAsFixed(1);
+
+    DateTime firstDayOfMonth = DateTime(yearForMonth, month, 1);
+    DateTime lastDayOfMonth = DateTime(yearForMonth, month + 1, 0);
+
+    return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
   }
 
-  Future<void> _pickMonth() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedMonth,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      helpText: "SELECT MONTH",
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedMonth = DateTime(picked.year, picked.month, 1);
-      });
-      _processDataAndGenerateGraph();
-    }
-  }
-
-  // --- Excel Export ---
-  Future<void> _generateExcel(BuildContext context) async {
-    if (_graphData.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No data to export.')));
-      return;
-    }
-
-    try {
-      final excel = xl.Excel.createExcel();
-      String defaultSheet = excel.sheets.keys.first;
-      String sheetName = "Vendor Freight";
-      excel.rename(defaultSheet, sheetName);
-      final sheet = excel[sheetName];
-
-      final headerStyle = xl.CellStyle(
-        bold: true,
-        horizontalAlign: xl.HorizontalAlign.Center,
-        backgroundColorHex: xl.ExcelColor.fromHexString("#D3D3D3"),
-      );
-      final titleStyle = xl.CellStyle(
-        bold: true,
-        fontSize: 14,
-        horizontalAlign: xl.HorizontalAlign.Center,
-      );
-
-      sheet.merge(
-        xl.CellIndex.indexByString("A1"),
-        xl.CellIndex.indexByString("B1"),
-      );
-      var titleCell = sheet.cell(xl.CellIndex.indexByString("A1"));
-      titleCell.value = xl.TextCellValue(
-        "Branch: $_selectedBranch - ${DateFormat('MMMM yyyy').format(_selectedMonth)}",
-      );
-      titleCell.cellStyle = titleStyle;
-
-      List<String> headers = ["Vendor Name", "Total Freight Charges"];
-      sheet.appendRow(headers.map((e) => xl.TextCellValue(e)).toList());
-
-      for (int i = 0; i < headers.length; i++) {
-        sheet
-                .cell(
-                  xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 1),
-                )
-                .cellStyle =
-            headerStyle;
-      }
-
-      for (var item in _graphData) {
-        sheet.appendRow([
-          xl.TextCellValue(item.vendorName),
-          xl.DoubleCellValue(item.totalFreight),
-        ]);
-      }
-
-      sheet.appendRow([
-        xl.TextCellValue("TOTAL"),
-        xl.DoubleCellValue(_totalFreight),
-      ]);
-
-      final fileBytes = excel.save();
-      if (fileBytes != null && !kIsWeb) {
-        final storageDir = await getStorageDirectory();
-        final fileName =
-            'Freight_${DateFormat('MMM_yyyy').format(_selectedMonth)}.xlsx';
-        final file = File('$storageDir/$fileName');
-        await file.writeAsBytes(fileBytes, flush: true);
-        OpenFile.open(file.path);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Exported: $fileName')));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  Future<String> getStorageDirectory() async {
-    if (Platform.isAndroid) {
-      return (await getExternalStorageDirectory())?.path ??
-          (await getApplicationDocumentsDirectory()).path;
-    }
-    return (await getApplicationDocumentsDirectory()).path;
-  }
-
-  // --- Date Logic ---
   void LoadDates() {
     currentDate = DateTime.now();
     currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate = addMonth(
-      currentMonthFromDate!,
-      1,
-    ).add(const Duration(days: -1));
-    lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
-    lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
 
+    // Calculate Fiscal Year Start (Assuming April 1st)
     int fiscalYearStartMonth = 4;
-    currentQuarter = getCurrentQuarter();
-    getLastQuarterDates();
-
     int fiscalYear = currentDate!.month >= fiscalYearStartMonth
         ? currentDate!.year
         : currentDate!.year - 1;
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
 
-    prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
-    prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
+    lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
+    Map<String, DateTime> monthDates = getMonthStartEndDates(
+      selectedDate.month,
+    );
+    formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(monthDates["start"]!);
+    formattedDateNow = DateFormat('dd/MM/yy').format(monthDates["end"]!);
   }
 
-  DateTime addMonth(DateTime date, int addMonth) {
-    int currentMonth = date.month;
-    int currentYear = date.year;
-    int nextMonth = currentMonth + addMonth;
-    int nextYear = currentYear;
-    if (nextMonth > 12) {
-      nextMonth = 1;
-      nextYear++;
+  String formatAmount(double amount) {
+    if (amount >= 100000) return "${(amount / 1000).toStringAsFixed(1)}k";
+    return amount.toStringAsFixed(0);
+  }
+
+  Future<void> _generateCarriageInwardExcel(BuildContext context) async {
+    if (_graphData.isEmpty) {
+      if (!mounted) return;
+      NotificationService.info(title: "Info", message: "No data to export.");
+      return;
     }
-    int lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
-    int originalDay = date.day;
-    if (originalDay > lastDayOfNextMonth) originalDay = lastDayOfNextMonth;
-    return DateTime(nextYear, nextMonth, originalDay);
+
+    await reportService.generateExcel(
+      sheetName: 'InwardFreight',
+      headers: ['Vendor Name', 'Freight Charges'],
+      rows: _graphData
+          .map((data) => [data.vendorName, data.totalFreight])
+          .toList(),
+      fileName: 'freight_inward.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle:
+          'Production[MIS] - Freight Inward - Branch: $_selectedBranch - ${DateFormat('MMMM yyyy').format(selectedDate)}',
+    );
   }
 
-  int getCurrentQuarter() {
-    int m = DateTime.now().month;
-    if (m >= 4 && m <= 6) return 1;
-    if (m >= 7 && m <= 9) return 2;
-    if (m >= 10 && m <= 12) return 3;
-    return 4;
-  }
-
-  void getLastQuarterDates() {
-    DateTime now = DateTime.now();
-    int q = getCurrentQuarter();
-    if (q == 1) {
-      lastQuarterFromDate = DateTime(now.year, 1, 1);
-      lastQuarterToDate = DateTime(now.year, 3, 31);
-    } else if (q == 2) {
-      lastQuarterFromDate = DateTime(now.year, 4, 1);
-      lastQuarterToDate = DateTime(now.year, 6, 30);
-    } else if (q == 3) {
-      lastQuarterFromDate = DateTime(now.year, 7, 1);
-      lastQuarterToDate = DateTime(now.year, 9, 30);
-    } else {
-      lastQuarterFromDate = DateTime(now.year - 1, 10, 1);
-      lastQuarterToDate = DateTime(now.year - 1, 12, 31);
+  Future<void> selectMonth(BuildContext context) async {
+    final DateTime? picked = await showMonthPicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2025),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null &&
+        (picked.month != selectedDate.month ||
+            picked.year != selectedDate.year)) {
+      setState(() {
+        selectedDate = picked;
+      });
+      LoadDates();
+      await _processDataAndGenerateGraph();
     }
   }
+
+  Future<void> loadDataClearFilter() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      selectedDate = DateTime.now();
+      LoadDates();
+      await loadData("");
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  SideTitles get _leftTitles => SideTitles(
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
+
+  SideTitles get _emptyTitlesTop =>
+      SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
+
+  Widget getEmptyTopTitle(double val, TitleMeta meta) {
+    return const Text("");
+  }
+
+  SideTitles get _bottomTitlesFreightSuctomers => SideTitles(
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<VendorFreightData> mData = _graphData;
+      text = mData.elementAt(value.toInt()).vendorName;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 10
+              ? Text(
+                  '${text.substring(0, 10)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
+      );
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
-    return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              title: const Text('Carriage Inward Summary'),
-              centerTitle: true,
-              elevation: 0,
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.blue,
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  // Controls
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: _buildControls(),
+    // If global data is not ready, show loader (handled by FutureBuilder logic typically, or simplistic bool check)
+    if (!chartDataLoaded && carriageInwardList.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: true,
+        backgroundColor: Colors.white,
+        elevation: 0.0,
+        title: const Text(
+          "Carriage Inward Cost",
+          style: TextStyle(
+            color: Colors.blue,
+            fontFamily: "Poppins",
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Stack(
+        children: [
+          FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            selectMonth(context);
+                          },
+                          icon: const Icon(Icons.calendar_month),
+                        ),
+                        const SizedBox(width: 5),
+                        IconButton(
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Vendor Wise Freight Charges',
+                    spacing: 10,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          _generateCarriageInwardExcel(context);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            BranchDropdown(
+                              production: carriageInwardList,
+                              selectedBranch: _selectedBranch,
+                              onChanged: (newValue) async {
+                                setState(() {
+                                  _selectedBranch = newValue;
+                                });
+                                if (newValue != null)
+                                  await _processDataAndGenerateGraph();
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        _buildFreightChart(),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-
-                  // Content
-                  Expanded(
-                    child: isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _graphData.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.bar_chart,
-                                  size: 50,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  "No data found for ${DateFormat('MMM yyyy').format(_selectedMonth)}",
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          )
-                        : SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 20),
-                                _buildSectionHeader(
-                                  "Vendor wise Freight Charges",
-                                  () => _generateExcel(context),
-                                ),
-                                const Divider(),
-                                _buildProductionChart(),
-                                const SizedBox(height: 40),
-                              ],
-                            ),
-                          ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          )
-        : const Scaffold(body: Center(child: CircularProgressIndicator()));
-  }
-
-  Widget _buildControls() {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
-    // Branch Dropdown
-    final dropdown = SizedBox(
-      width: 250,
-      height: 45,
-      child: DropdownButtonFormField<String>(
-        initialValue: _selectedBranch,
-        isExpanded: true,
-        decoration: InputDecoration(
-          labelText: 'Select Branch',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 8,
           ),
-        ),
-        items: _availableBranches
-            .map(
-              (branch) => DropdownMenuItem(
-                value: branch,
-                child: Text(branch, overflow: TextOverflow.ellipsis),
-              ),
-            )
-            .toList(),
-        onChanged: (value) {
-          setState(() => _selectedBranch = value);
-          if (value != null) _processDataAndGenerateGraph();
-        },
-      ),
-    );
-
-    final monthButton = ElevatedButton.icon(
-      onPressed: _pickMonth,
-      icon: const Icon(Icons.calendar_month),
-      label: Text(DateFormat('MMM yyyy').format(_selectedMonth)),
-      style: ElevatedButton.styleFrom(minimumSize: const Size(130, 45)),
-    );
-
-    final generateButton = ElevatedButton(
-      onPressed: _processDataAndGenerateGraph,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xff2ca9df),
-        foregroundColor: Colors.white,
-        minimumSize: const Size(130, 45),
-      ),
-      child: const Text('Generate'),
-    );
-
-    if (isLandscape) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          dropdown,
-          const SizedBox(width: 12),
-          monthButton,
-          const SizedBox(width: 12),
-          generateButton,
+          if (isLoading)
+            Container(
+              color: Colors.black26,
+              child: const Center(child: CircularProgressIndicator()),
+            ),
         ],
-      );
-    }
-    return Column(
-      children: [
-        dropdown,
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [monthButton, generateButton],
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildSectionHeader(String title, VoidCallback onDownload) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          ),
-        ),
-        PopupMenuButton(
-          icon: const Icon(Icons.more_vert, color: Colors.grey),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              onTap: onDownload,
-              child: const Row(
-                children: [
-                  Icon(Icons.download, color: Colors.green, size: 20),
-                  SizedBox(width: 8),
-                  Text("Download Excel"),
-                ],
-              ),
-            ),
-          ],
-        ),
+  showPopupMenu() {
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(25.0, 100.0, 0.0, 0.0),
+      elevation: 8.0,
+      items: [
+        const PopupMenuItem<String>(value: '1', child: Text('Remove Filter?')),
       ],
-    );
+    ).then((value) {
+      if (value == '1') {
+        setState(() {
+          loadDataFuture = loadDataClearFilter();
+        });
+      }
+    });
   }
 
-  Widget _buildProductionChart() {
+  Widget _buildFreightChart() {
     final screenWidth = MediaQuery.of(context).size.width;
-    double chartWidth = _graphData.length > 3
-        ? screenWidth + (80 * _graphData.length)
-        : screenWidth;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    double chartWidth = 0.0;
+    int len = _graphData.length;
+    if (_graphData.length > 5) {
+      chartWidth = screenWidth + (50 * len);
+    } else {
+      chartWidth = screenWidth;
+    }
+    double maxAmount = len > 0
+        ? _graphData
+              .map((data) => data.totalFreight)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
-        height: 450,
+        height: 350,
         width: chartWidth,
         child: Padding(
-          padding: const EdgeInsets.only(top: 20.0, right: 20.0),
+          padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
               alignment: BarChartAlignment.spaceAround,
+              // Add a bit of buffer to MaxY so bars don't hit the top
+              maxY: getMaxValue(maxAmount, 5000),
               titlesData: FlTitlesData(
+                show: true,
                 leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 50,
-                    getTitlesWidget: (v, m) => Text(
-                      formatAmount(v),
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 100,
-                    getTitlesWidget: (v, m) {
-                      if (v.toInt() >= 0 && v.toInt() < _graphData.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: RotationTransition(
-                            turns: const AlwaysStoppedAnimation(-20 / 360),
-                            child: SizedBox(
-                              width: 80,
-                              child: Text(
-                                _graphData[v.toInt()].vendorName,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox();
-                    },
-                  ),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
                 rightTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false),
                 ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesFreightSuctomers,
+                  axisNameSize: 20,
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
               borderData: FlBorderData(
                 show: true,
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade400),
-                  top: BorderSide(color: Colors.grey.shade400),
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
                 ),
               ),
-              gridData: FlGridData(show: true, drawVerticalLine: false),
               barGroups: List.generate(_graphData.length, (index) {
                 final data = _graphData[index];
                 return BarChartGroupData(
@@ -718,7 +554,7 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
                     BarChartRodData(
                       toY: data.totalFreight,
                       color: const Color(0xFF2ca9df),
-                      width: 30,
+                      width: 25,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(4),
                         topRight: Radius.circular(4),
@@ -727,39 +563,157 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
                   ],
                 );
               }),
+
               barTouchData: BarTouchData(
-                enabled: true,
-                handleBuiltInTouches: true,
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {}
+                    });
+                  }
+                },
                 touchTooltipData: BarTouchTooltipData(
-                  getTooltipColor: (_) => Colors.white,
-                  tooltipBorder: const BorderSide(color: Colors.grey, width: 1),
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final data = _graphData[groupIndex];
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                     return BarTooltipItem(
-                      data.vendorName,
+                      _graphData[grpIndex].vendorName,
                       const TextStyle(
                         color: Colors.black,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
-                      children: [
+                      children: <TextSpan>[
                         TextSpan(
-                          text: "\nFreight: ${formatAmount(data.totalFreight)}",
+                          text:
+                              "\nTotal Freight: ${formatAmount(_graphData[grpIndex].totalFreight)}",
                           style: const TextStyle(
-                            color: Color(0xFF2ca9df),
+                            color: Colors.black,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
+                      textAlign: TextAlign.start,
                     );
                   },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
                 ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class BranchDropdown extends StatefulWidget {
+  final List production;
+  final ValueChanged<String?> onChanged;
+  final String placeholder;
+  final String? selectedBranch;
+
+  const BranchDropdown({
+    super.key,
+    required this.production,
+    required this.onChanged,
+    this.placeholder = 'Select Branch',
+    this.selectedBranch,
+  });
+
+  @override
+  State<BranchDropdown> createState() => _BranchDropdownState();
+}
+
+class _BranchDropdownState extends State<BranchDropdown> {
+  late final List<String> _items;
+  String? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = _extractItemSubGroups(widget.production);
+    _selected =
+        widget.selectedBranch ?? (_items.isNotEmpty ? _items.first : null);
+    if (_selected == null && _items.isNotEmpty) {
+      _selected = _items.first;
+    }
+  }
+
+  List<String> _extractItemSubGroups(List list) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (var e in list) {
+      String val = '';
+      try {
+        val = (e.branchName ?? '').toString().trim();
+      } catch (_) {
+        if (e is Map && e.containsKey('branchName')) {
+          val = (e['branchName'] ?? '').toString();
+        }
+      }
+      if (val.trim().isEmpty) continue;
+      if (!seen.contains(val)) {
+        seen.add(val);
+        out.add(val);
+      }
+    }
+    return out;
+  }
+
+  @override
+  void didUpdateWidget(covariant BranchDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.selectedBranch != oldWidget.selectedBranch) {
+      setState(() {
+        _selected = widget.selectedBranch;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selected,
+              hint: const SizedBox.shrink(),
+              icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+              items: _items.map((s) {
+                return DropdownMenuItem<String>(
+                  value: s,
+                  child: Text(s, style: const TextStyle(fontSize: 14)),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selected = val;
+                });
+                widget.onChanged(val);
+              },
+              isDense: true,
+              isExpanded: false,
+            ),
+          ),
+        ],
+      ),
+      onTap: () {},
     );
   }
 }

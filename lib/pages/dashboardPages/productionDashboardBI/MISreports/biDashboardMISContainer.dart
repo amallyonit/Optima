@@ -6,6 +6,7 @@ import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/car
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/carriageOutwardReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpower_costing/manpower_dashboard_page.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
+import '../../../../notificationService.dart';
 import 'sampleDataDetailsPage.dart';
 import 'agingReport.dart';
 import 'cmsCostingReport.dart';
@@ -124,13 +125,12 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       pageBuilder: () => const SalesVsDeliveryPage(),
     ),
     ReportItem(
-      title: 'Carriage Outward Bangalore To Branch & Direct Customers NEW',
+      title: 'Carriage Outward Cost Report',
       pageBuilder: () => const CarriageOutwardPage(),
     ),
     ReportItem(
       title: 'Carriage Inward Cost Report',
       pageBuilder: () => const CarriageInwardPage(),
-      isUnderDevelopment: true,
     ),
     ReportItem(
       title: 'Purchase Price Analysis',
@@ -217,11 +217,10 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
   }
 
   void _showUnderDevelopmentPopup(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🚧 This report is under development'),
-        duration: Duration(seconds: 2),
-      ),
+    if (!mounted) return;
+    NotificationService.info(
+      title: "Info",
+      message: "🚧 This report is under development.",
     );
   }
 

@@ -37,9 +37,6 @@ import '../pages/dashboardPages/financesDashboard/monthlyCollectionReport.dart';
 import '../pages/dashboardPages/financesDashboard/productMarginReport.dart';
 import '../pages/dashboardPages/financesDashboard/vendorPayment.dart';
 import '../pages/dashboardPages/inventoryDashboardBI/inventoryAnalysis.dart';
-import '../pages/dashboardPages/productionDashboardBI/MISreports/carriageInwardReport.dart';
-import '../pages/dashboardPages/productionDashboardBI/MISreports/carriageOutwardReport.dart';
-import '../pages/dashboardPages/productionDashboardBI/MISreports/cmsCostingReport.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/purchasePrice.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/salesVsDelivery.dart';
@@ -192,15 +189,11 @@ class AppProviders {
     ),
     ChangeNotifierProvider(create: (_) => SalesVsDeliveryDetailsMISProvider()),
     ChangeNotifierProvider(create: (_) => PurchasePriceMISProvider()),
-    ChangeNotifierProvider(create: (_) => BOMCostMISProvider()),
     ChangeNotifierProvider(create: (_) => TopProductsMISProvider()),
-    ChangeNotifierProvider(create: (_) => CMSDetailsMISProvider()),
     ChangeNotifierProvider(create: (_) => ScrapDetailProvider()),
     ChangeNotifierProvider(create: (_) => ComplaintDetailsMISProvider()),
     ChangeNotifierProvider(create: (_) => SampleDetailsMISProvider()),
     ChangeNotifierProvider(create: (_) => MonthlyProductionMISProvider()),
-    ChangeNotifierProvider(create: (_) => CarriageInwardMISProvider()),
-    ChangeNotifierProvider(create: (_) => CarriageOutwardMISProvider()),
     ChangeNotifierProvider(create: (_) => SalesOrderListHomePageProvider()),
   ];
 }
