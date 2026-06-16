@@ -33,53 +33,8 @@ class ReportItem {
   });
 }
 
-class ReportTile extends StatelessWidget {
-  final String title;
-  final Color color;
-  final VoidCallback onTap;
-
-  const ReportTile({
-    super.key,
-    required this.title,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x22000000),
-                blurRadius: 3,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          alignment: Alignment.centerLeft,
-          child: Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-String deviceOrientationMISContainer = "";
+final GlobalKey<_ProductionReportsMISState> productionReportsMISKey =
+    GlobalKey<_ProductionReportsMISState>();
 
 class ProductionReportsMIS extends StatefulWidget {
   const ProductionReportsMIS({super.key});
@@ -90,16 +45,45 @@ class ProductionReportsMIS extends StatefulWidget {
 
 class _ProductionReportsMISState extends State<ProductionReportsMIS> {
   final GlobalKey<NavigatorState> _nestedNavKey = GlobalKey<NavigatorState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  String _searchText = "";
+
+  void openDrawer() {
+    _scaffoldKey.currentState?.openDrawer();
+  }
+
+  Map<String, List<ReportItem>> get _groupedReports {
+    return {
+      "Costing Reports": [
+        _items[0], // Manpower
+        _items[1], // Overtime
+        _items[10], // Purchase Price
+        _items[12], // CMS Costing
+      ],
+
+      "Inventory Reports": [_items[2], _items[3], _items[4], _items[5]],
+
+      "Sales Reports": [_items[6], _items[7], _items[11]],
+
+      "Production Reports": [
+        _items[8],
+        _items[9],
+        _items[13],
+        _items[14],
+        _items[18],
+        _items[17],
+      ],
+
+      "Quality Reports": [_items[15], _items[16]],
+    };
+  }
 
   static final List<ReportItem> _items = [
     ReportItem(
-      title: 'Manpower Costing Report',
+      title: 'Manpower Costing',
       pageBuilder: () => const ManpowerDashboardPage(),
     ),
-    ReportItem(
-      title: 'Overtime Report',
-      pageBuilder: () => OvertimeReportPage(),
-    ),
+    ReportItem(title: 'Overtime', pageBuilder: () => OvertimeReportPage()),
     ReportItem(
       title: 'FG - Minimum Stock Vs Actual Stock',
       pageBuilder: () => const MinimumStockVsActualStockPage(),
@@ -113,7 +97,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       pageBuilder: () => const SummaryOfRawMaterials(),
     ),
     ReportItem(
-      title: 'FG & RM Aging Report',
+      title: 'FG & RM Ageing',
       pageBuilder: () => const AgingReportPage(),
     ),
     ReportItem(
@@ -125,11 +109,11 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       pageBuilder: () => const SalesVsDeliveryPage(),
     ),
     ReportItem(
-      title: 'Carriage Outward Cost Report',
+      title: 'Carriage Outward Cost',
       pageBuilder: () => const CarriageOutwardPage(),
     ),
     ReportItem(
-      title: 'Carriage Inward Cost Report',
+      title: 'Carriage Inward Cost',
       pageBuilder: () => const CarriageInwardPage(),
     ),
     ReportItem(
@@ -141,15 +125,15 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       pageBuilder: () => const TopProductsPage(),
     ),
     ReportItem(
-      title: 'CMS Costing Report',
+      title: 'CMS Costing',
       pageBuilder: () => const CMSCostingReportPage(),
     ),
     ReportItem(
-      title: 'Scrap Report',
+      title: 'Scrap Details',
       pageBuilder: () => const ScrapReportPage(),
     ),
     ReportItem(
-      title: 'Monthly Production Summary',
+      title: 'Monthly Production',
       pageBuilder: () => const MonthlyProductionSummaryPage(),
       isUnderDevelopment: true,
     ),
@@ -163,55 +147,169 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       isUnderDevelopment: false,
     ),
     ReportItem(
-      title: 'Kerala Freight',
+      title: 'Freight Charges',
       pageBuilder: () => const ComingSoonPage(),
       isUnderDevelopment: true,
     ),
     ReportItem(
-      title: 'Monthly Workforce Summary',
+      title: 'Monthly Workforce',
       pageBuilder: () => const MonthlyWorkforceSummaryPage(),
     ),
   ];
 
-  Widget _buildReportsList(BuildContext navContext) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _items.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final item = _items[index];
+  void _openReport(ReportItem item) {
+    if (item.isUnderDevelopment) {
+      _showUnderDevelopmentPopup(context);
+      return;
+    }
 
-              final tileColor = (index % 2 == 0)
-                  ? Colors.lightBlue.shade100
-                  : Colors.grey.shade300;
+    if (item.title == 'Scrap Details') {
+      if (!mounted) return;
 
-              return ReportTile(
-                title: item.title,
-                color: tileColor,
-                onTap: () {
-                  if (item.isUnderDevelopment) {
-                    _showUnderDevelopmentPopup(context);
-                    return;
-                  }
-                  if (_nestedNavKey.currentState != null) {
-                    _nestedNavKey.currentState!.push(
-                      MaterialPageRoute(builder: (_) => item.pageBuilder()),
-                    );
-                  } else {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => item.pageBuilder()),
-                    );
-                  }
+      NotificationService.info(
+        title: "Info",
+        message:
+            "This report available in Dashboard Data Inputs -> Scrap Details Input.",
+      );
+      return;
+    }
+
+    _nestedNavKey.currentState
+        ?.push(MaterialPageRoute(builder: (_) => item.pageBuilder()))
+        .then((_) {
+          if (mounted) {
+            Future.delayed(
+              const Duration(milliseconds: 200),
+              () => _scaffoldKey.currentState?.openDrawer(),
+            );
+          }
+        });
+  }
+
+  Widget _buildDrawer() {
+    IconData getCategoryIcon(String category) {
+      switch (category) {
+        case "Costing Reports":
+          return Icons.account_balance_wallet_outlined;
+
+        case "Inventory Reports":
+          return Icons.inventory_2_outlined;
+
+        case "Sales Reports":
+          return Icons.bar_chart_outlined;
+
+        case "Production Reports":
+          return Icons.precision_manufacturing_outlined;
+
+        case "Quality Reports":
+          return Icons.verified_outlined;
+
+        default:
+          return Icons.folder_outlined;
+      }
+    }
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                onChanged: (value) {
+                  setState(() {
+                    _searchText = value.toLowerCase();
+                  });
                 },
-              );
-            },
-          ),
-        ],
+                decoration: InputDecoration(
+                  hintText: "Search Reports",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  isDense: true,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(8),
+                children: [
+                  ..._groupedReports.entries
+                      .where((group) {
+                        return group.value.any(
+                          (item) =>
+                              item.title.toLowerCase().contains(_searchText),
+                        );
+                      })
+                      .map(
+                        (group) => Card(
+                          elevation: 2,
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Theme(
+                            data: Theme.of(
+                              context,
+                            ).copyWith(dividerColor: Colors.transparent),
+                            child: ExpansionTile(
+                              tilePadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              leading: Icon(
+                                getCategoryIcon(group.key),
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              title: Text(
+                                group.key,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              subtitle: Text("${group.value.length} Reports"),
+                              children: group.value
+                                  .where(
+                                    (item) => item.title.toLowerCase().contains(
+                                      _searchText,
+                                    ),
+                                  )
+                                  .map((item) {
+                                    return ListTile(
+                                      dense: true,
+                                      contentPadding: const EdgeInsets.only(
+                                        left: 50,
+                                        right: 16,
+                                      ),
+                                      title: Text(
+                                        item.title,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                      trailing: const Icon(
+                                        Icons.chevron_right,
+                                        size: 18,
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(context);
+
+                                        Future.delayed(
+                                          const Duration(milliseconds: 200),
+                                          () => _openReport(item),
+                                        );
+                                      },
+                                    );
+                                  })
+                                  .toList(),
+                            ),
+                          ),
+                        ),
+                      ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -227,42 +325,49 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
   Future<bool> _onWillPop() async {
     if (_nestedNavKey.currentState?.canPop() ?? false) {
       _nestedNavKey.currentState!.pop();
-      return false; // consumed
+
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) {
+          _scaffoldKey.currentState?.openDrawer();
+        }
+      });
+
+      return false;
     }
-    return true; // allow root to pop
+
+    return true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _scaffoldKey.currentState?.openDrawer();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.width;
-    if (screenHeight > 600) {
-      deviceOrientationMISContainer = "Landscape";
-    } else {
-      deviceOrientationMISContainer = "Portrait";
-    }
     return WillPopScope(
       onWillPop: _onWillPop,
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            SizedBox(
-              height: deviceOrientationMISContainer == "Landscape" ? 1300 : 600,
-              child: Navigator(
-                key: _nestedNavKey,
-                onGenerateRoute: (settings) {
-                  return MaterialPageRoute(
-                    builder: (navContext) => Scaffold(
-                      appBar: AppBar(
-                        title: const Text('Production Reports (MIS)'),
-                        automaticallyImplyLeading: false,
-                      ),
-                      body: _buildReportsList(navContext),
-                    ),
-                  );
-                },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: _buildDrawer(),
+        body: Navigator(
+          key: _nestedNavKey,
+          onGenerateRoute: (settings) {
+            return MaterialPageRoute(
+              builder: (_) => const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

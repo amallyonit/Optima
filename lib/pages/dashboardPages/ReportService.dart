@@ -68,6 +68,72 @@ class ReportService {
     return colName;
   }
 
+  void _applySheetBordersAndFormatting({
+    required Worksheet sheet,
+    required int totalRows,
+    required int totalCols,
+    List<int>? amountColumns,
+  }) {
+    if (amountColumns != null) {
+      for (final col in amountColumns) {
+        final range = sheet.getRangeByIndex(5, col, totalRows, col);
+
+        range.numberFormat = r'#,##,##0.00';
+        range.cellStyle.hAlign = xlsio.HAlignType.right;
+      }
+    }
+
+    // Vertical borders
+    for (int col = 1; col < totalCols; col++) {
+      sheet
+              .getRangeByIndex(4, col, totalRows, col)
+              .cellStyle
+              .borders
+              .right
+              .lineStyle =
+          xlsio.LineStyle.thin;
+    }
+
+    // Horizontal borders
+    for (int row = 4; row < totalRows; row++) {
+      sheet
+              .getRangeByIndex(row, 1, row, totalCols)
+              .cellStyle
+              .borders
+              .bottom
+              .lineStyle =
+          xlsio.LineStyle.thin;
+    }
+
+    // Outer borders
+    sheet.getRangeByIndex(4, 1, 4, totalCols).cellStyle.borders.top.lineStyle =
+        xlsio.LineStyle.medium;
+
+    sheet.getRangeByIndex(4, 1, totalRows, 1).cellStyle.borders.left.lineStyle =
+        xlsio.LineStyle.medium;
+
+    sheet
+            .getRangeByIndex(totalRows, 1, totalRows, totalCols)
+            .cellStyle
+            .borders
+            .bottom
+            .lineStyle =
+        xlsio.LineStyle.medium;
+
+    sheet
+            .getRangeByIndex(4, totalCols, totalRows, totalCols)
+            .cellStyle
+            .borders
+            .right
+            .lineStyle =
+        xlsio.LineStyle.medium;
+
+    // Autofit
+    for (int col = 1; col <= totalCols; col++) {
+      sheet.autoFitColumn(col);
+    }
+  }
+
   final indianCurrencyFormatter = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '',
@@ -287,6 +353,8 @@ class ReportService {
     List<int>?
     amountColumns, // optional: 1-based column indices for numeric formatting
     bool addTotalRow = false, // optional
+    bool addSecondSheetTotalRow = false, // optional
+    List<int>? secondSheetAmountColumns,
     String reportTitle = "", // optional
     bool enableStyling = false, // optional
     bool highlightSections = false, // optional
@@ -357,16 +425,26 @@ class ReportService {
 
       // ---------------- HEADER ----------------
       for (int col = 0; col < headers.length; col++) {
-        sheet.getRangeByIndex(4, col + 1).setText(headers[col]);
+        final cell = sheet.getRangeByIndex(4, col + 1);
+
+        cell.setText(headers[col]);
+
+        cell.cellStyle.hAlign = amountColumns?.contains(col + 1) == true
+            ? xlsio.HAlignType.right
+            : xlsio.HAlignType.left;
       }
 
       if (secondSheet != null) {
         for (int col = 0; col < secondSheetHeaders!.length; col++) {
-          secondSheet
-              .getRangeByIndex(4, col + 1)
-              .setText(secondSheetHeaders[col]);
-        }
+          final cell = secondSheet.getRangeByIndex(4, col + 1);
 
+          cell.setText(secondSheetHeaders[col]);
+
+          cell.cellStyle.hAlign =
+              secondSheetAmountColumns?.contains(col + 1) == true
+              ? xlsio.HAlignType.right
+              : xlsio.HAlignType.left;
+        }
         final headerRange = secondSheet.getRangeByIndex(
           4,
           1,
@@ -376,14 +454,12 @@ class ReportService {
 
         headerRange.cellStyle.bold = true;
         headerRange.cellStyle.backColor = "#E7F3FF";
-        headerRange.cellStyle.hAlign = xlsio.HAlignType.center;
       }
 
       final headerRange = sheet.getRangeByIndex(4, 1, 4, headers.length);
 
       headerRange.cellStyle.bold = true;
       headerRange.cellStyle.backColor = "#E7F3FF";
-      headerRange.cellStyle.hAlign = xlsio.HAlignType.center;
 
       headerRange.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
 
@@ -505,82 +581,12 @@ class ReportService {
       }
       final totalCols = headers.length;
 
-      if (amountColumns != null) {
-        for (final col in amountColumns) {
-          final range = sheet.getRangeByIndex(5, col, totalRows, col);
-
-          range.numberFormat = r'#,##,##0.00';
-
-          range.cellStyle.hAlign = xlsio.HAlignType.right;
-        }
-      }
-
-      // -------- INNER GRID (much cheaper than 'all') --------
-      // Vertical lines: draw RIGHT border for all columns except last
-
-      for (int col = 1; col < totalCols; col++) {
-        sheet
-                .getRangeByIndex(4, col, totalRows, col)
-                .cellStyle
-                .borders
-                .right
-                .lineStyle =
-            xlsio.LineStyle.thin;
-      }
-
-      // Horizontal lines: draw BOTTOM border for all rows except last
-      for (int row = 4; row < totalRows; row++) {
-        sheet
-                .getRangeByIndex(row, 1, row, totalCols)
-                .cellStyle
-                .borders
-                .bottom
-                .lineStyle =
-            xlsio.LineStyle.thin;
-      }
-
-      // -------- OUTER BORDER (FAST & REQUIRED) --------
-
-      // TOP BORDER
-      sheet
-              .getRangeByIndex(4, 1, 4, totalCols)
-              .cellStyle
-              .borders
-              .top
-              .lineStyle =
-          xlsio.LineStyle.medium;
-
-      // LEFT BORDER
-      sheet
-              .getRangeByIndex(4, 1, totalRows, 1)
-              .cellStyle
-              .borders
-              .left
-              .lineStyle =
-          xlsio.LineStyle.medium;
-
-      // BOTTOM BORDER
-      sheet
-              .getRangeByIndex(totalRows, 1, totalRows, totalCols)
-              .cellStyle
-              .borders
-              .bottom
-              .lineStyle =
-          xlsio.LineStyle.thin;
-
-      // RIGHT BORDER
-      sheet
-              .getRangeByIndex(4, totalCols, totalRows, totalCols)
-              .cellStyle
-              .borders
-              .right
-              .lineStyle =
-          xlsio.LineStyle.thin;
-
-      // ---------------- COLUMN WIDTH ----------------
-      for (int col = 1; col <= headers.length; col++) {
-        sheet.autoFitColumn(col);
-      }
+      _applySheetBordersAndFormatting(
+        sheet: sheet,
+        totalRows: totalRows,
+        totalCols: totalCols,
+        amountColumns: amountColumns,
+      );
 
       if (secondSheet != null) {
         for (int col = 1; col <= secondSheetHeaders!.length; col++) {
@@ -652,26 +658,64 @@ class ReportService {
         }
       }
 
-      if (secondSheet != null) {
+      if (secondSheet != null &&
+          addSecondSheetTotalRow &&
+          secondSheetAmountColumns != null) {
         final totalRowIndex = secondSheetRows!.length + 5;
 
         secondSheet.getRangeByIndex(totalRowIndex, 1).setText("Total");
 
         secondSheet.getRangeByIndex(totalRowIndex, 1).cellStyle.bold = true;
 
-        final amountCols = [8, 9, 10, 11, 12, 13, 14, 15, 16];
-
-        for (final col in amountCols) {
+        for (final col in secondSheetAmountColumns) {
           final letter = _getExcelColumnName(col);
 
           secondSheet
               .getRangeByIndex(totalRowIndex, col)
-              .setFormula(
-                'SUM(${letter}5:$letter${secondSheetRows.length + 4})',
-              );
+              .setFormula('SUM(${letter}5:${letter}${totalRowIndex - 1})');
         }
       }
 
+      if (secondSheet != null) {
+        int secondSheetTotalRows = secondSheetRows!.length + 4;
+
+        if (addSecondSheetTotalRow) {
+          secondSheetTotalRows += 1;
+        }
+
+        _applySheetBordersAndFormatting(
+          sheet: secondSheet,
+          totalRows: secondSheetTotalRows,
+          totalCols: secondSheetHeaders!.length,
+          amountColumns: secondSheetAmountColumns,
+        );
+
+        // Highlight Total row exactly like main sheet
+        if (addSecondSheetTotalRow) {
+          final totalRowIndex = secondSheetRows.length + 5;
+
+          secondSheet
+                  .getRangeByIndex(
+                    totalRowIndex,
+                    1,
+                    totalRowIndex,
+                    secondSheetHeaders.length,
+                  )
+                  .cellStyle
+                  .backColor =
+              "#FFF2CC";
+
+          for (int col = 1; col <= secondSheetHeaders.length; col++) {
+            final cell = secondSheet.getRangeByIndex(totalRowIndex, col);
+
+            cell.cellStyle.bold = true;
+            cell.cellStyle.borders.left.lineStyle = xlsio.LineStyle.thin;
+            cell.cellStyle.borders.right.lineStyle = xlsio.LineStyle.thin;
+            cell.cellStyle.borders.top.lineStyle = xlsio.LineStyle.thin;
+            cell.cellStyle.borders.bottom.lineStyle = xlsio.LineStyle.thin;
+          }
+        }
+      }
       // ---------------- SAVE ----------------
       final bytes = List<int>.from(workbook.saveAsStream());
       workbook.dispose();

@@ -2438,6 +2438,8 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         secondSheetName: 'Summarized Receivables',
         secondSheetHeaders: summaryHeaders,
         secondSheetRows: summaryRows,
+        addSecondSheetTotalRow: true,
+        secondSheetAmountColumns: [8, 9, 10, 11, 12, 13, 14, 15, 16],
       );
     } catch (e) {
       if (!mounted) return;
@@ -4316,7 +4318,6 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
                               ),
                             ),
                           ),
-                        
                         ),
 
                         Visibility(

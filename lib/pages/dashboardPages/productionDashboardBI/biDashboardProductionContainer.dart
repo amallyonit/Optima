@@ -44,7 +44,7 @@ class _ProductionFIState extends State<ProductionFI> {
 
   List<Widget> pages = [
     const LoaderPage(),
-    const ProductionReportsMIS(),
+    ProductionReportsMIS(key: productionReportsMISKey),
     const ProductionOrderAnalysis(),
     const OpenProductionOrderAnalysis(),
     const ProductAnalysis(),
@@ -135,7 +135,7 @@ class _ProductionFIState extends State<ProductionFI> {
     final Map<int, dynamic> menuToPageMap = {
       36: {
         "title": "Production Reports\n(MIS)",
-        "page": const ProductionReportsMIS(),
+        "page": ProductionReportsMIS(key: productionReportsMISKey),
       },
       18: {
         "title": "Production Order\n Analysis",
@@ -246,6 +246,16 @@ class _ProductionFIState extends State<ProductionFI> {
                                     duration: const Duration(milliseconds: 200),
                                     curve: Curves.ease,
                                   );
+                                  if (items[index] ==
+                                      "Production Reports\n(MIS)") {
+                                    Future.delayed(
+                                      const Duration(milliseconds: 300),
+                                      () {
+                                        productionReportsMISKey.currentState
+                                            ?.openDrawer();
+                                      },
+                                    );
+                                  }
                                 },
                                 child: Container(
                                   height: 50,

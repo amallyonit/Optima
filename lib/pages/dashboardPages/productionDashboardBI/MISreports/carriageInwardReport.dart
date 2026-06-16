@@ -363,113 +363,94 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        title: const Text(
-          "Carriage Inward Cost",
-          style: TextStyle(
-            color: Colors.blue,
-            fontFamily: "Poppins",
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          FinanceVerticalScroll(
-            controller: _verticalScrollController,
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 15),
-                        Text(
-                          "$formattedFiscalYearStartDate - $formattedDateNow",
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            selectMonth(context);
-                          },
-                          icon: const Icon(Icons.calendar_month),
-                        ),
-                        const SizedBox(width: 5),
-                        IconButton(
-                          onPressed: () {
-                            showPopupMenu();
-                          },
-                          icon: const Icon(Icons.filter_alt_outlined),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
+    return Stack(
+      children: [
+        FinanceVerticalScroll(
+          controller: _verticalScrollController,
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const SizedBox(width: 15),
+                      Text("$formattedFiscalYearStartDate - $formattedDateNow"),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          selectMonth(context);
+                        },
+                        icon: const Icon(Icons.calendar_month),
+                      ),
+                      const SizedBox(width: 5),
+                      IconButton(
+                        onPressed: () {
+                          showPopupMenu();
+                        },
+                        icon: const Icon(Icons.filter_alt_outlined),
+                      ),
+                      const SizedBox(width: 5),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: DashboardCardUI(
+                  title: 'Vendor Wise Freight Charges',
+                  spacing: 10,
+                  menuItems: [
+                    PopupMenuItem(
+                      onTap: () {
+                        _generateCarriageInwardExcel(context);
+                      },
+                      child: const Text("Download Excel"),
                     ),
                   ],
-                ),
-                const SizedBox(height: 10),
-
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: DashboardCardUI(
-                    title: 'Vendor Wise Freight Charges',
-                    spacing: 10,
-                    menuItems: [
-                      PopupMenuItem(
-                        onTap: () {
-                          _generateCarriageInwardExcel(context);
-                        },
-                        child: const Text("Download Excel"),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          BranchDropdown(
+                            production: carriageInwardList,
+                            selectedBranch: _selectedBranch,
+                            onChanged: (newValue) async {
+                              setState(() {
+                                _selectedBranch = newValue;
+                              });
+                              if (newValue != null)
+                                await _processDataAndGenerateGraph();
+                            },
+                          ),
+                        ],
                       ),
-                    ],
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            BranchDropdown(
-                              production: carriageInwardList,
-                              selectedBranch: _selectedBranch,
-                              onChanged: (newValue) async {
-                                setState(() {
-                                  _selectedBranch = newValue;
-                                });
-                                if (newValue != null)
-                                  await _processDataAndGenerateGraph();
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                        _buildFreightChart(),
-                      ],
-                    ),
+                      _buildFreightChart(),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          if (isLoading)
-            Container(
-              color: Colors.black26,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-        ],
-      ),
+        ),
+        if (isLoading)
+          Container(
+            color: Colors.black26,
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+      ],
     );
   }
 

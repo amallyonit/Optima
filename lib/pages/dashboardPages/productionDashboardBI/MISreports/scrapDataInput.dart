@@ -2,19 +2,14 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
+import '../../ReportService.dart';
 
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:optima/excel_helper.dart';
-
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+final reportService = ReportService();
 
 class ScrapInputPage extends StatefulWidget {
   @override
@@ -43,6 +38,7 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     "SURGICAL CAP",
     "VEHICLE NO",
   ];
+
   final List<String> dates = [];
   bool isSaving = false;
   String get formattedDate {
@@ -119,14 +115,47 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     _generateDateArray();
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
+  List<String> buildWeekHeaders(List<String> dates) {
+    List<String> weekHeaders = [];
 
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
+    for (int i = 0; i < dates.length; i += 7) {
+      final start = dates[i];
+      final end = dates[(i + 6 < dates.length) ? i + 6 : dates.length - 1];
+
+      weekHeaders.add("$start TO $end");
     }
+
+    return weekHeaders;
+  }
+
+  List<List<dynamic>> buildWeeklyRows() {
+    final int weekCount = (dates.length / 7).ceil();
+
+    List<List<dynamic>> rows = [];
+
+    // Skip DATE column and VEHICLE NO column
+    for (int col = 0; col < headers.length - 2; col++) {
+      List<dynamic> row = [];
+
+      row.add(headers[col + 1]); // description
+
+      List<double> weeklyTotals = List.filled(weekCount, 0);
+
+      for (int day = 0; day < dates.length; day++) {
+        final weekIndex = day ~/ 7;
+
+        final value = double.tryParse(controllers[day][col].text) ?? 0;
+
+        weeklyTotals[weekIndex] += value;
+      }
+
+      row.addAll(weeklyTotals);
+      row.add(weeklyTotals.fold(0.0, (a, b) => a + b));
+
+      rows.add(row);
+    }
+
+    return rows;
   }
 
   Future<void> _downloadExcel() async {
@@ -137,53 +166,34 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
       return;
     }
 
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Scrap'];
-
     String caption =
         "${_selectedPlant ?? ''} (${_format(_from!)} to ${_format(_to!)})";
 
-    /// Caption
-    sheet.appendRow(toCellRow([caption]));
+    final weekHeaders = buildWeekHeaders(dates);
 
-    /// Blank row
-    sheet.appendRow([]);
+    final secondSheetHeaders = ['Description', ...weekHeaders, 'Total'];
 
-    /// Header row
-    sheet.appendRow(toCellRow(headers));
-
-    /// Data rows
-    for (int i = 0; i < dates.length; i++) {
-      List<dynamic> row = [dates[i]];
-
-      for (int j = 0; j < controllers[i].length; j++) {
-        row.add(controllers[i][j].text);
-      }
-
-      sheet.appendRow(toCellRow(row));
-    }
-
-    /// Total row
-    List<dynamic> totalRow = ["Total"];
-
-    for (int i = 0; i < totals.length; i++) {
-      totalRow.add(totals[i].toStringAsFixed(2));
-    }
-
-    /// Vehicle column has no total
-    totalRow.add("");
-
-    sheet.appendRow(toCellRow(totalRow));
-
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('scrap_report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/scrap_report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
+    await reportService.generateExcel(
+      sheetName: 'MonthlyScrapDetails',
+      headers: headers,
+      rows: List.generate(
+        dates.length,
+        (i) => [dates[i], ...controllers[i].map((c) => c.text)],
+      ),
+      secondSheetName: 'Weekly Scrap Summary',
+      secondSheetHeaders: secondSheetHeaders,
+      secondSheetRows: buildWeeklyRows(),
+      fileName: 'scrap_details.xlsx',
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      addTotalRow: true,
+      addSecondSheetTotalRow: true,
+      // Week columns + Total column
+      secondSheetAmountColumns: List.generate(
+        secondSheetHeaders.length - 1,
+        (i) => i + 2,
+      ),
+      reportTitle: 'Production[MIS] - Scrap Details $caption',
+    );
   }
 
   final inputFormat = DateFormat('dd-MM-yyyy');

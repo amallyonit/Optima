@@ -732,7 +732,6 @@ class _AgingReportPageState extends State<AgingReportPage> {
       addTotalRow: true,
       reportTitle: 'Production[MIS] - FG & RM Ageing Report',
     );
-  
   }
 
   final ScrollController _verticalScrollController = ScrollController();
@@ -767,69 +766,52 @@ class _AgingReportPageState extends State<AgingReportPage> {
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "RM - Daily Inventory Vs Stock",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                      const Row(children: [SizedBox(width: 5)]),
-                    ],
-                  ),
-
-                  SizedBox(height: 20),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Age Wise Finished Goods & Raw Material',
-                      spacing: 10,
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateAgeingReportExcel(context);
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _inventoryAgeing(),
-                          const SizedBox(height: 16),
-                          _itemGroupWiseInventory(),
-                        ],
+                    ),
+                    const Row(children: [SizedBox(width: 5)]),
+                  ],
+                ),
+
+                SizedBox(height: 20),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Age Wise Finished Goods & Raw Material',
+                    spacing: 10,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateAgeingReportExcel(context);
+                        },
+                        child: const Text("Download Excel"),
                       ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _inventoryAgeing(),
+                        const SizedBox(height: 16),
+                        _itemGroupWiseInventory(),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

@@ -420,255 +420,232 @@ class _MinimumStockVsActualStockPageState
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "Minimum Vs Actual Stock",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                      const Row(children: [SizedBox(width: 5)]),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Finished Goods Minimum Stock\nwith Actual Stock',
-                      spacing: 20,
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateMinStockVsActualStock(context);
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          BranchPicker(
-                            production: inventoryLevel,
-                            onChanged: (b) {
-                              if (b != null) {
-                                loadDataWithBranchFilter(b);
-                              }
-                            },
-                            onClear: () {
-                              loadDataClearFilter();
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  child: Row(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
-                                          right: 4.0,
-                                        ),
-                                        child: CircularPercentIndicator(
-                                          arcType: ArcType.HALF,
-                                          radius: 70.0,
-                                          lineWidth: 27.0,
-                                          animation: true,
-                                          percent:
-                                              (stockPercentage > 100
-                                                  ? 100
-                                                  : stockPercentage) /
-                                              100,
-                                          curve: Curves.linear,
-                                          circularStrokeCap:
-                                              CircularStrokeCap.butt,
-                                          progressColor: const Color(
-                                            0xFF2CA9DF,
-                                          ),
-                                          arcBackgroundColor: const Color(
-                                            0xFFB8ECFF,
-                                          ),
-                                          center: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "${stockPercentage.toStringAsFixed(2)}%",
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 11.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 5),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    formatAmount(actualStock),
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 5),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "Target : ${formatAmount(targetStock)}",
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 30),
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
-                                          right: 4.0,
-                                        ),
-                                        child: CircularPercentIndicator(
-                                          arcType: ArcType.HALF,
-                                          radius: 70.0,
-                                          lineWidth: 27.0,
-                                          animation: true,
-                                          percent:
-                                              (valPercentage > 100
-                                                  ? 100
-                                                  : valPercentage) /
-                                              100,
-                                          curve: Curves.linear,
-                                          circularStrokeCap:
-                                              CircularStrokeCap.butt,
-                                          progressColor: const Color(
-                                            0xFF2CA9DF,
-                                          ),
-                                          arcBackgroundColor: const Color(
-                                            0xFFB8ECFF,
-                                          ),
-                                          center: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "${valPercentage.toStringAsFixed(2)}%",
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 11.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 5),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    formatAmount(actualVal),
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 5),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "Target : ${formatAmount(targetVal)}",
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                  ),
+                    const Row(children: [SizedBox(width: 5)]),
+                  ],
+                ),
+                const SizedBox(height: 10),
 
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Warehouse Wise Analysis',
-                      spacing: 20,
-                      menuItems: [],
-                      child: _warehouseLocationWiseInventory(),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Finished Goods Minimum Stock\nwith Actual Stock',
+                    spacing: 20,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateMinStockVsActualStock(context);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        BranchPicker(
+                          production: inventoryLevel,
+                          onChanged: (b) {
+                            if (b != null) {
+                              loadDataWithBranchFilter(b);
+                            }
+                          },
+                          onClear: () {
+                            loadDataClearFilter();
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                child: Row(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 4.0,
+                                        right: 4.0,
+                                      ),
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 70.0,
+                                        lineWidth: 27.0,
+                                        animation: true,
+                                        percent:
+                                            (stockPercentage > 100
+                                                ? 100
+                                                : stockPercentage) /
+                                            100,
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: const Color(0xFF2CA9DF),
+                                        arcBackgroundColor: const Color(
+                                          0xFFB8ECFF,
+                                        ),
+                                        center: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "${stockPercentage.toStringAsFixed(2)}%",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  formatAmount(actualStock),
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Target : ${formatAmount(targetStock)}",
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 30),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 4.0,
+                                        right: 4.0,
+                                      ),
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 70.0,
+                                        lineWidth: 27.0,
+                                        animation: true,
+                                        percent:
+                                            (valPercentage > 100
+                                                ? 100
+                                                : valPercentage) /
+                                            100,
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: const Color(0xFF2CA9DF),
+                                        arcBackgroundColor: const Color(
+                                          0xFFB8ECFF,
+                                        ),
+                                        center: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "${valPercentage.toStringAsFixed(2)}%",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  formatAmount(actualVal),
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Target : ${formatAmount(targetVal)}",
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Warehouse Wise Analysis',
+                    spacing: 20,
+                    menuItems: [],
+                    child: _warehouseLocationWiseInventory(),
+                  ),
+                ),
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

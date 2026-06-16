@@ -616,80 +616,62 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "Purchase Price Analysis",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              showPopupMenu();
-                            },
-                            icon: const Icon(Icons.filter_alt_outlined),
-                          ),
-                          const SizedBox(width: 5),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Month wise purchase summary ',
-                      spacing: 10,
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generatePurchasePriceExcel(context);
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 10),
-                          _monthWisePurchase(),
-                          const SizedBox(height: 15),
-                          _itemGroupWisePurchase(),
-                        ],
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Month wise purchase summary ',
+                    spacing: 10,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generatePurchasePriceExcel(context);
+                        },
+                        child: const Text("Download Excel"),
                       ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        _monthWisePurchase(),
+                        const SizedBox(height: 15),
+                        _itemGroupWisePurchase(),
+                      ],
                     ),
                   ),
-                
-                ],
-              ),
+                ),
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

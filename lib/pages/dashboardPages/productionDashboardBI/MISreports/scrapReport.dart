@@ -15,6 +15,8 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 
+import '../../ReportService.dart';
+
 class GroupProductionData {
   GroupProductionData({
     required this.groupName,
@@ -53,57 +55,6 @@ class MonthlyGroupProductionDataList {
   final List<MonthlyGroupProductionData> list;
 }
 
-late Future<void> loadDataFuture;
-
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-String financialYear = "";
-String prevFinancialYear = "";
-int currentQuarter = 0;
-
-DateTime? q1FromDate;
-DateTime? q1ToDate;
-DateTime? q2FromDate;
-DateTime? q2ToDate;
-DateTime? q3FromDate;
-DateTime? q3ToDate;
-DateTime? q4FromDate;
-DateTime? q4ToDate;
-
-bool chartDataLoaded = false;
-String deviceOrientation = "";
-
-List<InventoryLevelList> stockData = [];
-List<InventoryLevelList> stockDataTemp = [];
-
-List<ItemCostList> itemCostList = [];
-
-double targetStockHeader = 0;
-double actualStockHeader = 0;
-double differenceStockHeader = 0;
-
-List<InventoryLevelList> cmsData = [];
-List<InventoryLevelList> cmsDataTemp = [];
-double totalInventory = 0;
-
-List<ProductionList> productionList = [];
-GroupProductionDataList weeklyProductionBarData = GroupProductionDataList();
-MonthlyGroupProductionDataList monthlyProductionBarData =
-    MonthlyGroupProductionDataList();
-
-ProductBarDataList productBarData = ProductBarDataList(list: []);
-ItemProductionDataList inventoryLevelBarData = ItemProductionDataList(list: []);
-
 class ScrapDetailProvider with ChangeNotifier {
   List<ProductionList> _salesList = [];
   List<ProductionList> get salesList => _salesList;
@@ -121,23 +72,27 @@ class ScrapReportPage extends StatefulWidget {
 }
 
 class _ScrapReportPageState extends State<ScrapReportPage> {
-  void loadAllQuarterFromToDates() {
-    DateTime now = DateTime.now();
+  final reportService = ReportService();
+  DateTime? currentDate;
+  DateTime? fiscalYearStartDate;
+  DateTime? lastMonthFromDate;
+  bool chartDataLoaded = false;
+  String? formattedFiscalYearStartDate;
+  String? formattedDateNow;
+  late Future<void> loadDataFuture;
+  String deviceOrientation = "";
+  List<InventoryLevelList> stockData = [];
+  List<InventoryLevelList> stockDataTemp = [];
 
-    int financialYearStart = (now.month >= 4) ? now.year : now.year - 1;
+  List<ProductionList> productionList = [];
+  GroupProductionDataList weeklyProductionBarData = GroupProductionDataList();
+  MonthlyGroupProductionDataList monthlyProductionBarData =
+      MonthlyGroupProductionDataList();
 
-    q1FromDate = DateTime(financialYearStart, 4, 1);
-    q1ToDate = DateTime(financialYearStart, 7, 0);
-
-    q2FromDate = DateTime(financialYearStart, 7, 1);
-    q2ToDate = DateTime(financialYearStart, 10, 0);
-
-    q3FromDate = DateTime(financialYearStart, 10, 1);
-    q3ToDate = DateTime(financialYearStart + 1, 1, 0); // December 31
-
-    q4FromDate = DateTime(financialYearStart + 1, 1, 1);
-    q4ToDate = DateTime(financialYearStart + 1, 4, 0); // March 31
-  }
+  ProductBarDataList productBarData = ProductBarDataList(list: []);
+  ItemProductionDataList inventoryLevelBarData = ItemProductionDataList(
+    list: [],
+  );
 
   String formatDate(DateTime date) {
     final formatter = DateFormat('yyyyMMdd');
@@ -164,101 +119,22 @@ class _ScrapReportPageState extends State<ScrapReportPage> {
     return DateTime(nextYear, nextMonth, originalDay);
   }
 
-  int getCurrentQuarter() {
-    int monthIndex = DateTime.now().month;
-    switch (monthIndex) {
-      case 4:
-      case 5:
-      case 6:
-        return 1;
-      case 7:
-      case 8:
-      case 9:
-        return 2;
-      case 10:
-      case 11:
-      case 12:
-        return 3;
-      case 1:
-      case 2:
-      case 3:
-        return 4;
-      default:
-        throw Error();
-    }
-  }
-
-  void getLastQuarterDates() {
-    DateTime now = DateTime.now();
-    switch (getCurrentQuarter()) {
-      case 1:
-        lastQuarterFromDate = DateTime(now.year, 1, 1);
-        lastQuarterToDate = DateTime(now.year, 3, 31);
-        break;
-      case 2:
-        lastQuarterFromDate = DateTime(now.year, 4, 1);
-        lastQuarterToDate = DateTime(now.year, 6, 30);
-        break;
-      case 3:
-        lastQuarterFromDate = DateTime(now.year, 7, 1);
-        lastQuarterToDate = DateTime(now.year, 9, 30);
-        break;
-      case 4:
-        lastQuarterFromDate = DateTime(now.year - 1, 10, 1);
-        lastQuarterToDate = DateTime(now.year - 1, 12, 31);
-        break;
-      default:
-        throw Error();
-    }
-  }
-
   void loadDates() {
     currentDate = DateTime.now();
-    currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
-    currentMonthToDate = addMonth(
-      currentMonthFromDate!,
-      1,
-    ).add(const Duration(days: -1));
-    lastMonthFromDate = DateTime(currentDate!.year, currentDate!.month - 1, 1);
-    lastMonthToDate = DateTime(currentDate!.year, currentDate!.month, 0);
     int fiscalYearStartMonth = 4;
-    currentQuarter = getCurrentQuarter();
-    getLastQuarterDates();
-    DateTime now = DateTime.now();
-    switch (currentQuarter) {
-      case 1:
-        currentQuarterFromDate = DateTime(now.year, 4, 1);
-        currentQuarterToDate = DateTime(now.year, 6, 30);
-      case 2:
-        currentQuarterFromDate = DateTime(now.year, 7, 1);
-        currentQuarterToDate = DateTime(now.year, 9, 30);
-      case 3:
-        currentQuarterFromDate = DateTime(now.year, 10, 1);
-        currentQuarterToDate = DateTime(now.year, 12, 31);
-      case 4:
-        currentQuarterFromDate = DateTime(now.year, 1, 1);
-        currentQuarterToDate = DateTime(now.year, 3, 31);
-      default:
-        throw Error();
-    }
     int fiscalYear = currentDate!.month >= fiscalYearStartMonth
         ? currentDate!.year
         : currentDate!.year - 1;
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
-    prevFiscalYearStartDate = addMonth(fiscalYearStartDate!, -12);
-    prevFiscalYearEndDate = DateTime(prevFiscalYearStartDate!.year + 1, 4, 0);
-    int fiscalYearStartYear = currentDate!.month >= 4
-        ? currentDate!.year
-        : currentDate!.year - 1;
-
-    int fiscalYearEndYear = fiscalYearStartYear + 1;
-    financialYear =
-        'FY${fiscalYearStartYear.toString().substring(2)}-${fiscalYearEndYear.toString().substring(2)}';
-
-    int prevFiscalYearStartYear = fiscalYearStartYear - 1;
-    int prevFiscalYearEndYear = prevFiscalYearStartYear + 1;
-    prevFinancialYear =
-        'FY${prevFiscalYearStartYear.toString().substring(2)}-${prevFiscalYearEndYear.toString().substring(2)}';
+    lastMonthFromDate = DateTime(
+      fiscalYearStartDate!.year,
+      fiscalYearStartDate!.month - 1,
+      1,
+    );
+    formattedFiscalYearStartDate = DateFormat(
+      'dd/MM/yy',
+    ).format(fiscalYearStartDate!);
+    formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
   }
 
   SideTitles get _leftTitles => SideTitles(
@@ -278,7 +154,7 @@ class _ScrapReportPageState extends State<ScrapReportPage> {
     return const Text("");
   }
 
-  SideTitles get _bottomTitlesInventoryAgeing => SideTitles(
+  SideTitles get _bottomTitlesScrap => SideTitles(
     reservedSize: 30,
     showTitles: true,
     getTitlesWidget: (value, meta) {
@@ -631,48 +507,6 @@ class _ScrapReportPageState extends State<ScrapReportPage> {
     });
   }
 
-  InventoryAgingSummaryMISReport summarizeCollectionTargets(
-    Iterable<InventoryList> inventory,
-  ) {
-    InventoryAgingSummaryMISReport summary = InventoryAgingSummaryMISReport();
-    String overDueDays = "";
-    for (var element in inventory) {
-      overDueDays = element.ageingBrackets;
-      if (overDueDays == "<30 Days") {
-        summary.a0to30DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a0to30DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "31-45 Days") {
-        summary.a31to45DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a31to45DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "46-60 Days") {
-        summary.a46to60DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a46to60DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "61-90 Days") {
-        summary.a61to90DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a61to90DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "91-120 Days") {
-        summary.a91to120DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a91to120DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "121-150 Days") {
-        summary.a121to150DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a121to150DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "151-180 Days") {
-        summary.a151to180DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a151to180DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "181-365 Days") {
-        summary.a181to365DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a181to365DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "366-730 Days") {
-        summary.a366to730DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a366to730DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == ">730 Days") {
-        summary.a730DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a730DaysTotalVal += (double.parse(element.totalValue));
-      }
-    }
-    return summary;
-  }
-
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
@@ -686,22 +520,6 @@ class _ScrapReportPageState extends State<ScrapReportPage> {
     chartDataLoaded = true;
   }
 
-  Future<void> loadDataWithBranchFilter(String branch) async {
-    chartDataLoaded = false;
-    stockData = stockDataTemp;
-    stockData = stockData
-        .where((test) => test.warehouseName == branch)
-        .toList();
-
-    setState(() {});
-  }
-
-  Future<void> loadDataClearFilter() async {
-    chartDataLoaded = false;
-    stockData = stockDataTemp;
-    setState(() {});
-  }
-
   Future<String> getStorageDirectory() async {
     String? externalDir = (await getExternalStorageDirectory())?.path;
     if (externalDir != null) {
@@ -711,44 +529,18 @@ class _ScrapReportPageState extends State<ScrapReportPage> {
     }
   }
 
-  double getMaxValue(double maxValue) {
-    double divVal = 0;
-    if (maxValue > 1000000000) {
-      divVal = 1000000000;
-    } else if (maxValue >= 100000000 && maxValue <= 500000000) {
-      divVal = 100000000;
-    } else if (maxValue > 500000000 && maxValue <= 1000000000) {
-      divVal = 250000000;
-    } else if (maxValue > 10000000 && maxValue <= 100000000) {
-      divVal = 10000000;
-    } else if (maxValue > 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue > 100000 && maxValue <= 1000000) {
-      if (maxValue <= 200000) {
-        divVal = 10000;
-      } else {
-        if (maxValue >= 200000) {
-          divVal = 20000;
-        }
-        if (maxValue >= 200000) {
-          divVal = 30000;
-        }
-        if (maxValue >= 400000) {
-          divVal = 40000;
-        }
-        if (maxValue >= 500000) {
-          divVal = 50000;
-        }
-      }
-    } else if (maxValue >= 10000 && maxValue <= 100000) {
-      divVal = 10000;
-    } else if (maxValue >= 100 && maxValue <= 1000) {
-      divVal = 100;
-    } else {
-      divVal = 10;
-    }
-    double maxY = ((maxValue ~/ divVal) + 1) * divVal;
-    return maxY;
+  double getMaxValue(double maxValue, double divVal) {
+    return (maxValue / divVal).ceil() * divVal;
+  }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
   }
 
   @override
@@ -931,7 +723,7 @@ class _ScrapReportPageState extends State<ScrapReportPage> {
               ),
               topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
               bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesInventoryAgeing,
+                sideTitles: _bottomTitlesScrap,
                 axisNameSize: 20,
               ),
             ),

@@ -67,10 +67,8 @@ class _MonthlyProductionSummaryPageState
   DateTime _selectedMonth = DateTime.now();
   List<SubGroupProductionData> _graphData = [];
   List<String> _availablePlants = [];
-
   bool isLoading = false;
   String? _selectedPlant;
-
   double _totalProduction = 0;
 
   @override
@@ -441,68 +439,59 @@ class _MonthlyProductionSummaryPageState
   @override
   Widget build(BuildContext context) {
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              title: const Text('Production Summary'),
-              centerTitle: true,
-              elevation: 0,
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.blue,
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  // Controls
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: _buildControls(),
-                    ),
+        ? Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              children: [
+                // Controls
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: _buildControls(),
                   ),
-                  const SizedBox(height: 10),
+                ),
+                const SizedBox(height: 10),
 
-                  // Content
-                  Expanded(
-                    child: isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _graphData.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.bar_chart,
-                                  size: 50,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  "No data found for ${DateFormat('MMM yyyy').format(_selectedMonth)}",
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          )
-                        : SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                // _buildSummaryCards(),
-                                const SizedBox(height: 20),
-                                _buildSectionHeader(
-                                  "SubGroup wise Completed Qty",
-                                  () => _generateExcel(context),
-                                ),
-                                const Divider(),
-                                _buildProductionChart(),
-                                const SizedBox(height: 40),
-                              ],
-                            ),
+                // Content
+                Expanded(
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _graphData.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.bar_chart,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                "No data found for ${DateFormat('MMM yyyy').format(_selectedMonth)}",
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            ],
                           ),
-                  ),
-                ],
-              ),
+                        )
+                      : SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              // _buildSummaryCards(),
+                              const SizedBox(height: 20),
+                              _buildSectionHeader(
+                                "SubGroup wise Completed Qty",
+                                () => _generateExcel(context),
+                              ),
+                              const Divider(),
+                              _buildProductionChart(),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
             ),
           )
         : const Scaffold(body: Center(child: CircularProgressIndicator()));

@@ -331,94 +331,77 @@ class _StockStatementPageState extends State<StockStatementPage> {
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "Stock Statement",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                      const Row(children: [SizedBox(width: 5)]),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Stock Statement',
-                      spacing: 10,
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateStockStatementExcel(
-                              context,
-                              stockStatementData,
-                            );
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          IntrinsicHeight(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Target Stock',
-                                    formatAmount(targetStockHeader),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Actual Stock',
-                                    formatAmount(actualStockHeader),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Difference',
-                                    formatAmount(differenceStockHeader),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _itemSubGroupGraph(),
-                        ],
+                    ),
+                    const Row(children: [SizedBox(width: 5)]),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Stock Statement',
+                    spacing: 10,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateStockStatementExcel(
+                            context,
+                            stockStatementData,
+                          );
+                        },
+                        child: const Text("Download Excel"),
                       ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Target Stock',
+                                  formatAmount(targetStockHeader),
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Actual Stock',
+                                  formatAmount(actualStockHeader),
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Difference',
+                                  formatAmount(differenceStockHeader),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _itemSubGroupGraph(),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

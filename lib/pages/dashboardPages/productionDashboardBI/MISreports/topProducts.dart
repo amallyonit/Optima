@@ -443,68 +443,50 @@ class _TopProductsPageState extends State<TopProductsPage> {
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "Top Products",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Top Products-Standard vs Actual Consumption.',
-                      spacing: 10,
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateTopProductsExcel(context);
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 10),
-                          _topProducts(),
-                          const SizedBox(height: 15),
-                        ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Top Products-Standard vs Actual Consumption.',
+                    spacing: 10,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateTopProductsExcel(context);
+                        },
+                        child: const Text("Download Excel"),
                       ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        _topProducts(),
+                        const SizedBox(height: 15),
+                      ],
                     ),
                   ),
-                
-                ],
-              ),
+                ),
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

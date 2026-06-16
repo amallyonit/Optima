@@ -345,215 +345,194 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "RM - Daily Inventory Vs Stock",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                      const Row(children: [SizedBox(width: 5)]),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Summary of Raw Materials',
-                      spacing: 10,
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateRMExcel(context, stockStatementData);
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  child: Row(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
-                                          right: 4.0,
+                    ),
+                    const Row(children: [SizedBox(width: 5)]),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Summary of Raw Materials',
+                    spacing: 10,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateRMExcel(context, stockStatementData);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                child: Row(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 4.0,
+                                        right: 4.0,
+                                      ),
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 70.0,
+                                        lineWidth: 27.0,
+                                        animation: true,
+                                        percent:
+                                            (stockPercentage > 100
+                                                ? 100
+                                                : stockPercentage) /
+                                            100,
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: const Color(0xFF2CA9DF),
+                                        arcBackgroundColor: const Color(
+                                          0xFFB8ECFF,
                                         ),
-                                        child: CircularPercentIndicator(
-                                          arcType: ArcType.HALF,
-                                          radius: 70.0,
-                                          lineWidth: 27.0,
-                                          animation: true,
-                                          percent:
-                                              (stockPercentage > 100
-                                                  ? 100
-                                                  : stockPercentage) /
-                                              100,
-                                          curve: Curves.linear,
-                                          circularStrokeCap:
-                                              CircularStrokeCap.butt,
-                                          progressColor: const Color(
-                                            0xFF2CA9DF,
-                                          ),
-                                          arcBackgroundColor: const Color(
-                                            0xFFB8ECFF,
-                                          ),
-                                          center: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "${stockPercentage.toStringAsFixed(2)}%",
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 11.0,
-                                                      color: Colors.black,
-                                                    ),
+                                        center: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "${stockPercentage.toStringAsFixed(2)}%",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11.0,
+                                                    color: Colors.black,
                                                   ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 5),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    formatAmount(actualStock),
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  formatAmount(actualStock),
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
                                                   ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 5),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "Target : ${formatAmount(targetStock)}",
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 5),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Target : ${formatAmount(targetStock)}",
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
                                                   ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
+                        ),
 
-                          IntrinsicHeight(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Average Stock Value (Sales)',
-                                    formatAmount(targetStock),
-                                  ),
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Average Stock Value (Sales)',
+                                  formatAmount(targetStock),
                                 ),
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Stock value against average \nstock value',
-                                    formatAmount(actualStock),
-                                  ),
+                              ),
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Stock value against average \nstock value',
+                                  formatAmount(actualStock),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          IntrinsicHeight(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Excess/shortage stock holding against\naverage stock target',
-                                    formatAmount(targetStock),
-                                  ),
+                        ),
+                        const SizedBox(height: 16),
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Excess/shortage stock holding against\naverage stock target',
+                                  formatAmount(targetStock),
                                 ),
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Stock other than the average\nsales stock',
-                                    formatAmount(actualStock),
-                                  ),
+                              ),
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Stock other than the average\nsales stock',
+                                  formatAmount(actualStock),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          IntrinsicHeight(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Total RM Stock',
-                                    formatAmount(targetStock),
-                                  ),
+                        ),
+                        const SizedBox(height: 16),
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Total RM Stock',
+                                  formatAmount(targetStock),
                                 ),
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    'Total Excess stock against\naverage sales value',
-                                    formatAmount(actualStock),
-                                  ),
+                              ),
+                              Expanded(
+                                child: _buildInfoCard(
+                                  'Total Excess stock against\naverage sales value',
+                                  formatAmount(actualStock),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          _itemRMGraph(),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 16),
+                        _itemRMGraph(),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            
+                ),
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

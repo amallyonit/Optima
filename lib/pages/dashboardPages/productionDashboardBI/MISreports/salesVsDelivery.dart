@@ -676,354 +676,332 @@ class _SalesVsDeliveryPageState extends State<SalesVsDeliveryPage> {
   @override
   Widget build(BuildContext context) {
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "Sales Vs Production",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              selectMonth(context);
-                            },
-                            icon: const Icon(Icons.calendar_month),
-                          ),
-                          const SizedBox(width: 5),
-                          IconButton(
-                            onPressed: () {
-                              showPopupMenu();
-                            },
-                            icon: const Icon(Icons.filter_alt_outlined),
-                          ),
-                          const SizedBox(width: 5),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'Sales Vs Delivery',
-                      spacing: 10,
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateSalesVsDelivery(context);
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            selectMonth(context);
+                          },
+                          icon: const Icon(Icons.calendar_month),
+                        ),
+                        const SizedBox(width: 5),
+                        IconButton(
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Sales Vs Delivery',
+                    spacing: 10,
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateSalesVsDelivery(context);
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            ItemSubGroupDropdown(
+                              production: deliveryDataTemp,
+                              onChanged: (newValue) {
+                                selectedBranch = newValue ?? "Karnataka State";
+                                loadDataWithBranchFilter(newValue!);
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              ItemSubGroupDropdown(
-                                production: deliveryDataTemp,
-                                onChanged: (newValue) {
-                                  selectedBranch =
-                                      newValue ?? "Karnataka State";
-                                  loadDataWithBranchFilter(newValue!);
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  child: Row(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
-                                          right: 4.0,
-                                        ),
-                                        child: CircularPercentIndicator(
-                                          arcType: ArcType.HALF,
-                                          radius: 70.0,
-                                          lineWidth: 27.0,
-                                          animation: true,
-                                          percent: completedOrdersPercent / 100,
-                                          curve: Curves.linear,
-                                          circularStrokeCap:
-                                              CircularStrokeCap.butt,
-                                          progressColor: Colors.green,
-                                          arcBackgroundColor: Colors.red,
-                                          center: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              const SizedBox(height: 45),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "Completed: $completedOrders",
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 11.0,
-                                                      color: Colors.green,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "Pending: $pendingOrders",
-                                                    textAlign: TextAlign.center,
-                                                    style: const TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 30),
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
-                                          right: 4.0,
-                                        ),
-                                        child: CircularPercentIndicator(
-                                          arcType: ArcType.HALF,
-                                          radius: 70.0,
-                                          lineWidth: 27.0,
-                                          animation: true,
-                                          percent:
-                                              completedOrdersPercentage / 100,
-                                          curve: Curves.linear,
-                                          circularStrokeCap:
-                                              CircularStrokeCap.butt,
-                                          progressColor: Colors.green,
-                                          arcBackgroundColor: Colors.red,
-                                          center: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              const SizedBox(height: 45),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "Completed: ${completedOrdersPercentage.toStringAsFixed(2)}",
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 11.0,
-                                                      color: Colors.green,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    "Pending: ${pendingOrdersPercentage.toStringAsFixed(2)}",
-                                                    textAlign: TextAlign.center,
-                                                    style: const TextStyle(
-                                                      fontSize: 10.0,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: 16.0,
-                              right: 16.0,
-                              bottom: 16.0,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                SizedBox(
-                                  height: 150,
-                                  width: 100,
-                                  child: PieChart(
-                                    PieChartData(
-                                      pieTouchData: PieTouchData(
-                                        touchCallback:
-                                            (
-                                              FlTouchEvent event,
-                                              pieTouchResponse,
-                                            ) {
-                                              setState(() {
-                                                if (!event
-                                                        .isInterestedForInteractions ||
-                                                    pieTouchResponse == null ||
-                                                    pieTouchResponse
-                                                            .touchedSection ==
-                                                        null) {
-                                                  touchedIndex = -1;
-                                                  return;
-                                                }
-                                                touchedIndex = pieTouchResponse
-                                                    .touchedSection!
-                                                    .touchedSectionIndex;
-                                              });
-                                            },
-                                      ),
-                                      borderData: FlBorderData(show: false),
-                                      sectionsSpace: 1,
-                                      centerSpaceRadius: 0,
-                                      startDegreeOffset: 180,
-                                      sections: _receivablesCategoryChart(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 75.0),
-                            child: Row(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Column(
-                                        children: [
-                                          Container(
-                                            height: 8,
-                                            width: 16,
-                                            color: Colors.green,
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Container(
-                                            height: 8,
-                                            width: 16,
-                                            color: Colors.orange,
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Container(
-                                            height: 8,
-                                            width: 16,
-                                            color: Colors.grey,
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Container(
-                                            height: 8,
-                                            width: 16,
-                                            color: Colors.lightBlue,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              SizedBox(
+                                child: Row(
                                   children: [
                                     Padding(
-                                      padding: const EdgeInsets.only(left: 8.0),
-                                      child: Text(
-                                        "No. orders cleared before/on time: ${receivablesCategoryList.categoryData[0].noOfOrders}",
-                                        textAlign: TextAlign.left,
-                                        style: const TextStyle(fontSize: 10),
+                                      padding: const EdgeInsets.only(
+                                        top: 4.0,
+                                        right: 4.0,
+                                      ),
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 70.0,
+                                        lineWidth: 27.0,
+                                        animation: true,
+                                        percent: completedOrdersPercent / 100,
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.green,
+                                        arcBackgroundColor: Colors.red,
+                                        center: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const SizedBox(height: 45),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Completed: $completedOrders",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11.0,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Pending: $pendingOrders",
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
+                                    const SizedBox(width: 30),
                                     Padding(
-                                      padding: const EdgeInsets.only(left: 8.0),
-                                      child: Text(
-                                        "No. of orders delayed by 1 to 5 days: ${receivablesCategoryList.categoryData[1].noOfOrders} ",
-                                        textAlign: TextAlign.left,
-                                        style: const TextStyle(fontSize: 10),
+                                      padding: const EdgeInsets.only(
+                                        top: 4.0,
+                                        right: 4.0,
                                       ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8.0),
-                                      child: Text(
-                                        "No. of orders delayed by 6 to 10 days:  ${receivablesCategoryList.categoryData[2].noOfOrders}",
-                                        textAlign: TextAlign.left,
-                                        style: const TextStyle(fontSize: 10),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8.0),
-                                      child: Text(
-                                        "No. of orders delayed > 10 days: ${receivablesCategoryList.categoryData[3].noOfOrders}",
-                                        textAlign: TextAlign.left,
-                                        style: const TextStyle(fontSize: 10),
+                                      child: CircularPercentIndicator(
+                                        arcType: ArcType.HALF,
+                                        radius: 70.0,
+                                        lineWidth: 27.0,
+                                        animation: true,
+                                        percent:
+                                            completedOrdersPercentage / 100,
+                                        curve: Curves.linear,
+                                        circularStrokeCap:
+                                            CircularStrokeCap.butt,
+                                        progressColor: Colors.green,
+                                        arcBackgroundColor: Colors.red,
+                                        center: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const SizedBox(height: 45),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Completed: ${completedOrdersPercentage.toStringAsFixed(2)}",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11.0,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "Pending: ${pendingOrdersPercentage.toStringAsFixed(2)}",
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontSize: 10.0,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          _itemSubGroupGraph(),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16.0,
+                            right: 16.0,
+                            bottom: 16.0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              SizedBox(
+                                height: 150,
+                                width: 100,
+                                child: PieChart(
+                                  PieChartData(
+                                    pieTouchData: PieTouchData(
+                                      touchCallback:
+                                          (
+                                            FlTouchEvent event,
+                                            pieTouchResponse,
+                                          ) {
+                                            setState(() {
+                                              if (!event
+                                                      .isInterestedForInteractions ||
+                                                  pieTouchResponse == null ||
+                                                  pieTouchResponse
+                                                          .touchedSection ==
+                                                      null) {
+                                                touchedIndex = -1;
+                                                return;
+                                              }
+                                              touchedIndex = pieTouchResponse
+                                                  .touchedSection!
+                                                  .touchedSectionIndex;
+                                            });
+                                          },
+                                    ),
+                                    borderData: FlBorderData(show: false),
+                                    sectionsSpace: 1,
+                                    centerSpaceRadius: 0,
+                                    startDegreeOffset: 180,
+                                    sections: _receivablesCategoryChart(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 75.0),
+                          child: Row(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: Colors.green,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: Colors.orange,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          height: 8,
+                                          width: 16,
+                                          color: Colors.lightBlue,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      "No. orders cleared before/on time: ${receivablesCategoryList.categoryData[0].noOfOrders}",
+                                      textAlign: TextAlign.left,
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      "No. of orders delayed by 1 to 5 days: ${receivablesCategoryList.categoryData[1].noOfOrders} ",
+                                      textAlign: TextAlign.left,
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      "No. of orders delayed by 6 to 10 days:  ${receivablesCategoryList.categoryData[2].noOfOrders}",
+                                      textAlign: TextAlign.left,
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      "No. of orders delayed > 10 days: ${receivablesCategoryList.categoryData[3].noOfOrders}",
+                                      textAlign: TextAlign.left,
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _itemSubGroupGraph(),
+                      ],
                     ),
                   ),
-                
-                ],
-              ),
+                ),
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

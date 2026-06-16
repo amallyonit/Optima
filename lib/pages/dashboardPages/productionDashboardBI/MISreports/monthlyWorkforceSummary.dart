@@ -83,7 +83,6 @@ class _MonthlyWorkforceSummaryPageState
     });
   }
 
-  // --- EXCEL: DAILY BREAKDOWN ---
   Future<void> _generateDailyExcel(BuildContext context) async {
     if (_graphData.isEmpty) {
       ScaffoldMessenger.of(
@@ -94,7 +93,6 @@ class _MonthlyWorkforceSummaryPageState
     _createAndOpenExcel(context, isSummary: false);
   }
 
-  // --- EXCEL: MONTHLY SUMMARY ---
   Future<void> _generateSummaryExcel(BuildContext context) async {
     if (_graphData.isEmpty) {
       ScaffoldMessenger.of(
@@ -105,7 +103,6 @@ class _MonthlyWorkforceSummaryPageState
     _createAndOpenExcel(context, isSummary: true);
   }
 
-  // --- SHARED EXCEL LOGIC ---
   Future<void> _createAndOpenExcel(
     BuildContext context, {
     required bool isSummary,
@@ -238,7 +235,6 @@ class _MonthlyWorkforceSummaryPageState
     return (await getApplicationDocumentsDirectory()).path;
   }
 
-  // --- API LOGIC ---
   Future<void> _pickMonth() async {
     final picked = await showDatePicker(
       context: context,
@@ -258,11 +254,7 @@ class _MonthlyWorkforceSummaryPageState
 
   Future<void> _fetchAndGenerateGraph() async {
     setState(() => isLoading = true);
-    // ... (Same API Logic as before) ...
-    // Note: I'm abbreviating standard boilerplate for brevity, paste your API call here.
-    // Ensure you call _calculateAverages() after loading data.
 
-    // MOCK API CALL START (Replace with your actual HTTP call)
     final startOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
     final endOfMonth = DateTime(
       _selectedMonth.year,
@@ -330,8 +322,6 @@ class _MonthlyWorkforceSummaryPageState
       _calculateAverages(); // <--- Important: Recalculate averages when data loads
     });
   }
-
-  // --- CHART WIDGETS ---
 
   Widget _buildSectionHeader(String title, VoidCallback onDownload) {
     return Row(
@@ -516,7 +506,6 @@ class _MonthlyWorkforceSummaryPageState
     );
   }
 
-  // 2. SUMMARY CHART
   Widget _summaryChart() {
     return SizedBox(
       height: 300,
@@ -649,69 +638,59 @@ class _MonthlyWorkforceSummaryPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Workforce Analysis'),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.blue,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            // Controls
-            Card(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: _buildControls(),
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        children: [
+          // Controls
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: _buildControls(),
             ),
-            const SizedBox(height: 10),
+          ),
+          const SizedBox(height: 10),
 
-            // Content
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _graphData.isEmpty
-                  ? const Center(child: Text("Select a month to view data"))
-                  : SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          // 1. Legend
-                          _buildLegend(),
-                          const SizedBox(height: 20),
+          // Content
+          Expanded(
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _graphData.isEmpty
+                ? const Center(child: Text("Select a month to view data"))
+                : SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // 1. Legend
+                        _buildLegend(),
+                        const SizedBox(height: 20),
 
-                          // 2. Daily Breakdown Section
-                          _buildSectionHeader(
-                            "Daily Breakdown",
-                            () => _generateDailyExcel(context),
-                          ),
-                          const Divider(),
-                          _dailyBreakdownChart(),
-                          const SizedBox(height: 40),
+                        // 2. Daily Breakdown Section
+                        _buildSectionHeader(
+                          "Daily Breakdown",
+                          () => _generateDailyExcel(context),
+                        ),
+                        const Divider(),
+                        _dailyBreakdownChart(),
+                        const SizedBox(height: 40),
 
-                          // 3. Monthly Summary Section
-                          _buildSectionHeader(
-                            "Monthly Average Summary",
-                            () => _generateSummaryExcel(context),
-                          ),
-                          const Divider(),
-                          _summaryChart(),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
+                        // 3. Monthly Summary Section
+                        _buildSectionHeader(
+                          "Monthly Average Summary",
+                          () => _generateSummaryExcel(context),
+                        ),
+                        const Divider(),
+                        _summaryChart(),
+                        const SizedBox(height: 20),
+                      ],
                     ),
-            ),
-          ],
-        ),
+                  ),
+          ),
+        ],
       ),
     );
   }
 
-  // --- CONTROLS & LEGEND (Unchanged mostly) ---
   Widget _buildControls() {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
@@ -775,6 +754,25 @@ class _MonthlyWorkforceSummaryPageState
     }
     return Column(
       children: [
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 15),
+                Text(
+                  "Monthly Workforce Details",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         dropdown,
         const SizedBox(height: 12),
         Row(

@@ -1,4 +1,3 @@
-import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/externalComplaintPage.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:optima/pages/dashboardPages/customerDashboard/customerSalesPerformance.dart';
@@ -40,7 +39,6 @@ import '../pages/dashboardPages/inventoryDashboardBI/inventoryAnalysis.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/purchasePrice.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/salesVsDelivery.dart';
-import '../pages/dashboardPages/productionDashboardBI/MISreports/sampleDataDetailsPage.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/scrapReport.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/topProducts.dart';
 import '../pages/dashboardPages/purchaseDashboard/paymentAnalysis.dart';
@@ -191,8 +189,6 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => PurchasePriceMISProvider()),
     ChangeNotifierProvider(create: (_) => TopProductsMISProvider()),
     ChangeNotifierProvider(create: (_) => ScrapDetailProvider()),
-    ChangeNotifierProvider(create: (_) => ComplaintDetailsMISProvider()),
-    ChangeNotifierProvider(create: (_) => SampleDetailsMISProvider()),
     ChangeNotifierProvider(create: (_) => MonthlyProductionMISProvider()),
     ChangeNotifierProvider(create: (_) => SalesOrderListHomePageProvider()),
   ];

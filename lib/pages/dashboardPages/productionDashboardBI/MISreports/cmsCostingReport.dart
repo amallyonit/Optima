@@ -310,86 +310,70 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
     ).format(fiscalYearStartDate!);
     String formattedDateNow = DateFormat('dd/MM/yy').format(currentDate!);
     return chartDataLoaded == true
-        ? Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.white,
-              elevation: 0.0,
-              title: const Text(
-                "CMS Costing Report",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontFamily: "Poppins",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: FinanceVerticalScroll(
-              controller: _verticalScrollController,
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 20),
-                          Text(
-                            "$formattedFiscalYearStartDate - $formattedDateNow",
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: DashboardCardUI(
-                      title: 'CMS Costing Analysis.',
-                      spacing: 10,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(height: 8, width: 8, color: Colors.blue),
-                          const SizedBox(width: 5),
-                          const Text('Target', style: TextStyle(fontSize: 12)),
-                          const SizedBox(width: 10),
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: Color(0xFFFF9F47),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            'Achievement',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                      menuItems: [
-                        PopupMenuItem(
-                          onTap: () {
-                            generateCMSCostingExcel(context);
-                          },
-                          child: const Text("Download Excel"),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 20),
+                        Text(
+                          "$formattedFiscalYearStartDate - $formattedDateNow",
                         ),
                       ],
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 10),
-                          _cmsCostingChart(),
-                          const SizedBox(height: 15),
-                        ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'CMS Costing Analysis.',
+                    spacing: 10,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(height: 8, width: 8, color: Colors.blue),
+                        const SizedBox(width: 5),
+                        const Text('Target', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Achievement',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateCMSCostingExcel(context);
+                        },
+                        child: const Text("Download Excel"),
                       ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        _cmsCostingChart(),
+                        const SizedBox(height: 15),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              
+              ],
             ),
           )
         : const Center(child: CircularProgressIndicator());

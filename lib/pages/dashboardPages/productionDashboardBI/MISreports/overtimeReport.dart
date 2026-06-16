@@ -415,69 +415,52 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
     if (isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        title: const Text(
-          "Overtime Report",
-          style: TextStyle(
-            color: Colors.blue,
-            fontFamily: "Poppins",
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: FinanceVerticalScroll(
-        controller: _verticalScrollController,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(child: _buildHeader()),
-                  GestureDetector(
-                    onTap: () => selectMonth(context),
-                    child: Text(
-                      '🗓 ${DateFormat('MMMM yyyy').format(selectedDate!)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF454545),
-                      ),
+    return FinanceVerticalScroll(
+      controller: _verticalScrollController,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(child: _buildHeader()),
+                GestureDetector(
+                  onTap: () => selectMonth(context),
+                  child: Text(
+                    '🗓 ${DateFormat('MMMM yyyy').format(selectedDate!)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF454545),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
+          ),
+          const SizedBox(height: 10),
 
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: DashboardCardUI(
-                title: 'Overtime Report',
-                spacing: 20,
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: DashboardCardUI(
+              title: 'Overtime Report',
+              spacing: 20,
 
-                menuItems: [
-                  PopupMenuItem(
-                    onTap: () async {
-                      await generateOvertimeExcel(context);
-                    },
-                    child: const Text("Download Excel"),
-                  ),
-                ],
-                child: _itemSubGroupGraph(),
-              ),
+              menuItems: [
+                PopupMenuItem(
+                  onTap: () async {
+                    await generateOvertimeExcel(context);
+                  },
+                  child: const Text("Download Excel"),
+                ),
+              ],
+              child: _itemSubGroupGraph(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

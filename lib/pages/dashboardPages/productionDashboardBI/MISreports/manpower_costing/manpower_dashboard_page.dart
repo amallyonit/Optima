@@ -615,101 +615,84 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        title: const Text(
-          "Manpower Costing Report",
-          style: TextStyle(
-            color: Colors.blue,
-            fontFamily: "Poppins",
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildHeader(),
 
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: DashboardCardUI(
-                title: 'Summary',
-                spacing: 20,
-                menuItems: [
-                  PopupMenuItem(
-                    onTap: () {
-                      ManpowerExcelExporter.exportManpowerExcel(
-                        controller.table.particulars,
-                        controller.table.rows,
-                      );
-                    },
-                    child: const Text("Download Excel"),
-                  ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: DashboardCardUI(
+              title: 'Summary',
+              spacing: 20,
+              menuItems: [
+                PopupMenuItem(
+                  onTap: () {
+                    ManpowerExcelExporter.exportManpowerExcel(
+                      controller.table.particulars,
+                      controller.table.rows,
+                    );
+                  },
+                  child: const Text("Download Excel"),
+                ),
+              ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBranchFilter(),
+                  const SizedBox(height: 16),
+                  _buildTargetAchievement(),
                 ],
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildBranchFilter(),
-                    const SizedBox(height: 16),
-                    _buildTargetAchievement(),
-                  ],
-                ),
               ),
             ),
+          ),
 
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: DashboardCardUI(
-                title: 'Monthly Analysis',
-                spacing: 20,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(height: 8, width: 8, color: Color(0xFFFF9F47)),
-                    const SizedBox(width: 5),
-                    const Text('Target', style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 10),
-                    Container(height: 8, width: 8, color: Colors.blue),
-                    const SizedBox(width: 5),
-                    const Text('Achievement', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-                menuItems: [],
-                child: _buildMonthlyCharts(),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: DashboardCardUI(
+              title: 'Monthly Analysis',
+              spacing: 20,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(height: 8, width: 8, color: Color(0xFFFF9F47)),
+                  const SizedBox(width: 5),
+                  const Text('Target', style: TextStyle(fontSize: 12)),
+                  const SizedBox(width: 10),
+                  Container(height: 8, width: 8, color: Colors.blue),
+                  const SizedBox(width: 5),
+                  const Text('Achievement', style: TextStyle(fontSize: 12)),
+                ],
               ),
+              menuItems: [],
+              child: _buildMonthlyCharts(),
             ),
+          ),
 
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: DashboardCardUI(
-                title: 'Daily Analysis',
-                spacing: 20,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(height: 8, width: 8, color: Color(0xFFFF9F47)),
-                    const SizedBox(width: 5),
-                    const Text('Avg Boxes', style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 10),
-                    Container(height: 8, width: 8, color: Colors.blue),
-                    const SizedBox(width: 5),
-                    const Text('Actual Boxes', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-                menuItems: [],
-                child: _buildDailyCharts(),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: DashboardCardUI(
+              title: 'Daily Analysis',
+              spacing: 20,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(height: 8, width: 8, color: Color(0xFFFF9F47)),
+                  const SizedBox(width: 5),
+                  const Text('Avg Boxes', style: TextStyle(fontSize: 12)),
+                  const SizedBox(width: 10),
+                  Container(height: 8, width: 8, color: Colors.blue),
+                  const SizedBox(width: 5),
+                  const Text('Actual Boxes', style: TextStyle(fontSize: 12)),
+                ],
               ),
+              menuItems: [],
+              child: _buildDailyCharts(),
             ),
+          ),
 
-            _buildTable(),
-          ],
-        ),
+          _buildTable(),
+        ],
       ),
     );
   }
