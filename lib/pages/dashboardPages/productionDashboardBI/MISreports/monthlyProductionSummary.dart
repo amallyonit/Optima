@@ -12,9 +12,9 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:excel/excel.dart' as xl;
-import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import '../../../../notificationService.dart';
+import '../../ReportService.dart';
+import '../../dashboard_card_ui.dart';
 
 // --- Global Variables ---
 List<ProductionOrderList> dayWiseProduction = [];
@@ -69,7 +69,10 @@ class _MonthlyProductionSummaryPageState
   List<String> _availablePlants = [];
   bool isLoading = false;
   String? _selectedPlant;
-  double _totalProduction = 0;
+  final reportService = ReportService();
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
 
   @override
   void initState() {
@@ -88,7 +91,13 @@ class _MonthlyProductionSummaryPageState
     }
   }
 
-  // --- API LOADING LOGIC ---
+  @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
@@ -173,13 +182,10 @@ class _MonthlyProductionSummaryPageState
     }
   }
 
-  // Format date for API Request (keeping this yyyyMMdd as per your API needs)
   String formatApiDate(DateTime date) {
     final formatter = DateFormat('yyyyMMdd');
     return formatter.format(date);
   }
-
-  // --- DATA PROCESSING LOGIC ---
 
   void _extractPlants() {
     final Set<String> plants = dayWiseProduction
@@ -208,7 +214,6 @@ class _MonthlyProductionSummaryPageState
     setState(() => isLoading = true);
 
     Map<String, double> groupedData = {};
-    double totalProd = 0;
 
     // **CHANGED**: Formatter specifically for "dd/MM/yyyy"
     final inputDateFormatter = DateFormat('dd/MM/yyyy');
@@ -239,7 +244,6 @@ class _MonthlyProductionSummaryPageState
             : order.itemSubGroup;
 
         groupedData[key] = (groupedData[key] ?? 0) + qty;
-        totalProd += qty;
       }
     }
 
@@ -256,16 +260,8 @@ class _MonthlyProductionSummaryPageState
 
     setState(() {
       _graphData = resultList;
-      _totalProduction = totalProd;
       isLoading = false;
     });
-  }
-
-  // --- UI & HELPERS ---
-
-  String formatAmount(double amount) {
-    if (amount % 1 == 0) return amount.toInt().toString();
-    return amount.toStringAsFixed(1);
   }
 
   Future<void> _pickMonth() async {
@@ -284,92 +280,26 @@ class _MonthlyProductionSummaryPageState
     }
   }
 
-  // Excel Export Logic
   Future<void> _generateExcel(BuildContext context) async {
     if (_graphData.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No data to export.')));
+      if (!mounted) return;
+      NotificationService.info(title: "Info", message: "No data to export.");
       return;
     }
 
-    try {
-      final excel = xl.Excel.createExcel();
-      String defaultSheet = excel.sheets.keys.first;
-      String sheetName = "SubGroup Production";
-      excel.rename(defaultSheet, sheetName);
-      final sheet = excel[sheetName];
-
-      final headerStyle = xl.CellStyle(
-        bold: true,
-        horizontalAlign: xl.HorizontalAlign.Center,
-        backgroundColorHex: xl.ExcelColor.fromHexString("#D3D3D3"),
-      );
-      final titleStyle = xl.CellStyle(
-        bold: true,
-        fontSize: 14,
-        horizontalAlign: xl.HorizontalAlign.Center,
-      );
-
-      sheet.merge(
-        xl.CellIndex.indexByString("A1"),
-        xl.CellIndex.indexByString("B1"),
-      );
-      var titleCell = sheet.cell(xl.CellIndex.indexByString("A1"));
-      titleCell.value = xl.TextCellValue(
-        "Plant: $_selectedPlant - ${DateFormat('MMMM yyyy').format(_selectedMonth)}",
-      );
-      titleCell.cellStyle = titleStyle;
-
-      List<String> headers = ["Item SubGroup", "Completed Qty"];
-      sheet.appendRow(headers.map((e) => xl.TextCellValue(e)).toList());
-
-      for (int i = 0; i < headers.length; i++) {
-        sheet
-                .cell(
-                  xl.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 1),
-                )
-                .cellStyle =
-            headerStyle;
-      }
-
-      for (var item in _graphData) {
-        sheet.appendRow([
-          xl.TextCellValue(item.subGroupName),
-          xl.DoubleCellValue(item.totalQty),
-        ]);
-      }
-
-      sheet.appendRow([
-        xl.TextCellValue("TOTAL"),
-        xl.DoubleCellValue(_totalProduction),
-      ]);
-
-      final fileBytes = excel.save();
-      if (fileBytes != null && !kIsWeb) {
-        final storageDir = await getStorageDirectory();
-        final fileName =
-            'Production_${DateFormat('MMM_yyyy').format(_selectedMonth)}.xlsx';
-        final file = File('$storageDir/$fileName');
-        await file.writeAsBytes(fileBytes, flush: true);
-        OpenFile.open(file.path);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Exported: $fileName')));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  Future<String> getStorageDirectory() async {
-    if (Platform.isAndroid) {
-      return (await getExternalStorageDirectory())?.path ??
-          (await getApplicationDocumentsDirectory()).path;
-    }
-    return (await getApplicationDocumentsDirectory()).path;
+    await reportService.generateExcel(
+      sheetName: 'ProductionSummary',
+      headers: ["Item SubGroup", "Completed Qty"],
+      rows: _graphData
+          .map((data) => [data.subGroupName, data.totalQty])
+          .toList(),
+      fileName:
+          'monthly_production_${DateFormat('MMM_yyyy').format(_selectedMonth)}.xlsx',
+      amountColumns: [2],
+      addTotalRow: true,
+      reportTitle:
+          'Production[MIS] - Monthly Production of Plant: $_selectedPlant - ${DateFormat('MMMM yyyy').format(_selectedMonth)}",',
+    );
   }
 
   void LoadDates() {
@@ -436,61 +366,86 @@ class _MonthlyProductionSummaryPageState
     }
   }
 
+  double getMaxValue(double maxValue, double divVal) {
+    return (maxValue / divVal).ceil() * divVal;
+  }
+
+  SideTitles get _leftTitles => SideTitles(
+    reservedSize: 60,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
+
+  SideTitles get _emptyTitlesTop =>
+      SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
+
+  Widget getEmptyTopTitle(double val, TitleMeta meta) {
+    return const Text("");
+  }
+
   @override
   Widget build(BuildContext context) {
     return chartDataLoaded == true
-        ? Padding(
-            padding: const EdgeInsets.all(12.0),
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
-                // Controls
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: _buildControls(),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: '',
+                    spacing: 10,
+                    menuItems: [],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [_buildControls()],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
 
-                // Content
-                Expanded(
-                  child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _graphData.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.bar_chart,
-                                size: 50,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                "No data found for ${DateFormat('MMM yyyy').format(_selectedMonth)}",
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        )
-                      : SingleChildScrollView(
-                          child: Column(
-                            children: [
-                              // _buildSummaryCards(),
-                              const SizedBox(height: 20),
-                              _buildSectionHeader(
-                                "SubGroup wise Completed Qty",
-                                () => _generateExcel(context),
-                              ),
-                              const Divider(),
-                              _buildProductionChart(),
-                              const SizedBox(height: 40),
-                            ],
-                          ),
+                isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _graphData.isEmpty
+                    ? Center(
+                        child: Text(
+                          "No data found for ${DateFormat('MMM yyyy').format(_selectedMonth)}",
                         ),
-                ),
+                      )
+                    : SizedBox(
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: DashboardCardUI(
+                                title: 'SubGroup wise Completed Qty',
+                                spacing: 10,
+                                menuItems: [
+                                  PopupMenuItem(
+                                    onTap: () {
+                                      _generateExcel(context);
+                                    },
+                                    child: const Text("Download Excel"),
+                                  ),
+                                ],
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 15),
+                                    _buildProductionChart(),
+                                    const SizedBox(height: 15),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
               ],
             ),
           )
@@ -501,7 +456,6 @@ class _MonthlyProductionSummaryPageState
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    // Dynamic Dropdown
     final dropdown = SizedBox(
       width: 250,
       height: 45,
@@ -538,7 +492,6 @@ class _MonthlyProductionSummaryPageState
       style: ElevatedButton.styleFrom(minimumSize: const Size(130, 45)),
     );
 
-    // Generate Button
     final generateButton = ElevatedButton(
       onPressed: _processDataAndGenerateGraph,
       style: ElevatedButton.styleFrom(
@@ -553,6 +506,24 @@ class _MonthlyProductionSummaryPageState
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const SizedBox(width: 15),
+                  Text(
+                    "Monthly Production Details",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           dropdown,
           const SizedBox(width: 12),
           monthButton,
@@ -563,6 +534,24 @@ class _MonthlyProductionSummaryPageState
     }
     return Column(
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 15),
+                Text(
+                  "Monthly Production Details",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         dropdown,
         const SizedBox(height: 12),
         Row(
@@ -573,66 +562,41 @@ class _MonthlyProductionSummaryPageState
     );
   }
 
-  Widget _buildSectionHeader(String title, VoidCallback onDownload) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          ),
-        ),
-        PopupMenuButton(
-          icon: const Icon(Icons.more_vert, color: Colors.grey),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              onTap: onDownload,
-              child: const Row(
-                children: [
-                  Icon(Icons.download, color: Colors.green, size: 20),
-                  SizedBox(width: 8),
-                  Text("Download Excel"),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildProductionChart() {
     final screenWidth = MediaQuery.of(context).size.width;
     double chartWidth = _graphData.length > 4
         ? screenWidth + (60 * _graphData.length)
         : screenWidth;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    int len = _graphData.length;
+    double maxAmount = len > 0
+        ? _graphData
+              .map((data) => data.totalQty)
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+    return FinanceHorizontalChartScroll(
+      controller: _horizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
-        height: 400,
+        height: 350,
         width: chartWidth,
         child: Padding(
-          padding: const EdgeInsets.only(top: 20.0, right: 20.0),
+          padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
+              maxY: getMaxValue(maxAmount, 50000),
               alignment: BarChartAlignment.spaceAround,
               titlesData: FlTitlesData(
                 leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 50,
-                    getTitlesWidget: (v, m) => Text(
-                      formatAmount(v),
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  ),
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 80,
                     getTitlesWidget: (v, m) {
                       if (v.toInt() >= 0 && v.toInt() < _graphData.length) {
                         return Padding(
@@ -656,12 +620,6 @@ class _MonthlyProductionSummaryPageState
                       return const SizedBox();
                     },
                   ),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
                 ),
               ),
               borderData: FlBorderData(
@@ -693,6 +651,8 @@ class _MonthlyProductionSummaryPageState
                 enabled: true,
                 handleBuiltInTouches: true,
                 touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
                   getTooltipColor: (_) => Colors.white,
                   tooltipBorder: const BorderSide(color: Colors.grey, width: 1),
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {

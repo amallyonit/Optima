@@ -9,11 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
-import 'package:excel/excel.dart' as xl;
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:optima/excel_helper.dart';
-import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
+import '../../../../notificationService.dart';
+import '../../ReportService.dart';
 
 class ManpowerCostingInputTable extends StatefulWidget {
   @override
@@ -23,7 +20,6 @@ class ManpowerCostingInputTable extends StatefulWidget {
 
 class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
   final List<String> headers = ["Division", "OT Hours", "OT Amount", "Remarks"];
-
   final List<String> departments = [
     "Production 1",
     "Production 2",
@@ -38,23 +34,19 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
     "SCM",
     "Admin & HR",
   ];
-
   late List<List<TextEditingController>> controllers;
   late List<List<FocusNode>> focusNodes;
-
   final FocusNode targetFocusNode = FocusNode();
-
   late List<double> totals;
   int remainingCells = 0;
   String userID = "";
   String? _selectedPlant = 'Rajapalayam Plant';
   double target = 0;
-
   final TextEditingController targetController = TextEditingController();
-
   DateTime? selectedDate;
   final DateFormat displayFormat = DateFormat('MMM/yyyy');
   bool isLoading = true;
+  final reportService = ReportService();
 
   @override
   void initState() {
@@ -72,40 +64,21 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
     loadData();
   }
 
-  Future<String> getStorageDirectory() async {
-    String? externalDir = (await getExternalStorageDirectory())?.path;
-
-    if (externalDir != null) {
-      return externalDir;
-    } else {
-      return (await getApplicationDocumentsDirectory()).path;
-    }
-  }
-
   Future<void> _downloadExcel() async {
     if (controllers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No data available to export.")),
+      if (!mounted) return;
+      NotificationService.info(
+        title: "Info",
+        message: "No data available to export.",
       );
       return;
     }
 
-    final excel = xl.Excel.createExcel();
-    final sheet = excel['Overtime'];
+    List<List<dynamic>> rows = [];
 
     String caption =
         "${_selectedPlant ?? ''} (${DateFormat('MMMM yyyy').format(selectedDate!)})";
 
-    /// Caption
-    sheet.appendRow(toCellRow([caption]));
-
-    /// Empty Row
-    sheet.appendRow([]);
-
-    /// Header Row
-    sheet.appendRow(toCellRow(headers));
-
-    /// Data Rows
     for (int i = 0; i < departments.length; i++) {
       List<dynamic> row = [departments[i]];
 
@@ -113,29 +86,20 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
         row.add(controllers[i][j].text);
       }
 
-      sheet.appendRow(toCellRow(row));
+      rows.add(row);
     }
 
-    /// Total Row
-    List<dynamic> totalRow = ["Total"];
-    totalRow.addAll(totals.map((e) => e.toStringAsFixed(2)));
+    // print("Rows count: ${rows.length}"); // debug
 
-    sheet.appendRow(toCellRow(totalRow));
-
-    /// Target row
-    sheet.appendRow([]);
-    sheet.appendRow(toCellRow(["Target", target]));
-
-    /// Save / Download
-    if (kIsWeb) {
-      final excelBytes = excel.encode()!;
-      saveAndOpenExcel('monthly_overtime_report.xlsx', excelBytes);
-    } else {
-      String storageDir = await getStorageDirectory();
-      final file = File('$storageDir/monthly_overtime_report.xlsx');
-      await file.writeAsBytes(excel.encode()!);
-      OpenFile.open(file.path);
-    }
+    reportService.generateExcel(
+      sheetName: 'ManpowerCosting',
+      headers: headers,
+      rows: rows,
+      fileName: 'manpower_costing.xlsx',
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: caption,
+    );
   }
 
   Future<void> _saveOvertimeData() async {

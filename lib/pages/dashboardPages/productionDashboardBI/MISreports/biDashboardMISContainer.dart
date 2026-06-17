@@ -135,7 +135,6 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
     ReportItem(
       title: 'Monthly Production',
       pageBuilder: () => const MonthlyProductionSummaryPage(),
-      isUnderDevelopment: true,
     ),
     ReportItem(
       title: 'Sample Data Details',
