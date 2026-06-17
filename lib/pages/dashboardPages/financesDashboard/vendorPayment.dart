@@ -1017,10 +1017,10 @@ class _VendorPaymentState extends State<VendorPayment> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection target data.",
+      );
     }
   }
 
@@ -1089,10 +1089,10 @@ class _VendorPaymentState extends State<VendorPayment> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading mode of payment data.",
+      );
     }
   }
 
@@ -3267,16 +3267,11 @@ class _VendorPaymentState extends State<VendorPayment> {
                         return e.totalCommitment > e.totalOutstanding;
                       }).toList();
                       if (invalidVendors.isNotEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: Colors.red,
-                            content: Text(
-                              "${invalidVendors.length} "
-                              "vendor commitments exceeded outstanding",
-                            ),
-                          ),
+                        if (!mounted) return;
+                        NotificationService.warning(
+                          title: "Warning",
+                          message: "Vendor commitments exceeded outstanding.",
                         );
-                        // return;
                       }
                       setState(() {
                         isSavingCommitments = true;

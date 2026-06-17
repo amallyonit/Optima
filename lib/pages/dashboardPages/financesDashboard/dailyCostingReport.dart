@@ -1637,12 +1637,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading payables data.",
       );
     }
   }
@@ -1699,12 +1696,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection target data.",
       );
     }
   }
@@ -1769,12 +1763,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection data.",
       );
     }
   }
@@ -1859,10 +1850,10 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Sales load failed: $e")));
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading sales data.",
+      );
     }
   }
 
@@ -1954,10 +1945,10 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("SO Details load failed: $e")));
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading SO data.",
+      );
     }
   }
 
@@ -2043,12 +2034,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text("Purchase price load failed: $e"),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading purchase price data.",
       );
     }
   }
@@ -2134,12 +2122,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text("PO List load failed: $e"),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading PO data.",
       );
     }
   }
@@ -2220,12 +2205,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text("Inventory loading failed: $e"),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory data.",
       );
     }
   }
@@ -2306,12 +2288,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text("Inventory loading failed: $e"),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory opening data.",
       );
     }
   }
@@ -2376,8 +2355,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       if (response.statusCode != 200) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to load sales target.")),
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading sales target data.",
         );
         return;
       }
@@ -2388,8 +2368,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
 
       if (data == null || data.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No sales target data found.")),
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading sales target data.",
         );
         return;
       }
@@ -2403,10 +2384,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('SAP server down. Please try again later.'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading sales target data.",
       );
     }
   }
@@ -2494,12 +2474,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text("GRN loading failed: $e"),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading GRN data.",
       );
     }
   }
@@ -2576,9 +2553,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Stock in transit load failed: $e")),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading stock in transit data.",
       );
     }
   }
@@ -2714,11 +2691,11 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         inventoryAging.graphData = result.inventoryAgingGraph;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Daily costing failed: $e")));
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading daily costing report.",
+      );
     } finally {
       hideLoadingOverlay();
     }
@@ -2825,12 +2802,9 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading mode of payment data.",
       );
     }
   }

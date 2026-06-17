@@ -853,20 +853,12 @@ class _OtherMeetingPageState extends State<OtherMeetingPage> {
                         ? null
                         : () async {
                             if (locationControllerFooter.text == "") {
-                              const snackBar = SnackBar(
-                                backgroundColor: Color(0xFF2CA9DF),
-                                duration: Duration(seconds: 2),
-                                content: Text(
-                                  'Location is missing, Please add location and try again...',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
+                              if (!mounted) return;
+                              NotificationService.warning(
+                                title: "Warning",
+                                message:
+                                    "Location is missing, Please add location and try again.",
                               );
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(snackBar);
                             } else {
                               BuildContext? dialogContext;
                               showDialog(

@@ -706,11 +706,11 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         inventoryClosing = invList;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory data.",
+      );
     }
   }
 

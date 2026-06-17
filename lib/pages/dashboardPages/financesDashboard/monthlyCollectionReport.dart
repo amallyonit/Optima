@@ -12,6 +12,7 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:optima/classes/leads.dart';
+import '../../../notificationService.dart';
 import '../ReportService.dart';
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
@@ -368,12 +369,9 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection target data.",
       );
     }
   }
@@ -444,13 +442,10 @@ class _MonthlyCollectionReportState extends State<MonthlyCollectionReport> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
-      );
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading collection data.",
+        );
     }
   }
 

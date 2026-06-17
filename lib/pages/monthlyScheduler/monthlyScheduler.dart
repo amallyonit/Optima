@@ -1875,8 +1875,11 @@ class _MonthlySchedulerState extends State<MonthlyScheduler> {
                               });
                               await addData(item); // API CALL
                             } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Error: $e")),
+                              if (!mounted) return;
+                              NotificationService.error(
+                                title: "Error",
+                                message:
+                                    "Error occured while adding the schedule..",
                               );
                             } finally {
                               if (mounted) {

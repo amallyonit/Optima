@@ -987,14 +987,11 @@ class _PayableFinanceState extends State<PayableFinance> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 2),
-            content: Text('Error: $e'),
-          ),
-        );
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading payables data.",
+      );
     }
   }
 
@@ -1240,11 +1237,11 @@ class _PayableFinanceState extends State<PayableFinance> {
       );
 
       if (response.statusCode != 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sales target details not found.')),
-          );
-        }
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading sales target data.",
+        );
         return;
       }
 
@@ -1264,11 +1261,11 @@ class _PayableFinanceState extends State<PayableFinance> {
           );
           navigateToLoginScreen();
         } else {
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(error)));
-          }
+          if (!mounted) return;
+          NotificationService.error(
+            title: "Error",
+            message: "Error occured while loading sales target data.",
+          );
         }
         return;
       }
@@ -1287,13 +1284,11 @@ class _PayableFinanceState extends State<PayableFinance> {
         salesTarget = newSalesTargetList;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('SAP Server down, Please try again after some time.'),
-          ),
-        );
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading sales target data.",
+      );
     }
   }
 

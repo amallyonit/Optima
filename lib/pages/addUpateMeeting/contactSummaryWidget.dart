@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/classes/leads.dart';
 import 'package:flutter_async_autocomplete/flutter_async_autocomplete.dart';
+import '../../notificationService.dart';
 import 'hospitalMeetingPage.dart';
 
 String leadId = "";
@@ -55,26 +56,27 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
 
   List<LeadContact> leadContacts = [];
   LeadMaster leadMaster = LeadMaster(
-      leadID: 0,
-      customerCode: '',
-      customerPaymentTerms: 0,
-      customerCreditLimit: 0,
-      customerMOV: 0,
-      customerName: '',
-      customerAddress: '',
-      leadStageLevel: '',
-      leadStage: 0,
-      leadStartDate: '',
-      leadAging: '',
-      leadAssigneeName: '',
-      leadHospitalCode: '',
-      leadDistributorCode: '',
-      leadAssigneeId: 0,
-      leadDealValue: '',
-      leadHospitalName: '',
-      leadDistributorName: '',
-      leadProductName: '',
-      leadType: '');
+    leadID: 0,
+    customerCode: '',
+    customerPaymentTerms: 0,
+    customerCreditLimit: 0,
+    customerMOV: 0,
+    customerName: '',
+    customerAddress: '',
+    leadStageLevel: '',
+    leadStage: 0,
+    leadStartDate: '',
+    leadAging: '',
+    leadAssigneeName: '',
+    leadHospitalCode: '',
+    leadDistributorCode: '',
+    leadAssigneeId: 0,
+    leadDealValue: '',
+    leadHospitalName: '',
+    leadDistributorName: '',
+    leadProductName: '',
+    leadType: '',
+  );
 
   @override
   void dispose() {
@@ -113,9 +115,9 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   void addDataToList() {
@@ -133,8 +135,9 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
         "leadContactId": selectedContactId == ''
             ? '0'
             : selectedContactId, //Id from CustomerContactPerson table
-        "leadContactParentId":
-            selectedLeadContactId == '' ? '0' : selectedLeadContactId,
+        "leadContactParentId": selectedLeadContactId == ''
+            ? '0'
+            : selectedLeadContactId,
         "leadContactName": contactPerson,
         "leadContactDesignation": designation,
         "leadContactDepartment": department,
@@ -170,25 +173,30 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
   void navigateToHomePage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: "")),
+        builder: (_) => TabsPage(selectedIndex: 0, selectedRoleCode: ""),
+      ),
     );
   }
 
   var contactKey = GlobalKey();
   List<Contacts> convertContact(List<Map<String, dynamic>> contList) {
     return contList
-        .map((map) => Contacts(
-              CustomerCode: map['CustContactId']?.toString() ?? '',
-              CustomerName: map['CustContactName']?.toString() ?? '',
-            ))
+        .map(
+          (map) => Contacts(
+            CustomerCode: map['CustContactId']?.toString() ?? '',
+            CustomerName: map['CustContactName']?.toString() ?? '',
+          ),
+        )
         .toList();
   }
 
   Future<List<Contacts>> getContacts(String search) async {
     List<Contacts> contList = convertContact(contactMasterList);
     List<Contacts> filteredList = contList
-        .where((element) =>
-            element.CustomerName.toLowerCase().contains(search.toLowerCase()))
+        .where(
+          (element) =>
+              element.CustomerName.toLowerCase().contains(search.toLowerCase()),
+        )
         .toList();
 
     return filteredList;
@@ -214,13 +222,11 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
 
     return Center(
       child: // ignore: sized_box_for_whitespace
-          Form(
+      Form(
         key: _formKey,
         child: Column(
           children: [
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
             Column(
               children: [
                 Column(
@@ -234,8 +240,9 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                         children: [
                           Positioned.fill(
                             child: AsyncAutocomplete<Contacts>(
-                              maxListHeight:
-                                  deviceOrientation == "Portrait" ? 370 : 200,
+                              maxListHeight: deviceOrientation == "Portrait"
+                                  ? 370
+                                  : 200,
                               decoration: InputDecoration(
                                 labelText: 'Name',
                                 labelStyle: const TextStyle(
@@ -251,7 +258,11 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                                   borderRadius: BorderRadius.circular(0.0),
                                 ),
                                 contentPadding: const EdgeInsets.only(
-                                    left: 0, right: 0, top: 0, bottom: 0),
+                                  left: 0,
+                                  right: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                ),
                               ),
                               controller: _searchController3,
                               inputKey: contactKey,
@@ -265,7 +276,7 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                                         map['CustContactName'] ==
                                         contact.CustomerName,
                                     orElse: () => <String, dynamic>{
-                                      'CustContactId': null
+                                      'CustContactId': null,
                                     },
                                   );
                                   selectedLeadContactId =
@@ -281,9 +292,8 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                                       customer['DepartmentName'].toString();
                                 });
                               },
-                              suggestionBuilder: (data) => ListTile(
-                                title: Text(data.CustomerName),
-                              ),
+                              suggestionBuilder: (data) =>
+                                  ListTile(title: Text(data.CustomerName)),
                               asyncSuggestions: (searchValue) =>
                                   getContacts(searchValue),
                             ),
@@ -334,9 +344,10 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                         border: UnderlineInputBorder(),
                         hintText: 'Designation',
                         hintStyle: TextStyle(
-                            fontSize: 14,
-                            fontFamily: 'Poppins',
-                            color: Color(0xFF8F8F8F)),
+                          fontSize: 14,
+                          fontFamily: 'Poppins',
+                          color: Color(0xFF8F8F8F),
+                        ),
                         // contentPadding: EdgeInsets.only(
                         //     left: 0, right: 30, top: 0, bottom: 0),
                       ),
@@ -364,9 +375,10 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                         border: UnderlineInputBorder(),
                         hintText: 'Department',
                         hintStyle: TextStyle(
-                            fontSize: 14,
-                            fontFamily: 'Poppins',
-                            color: Color(0xFF8F8F8F)),
+                          fontSize: 14,
+                          fontFamily: 'Poppins',
+                          color: Color(0xFF8F8F8F),
+                        ),
                         // contentPadding: EdgeInsets.only(
                         //     left: 0, right: 30, top: 0, bottom: 0),
                       ),
@@ -393,9 +405,10 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                         border: UnderlineInputBorder(),
                         hintText: 'Contact Number',
                         hintStyle: TextStyle(
-                            fontSize: 14,
-                            fontFamily: 'Poppins',
-                            color: Color(0xFF8F8F8F)),
+                          fontSize: 14,
+                          fontFamily: 'Poppins',
+                          color: Color(0xFF8F8F8F),
+                        ),
                         // contentPadding: EdgeInsets.only(
                         //     left: 0, right: 30, top: 0, bottom: 0),
                       ),
@@ -428,14 +441,16 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                           fontFamily: 'Poppins',
                         ),
                         contentPadding: EdgeInsets.only(
-                            left: 0, right: 30, top: 0, bottom: 0),
+                          left: 0,
+                          right: 30,
+                          top: 0,
+                          bottom: 0,
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 5,
-                ),
+                const SizedBox(height: 5),
                 Padding(
                   padding: deviceOrientation == "Portrait"
                       ? const EdgeInsets.only(left: 0.0)
@@ -448,10 +463,11 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                           const Text(
                             'Decision Maker :',
                             style: TextStyle(
-                                color: Color(0xFF8F8F8F),
-                                fontFamily: "Poppins",
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14),
+                              color: Color(0xFF8F8F8F),
+                              fontFamily: "Poppins",
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
                           ),
                           Checkbox(
                             value: selectedValue,
@@ -473,12 +489,12 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                                   addDataToList();
                                   _clearControls();
                                 } else {
-                                  const snackBar = SnackBar(
-                                    content: Text(
-                                        'Contact details are missing. Please fill in the contact details.'),
+                                  if (!mounted) return;
+                                  NotificationService.warning(
+                                    title: "Warning",
+                                    message:
+                                        "Contact details are missing. Please fill in the contact details.",
                                   );
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(snackBar);
                                 }
                               },
                               child: Container(
@@ -501,8 +517,11 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                                       ),
                                     ),
                                     SizedBox(width: 4),
-                                    Icon(Icons.add_circle_outline,
-                                        color: Colors.white, size: 18),
+                                    Icon(
+                                      Icons.add_circle_outline,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -513,9 +532,7 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                     ],
                   ),
                 ),
-                const SizedBox(
-                  height: 5,
-                ),
+                const SizedBox(height: 5),
                 SingleChildScrollView(
                   child: Column(
                     children: <Widget>[
@@ -534,10 +551,13 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                               children: [
                                 Expanded(
                                   child: ListTile(
-                                    title: Text(item['leadContactName'] ?? '',
-                                        style: const TextStyle(
-                                            color: Color(0xff454545),
-                                            fontFamily: "Poppins")),
+                                    title: Text(
+                                      item['leadContactName'] ?? '',
+                                      style: const TextStyle(
+                                        color: Color(0xff454545),
+                                        fontFamily: "Poppins",
+                                      ),
+                                    ),
                                     subtitle: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -545,25 +565,32 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                                         Row(
                                           children: [
                                             Text(
-                                                item['leadContactDepartment'] ??
-                                                    '',
-                                                style: const TextStyle(
-                                                    color: Color(0xff454545))),
+                                              item['leadContactDepartment'] ??
+                                                  '',
+                                              style: const TextStyle(
+                                                color: Color(0xff454545),
+                                              ),
+                                            ),
                                             const SizedBox(width: 10),
-                                            const Text("/",
-                                                style: TextStyle(
-                                                    color: Color(0xff454545))),
+                                            const Text(
+                                              "/",
+                                              style: TextStyle(
+                                                color: Color(0xff454545),
+                                              ),
+                                            ),
                                             const SizedBox(width: 10),
-                                            Text(item[
-                                                    'leadContactDesignation'] ??
-                                                ''),
+                                            Text(
+                                              item['leadContactDesignation'] ??
+                                                  '',
+                                            ),
                                             const SizedBox(width: 70),
                                             Visibility(
-                                                visible:
-                                                    item["leadContactDecisionMaker"]
-                                                            .toString() ==
-                                                        "Yes",
-                                                child: const Text('DM'))
+                                              visible:
+                                                  item["leadContactDecisionMaker"]
+                                                      .toString() ==
+                                                  "Yes",
+                                              child: const Text('DM'),
+                                            ),
                                           ],
                                         ),
                                       ],
@@ -578,12 +605,17 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
                                     });
                                   },
                                   child: const Padding(
-                                    padding:
-                                        EdgeInsets.only(right: 16.0, top: 15),
+                                    padding: EdgeInsets.only(
+                                      right: 16.0,
+                                      top: 15,
+                                    ),
                                     child: SizedBox(
                                       height: 90,
-                                      child: Icon(Icons.edit,
-                                          size: 16.0, color: Color(0xff454545)),
+                                      child: Icon(
+                                        Icons.edit,
+                                        size: 16.0,
+                                        color: Color(0xff454545),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -610,16 +642,17 @@ class ContactSummaryWidgetState extends State<ContactSummaryWidget> {
     Widget? prefixIcon,
     String? hintText,
     String? labelText,
-  }) =>
-      InputDecoration(
-          enabledBorder: enabledBorder ??
-              const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blueGrey, width: 2.0)),
-          border:
-              border ?? const UnderlineInputBorder(borderSide: BorderSide()),
-          fillColor: fillColor ?? Colors.white,
-          filled: filled ?? true,
-          prefixIcon: prefixIcon,
-          hintText: hintText,
-          labelText: labelText);
+  }) => InputDecoration(
+    enabledBorder:
+        enabledBorder ??
+        const UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.blueGrey, width: 2.0),
+        ),
+    border: border ?? const UnderlineInputBorder(borderSide: BorderSide()),
+    fillColor: fillColor ?? Colors.white,
+    filled: filled ?? true,
+    prefixIcon: prefixIcon,
+    hintText: hintText,
+    labelText: labelText,
+  );
 }

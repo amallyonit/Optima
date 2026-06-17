@@ -24,6 +24,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart' as xl;
 import 'package:open_file/open_file.dart';
 
+import '../../../notificationService.dart';
+
 class ProcurementAnalysis extends StatefulWidget {
   const ProcurementAnalysis({super.key});
 
@@ -2900,9 +2902,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2987,9 +2991,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3034,9 +3040,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3188,9 +3196,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3219,9 +3229,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3324,9 +3336,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3356,9 +3370,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3462,9 +3478,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3510,9 +3528,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3664,9 +3684,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3712,9 +3734,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3868,9 +3892,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3916,9 +3942,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -4072,9 +4100,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -4121,9 +4151,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -4277,9 +4309,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -4326,9 +4360,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -4481,9 +4517,11 @@ class _ProcurementAnalysisState extends State<ProcurementAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 

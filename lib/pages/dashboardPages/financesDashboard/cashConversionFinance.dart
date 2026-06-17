@@ -13,6 +13,7 @@ import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import 'package:http/http.dart' as http;
 import 'package:optima/classes/leads.dart';
+import '../../../notificationService.dart';
 import '../dashboard_card_ui.dart';
 import '../ReportService.dart';
 
@@ -552,12 +553,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection target data.",
       );
     }
   }
@@ -619,12 +617,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading sales data.",
       );
     }
   }
@@ -693,12 +688,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection data.",
       );
     }
   }
@@ -754,12 +746,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading payables data.",
       );
     }
   }
@@ -826,12 +815,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading mode of payment data.",
       );
     }
   }
@@ -897,12 +883,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory data.",
       );
     }
   }
@@ -968,12 +951,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading inventory closing data.",
       );
     }
   }
@@ -1046,12 +1026,9 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading GRN data.",
       );
     }
   }
@@ -2256,7 +2233,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                         const SizedBox(width: 5),
                         const Text('DSO Off.', style: TextStyle(fontSize: 12)),
                       ],
-                    ),                    
+                    ),
                     menuItems: [
                       PopupMenuItem(
                         onTap: () {
@@ -2320,7 +2297,6 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
                     child: _monthlyAnalysisGraph(),
                   ),
                 ),
-              
               ],
             ),
           )

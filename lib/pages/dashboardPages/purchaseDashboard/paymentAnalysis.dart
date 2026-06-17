@@ -1474,9 +1474,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -1579,9 +1581,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -1598,23 +1602,8 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'item_sales_report.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('supplierPayableAgingCollection.xlsx', excelBytes);
-
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'item_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/supplierPayableAgingCollection.xlsx');
@@ -1622,9 +1611,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -1729,9 +1720,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -1748,23 +1741,8 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'item_sales_report.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('supplierCategoryPayableCollection.xlsx', excelBytes);
-
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'item_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/supplierCategoryPayableCollection.xlsx');
@@ -1772,9 +1750,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -1868,12 +1848,6 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
 
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
         final pdfBytes = await pdf.save();
 
         saveAndOpenPDF(pdfBytes);
@@ -1884,9 +1858,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -1903,23 +1879,8 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'item_sales_report.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('supplierPayableCollection.xlsx', excelBytes);
-
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'item_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/supplierPayableCollection.xlsx');
@@ -1927,9 +1888,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2019,12 +1982,6 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
 
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
         final pdfBytes = await pdf.save();
 
         saveAndOpenPDF(pdfBytes);
@@ -2035,9 +1992,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -2054,23 +2013,8 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'item_sales_report.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('supplierCategoryCollection.xlsx', excelBytes);
-
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'item_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/supplierCategoryCollection.xlsx');
@@ -2078,9 +2022,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2175,12 +2121,6 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
 
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
         final pdfBytes = await pdf.save();
 
         saveAndOpenPDF(pdfBytes);
@@ -2191,9 +2131,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -2210,23 +2152,8 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'item_sales_report.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('monthCollection.xlsx', excelBytes);
-
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'item_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/monthCollection.xlsx');
@@ -2234,9 +2161,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2322,12 +2251,6 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
 
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
         final pdfBytes = await pdf.save();
 
         saveAndOpenPDF(pdfBytes);
@@ -2338,9 +2261,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -2357,23 +2282,8 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         );
       }
       if (kIsWeb) {
-        // var fileBytes = excel.save(fileName: 'item_sales_report.xlsx');
-
         final excelBytes = excel.encode()!;
         saveAndOpenExcel('supplierCollection.xlsx', excelBytes);
-
-        // var fileBytes = excel.encode();
-        //
-        // final blob = html.Blob([fileBytes]);
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        // final anchor = html.AnchorElement()
-        //   ..href = url
-        //   ..download = 'item_sales_report.xlsx'
-        //   ..style.display = 'none';
-        // html.document.body!.append(anchor);
-        // anchor.click();
-        // anchor.remove();
-        // html.Url.revokeObjectUrl(url);
       } else {
         String storageDir = await getStorageDirectory();
         final file = File('$storageDir/supplierCollection.xlsx');
@@ -2381,9 +2291,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2472,12 +2384,6 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
       }
 
       if (kIsWeb) {
-        // final bytes = await pdf.save();
-        // final blob = html.Blob([bytes], 'application/pdf');
-        // final url = html.Url.createObjectUrlFromBlob(blob);
-        //
-        // html.window.open(url, '_blank');
-
         final pdfBytes = await pdf.save();
 
         saveAndOpenPDF(pdfBytes);
@@ -2488,9 +2394,11 @@ class _PaymentAnalysisState extends State<PaymentAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 

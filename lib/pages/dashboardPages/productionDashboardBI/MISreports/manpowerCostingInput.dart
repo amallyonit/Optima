@@ -104,8 +104,10 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
 
   Future<void> _saveOvertimeData() async {
     if (selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month first.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select a month first.",
       );
       return;
     }
@@ -147,25 +149,30 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Data saved successfully")),
+        if (!mounted) return;
+        NotificationService.success(
+          title: "Success",
+          message: "Saved successfully.",
         );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        if (!mounted) return;
+        NotificationService.error(title: "Error", message: "Save failed..");
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to save: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while saving overtime data.",
+      );
     }
   }
 
   Future<void> selectOvertimeDetails(String plant) async {
     if (selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month first.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select a month first",
       );
       return;
     }
@@ -239,19 +246,26 @@ class _ManpowerCostingInputTableState extends State<ManpowerCostingInputTable> {
             controllers.clear();
           });
           clearValues();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("No data found or status is false.")),
+
+          if (!mounted) return;
+          NotificationService.warning(
+            title: "Warning",
+            message: "No data found.",
           );
         }
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error loading overtime details.",
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to fetch: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error loading overtime details.",
+      );
     }
   }
 

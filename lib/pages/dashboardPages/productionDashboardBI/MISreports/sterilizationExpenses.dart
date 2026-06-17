@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 
 import 'package:path_provider/path_provider.dart';
+import '../../../../notificationService.dart';
 import '../../ReportService.dart';
 
 class SterilizationExpensesPage extends StatefulWidget {
@@ -131,8 +132,10 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
   Future<void> exportSterilizationExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No data available to export.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No data available to export.",
       );
       return;
     }
@@ -185,8 +188,10 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
   Future<void> _saveSterilizationDetails() async {
     if (_from == null || _to == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select date first.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select date first",
       );
       return;
     }
@@ -253,9 +258,11 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
     // If nothing to save
     if (sterilizeData.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("No data entered to save.")));
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No data find to save.",
+      );
       return;
     }
 
@@ -277,27 +284,29 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Data saved successfully")),
+        if (!mounted) return;
+        NotificationService.success(
+          title: "Success",
+          message: "Saved successfully.",
         );
 
         await fetchSterilizationDetails(_selectedPlant!, _selectedShift!);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        if (!mounted) return;
+        NotificationService.error(title: "Error", message: "Save failed..");
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to save: $e")));
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: "Save failed..");
     }
   }
 
   Future<void> fetchSterilizationDetails(String plant, String shift) async {
     if (_from == null || _to == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month first.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select a month first.",
       );
       return;
     }
@@ -434,14 +443,18 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
           emptyTableCreation();
         }
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while selecting the sterilization details",
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to fetch: $e")));
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while selecting the sterilization details",
+      );
     }
   }
 

@@ -1528,22 +1528,13 @@ class StageTwoLeadEntryState extends State<StageTwoLeadEntryPage> {
                         onTap: () async {
                           if (locationControllerFooter.text == "" ||
                               productList.isEmpty) {
-                            final snackBar = SnackBar(
-                              backgroundColor: const Color(0xFF2CA9DF),
-                              duration: const Duration(seconds: 2),
-                              content: Text(
-                                productList.isEmpty
-                                    ? 'Select at least one product from the list to proceed.'
-                                    : 'Location is missing, Please add location and try again...',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
+                            if (!mounted) return;
+                            NotificationService.warning(
+                              title: "Warning",
+                              message: productList.isEmpty
+                                  ? 'Select at least one product from the list to proceed.'
+                                  : 'Location is missing, Please add location and try again...',
                             );
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(snackBar);
                           } else {
                             BuildContext? dialogContext;
                             showDialog(

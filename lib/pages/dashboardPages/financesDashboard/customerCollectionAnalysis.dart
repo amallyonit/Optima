@@ -1002,11 +1002,9 @@ class _CustomerCollectionAnalysisState
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          duration: Duration(seconds: 2),
-          content: Text('Something went wrong'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection target data.",
       );
     }
   }
@@ -2427,16 +2425,13 @@ class _CustomerCollectionAnalysisState
                       return e.totalCommitment > e.totalOutstanding;
                     }).toList();
                     if (invalidCustomers.isNotEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: Colors.red,
-                          content: Text(
+                      if (!mounted) return;
+                      NotificationService.warning(
+                        title: "Warning",
+                        message:
                             "${invalidCustomers.length} "
                             "customers commitments exceeded outstanding",
-                          ),
-                        ),
                       );
-                      // return;
                     }
                     setState(() {
                       isSavingCommitments = true;

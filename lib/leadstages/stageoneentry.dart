@@ -2258,14 +2258,12 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
                                                     .validate()) {
                                                   addDataToList();
                                                 } else {
-                                                  const snackBar = SnackBar(
-                                                    content: Text(
-                                                      'Contact details are missing. Please fill in the contact details.',
-                                                    ),
+                                                  if (!mounted) return;
+                                                  NotificationService.warning(
+                                                    title: "Warning",
+                                                    message:
+                                                        "Contact details are missing.\nPlease fill in the contact details.'.",
                                                   );
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(snackBar);
                                                 }
                                               },
                                               child: Container(
@@ -2655,22 +2653,13 @@ class StageOneLeadEntryPageState extends State<StageOneLeadEntryPage> {
                                 onTap: () async {
                                   if (locationControllerFooter.text == "" ||
                                       contactList.isEmpty) {
-                                    final snackBar = SnackBar(
-                                      backgroundColor: const Color(0xFF2CA9DF),
-                                      duration: const Duration(seconds: 2),
-                                      content: Text(
-                                        contactList.isEmpty
-                                            ? 'Add contact person.'
-                                            : 'Location is missing, Please add location and try again...',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                      ),
+                                    if (!mounted) return;
+                                    NotificationService.warning(
+                                      title: "Warning",
+                                      message: contactList.isEmpty
+                                          ? 'Add contact person.'
+                                          : 'Location is missing, Please add location and try again...',
                                     );
-                                    ScaffoldMessenger.of(
-                                      context,
-                                    ).showSnackBar(snackBar);
                                   } else {
                                     BuildContext? dialogContext;
                                     showDialog(

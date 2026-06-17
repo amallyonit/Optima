@@ -133,20 +133,17 @@ class _AttendancePageState extends State<AttendancePage> {
       );
       if (response.statusCode == 200) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Data saved successfully")),
+        NotificationService.success(
+          title: "Success",
+          message: "Saved successfully.",
         );
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        NotificationService.error(title: "Error", message: "Save failed.");
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to save: $e")));
+      NotificationService.error(title: "Error", message: "Save failed.");
     }
   }
 
@@ -157,15 +154,17 @@ class _AttendancePageState extends State<AttendancePage> {
   ) async {
     if (_selectedPlant!.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select one plant and continue.")),
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select one plant and continue.",
       );
       return;
     }
     if (fromDt.isEmpty || toDate.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select from and to dates.")),
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select from & to date and continue.",
       );
       return;
     }
@@ -208,11 +207,11 @@ class _AttendancePageState extends State<AttendancePage> {
             });
 
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("No data found for the selected range."),
-              ),
+            NotificationService.info(
+              title: "Info",
+              message: "No data found for the selected range.",
             );
+
             setState(() => isLoading = false);
             return;
           }
@@ -257,21 +256,18 @@ class _AttendancePageState extends State<AttendancePage> {
           });
 
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("No data found or status is false.")),
-          );
+          NotificationService.error(title: "Error", message: "No data found.");
         }
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        NotificationService.error(title: "Error", message: "No data found.");
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to fetch: $e")));
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while fetching attendance data.",
+      );
     }
     setState(() => isLoading = false);
   }

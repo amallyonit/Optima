@@ -2261,14 +2261,11 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
         targetAPIData = targetList;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 2),
-            content: Text('Error: $e'),
-          ),
-        );
-      }
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection target data.",
+      );
     }
   }
 
@@ -2334,12 +2331,9 @@ class _ReceivablesFinanceState extends State<ReceivablesFinance> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('Error: $e'),
-        ),
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading collection data.",
       );
     }
   }

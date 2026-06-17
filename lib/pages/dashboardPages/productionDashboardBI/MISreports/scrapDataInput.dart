@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
+import '../../../../notificationService.dart';
 import '../../ReportService.dart';
 
 final reportService = ReportService();
@@ -160,8 +161,10 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
   Future<void> _downloadExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No data available to export.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No data available to export.",
       );
       return;
     }
@@ -219,8 +222,10 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
   Future<void> _saveScrapDetails() async {
     if (_from == null || _to == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select datefirss t.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select date first.",
       );
       return;
     }
@@ -276,10 +281,11 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     };
 
     if (scrapData.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("No data entered to save.")));
-
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No data for save.",
+      );
       return;
     }
     const apiUrl = '${ApiHelper.baseUrl}insertorupdatescrapdatainput';
@@ -292,18 +298,18 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Data saved successfully")),
+        if (!mounted) return;
+        NotificationService.success(
+          title: "Success",
+          message: "Saved successfully.",
         );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        if (!mounted) return;
+        NotificationService.error(title: "Error", message: "Save failed.");
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to save: $e")));
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: "Save failed.");
     }
   }
 
@@ -365,8 +371,10 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
   Future<void> fetchScrapDetails(String plant) async {
     if (_from == null || _to == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a month first.")),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please select a month first",
       );
       return;
     }
@@ -494,15 +502,18 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
           emptyTableCreation();
         }
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${response.body}")));
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while selecting the scrap details",
+        );
       }
     } catch (e) {
-      //print(e);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to fetch: $e")));
+      if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while selecting the scrap details",
+        );
     }
   }
 

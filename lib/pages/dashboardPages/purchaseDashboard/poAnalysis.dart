@@ -2514,9 +2514,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2599,9 +2601,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -2629,9 +2633,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2714,9 +2720,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -2726,15 +2734,7 @@ class _POAnalysisState extends State<POAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Product Name',
-          'Actual',
-          // 'Monthly Avg.',
-          // 'Difference',
-          // 'Percentage'
-        ]),
-      );
+      sheet.appendRow(toCellRow(['Product Name', 'Actual']));
       for (var itemData in poItemAnalysisList.productData) {
         sheet.appendRow(
           toCellRow([
@@ -2753,9 +2753,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -2812,15 +2814,6 @@ class _POAnalysisState extends State<POAnalysis> {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-                      // pw.Text('Monthly Avg.',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Difference',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Percentage',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                   // Table data rows
@@ -2841,25 +2834,6 @@ class _POAnalysisState extends State<POAnalysis> {
                             fontWeight: pw.FontWeight.normal,
                           ),
                         ),
-                        // pw.Text(monthlyData.monthsAvg.toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     ((monthlyData.salesAmount - monthlyData.monthsAvg) /
-                        //             100000)
-                        //         .toStringAsFixed(0),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     (monthlyData.monthsAvg != 0
-                        //         ? (((monthlyData.salesAmount /
-                        //                     monthlyData.monthsAvg) *
-                        //                 100)
-                        //             .ceil()
-                        //             .toStringAsFixed(0))
-                        //         : "0"),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
                       ],
                     ),
                 ],
@@ -2879,9 +2853,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -2910,9 +2886,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3014,9 +2992,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3045,9 +3025,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3151,9 +3133,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3182,9 +3166,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3243,15 +3229,6 @@ class _POAnalysisState extends State<POAnalysis> {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-                      // pw.Text('Monthly Avg.',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Difference',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Percentage',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                   // Table data rows
@@ -3272,25 +3249,6 @@ class _POAnalysisState extends State<POAnalysis> {
                             fontWeight: pw.FontWeight.normal,
                           ),
                         ),
-                        // pw.Text(monthlyData.monthsAvg.toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     ((monthlyData.salesAmount - monthlyData.monthsAvg) /
-                        //             100000)
-                        //         .toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     (monthlyData.monthsAvg != 0
-                        //         ? (((monthlyData.salesAmount /
-                        //                     monthlyData.monthsAvg) *
-                        //                 100)
-                        //             .ceil()
-                        //             .toStringAsFixed(0))
-                        //         : "0"),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
                       ],
                     ),
                 ],
@@ -3310,9 +3268,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3341,9 +3301,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3408,15 +3370,6 @@ class _POAnalysisState extends State<POAnalysis> {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-                      // pw.Text('Monthly Avg.',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Difference',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Percentage',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                   // Table data rows
@@ -3437,25 +3390,6 @@ class _POAnalysisState extends State<POAnalysis> {
                             fontWeight: pw.FontWeight.normal,
                           ),
                         ),
-                        // pw.Text(monthlyData.monthsAvg.toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     ((monthlyData.salesAmount - monthlyData.monthsAvg) /
-                        //             100000)
-                        //         .toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     (monthlyData.monthsAvg != 0
-                        //         ? (((monthlyData.salesAmount /
-                        //                     monthlyData.monthsAvg) *
-                        //                 100)
-                        //             .ceil()
-                        //             .toStringAsFixed(0))
-                        //         : "0"),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
                       ],
                     ),
                 ],
@@ -3475,9 +3409,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3487,28 +3423,12 @@ class _POAnalysisState extends State<POAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'Supplier Name',
-          'Actual',
-          // 'Monthly Avg.',
-          // 'Difference',
-          // 'Percentage'
-        ]),
-      );
+      sheet.appendRow(toCellRow(['Supplier Name', 'Actual']));
       for (var itemData in poSupplierAnalysisList.supplierData) {
         sheet.appendRow(
           toCellRow([
             itemData.supplierName,
             itemData.salesAmount.toStringAsFixed(2),
-            // itemData.monthsAvg.toStringAsFixed(2),
-            // ((itemData.salesAmount - itemData.monthsAvg) / 100000)
-            //     .toStringAsFixed(2),
-            // itemData.monthsAvg != 0
-            //     ? ((itemData.salesAmount / itemData.monthsAvg) * 100)
-            //         .ceil()
-            //         .toStringAsFixed(0)
-            //     : 0
           ]),
         );
       }
@@ -3522,9 +3442,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3587,15 +3509,6 @@ class _POAnalysisState extends State<POAnalysis> {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-                      // pw.Text('Monthly Avg.',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Difference',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Percentage',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                   // Table data rows
@@ -3616,25 +3529,6 @@ class _POAnalysisState extends State<POAnalysis> {
                             fontWeight: pw.FontWeight.normal,
                           ),
                         ),
-                        // pw.Text(monthlyData.monthsAvg.toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     ((monthlyData.salesAmount - monthlyData.monthsAvg) /
-                        //             100000)
-                        //         .toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     (monthlyData.monthsAvg != 0
-                        //         ? (((monthlyData.salesAmount /
-                        //                     monthlyData.monthsAvg) *
-                        //                 100)
-                        //             .ceil()
-                        //             .toStringAsFixed(0))
-                        //         : "0"),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
                       ],
                     ),
                 ],
@@ -3654,9 +3548,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3666,27 +3562,12 @@ class _POAnalysisState extends State<POAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'State Name',
-          'Actual',
-          // 'Monthly Avg.',
-          // 'Difference',
-          // 'Percentage'
-        ]),
-      );
+      sheet.appendRow(toCellRow(['State Name', 'Actual']));
       for (var itemData in poSupplierStateWiseAnalysisList.supplierStateData) {
         sheet.appendRow(
           toCellRow([
             itemData.supplierStateName,
             itemData.salesAmount.toStringAsFixed(2),
-            // itemData.monthsAvg.toStringAsFixed(2),
-            // ((itemData.salesAmount - itemData.monthsAvg) / 100000).toStringAsFixed(2),
-            // itemData.monthsAvg != 0
-            //     ? ((itemData.salesAmount / itemData.monthsAvg) * 100)
-            //         .ceil()
-            //         .toStringAsFixed(0)
-            //     : 0
           ]),
         );
       }
@@ -3700,9 +3581,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3766,15 +3649,6 @@ class _POAnalysisState extends State<POAnalysis> {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-                      // pw.Text('Monthly Avg.',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Difference',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Percentage',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                   // Table data rows
@@ -3795,25 +3669,6 @@ class _POAnalysisState extends State<POAnalysis> {
                             fontWeight: pw.FontWeight.normal,
                           ),
                         ),
-                        // pw.Text(monthlyData.monthsAvg.toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     ((monthlyData.salesAmount - monthlyData.monthsAvg) /
-                        //             100000)
-                        //         .toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     (monthlyData.monthsAvg != 0
-                        //         ? (((monthlyData.salesAmount /
-                        //                     monthlyData.monthsAvg) *
-                        //                 100)
-                        //             .ceil()
-                        //             .toStringAsFixed(0))
-                        //         : "0"),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
                       ],
                     ),
                 ],
@@ -3833,9 +3688,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 
@@ -3845,28 +3702,12 @@ class _POAnalysisState extends State<POAnalysis> {
     try {
       final excel = xl.Excel.createExcel();
       final sheet = excel['Sheet1'];
-      sheet.appendRow(
-        toCellRow([
-          'State Name',
-          'Actual',
-          // 'Monthly Avg.',
-          // 'Difference',
-          // 'Percentage'
-        ]),
-      );
+      sheet.appendRow(toCellRow(['State Name', 'Actual']));
       for (var itemData in poSupplierCityWiseAnalysisList.supplierCityData) {
         sheet.appendRow(
           toCellRow([
             itemData.supplierCityName,
             itemData.salesAmount.toStringAsFixed(2),
-            // itemData.monthsAvg.toStringAsFixed(2),
-            // ((itemData.salesAmount - itemData.monthsAvg) / 100000)
-            //     .toStringAsFixed(2),
-            // itemData.monthsAvg != 0
-            //     ? ((itemData.salesAmount / itemData.monthsAvg) * 100)
-            //         .ceil()
-            //         .toStringAsFixed(0)
-            //     : 0
           ]),
         );
       }
@@ -3880,9 +3721,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating excel.",
+      );
     }
   }
 
@@ -3945,15 +3788,6 @@ class _POAnalysisState extends State<POAnalysis> {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-                      // pw.Text('Monthly Avg.',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Difference',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      // pw.Text('Percentage',
-                      //     style: pw.TextStyle(
-                      //         fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
                   // Table data rows
@@ -3974,25 +3808,6 @@ class _POAnalysisState extends State<POAnalysis> {
                             fontWeight: pw.FontWeight.normal,
                           ),
                         ),
-                        // pw.Text(monthlyData.monthsAvg.toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     ((monthlyData.salesAmount - monthlyData.monthsAvg) /
-                        //             100000)
-                        //         .toStringAsFixed(2),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
-                        // pw.Text(
-                        //     (monthlyData.monthsAvg != 0
-                        //         ? (((monthlyData.salesAmount /
-                        //                     monthlyData.monthsAvg) *
-                        //                 100)
-                        //             .ceil()
-                        //             .toStringAsFixed(0))
-                        //         : "0"),
-                        //     style: pw.TextStyle(
-                        //         fontSize: 14, fontWeight: pw.FontWeight.normal)),
                       ],
                     ),
                 ],
@@ -4012,9 +3827,11 @@ class _POAnalysisState extends State<POAnalysis> {
         OpenFile.open(file.path);
       }
     } catch (e) {
-      final snackBar = SnackBar(content: Text('Error: $e'));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while creating pdf.",
+      );
     }
   }
 

@@ -412,12 +412,11 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
     }
 
     if (invalidReason) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please enter reason for rejected schedules"),
-        ),
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "Please enter reason for rejected schedules",
       );
-
       return;
     }
     try {
@@ -455,25 +454,24 @@ class _SchedulerApprovalState extends State<SchedulerApproval> {
 
       if (response.statusCode == 200 && responseJson["Status"] == true) {
         if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Schedules approved successfully")),
+        NotificationService.success(
+          title: "Success",
+          message: "Schedules approved successfully.",
         );
-
         await _loadMonthlyScheduler(userId, userJwtToken, userMailID);
       } else {
         if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(responseJson["Error"] ?? "Approval failed")),
+        NotificationService.error(
+          title: "Error",
+          message: "Schedules approval failed.",
         );
       }
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      NotificationService.error(
+        title: "Error",
+        message: "Schedules approval failed.",
+      );
     } finally {
       if (mounted) {
         setState(() {
