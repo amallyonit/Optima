@@ -10,31 +10,60 @@ import 'package:optima/api_helper.dart';
 import '../../../../notificationService.dart';
 import '../../ReportService.dart';
 
-class SterilizationExpensesPage extends StatefulWidget {
+class WrapsheetCalculationPage extends StatefulWidget {
   @override
-  _SterilizationExpensesPageState createState() =>
-      _SterilizationExpensesPageState();
+  _WrapsheetCalculationPageState createState() =>
+      _WrapsheetCalculationPageState();
 }
 
-class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
+class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   final String plant = "";
   DateTime? date;
   final bool isSunday = false;
 
   final List<String> headers = [
-    "DATE",
-    "NO. OF CTN BOX M1",
-    "NO. OF CTN BOX M2",
-    "EO CONSUMED M1 (Kg)",
-    "EO CONSUMED M2 (Kg)",
-    "CO2 GAS CONSUMED (M1&M2)",
-    "GAS WASTAGE",
-    "BIOLOGICAL INDICATOR (M1&M2)",
-    "CHEMICAL INDICATOR (M1&M2)",
-    "MAN POWER",
-    "MICROTROL",
-    "REMARK",
+    "Date",
+
+    "Qty. Prod. 1",
+    "Lg 1",
+    "Wd 1",
+
+    "Qty. Prod. 2",
+    "Lg 2",
+    "Wd 2",
+
+    "Qty. Prod. 3",
+    "Lg 3",
+    "Wd 3",
+
+    "GSM",
+    "Roll Width",
+    "Open Wt.",
+    "New Roll Wt.",
+    "Closing Wt.",
+    "Lay Lg",
+    "No. of Lays",
+
+    "Catcher Waste Lg",
+    "Catcher Waste Wd",
+    "Catcher Waste Wastage",
+
+    "Add. Waste 1 Lg",
+    "Add. Waste 1 Wd",
+    "Add. Waste 1 Wastage",
+
+    "Add. Waste 2 Lg",
+    "Add. Waste 2 Wd",
+    "Add. Waste 2 Wastage",
+
+    "Std. Cons.",
+    "Act. Cons.",
+    "Cons. Dif.",
+    "% Waste",
+
+    "Remarks",
   ];
+
   final List<String> dates = [];
   Set<String> existingDbDates = {};
 
@@ -118,7 +147,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     _generateDateArray();
   }
 
-  Future<void> exportSterilizationExcel() async {
+  Future<void> exportWrapsheetExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
       if (!mounted) return;
       NotificationService.warning(
@@ -131,7 +160,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     List<List<dynamic>> rows = [];
 
     String caption =
-        "Sterilization Expenses - ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
+        "Wrapsheet Calculation - ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
         "(${_format(_from!)} to ${_format(_to!)})";
 
     for (int i = 0; i < dates.length; i++) {
@@ -148,13 +177,11 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
       rows.add(row);
     }
 
-    // print("Rows count: ${rows.length}"); // debug
-
     reportService.generateExcel(
-      sheetName: 'Sterilization Expenses',
+      sheetName: 'Wrapsheet Calculation',
       headers: headers,
       rows: rows,
-      fileName: 'Sterilization_Expenses.xlsx',
+      fileName: 'Wrapsheet_Calculation.xlsx',
       amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // FIXED indexing
       addTotalRow: true,
       reportTitle: caption,
@@ -174,7 +201,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         "${dt.day.toString().padLeft(2, '0')}";
   }
 
-  Future<void> _saveSterilizationDetails() async {
+  Future<void> _saveWrapsheetCalculationDetails() async {
     if (_from == null || _to == null) {
       if (!mounted) return;
       NotificationService.warning(
@@ -189,63 +216,141 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
 
-    List<Map<String, dynamic>> sterilizeData = [];
+    List<Map<String, dynamic>> wrapsheetData = [];
 
     for (int i = 0; i < dates.length; i++) {
-      double m1 = double.tryParse(controllers[i][0].text) ?? 0.0;
-      double m2 = double.tryParse(controllers[i][1].text) ?? 0.0;
-      double eo1 = double.tryParse(controllers[i][2].text) ?? 0.0;
-      double eo2 = double.tryParse(controllers[i][3].text) ?? 0.0;
-      double co2 = double.tryParse(controllers[i][4].text) ?? 0.0;
-      double co2Wastage = double.tryParse(controllers[i][5].text) ?? 0.0;
-      double bio = double.tryParse(controllers[i][6].text) ?? 0.0;
-      double chem = double.tryParse(controllers[i][7].text) ?? 0.0;
-      double man = double.tryParse(controllers[i][8].text) ?? 0.0;
-      double micro = double.tryParse(controllers[i][9].text) ?? 0.0;
-      String remark = controllers[i][10].text.trim();
+      final row = controllers[i];
 
-      // Skip fully empty rows
+      double qtyProd1 = double.tryParse(row[0].text) ?? 0;
+      double lg1 = double.tryParse(row[1].text) ?? 0;
+      double wd1 = double.tryParse(row[2].text) ?? 0;
+
+      double qtyProd2 = double.tryParse(row[3].text) ?? 0;
+      double lg2 = double.tryParse(row[4].text) ?? 0;
+      double wd2 = double.tryParse(row[5].text) ?? 0;
+
+      double qtyProd3 = double.tryParse(row[6].text) ?? 0;
+      double lg3 = double.tryParse(row[7].text) ?? 0;
+      double wd3 = double.tryParse(row[8].text) ?? 0;
+
+      double gsm = double.tryParse(row[9].text) ?? 0;
+      double rollWidth = double.tryParse(row[10].text) ?? 0;
+
+      double openWt = double.tryParse(row[11].text) ?? 0;
+      double newRollWt = double.tryParse(row[12].text) ?? 0;
+      double closingWt = double.tryParse(row[13].text) ?? 0;
+
+      double layLg = double.tryParse(row[14].text) ?? 0;
+      double noOfLays = double.tryParse(row[15].text) ?? 0;
+
+      double catcherWasteLg = double.tryParse(row[16].text) ?? 0;
+      double catcherWasteWd = double.tryParse(row[17].text) ?? 0;
+      double catcherWaste = double.tryParse(row[18].text) ?? 0;
+
+      double addWaste1Lg = double.tryParse(row[19].text) ?? 0;
+      double addWaste1Wd = double.tryParse(row[20].text) ?? 0;
+      double addWaste1 = double.tryParse(row[21].text) ?? 0;
+
+      double addWaste2Lg = double.tryParse(row[22].text) ?? 0;
+      double addWaste2Wd = double.tryParse(row[23].text) ?? 0;
+      double addWaste2 = double.tryParse(row[24].text) ?? 0;
+
+      double stdCons = double.tryParse(row[25].text) ?? 0;
+      double actCons = double.tryParse(row[26].text) ?? 0;
+      double consDif = double.tryParse(row[27].text) ?? 0;
+      double percentWaste = double.tryParse(row[28].text) ?? 0;
+
+      String remarks = row[29].text.trim();
+
       bool isRowEmpty =
-          m1 == 0 &&
-          m2 == 0 &&
-          eo1 == 0 &&
-          eo2 == 0 &&
-          co2 == 0 &&
-          co2Wastage == 0 &&
-          bio == 0 &&
-          chem == 0 &&
-          man == 0 &&
-          micro == 0 &&
-          remark.isEmpty;
+          [
+            qtyProd1,
+            lg1,
+            wd1,
+            qtyProd2,
+            lg2,
+            wd2,
+            qtyProd3,
+            lg3,
+            wd3,
+            gsm,
+            rollWidth,
+            openWt,
+            newRollWt,
+            closingWt,
+            layLg,
+            noOfLays,
+            catcherWasteLg,
+            catcherWasteWd,
+            catcherWaste,
+            addWaste1Lg,
+            addWaste1Wd,
+            addWaste1,
+            addWaste2Lg,
+            addWaste2Wd,
+            addWaste2,
+            stdCons,
+            actCons,
+            consDif,
+            percentWaste,
+          ].every((e) => e == 0) &&
+          remarks.isEmpty;
 
       bool existedInDb = existingDbDates.contains(dates[i]);
 
-      // Skip only if:
-      // - Row is empty
-      // - AND it never existed before
       if (isRowEmpty && !existedInDb) continue;
 
-      sterilizeData.add({
-        "UserId": userID,
-        "SterilizePlant": _selectedPlant,
-        "SterilizeShift": _selectedShift,
-        "SterilizeDate": convertToIso(dates[i]),
-        "NoOfCtnBoxM1": m1,
-        "NoOfCtnBoxM2": m2,
-        "EOConsumedM1": eo1,
-        "EOConsumedM2": eo2,
-        "CO2ConsumedM1M2": co2,
-        "CO2Wastage": co2Wastage,
-        "BiologicalIndicator": bio,
-        "ChemicalIndicator": chem,
-        "ManPower": man,
-        "Microtrol": micro,
-        "Remark": remark,
+      wrapsheetData.add({
+        "UserId": int.tryParse(userID) ?? 0,
+        "WrapsheetPlant": _selectedPlant,
+        "WrapsheetShift": _selectedShift,
+        "WrapsheetDate": convertToIso(dates[i]),
+
+        "QtyProd1": qtyProd1,
+        "Lg1": lg1,
+        "Wd1": wd1,
+
+        "QtyProd2": qtyProd2,
+        "Lg2": lg2,
+        "Wd2": wd2,
+
+        "QtyProd3": qtyProd3,
+        "Lg3": lg3,
+        "Wd3": wd3,
+
+        "GSM": gsm,
+        "RollWidth": rollWidth,
+
+        "OpenWt": openWt,
+        "NewRollWt": newRollWt,
+        "ClosingWt": closingWt,
+
+        "LayLg": layLg,
+        "NoOfLays": noOfLays,
+
+        "CatcherWasteLg": catcherWasteLg,
+        "CatcherWasteWd": catcherWasteWd,
+        "CatcherWaste": catcherWaste,
+
+        "AddWaste1Lg": addWaste1Lg,
+        "AddWaste1Wd": addWaste1Wd,
+        "AddWaste1": addWaste1,
+
+        "AddWaste2Lg": addWaste2Lg,
+        "AddWaste2Wd": addWaste2Wd,
+        "AddWaste2": addWaste2,
+
+        "StdCons": stdCons,
+        "ActCons": actCons,
+        "ConsDif": consDif,
+        "PercentWaste": percentWaste,
+
+        "Remarks": remarks,
       });
     }
 
     // If nothing to save
-    if (sterilizeData.isEmpty) {
+    if (wrapsheetData.isEmpty) {
       if (!mounted) return;
       NotificationService.warning(
         title: "Warning",
@@ -258,10 +363,10 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
       'UserID': userID,
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      "SterilizeData": sterilizeData,
+      "WrapsheetData": wrapsheetData,
     };
 
-    const apiUrl = '${ApiHelper.baseUrl}insertorupdatesterilizeexpenses';
+    const apiUrl = '${ApiHelper.baseUrl}insertorupdatewrapsheetcalculation';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
 
     try {
@@ -278,7 +383,10 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
           message: "Saved successfully.",
         );
 
-        await fetchSterilizationDetails(_selectedPlant!, _selectedShift!);
+        await fetchWrapsheetCalculationDetails(
+          _selectedPlant!,
+          _selectedShift!,
+        );
       } else {
         if (!mounted) return;
         NotificationService.error(title: "Error", message: "Save failed..");
@@ -289,7 +397,10 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     }
   }
 
-  Future<void> fetchSterilizationDetails(String plant, String shift) async {
+  Future<void> fetchWrapsheetCalculationDetails(
+    String plant,
+    String shift,
+  ) async {
     if (_from == null || _to == null) {
       if (!mounted) return;
       NotificationService.warning(
@@ -306,13 +417,13 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
     final payload = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      "SterilizePlant": plant,
-      "SterilizeShift": shift,
+      "WrapsheetPlant": plant,
+      "WrapsheetShift": shift,
       "FromDate": _from?.toIso8601String(),
       "ToDate": _to?.toIso8601String(),
     };
-    //print(payload);
-    const apiUrl = '${ApiHelper.baseUrl}selectsterilizeexpenses';
+
+    const apiUrl = '${ApiHelper.baseUrl}selectwrapsheetcalculation';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
 
     try {
@@ -333,7 +444,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
           existingDbDates.clear();
 
           for (var row in result) {
-            String formatted = formatDate(row['SterilizeDate']);
+            String formatted = formatDate(row['WrapsheetDate']);
             apiDataByDate[formatted] = row;
 
             existingDbDates.add(formatted);
@@ -351,38 +462,112 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
             final existingRow = apiDataByDate[dates[i]];
 
             final rowControllers = <TextEditingController>[
+              // Qty. Prod. 1
               TextEditingController(
-                text: existingRow?['NoOfCtnBoxM1']?.toString() ?? '0',
+                text: existingRow?['QtyProd1']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['NoOfCtnBoxM2']?.toString() ?? '0',
+                text: existingRow?['Lg1']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['EOConsumedM1']?.toString() ?? '0',
+                text: existingRow?['Wd1']?.toString() ?? '0',
+              ),
+
+              // Qty. Prod. 2
+              TextEditingController(
+                text: existingRow?['QtyProd2']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['EOConsumedM2']?.toString() ?? '0',
+                text: existingRow?['Lg2']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['CO2ConsumedM1M2']?.toString() ?? '0',
+                text: existingRow?['Wd2']?.toString() ?? '0',
+              ),
+
+              // Qty. Prod. 3
+              TextEditingController(
+                text: existingRow?['QtyProd3']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['CO2Wastage']?.toString() ?? '0',
+                text: existingRow?['Lg3']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['BiologicalIndicator']?.toString() ?? '0',
+                text: existingRow?['Wd3']?.toString() ?? '0',
+              ),
+
+              // Roll Details
+              TextEditingController(
+                text: existingRow?['GSM']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['ChemicalIndicator']?.toString() ?? '0',
+                text: existingRow?['RollWidth']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['ManPower']?.toString() ?? '0',
+                text: existingRow?['OpenWt']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['Microtrol']?.toString() ?? '0',
+                text: existingRow?['NewRollWt']?.toString() ?? '0',
               ),
               TextEditingController(
-                text: existingRow?['Remark']?.toString() ?? '',
+                text: existingRow?['ClosingWt']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['LayLg']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['NoOfLays']?.toString() ?? '0',
+              ),
+
+              // Catcher Waste
+              TextEditingController(
+                text: existingRow?['CatcherWasteLg']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['CatcherWasteWd']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['CatcherWaste']?.toString() ?? '0',
+              ),
+
+              // Additional Waste 1
+              TextEditingController(
+                text: existingRow?['AddWaste1Lg']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['AddWaste1Wd']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['AddWaste1']?.toString() ?? '0',
+              ),
+
+              // Additional Waste 2
+              TextEditingController(
+                text: existingRow?['AddWaste2Lg']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['AddWaste2Wd']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['AddWaste2']?.toString() ?? '0',
+              ),
+
+              // Consumption
+              TextEditingController(
+                text: existingRow?['StdCons']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['ActCons']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['ConsDif']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['PercentWaste']?.toString() ?? '0',
+              ),
+
+              // Remarks
+              TextEditingController(
+                text: existingRow?['Remarks']?.toString() ?? '',
               ),
             ];
 
@@ -434,14 +619,16 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         if (!mounted) return;
         NotificationService.error(
           title: "Error",
-          message: "Error occured while selecting the sterilization details",
+          message:
+              "Error occured while selecting the wrapsheet calculation details",
         );
       }
     } catch (e) {
       if (!mounted) return;
       NotificationService.error(
         title: "Error",
-        message: "Error occured while selecting the sterilization details",
+        message:
+            "Error occured while selecting the wrapsheet calculation details",
       );
     }
   }
@@ -454,6 +641,25 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
     for (int i = 0; i < dates.length; i++) {
       final rowControllers = <TextEditingController>[
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
         TextEditingController(text: '0'),
         TextEditingController(text: '0'),
         TextEditingController(text: '0'),
@@ -510,7 +716,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
 
     totals = List.filled(headers.length - 1, 0.0);
 
-    await fetchSterilizationDetails(_selectedPlant!, _selectedShift!);
+    await fetchWrapsheetCalculationDetails(_selectedPlant!, _selectedShift!);
 
     setState(() => isLoading = false);
   }
@@ -591,7 +797,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         backgroundColor: Colors.white,
         elevation: 0.0,
         title: const Text(
-          "STERILIZATION EXPENSES ENTRY",
+          "WRAPSHEET CALCULATION SHEET",
           style: TextStyle(
             color: Colors.blue,
             fontFamily: "Poppins",
@@ -687,7 +893,26 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         8: FixedColumnWidth(135),
         9: FixedColumnWidth(135),
         10: FixedColumnWidth(135),
-        11: FixedColumnWidth(180),
+        11: FixedColumnWidth(135),
+        12: FixedColumnWidth(135),
+        13: FixedColumnWidth(135),
+        14: FixedColumnWidth(135),
+        15: FixedColumnWidth(135),
+        16: FixedColumnWidth(135),
+        17: FixedColumnWidth(135),
+        18: FixedColumnWidth(135),
+        19: FixedColumnWidth(135),
+        20: FixedColumnWidth(135),
+        21: FixedColumnWidth(135),
+        22: FixedColumnWidth(135),
+        23: FixedColumnWidth(135),
+        24: FixedColumnWidth(135),
+        25: FixedColumnWidth(135),
+        26: FixedColumnWidth(135),
+        27: FixedColumnWidth(135),
+        28: FixedColumnWidth(135),
+        29: FixedColumnWidth(135),
+        30: FixedColumnWidth(180),
       },
       children: [
         TableRow(
@@ -731,12 +956,30 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
         8: FixedColumnWidth(135),
         9: FixedColumnWidth(135),
         10: FixedColumnWidth(135),
-        11: FixedColumnWidth(180),
+        11: FixedColumnWidth(135),
+        12: FixedColumnWidth(135),
+        13: FixedColumnWidth(135),
+        14: FixedColumnWidth(135),
+        15: FixedColumnWidth(135),
+        16: FixedColumnWidth(135),
+        17: FixedColumnWidth(135),
+        18: FixedColumnWidth(135),
+        19: FixedColumnWidth(135),
+        20: FixedColumnWidth(135),
+        21: FixedColumnWidth(135),
+        22: FixedColumnWidth(135),
+        23: FixedColumnWidth(135),
+        24: FixedColumnWidth(135),
+        25: FixedColumnWidth(135),
+        26: FixedColumnWidth(135),
+        27: FixedColumnWidth(135),
+        28: FixedColumnWidth(135),
+        29: FixedColumnWidth(135),
+        30: FixedColumnWidth(180),
       },
       children: [
         for (int i = 0; i < dates.length; i++) buildRow(i),
 
-        /// TOTAL (always 9 columns)
         TableRow(
           decoration: BoxDecoration(color: Colors.green.shade200),
           children: List.generate(headers.length, (colIndex) {
@@ -753,7 +996,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
               );
             }
 
-            // Column 10 → REMARK → no total
+            // Column 30 → REMARK → no total
             if (colIndex == headers.length - 1) {
               return Container(
                 alignment: Alignment.center,
@@ -771,7 +1014,6 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
               height: 55,
               padding: const EdgeInsets.all(8.0),
               child: Text(
-                // value.toStringAsFixed(2),
                 totals[totalIndex].toStringAsFixed(2),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -804,7 +1046,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
                       ? null
                       : () async {
                           setState(() => isSaving = true);
-                          await _saveSterilizationDetails();
+                          await _saveWrapsheetCalculationDetails();
                           setState(() => isSaving = false);
                         },
                   child: isSaving
@@ -831,7 +1073,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: exportSterilizationExcel,
+                  onPressed: exportWrapsheetExcel,
                   child: const Text(
                     "Download Excel",
                     style: TextStyle(
@@ -891,7 +1133,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
               _generateDateArray();
             }
           });
-          await fetchSterilizationDetails(value!, _selectedShift!);
+          await fetchWrapsheetCalculationDetails(value!, _selectedShift!);
         },
       ),
     );
@@ -921,7 +1163,7 @@ class _SterilizationExpensesPageState extends State<SterilizationExpensesPage> {
               _generateDateArray();
             }
           });
-          await fetchSterilizationDetails(_selectedPlant!, value!);
+          await fetchWrapsheetCalculationDetails(_selectedPlant!, value!);
         },
       ),
     );
