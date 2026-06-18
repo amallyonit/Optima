@@ -855,7 +855,7 @@ class SideMenuState extends State<SideMenu> {
               if (userRoleCode == "R1" || userRoleCode == "R5")
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
-                  title: 'Wrapsheep Calculation Sheet',
+                  title: 'Wrapsheep Calculation',
                   onTap: () {
                     Navigator.push(
                       context,

@@ -384,7 +384,7 @@ class LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         NotificationService.success(
           title: "Success",
-          message: "Login log saved successfully.",
+          message: "Login Successfull.",
         );
       } else {
         NotificationService.error(

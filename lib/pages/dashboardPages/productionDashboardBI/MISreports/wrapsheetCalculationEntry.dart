@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -22,6 +23,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   final bool isSunday = false;
 
   final List<String> headers = [
+    "Action",
     "Date",
 
     "Qty. Prod. 1",
@@ -81,11 +83,14 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
 
   List<List<TextEditingController>> controllers = [];
   List<List<FocusNode>> focusNodes = [];
+  late List<double> totals = [];
+  List<List<double>> cellValues = [];
+  late ValueNotifier<List<double>> totalsNotifier;
 
   final _verticalController = ScrollController();
   final _headerHorizontalController = ScrollController();
   final _bodyHorizontalController = ScrollController();
-  late List<double> totals = [];
+
   int remainingCells = 0;
   String userID = "";
 
@@ -94,6 +99,13 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
 
   String? _selectedPlant = 'Rajapalayam Plant';
   String? _selectedShift = 'DAY';
+
+  List<int> rowIds = [];
+  List<int> deletedRowIds = [];
+
+  int? pressedRowIndex;
+  bool isAddPressed = false;
+  int? highlightedRowIndex;
 
   final reportService = ReportService();
 
@@ -137,6 +149,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   @override
   void initState() {
     super.initState();
+    totalsNotifier = ValueNotifier([]);
     _bodyHorizontalController.addListener(() {
       if (_headerHorizontalController.hasClients) {
         _headerHorizontalController.jumpTo(_bodyHorizontalController.offset);
@@ -163,26 +176,16 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         "Wrapsheet Calculation - ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
         "(${_format(_from!)} to ${_format(_to!)})";
 
-    for (int i = 0; i < dates.length; i++) {
-      List<dynamic> row = [];
-
-      // First column → DATE
-      row.add(dates[i]);
-
-      // Remaining columns
-      for (int j = 0; j < controllers[i].length; j++) {
-        row.add(controllers[i][j].text);
-      }
-
-      rows.add(row);
-    }
-
+    rows = List<List<dynamic>>.generate(
+      dates.length,
+      (i) => [dates[i], ...controllers[i].map((e) => e.text)],
+    );
     reportService.generateExcel(
       sheetName: 'Wrapsheet Calculation',
-      headers: headers,
+      headers: headers.sublist(1),
       rows: rows,
       fileName: 'Wrapsheet_Calculation.xlsx',
-      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // FIXED indexing
+      amountColumns: List.generate(headers.length - 3, (i) => i + 2),
       addTotalRow: true,
       reportTitle: caption,
     );
@@ -299,8 +302,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       bool existedInDb = existingDbDates.contains(dates[i]);
 
       if (isRowEmpty && !existedInDb) continue;
-
       wrapsheetData.add({
+        "WrapsheetId": rowIds[i],
         "UserId": int.tryParse(userID) ?? 0,
         "WrapsheetPlant": _selectedPlant,
         "WrapsheetShift": _selectedShift,
@@ -364,6 +367,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
       "WrapsheetData": wrapsheetData,
+      'DeletedIds': deletedRowIds,
     };
 
     const apiUrl = '${ApiHelper.baseUrl}insertorupdatewrapsheetcalculation';
@@ -382,18 +386,19 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
           title: "Success",
           message: "Saved successfully.",
         );
-
-        await fetchWrapsheetCalculationDetails(
-          _selectedPlant!,
-          _selectedShift!,
-        );
+        deletedRowIds.clear();
+        _displayData();
       } else {
         if (!mounted) return;
         NotificationService.error(title: "Error", message: "Save failed..");
       }
-    } catch (e) {
+    } catch (e, s) {
+      debugPrint("SAVE ERROR: $e");
+      debugPrintStack(stackTrace: s);
+
       if (!mounted) return;
-      NotificationService.error(title: "Error", message: "Save failed..");
+
+      NotificationService.error(title: "Error", message: e.toString());
     }
   }
 
@@ -439,145 +444,22 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         if (decoded['Status'] == true && decoded['Data'] != null) {
           final List<dynamic> result = decoded['Data'];
 
-          // Create map of API data by date
-          Map<String, dynamic> apiDataByDate = {};
+          Map<String, List<dynamic>> apiDataByDate = {};
           existingDbDates.clear();
 
           for (var row in result) {
             String formatted = formatDate(row['WrapsheetDate']);
-            apiDataByDate[formatted] = row;
+
+            apiDataByDate.putIfAbsent(formatted, () => []);
+            apiDataByDate[formatted]!.add(row);
 
             existingDbDates.add(formatted);
           }
 
-          // Now rebuild controllers for ALL generated dates
           for (final row in controllers) {
             for (final controller in row) {
               controller.dispose();
             }
-          }
-          controllers.clear();
-
-          for (int i = 0; i < dates.length; i++) {
-            final existingRow = apiDataByDate[dates[i]];
-
-            final rowControllers = <TextEditingController>[
-              // Qty. Prod. 1
-              TextEditingController(
-                text: existingRow?['QtyProd1']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['Lg1']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['Wd1']?.toString() ?? '0',
-              ),
-
-              // Qty. Prod. 2
-              TextEditingController(
-                text: existingRow?['QtyProd2']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['Lg2']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['Wd2']?.toString() ?? '0',
-              ),
-
-              // Qty. Prod. 3
-              TextEditingController(
-                text: existingRow?['QtyProd3']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['Lg3']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['Wd3']?.toString() ?? '0',
-              ),
-
-              // Roll Details
-              TextEditingController(
-                text: existingRow?['GSM']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['RollWidth']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['OpenWt']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['NewRollWt']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['ClosingWt']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['LayLg']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['NoOfLays']?.toString() ?? '0',
-              ),
-
-              // Catcher Waste
-              TextEditingController(
-                text: existingRow?['CatcherWasteLg']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['CatcherWasteWd']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['CatcherWaste']?.toString() ?? '0',
-              ),
-
-              // Additional Waste 1
-              TextEditingController(
-                text: existingRow?['AddWaste1Lg']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['AddWaste1Wd']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['AddWaste1']?.toString() ?? '0',
-              ),
-
-              // Additional Waste 2
-              TextEditingController(
-                text: existingRow?['AddWaste2Lg']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['AddWaste2Wd']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['AddWaste2']?.toString() ?? '0',
-              ),
-
-              // Consumption
-              TextEditingController(
-                text: existingRow?['StdCons']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['ActCons']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['ConsDif']?.toString() ?? '0',
-              ),
-              TextEditingController(
-                text: existingRow?['PercentWaste']?.toString() ?? '0',
-              ),
-
-              // Remarks
-              TextEditingController(
-                text: existingRow?['Remarks']?.toString() ?? '',
-              ),
-            ];
-
-            for (var controller in rowControllers) {
-              controller.addListener(() {
-                calculateTotals();
-              });
-            }
-
-            controllers.add(rowControllers);
           }
 
           // Rebuild focusNodes with same structure
@@ -587,6 +469,124 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
             }
           }
           focusNodes.clear();
+
+          final originalDates = List<String>.from(dates);
+          controllers.clear();
+          rowIds.clear();
+          dates.clear();
+
+          for (final date in originalDates) {
+            final rowsForDate = apiDataByDate[date];
+
+            if (rowsForDate == null || rowsForDate.isEmpty) {
+              // Empty row for missing date
+
+              dates.add(date);
+              rowIds.add(0);
+
+              final rowControllers = List.generate(
+                30,
+                (index) => TextEditingController(text: index == 29 ? '' : '0'),
+              );
+
+              controllers.add(rowControllers);
+            } else {
+              // One UI row per DB row
+
+              for (final row in rowsForDate) {
+                dates.add(date);
+
+                rowIds.add(
+                  int.tryParse(row['WrapsheetId']?.toString() ?? '0') ?? 0,
+                );
+
+                final rowControllers = <TextEditingController>[
+                  TextEditingController(
+                    text: row['QtyProd1']?.toString() ?? '0',
+                  ),
+                  TextEditingController(text: row['Lg1']?.toString() ?? '0'),
+                  TextEditingController(text: row['Wd1']?.toString() ?? '0'),
+
+                  TextEditingController(
+                    text: row['QtyProd2']?.toString() ?? '0',
+                  ),
+                  TextEditingController(text: row['Lg2']?.toString() ?? '0'),
+                  TextEditingController(text: row['Wd2']?.toString() ?? '0'),
+
+                  TextEditingController(
+                    text: row['QtyProd3']?.toString() ?? '0',
+                  ),
+                  TextEditingController(text: row['Lg3']?.toString() ?? '0'),
+                  TextEditingController(text: row['Wd3']?.toString() ?? '0'),
+
+                  TextEditingController(text: row['GSM']?.toString() ?? '0'),
+                  TextEditingController(
+                    text: row['RollWidth']?.toString() ?? '0',
+                  ),
+
+                  TextEditingController(text: row['OpenWt']?.toString() ?? '0'),
+                  TextEditingController(
+                    text: row['NewRollWt']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['ClosingWt']?.toString() ?? '0',
+                  ),
+
+                  TextEditingController(text: row['LayLg']?.toString() ?? '0'),
+                  TextEditingController(
+                    text: row['NoOfLays']?.toString() ?? '0',
+                  ),
+
+                  TextEditingController(
+                    text: row['CatcherWasteLg']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['CatcherWasteWd']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['CatcherWaste']?.toString() ?? '0',
+                  ),
+
+                  TextEditingController(
+                    text: row['AddWaste1Lg']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['AddWaste1Wd']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['AddWaste1']?.toString() ?? '0',
+                  ),
+
+                  TextEditingController(
+                    text: row['AddWaste2Lg']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['AddWaste2Wd']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['AddWaste2']?.toString() ?? '0',
+                  ),
+
+                  TextEditingController(
+                    text: row['StdCons']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['ActCons']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['ConsDif']?.toString() ?? '0',
+                  ),
+                  TextEditingController(
+                    text: row['PercentWaste']?.toString() ?? '0',
+                  ),
+
+                  TextEditingController(text: row['Remarks']?.toString() ?? ''),
+                ];
+
+                controllers.add(rowControllers);
+              }
+            }
+          }
 
           for (int i = 0; i < controllers.length; i++) {
             List<FocusNode> rowFocusNodes = [];
@@ -609,9 +609,12 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
             focusNodes.add(rowFocusNodes);
           }
 
-          setState(() {
-            calculateTotals();
-          });
+          initializeCellValues();
+          calculateTotals();
+
+          if (mounted) {
+            setState(() {});
+          }
         } else {
           emptyTableCreation();
         }
@@ -640,6 +643,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     controllers.clear();
 
     for (int i = 0; i < dates.length; i++) {
+      rowIds.add(0);
       final rowControllers = <TextEditingController>[
         TextEditingController(text: '0'),
         TextEditingController(text: '0'),
@@ -706,9 +710,12 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       focusNodes.add(rowFocusNodes);
     }
 
-    setState(() {
-      calculateTotals();
-    });
+    initializeCellValues();
+    calculateTotals();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> loadData() async {
@@ -737,24 +744,50 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     return workingDays;
   }
 
-  Future<void> calculateTotals() async {
+  void initializeCellValues() {
+    cellValues = List.generate(
+      controllers.length,
+      (row) => List.generate(controllers[row].length, (col) {
+        if (col == controllers[row].length - 1) {
+          return 0; // Remarks column
+        }
+
+        return double.tryParse(controllers[row][col].text) ?? 0;
+      }),
+    );
+  }
+
+  void updateColumnTotal(int row, int col) {
+    // Ignore Remarks column
+    if (col == controllers[row].length - 1) return;
+
+    final oldValue = cellValues[row][col];
+
+    final newValue = double.tryParse(controllers[row][col].text.trim()) ?? 0;
+
+    if (oldValue == newValue) return;
+
+    cellValues[row][col] = newValue;
+
+    totals[col] = totals[col] - oldValue + newValue;
+
+    totalsNotifier.value = [...totals];
+  }
+
+  void calculateTotals() {
     if (controllers.isEmpty) return;
 
-    int numericColumnCount = controllers[0].length - 1; // exclude remark
+    int numericColumnCount = controllers[0].length - 1;
 
-    List<double> newTotals = List.filled(numericColumnCount, 0.0);
+    totals = List.filled(numericColumnCount, 0.0);
 
     for (int row = 0; row < controllers.length; row++) {
       for (int col = 0; col < numericColumnCount; col++) {
-        final txt = controllers[row][col].text.trim();
-        final val = double.tryParse(txt) ?? 0.0;
-        newTotals[col] += val;
+        totals[col] += cellValues[row][col];
       }
     }
 
-    setState(() {
-      totals = newTotals;
-    });
+    totalsNotifier.value = [...totals];
   }
 
   void clearValues() {
@@ -788,9 +821,94 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     setState(() => isLoading = false);
   }
 
+  void _displayData() async {
+    if (_from == null || _to == null) return;
+
+    dates.clear();
+    controllers.clear();
+    focusNodes.clear();
+    existingDbDates.clear();
+
+    DateTime current = _from!;
+    while (current.isBefore(_to!) || current.isAtSameMomentAs(_to!)) {
+      dates.add(_format(current));
+      current = current.add(const Duration(days: 1));
+    }
+    totals = List.filled(headers.length - 1, 0.0);
+
+    await fetchWrapsheetCalculationDetails(_selectedPlant!, _selectedShift!);
+  }
+
+  void _insertRowBelow(int rowIndex) {
+    if (rowIndex >= controllers.length) return;
+
+    final newControllers = List.generate(
+      controllers[rowIndex].length,
+      (index) => TextEditingController(
+        text: index == controllers[rowIndex].length - 1 ? '' : '0',
+      ),
+    );
+
+    final newFocusNodes = List.generate(
+      controllers[rowIndex].length,
+      (_) => FocusNode(),
+    );
+
+    setState(() {
+      dates.insert(rowIndex + 1, dates[rowIndex]);
+      // 0 = new record
+      rowIds.insert(rowIndex + 1, 0);
+      controllers.insert(rowIndex + 1, newControllers);
+      cellValues.insert(rowIndex + 1, List.filled(newControllers.length, 0));
+      focusNodes.insert(rowIndex + 1, newFocusNodes);
+      highlightedRowIndex = rowIndex + 1;
+    });
+
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (!mounted) return;
+      focusNodes[rowIndex + 1][0].requestFocus();
+    });
+
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      setState(() {
+        highlightedRowIndex = null;
+      });
+    });
+
+    calculateTotals();
+  }
+
+  void _deleteRow(int rowIndex) {
+    if (dates.length <= 1) return;
+
+    final rowId = rowIds[rowIndex];
+
+    if (rowId > 0) {
+      deletedRowIds.add(rowId);
+    }
+
+    controllers[rowIndex].forEach((e) => e.dispose());
+    focusNodes[rowIndex].forEach((e) => e.dispose());
+
+    setState(() {
+      dates.removeAt(rowIndex);
+      rowIds.removeAt(rowIndex);
+      controllers.removeAt(rowIndex);
+      cellValues.removeAt(rowIndex);
+      focusNodes.removeAt(rowIndex);
+    });
+
+    calculateTotals();
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasRows = dates.isNotEmpty;
+    final keyboardVisible =
+        !kIsWeb && MediaQuery.of(context).viewInsets.bottom > 0;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: true,
@@ -809,19 +927,21 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       ),
 
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(8.0),
+
         child: Column(
           children: [
             /// TOP FILTER AREA
-            Card(
-              elevation: 3,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  children: [const SizedBox(height: 10), _buildDatePickers()],
+            if (!(keyboardVisible && isLandscape))
+              Card(
+                elevation: 3,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    children: [const SizedBox(height: 10), _buildDatePickers()],
+                  ),
                 ),
               ),
-            ),
 
             const SizedBox(height: 12),
 
@@ -841,7 +961,9 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         ),
       ),
 
-      bottomNavigationBar: hasRows ? _buildSaveButton() : null,
+      bottomNavigationBar: hasRows && !keyboardVisible
+          ? _buildSaveButton()
+          : null,
     );
   }
 
@@ -882,8 +1004,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     return Table(
       border: TableBorder.all(color: Colors.black),
       columnWidths: const {
-        0: FixedColumnWidth(120),
-        1: FixedColumnWidth(135),
+        0: const FixedColumnWidth(90),
+        1: FixedColumnWidth(120),
         2: FixedColumnWidth(135),
         3: FixedColumnWidth(135),
         4: FixedColumnWidth(135),
@@ -912,7 +1034,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         27: FixedColumnWidth(135),
         28: FixedColumnWidth(135),
         29: FixedColumnWidth(135),
-        30: FixedColumnWidth(180),
+        30: FixedColumnWidth(135),
+        31: FixedColumnWidth(180),
       },
       children: [
         TableRow(
@@ -945,8 +1068,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     return Table(
       border: TableBorder.all(color: Colors.black),
       columnWidths: const {
-        0: FixedColumnWidth(120),
-        1: FixedColumnWidth(135),
+        0: const FixedColumnWidth(90),
+        1: FixedColumnWidth(120),
         2: FixedColumnWidth(135),
         3: FixedColumnWidth(135),
         4: FixedColumnWidth(135),
@@ -975,7 +1098,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         27: FixedColumnWidth(135),
         28: FixedColumnWidth(135),
         29: FixedColumnWidth(135),
-        30: FixedColumnWidth(180),
+        30: FixedColumnWidth(135),
+        31: FixedColumnWidth(180),
       },
       children: [
         for (int i = 0; i < dates.length; i++) buildRow(i),
@@ -983,12 +1107,16 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         TableRow(
           decoration: BoxDecoration(color: Colors.green.shade200),
           children: List.generate(headers.length, (colIndex) {
-            // Column 0 → DATE → no total
+            // Action column
             if (colIndex == 0) {
+              return const SizedBox();
+            }
+
+            // Date column
+            if (colIndex == 1) {
               return Container(
                 alignment: Alignment.center,
                 height: 55,
-                padding: const EdgeInsets.all(8.0),
                 child: const Text(
                   "Total",
                   style: TextStyle(fontWeight: FontWeight.bold),
@@ -996,26 +1124,27 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
               );
             }
 
-            // Column 30 → REMARK → no total
+            // Remarks column
             if (colIndex == headers.length - 1) {
-              return Container(
-                alignment: Alignment.center,
-                height: 55,
-                padding: const EdgeInsets.all(8.0),
-                child: const Text(""),
-              );
+              return const SizedBox();
             }
 
-            // Total index MUST match columnIndex - 1
-            final totalIndex = colIndex - 1;
+            final totalIndex = colIndex - 2;
 
             return Container(
               alignment: Alignment.centerRight,
               height: 55,
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                totals[totalIndex].toStringAsFixed(2),
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              padding: const EdgeInsets.all(8),
+              child: ValueListenableBuilder<List<double>>(
+                valueListenable: totalsNotifier,
+                builder: (context, totals, child) {
+                  return Text(
+                    totalIndex < totals.length
+                        ? totals[totalIndex].toStringAsFixed(2)
+                        : "0.00",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  );
+                },
               ),
             );
           }),
@@ -1128,12 +1257,10 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         onChanged: (value) async {
           setState(() {
             _selectedPlant = value!;
-            if (_from!.toIso8601String().isNotEmpty &&
-                _to!.toIso8601String().isNotEmpty) {
-              _generateDateArray();
-            }
           });
-          await fetchWrapsheetCalculationDetails(value!, _selectedShift!);
+          if (_from != null && _to != null) {
+            _generateDateArray();
+          }
         },
       ),
     );
@@ -1158,12 +1285,10 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         onChanged: (value) async {
           setState(() {
             _selectedShift = value!;
-            if (_from!.toIso8601String().isNotEmpty &&
-                _to!.toIso8601String().isNotEmpty) {
-              _generateDateArray();
-            }
           });
-          await fetchWrapsheetCalculationDetails(_selectedPlant!, value!);
+          if (_from != null && _to != null) {
+            _generateDateArray();
+          }
         },
       ),
     );
@@ -1257,16 +1382,113 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       );
     }
     return TableRow(
+      decoration: BoxDecoration(
+        color: highlightedRowIndex == rowIndex ? Colors.yellow.shade100 : null,
+      ),
       children: [
-        // First cell: Department name
+        Container(
+          height: 55,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Material(
+                color: Colors.transparent,
+                child: GestureDetector(
+                  onTapDown: (_) {
+                    setState(() {
+                      pressedRowIndex = rowIndex;
+                      isAddPressed = true;
+                    });
+                  },
+                  onTapUp: (_) {
+                    setState(() {
+                      pressedRowIndex = null;
+                    });
+                  },
+                  onTapCancel: () {
+                    setState(() {
+                      pressedRowIndex = null;
+                    });
+                  },
+                  onTap: () => _insertRowBelow(rowIndex),
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 100),
+                    scale: pressedRowIndex == rowIndex && isAddPressed
+                        ? 0.85
+                        : 1.0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.green,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Material(
+                color: Colors.transparent,
+                child: GestureDetector(
+                  onTapDown: (_) {
+                    setState(() {
+                      pressedRowIndex = rowIndex;
+                      isAddPressed = true;
+                    });
+                  },
+                  onTapUp: (_) {
+                    setState(() {
+                      pressedRowIndex = null;
+                    });
+                  },
+                  onTapCancel: () {
+                    setState(() {
+                      pressedRowIndex = null;
+                    });
+                  },
+                  onTap: () => _deleteRow(rowIndex),
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 100),
+                    scale: pressedRowIndex == rowIndex && isAddPressed
+                        ? 0.85
+                        : 1.0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        color: dates.length > 1 ? Colors.red : Colors.grey,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
         Container(
           alignment: Alignment.center,
           padding: const EdgeInsets.all(8.0),
           height: 55,
-          child: Text(dates[rowIndex]),
+          child: Text(
+            dates[rowIndex],
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
         ),
+
         // Other cells: Editable TextFields
-        ...List.generate(headers.length - 1, (colIndex) {
+        ...List.generate(controllers[rowIndex].length, (colIndex) {
           return Padding(
             padding: const EdgeInsets.all(4.0),
             child: TextField(
@@ -1278,7 +1500,9 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
               textAlign: isNumericColumn(colIndex)
                   ? TextAlign.right
                   : TextAlign.left,
-              onChanged: (_) => calculateTotals(),
+              onChanged: (_) {
+                updateColumnTotal(rowIndex, colIndex);
+              },
               onTap: () {
                 controllers[rowIndex][colIndex].selection = TextSelection(
                   baseOffset: 0,
@@ -1301,7 +1525,6 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
 
   @override
   void dispose() {
-    // clearValues();
     for (final row in controllers) {
       for (final controller in row) {
         controller.dispose();
@@ -1315,6 +1538,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     _verticalController.dispose();
     _headerHorizontalController.dispose();
     _bodyHorizontalController.dispose();
+    totalsNotifier.dispose();
     super.dispose();
   }
 }
