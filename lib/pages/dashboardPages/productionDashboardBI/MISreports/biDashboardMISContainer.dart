@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:optima/pages/comingsoon.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/carriageInwardReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/carriageOutwardReport.dart';
+import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/dailyRawMaterialReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpower_costing/manpower_dashboard_page.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
 import '../../../../notificationService.dart';
@@ -61,7 +62,13 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
         _items[12], // CMS Costing
       ],
 
-      "Inventory Reports": [_items[2], _items[3], _items[4], _items[5]],
+      "Inventory Reports": [
+        _items[2],
+        _items[3],
+        _items[4],
+        _items[5],
+        _items[19],
+      ],
 
       "Sales Reports": [_items[6], _items[7], _items[11]],
 
@@ -153,6 +160,10 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
     ReportItem(
       title: 'Monthly Workforce',
       pageBuilder: () => const MonthlyWorkforceSummaryPage(),
+    ),
+    ReportItem(
+      title: 'Daily Raw Material',
+      pageBuilder: () => const DailyRawMaterialReport(),
     ),
   ];
 

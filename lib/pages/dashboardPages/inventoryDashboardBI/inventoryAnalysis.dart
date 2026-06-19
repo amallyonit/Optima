@@ -755,20 +755,7 @@ class _InventoryAnalysisState extends State<InventoryAnalysis> {
         context
             .read<InventoryListInventoryAnalysisProvider>()
             .updateInventoryList(salesList);
-        List<String> menuNames = usersList
-            .where((element) => element.parentMenuId == 0)
-            .map((user) => user.menuName)
-            .toList();
-        menuNames.insert(0, UserName);
-        if (int.parse(UserLevel) == 5) {
-          inventory = salesList.toList();
-        } else if (int.parse(UserLevel) == 4) {
-          inventory = salesList.toList();
-        } else if (int.parse(UserLevel) <= 3 && int.parse(UserLevel) >= 2) {
-          inventory = salesList.toList();
-        } else {
-          inventory = salesList.toList();
-        }
+        inventory = salesList.toList();
       });
     } catch (e) {
       if (!mounted) return;

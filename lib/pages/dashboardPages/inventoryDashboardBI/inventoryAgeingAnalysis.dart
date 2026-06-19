@@ -364,8 +364,6 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
     try {
       do {
         var body = {
-          // "FromDate": formatDate(monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
-          // "ToDate": formatDate(currentDate!),
           "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
@@ -376,8 +374,6 @@ class _InventoryAgeingAnalysisState extends State<InventoryAgeingAnalysis> {
           Uri.parse(apiUrl),
           headers: {
             HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
           },
           body: jsonEncode(body),
         );

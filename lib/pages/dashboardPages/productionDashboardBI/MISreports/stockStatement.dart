@@ -230,6 +230,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
       targetStockQty = 0;
       itemSubGroup = "";
     }
+    
     for (var warehouse in inventoryList) {
       double salesAmt = double.parse(warehouse.minInventory);
       actualStockHeader += salesAmt;

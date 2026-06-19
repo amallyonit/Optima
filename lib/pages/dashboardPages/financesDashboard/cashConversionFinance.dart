@@ -1067,7 +1067,7 @@ class _CashConversionFinanceState extends State<CashConversionFinance> {
         body: jsonEncode(body),
       );
 
-      // 🔁 retry logic (safe)
+      // retry logic (safe)
       if (response.statusCode == 504 && retryCount < maxRetry) {
         retryCount++;
         await Future.delayed(const Duration(seconds: 1));

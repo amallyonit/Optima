@@ -6535,3 +6535,25 @@ class CarriageInwardList {
     );
   }
 }
+
+class DailyStockAchievementData {
+  final DateTime date;
+  final String itemSubGroup;
+  final double targetStock;
+  final double actualStock;
+  final double achievedPercentage;
+
+  DailyStockAchievementData({
+    required this.date,
+    required this.itemSubGroup,
+    required this.targetStock,
+    required this.actualStock,
+    required this.achievedPercentage,
+  });
+}
+
+class DailyStockAchievementList {
+  final List<DailyStockAchievementData> stockData;
+
+  DailyStockAchievementList({required this.stockData});
+}

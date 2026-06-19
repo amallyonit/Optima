@@ -401,6 +401,24 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
                   ),
                 ],
               ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const SizedBox(width: 15),
+                      Text(
+                        "Outward Carriage Cost",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
 
               Padding(
@@ -416,6 +434,7 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
                       child: const Text("Download Excel"),
                     ),
                   ],
+                  
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

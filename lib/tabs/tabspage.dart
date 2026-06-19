@@ -97,7 +97,6 @@ class TabsPageState extends State<TabsPage> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.white,
-        // onTap: _onItemTapped,
         onTap: (index) {
           final isUnauthorized =
               (index == 1 || index == 3) &&

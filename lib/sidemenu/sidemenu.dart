@@ -919,13 +919,6 @@ class SideMenuState extends State<SideMenu> {
               },
             ),
           const Divider(), // Add a horizontal line as a section break
-          // ListTile(
-          //   leading: const Icon(Icons.logout),
-          //   title: const Text('Logout'),
-          //   onTap: () {
-          //     logout();
-          //   },
-          // ),
           buildHoverTile(
             icon: Icons.logout,
             title: 'Logout',

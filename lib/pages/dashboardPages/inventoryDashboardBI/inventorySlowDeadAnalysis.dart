@@ -561,8 +561,6 @@ class _InventorySlowDeadAnalysisState extends State<InventorySlowDeadAnalysis> {
     try {
       do {
         var body = {
-          // "FromDate": formatDate(
-          //     monthIndex == 4 ? lastMonthFromDate! : fiscalYearStartDate!),
           "ToDate": formatDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
@@ -571,11 +569,7 @@ class _InventorySlowDeadAnalysisState extends State<InventorySlowDeadAnalysis> {
         const apiUrl = '${ApiHelper.baseUrl}BicxoInventoryAgeingList';
         final response = await http.post(
           Uri.parse(apiUrl),
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            // HttpHeaders.authorizationHeader:
-            // 'Bearer    ${DataManager.readSapToken()}'
-          },
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
 
