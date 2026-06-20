@@ -201,11 +201,6 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
             .toList()
           ..sort();
 
-    if (selectedSubGroup.isNotEmpty && groups.contains(selectedSubGroup)) {
-      groups.remove(selectedSubGroup);
-      groups.insert(0, selectedSubGroup);
-    }
-
     return groups;
   }
 
@@ -850,12 +845,6 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
                         setState(() {
                           selectedSubGroup = group;
                         });
-
-                        _tabScrollController.animateTo(
-                          0,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
