@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:optima/pages/comingsoon.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/carriageInwardReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/carriageOutwardReport.dart';
+import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/dailyFinishedGoodsReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/dailyRawMaterialReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpower_costing/manpower_dashboard_page.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
@@ -68,6 +69,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
         _items[4],
         _items[5],
         _items[19],
+        _items[20],
       ],
 
       "Sales Reports": [_items[6], _items[7], _items[11]],
@@ -148,7 +150,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       pageBuilder: () => const SampleDataPage(),
     ),
     ReportItem(
-      title: 'External Complaint',
+      title: 'External Complaints',
       pageBuilder: () => const ExternalComplaintPage(),
       isUnderDevelopment: false,
     ),
@@ -164,6 +166,10 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
     ReportItem(
       title: 'Daily Raw Material',
       pageBuilder: () => const DailyRawMaterialReport(),
+    ),
+    ReportItem(
+      title: 'Daily Finished Goods',
+      pageBuilder: () => const DailyFinishedGoodsReport(),
     ),
   ];
 

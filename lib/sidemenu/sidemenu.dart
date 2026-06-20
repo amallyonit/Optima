@@ -807,7 +807,7 @@ class SideMenuState extends State<SideMenu> {
               if (userRoleCode == "R1" || userRoleCode == "R5")
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
-                  title: 'Manpower Costing Input',
+                  title: 'Manpower Costing',
                   onTap: () {
                     Navigator.push(
                       context,
@@ -820,7 +820,7 @@ class SideMenuState extends State<SideMenu> {
               if (userRoleCode == "R1" || userRoleCode == "R5")
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
-                  title: 'Attendance Input',
+                  title: 'Attendance',
                   onTap: () {
                     Navigator.push(
                       context,
@@ -831,7 +831,7 @@ class SideMenuState extends State<SideMenu> {
               if (userRoleCode == "R1" || userRoleCode == "R5")
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
-                  title: 'Scrap Details Input',
+                  title: 'Scrap Details',
                   onTap: () {
                     Navigator.push(
                       context,
@@ -855,7 +855,7 @@ class SideMenuState extends State<SideMenu> {
               if (userRoleCode == "R1" || userRoleCode == "R5")
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
-                  title: 'Wrapsheep Calculation',
+                  title: 'Wrap Sheet Calculation',
                   onTap: () {
                     Navigator.push(
                       context,

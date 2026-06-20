@@ -17,14 +17,15 @@ import '../../../../notificationService.dart';
 import '../../dashboard_card_ui.dart';
 import '../../ReportService.dart';
 
-class DailyRawMaterialReport extends StatefulWidget {
-  const DailyRawMaterialReport({super.key});
+class DailyFinishedGoodsReport extends StatefulWidget {
+  const DailyFinishedGoodsReport({super.key});
 
   @override
-  State<DailyRawMaterialReport> createState() => _DailyRawMaterialReportState();
+  State<DailyFinishedGoodsReport> createState() =>
+      _DailyFinishedGoodsReportState();
 }
 
-class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
+class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
   DailyStockAchievementList dailyStockAchievementData =
       DailyStockAchievementList(stockData: []);
   final reportService = ReportService();
@@ -38,7 +39,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
   List<InventoryLevelList> stockData = [];
   List<InventoryLevelList> stockDataTemp = [];
 
-  String selectedSubGroup = 'Raw Material';
+  String selectedSubGroup = 'Medical Device';
 
   DateTime selectedDate = DateTime.now();
   String formattedStartDate = "";
@@ -116,7 +117,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     return const Text("");
   }
 
-  Future<void> _loadDailyRMStatement(String UserName, String UserLevel) async {
+  Future<void> _loadDailyFGStatement(String UserName, String UserLevel) async {
     int index = 0;
     int limit = 10000; // Maximum limit to fetch all data
     int fetchedCount = 0;
@@ -156,7 +157,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         }
       } while (fetchedCount == limit);
 
-      const groups = {'Raw Material', 'Packing Material', 'General Products'};
+      const groups = {'Finished Goods', 'Traded Material'};
 
       filteredStockList = stockList
           .where((e) => groups.contains(e.groupName))
@@ -208,7 +209,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     return groups;
   }
 
-  Future<void> _loadDailyRMGraph() async {
+  Future<void> _loadDailyFGGraph() async {
     if (stockData.isEmpty || _selectedBranch == null) return;
     final DateTime selected = selectedDate;
 
@@ -305,23 +306,22 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         : selectedUser;
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
-    await _loadDailyRMStatement(userName, userLevel);
-    // _selectedBranch = "Bangalore FG Inventory Store Warehouse";
+    await _loadDailyFGStatement(userName, userLevel);
     _selectedBranch = "All Warehouses";
-    await _loadDailyRMGraph();
+    await _loadDailyFGGraph();
   }
 
   Future<void> loadDataClearFilter() async {
     chartDataLoaded = false;
     stockData = stockDataTemp;
     _selectedBranch = "All Warehouses";
-    _loadDailyRMGraph();
+    _loadDailyFGGraph();
     setState(() {
       chartDataLoaded = true;
     });
   }
 
-  Future<void> exportDailyRMExcel() async {
+  Future<void> exportDailyFGExcel() async {
     if (stockData.isEmpty) return;
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       selectedDate.month,
@@ -439,7 +439,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
             : dayPercentages.values.reduce((a, b) => a + b) /
                   dayPercentages.length;
 
-        row.add(avg);
+        row.add(avg.toStringAsFixed(2));
 
         rows.add(row);
       }
@@ -448,39 +448,19 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       rows.add(List.filled(headers.length, ""));
     }
 
-    rows.add([
-      "BAGLUR - RAW Material",
-      0,
-      0,
-      ...List.filled(dayHeaders.length, 0),
-      0,
-    ]);
+    rows.add(["MD Export-FG", 0, 0, ...List.filled(dayHeaders.length, 0), 0]);
 
-    rows.add([
-      "MD Export-RM+PM",
-      0,
-      0,
-      ...List.filled(dayHeaders.length, 0),
-      0,
-    ]);
-
-    rows.add([
-      "IPD Export-RM+PM",
-      0,
-      0,
-      ...List.filled(dayHeaders.length, 0),
-      0,
-    ]);
+    rows.add(["IPD Export-FG", 0, 0, ...List.filled(dayHeaders.length, 0), 0]);
 
     await reportService.generateExcel(
-      sheetName: "Daily RM Report",
+      sheetName: "Daily FG Report",
       headers: headers,
       rows: rows,
       fileName:
-          "Daily_RM_Report_${DateFormat('MMM_yyyy').format(selectedDate)}.xlsx",
+          "Daily_FG_Report_${DateFormat('MMM_yyyy').format(selectedDate)}.xlsx",
       amountColumns: [],
       addTotalRow: false,
-      reportTitle: 'Production[MIS] - Daily Raw Materials Report',
+      reportTitle: 'Production[MIS] - Daily Finished Goods Report',
     );
   }
 
@@ -498,7 +478,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         selectedDate = picked;
       });
       LoadDates();
-      await _loadDailyRMGraph();
+      await _loadDailyFGGraph();
     }
   }
 
@@ -606,12 +586,12 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
-                    title: "Daily Raw Material Achievement Trend",
+                    title: "Daily Finished Goods Achievement Trend",
                     spacing: 10,
                     menuItems: [
                       PopupMenuItem(
                         onTap: () {
-                          exportDailyRMExcel();
+                          exportDailyFGExcel();
                         },
                         child: const Text("Download Excel"),
                       ),
@@ -633,7 +613,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
                                       newValue ?? "All Warehouses";
                                 });
                                 if (newValue != null) {
-                                  await _loadDailyRMGraph();
+                                  await _loadDailyFGGraph();
                                 }
                               },
                             ),
@@ -776,25 +756,6 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
                   getTooltipColor: (_) => Colors.white,
                   tooltipBorder: const BorderSide(color: Colors.grey, width: 1),
 
-                  // getTooltipItems: (spots) {
-                  //   return spots.map((spot) {
-                  //     final item = chartData[spot.x.toInt()];
-                  //     print(
-                  //       "barIndex=${spot.barIndex}, "
-                  //       "spotIndex=${spot.spotIndex}, "
-                  //       "x=${spot.x}, "
-                  //       "y=${spot.y}",
-                  //     );
-                  //     return LineTooltipItem(
-                  //       "${DateFormat('dd-MMM-yyyy').format(item.date)}\n"
-                  //       "Target : ${formatAmount(item.targetStock)}\n"
-                  //       "Actual : ${formatAmount(item.actualStock)}\n"
-                  //       "Achievement : ${item.achievedPercentage.toStringAsFixed(1)}%\n"
-                  //       "Monthly Avg : ${monthlyAveragePercentage.toStringAsFixed(1)}%",
-                  //       const TextStyle(color: Colors.black, fontSize: 12),
-                  //     );
-                  //   }).toList();
-                  // },
                   getTooltipItems: (touchedSpots) {
                     return touchedSpots.map((spot) {
                       if (spot.barIndex == 1) {

@@ -212,7 +212,7 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
   Future<void> _loadRMGraph() async {
     var stockList = stockData;
     String groupName = "";
-    double productSales = 0.00;
+    double actualStockQty = 0.00;
     double targetStockQty = 0.00;
     List<StockItemData> stockDataList = [];
     Set<String> processedGroups = {};
@@ -223,9 +223,9 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
         for (var target in stockList.where(
           (prdelement) => prdelement.groupName == groupName,
         )) {
-          double salesAmt = double.parse(target.minInventory);
-          productSales += salesAmt;
-          double targetStock = double.parse(target.quantity);
+          double actualStock = double.parse(target.quantity);
+          actualStockQty += actualStock;
+          double targetStock = double.parse(target.minInventory);
           targetStockQty += targetStock;
         }
 
@@ -233,13 +233,13 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
           StockItemData(
             itemSubGroup: groupName,
             targetStock: targetStockQty,
-            actualStock: productSales,
-            difference: targetStockQty - productSales,
+            actualStock: actualStockQty,
+            difference: targetStockQty - actualStockQty,
           ),
         );
         processedGroups.add(rmData.groupName);
       }
-      productSales = 0;
+      actualStockQty = 0;
       targetStockQty = 0;
       groupName = "";
     }
@@ -539,16 +539,18 @@ class _SummaryOfRawMaterialsState extends State<SummaryOfRawMaterials> {
   }
 
   Widget _buildInfoCard(String title, String value) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth > 700;
     return Padding(
       padding: const EdgeInsets.all(4),
       child: Container(
-        height: double.infinity,
+        height: isWideScreen ? 65 : 83,
         decoration: BoxDecoration(
           color: const Color(0xFF97D7F3),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(2),
           child: Center(
             child: Text('$title\n$value', textAlign: TextAlign.center),
           ),

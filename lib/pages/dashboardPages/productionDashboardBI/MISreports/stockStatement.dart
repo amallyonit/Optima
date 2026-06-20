@@ -19,6 +19,7 @@ import '../../ReportService.dart';
 final reportService = ReportService();
 
 StockItemList stockStatementData = StockItemList(stockData: []);
+StockItemList stockStatementItemData = StockItemList(stockData: []);
 
 class StockStatementMISProvider with ChangeNotifier {
   List<InventoryLevelList> _salesList = [];
@@ -54,6 +55,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
     return formatter.format(date);
   }
 
+  String touchedSubGroup = "";
   DateTime addMonth(DateTime date, int addMonth) {
     int currentMonth = date.month;
     int currentYear = date.year;
@@ -82,6 +84,8 @@ class _StockStatementPageState extends State<StockStatementPage> {
         : currentDate!.year - 1;
     fiscalYearStartDate = DateTime(fiscalYear, fiscalYearStartMonth, 1);
   }
+
+  String? _selectedBranch;
 
   SideTitles get _leftTitles => SideTitles(
     reservedSize: 50,
@@ -122,6 +126,28 @@ class _StockStatementPageState extends State<StockStatementPage> {
     },
   );
 
+  SideTitles get _bottomTitlesItemStock => SideTitles(
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<StockItemData> mData = stockStatementItemData.stockData;
+      text = mData.elementAt(value.toInt()).itemSubGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
+      );
+    },
+  );
+
   List<BarChartGroupData> _stockChartData(List<StockItemData> data) {
     return data
         .map(
@@ -129,10 +155,40 @@ class _StockStatementPageState extends State<StockStatementPage> {
             x: data.indexOf(chartData),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFF97D7F3),
+                color: const Color.fromARGB(255, 180, 157, 47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.targetStock,
+                width: 15,
+              ),
+              BarChartRodData(
+                color: const Color.fromARGB(255, 91, 181, 103),
                 borderRadius: BorderRadius.zero,
                 toY: chartData.actualStock,
-                width: 30,
+                width: 15,
+              ),
+            ],
+          ),
+        )
+        .toList();
+  }
+
+  List<BarChartGroupData> _itemStockChartData(List<StockItemData> data) {
+    return data
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
+              BarChartRodData(
+                color: const Color.fromARGB(255, 180, 157, 47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.targetStock,
+                width: 15,
+              ),
+              BarChartRodData(
+                color: const Color.fromARGB(255, 91, 181, 103),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.actualStock,
+                width: 15,
               ),
             ],
           ),
@@ -199,49 +255,110 @@ class _StockStatementPageState extends State<StockStatementPage> {
   Future<void> _loadItemSubGroupGraph() async {
     var inventoryList = stockData;
     String itemSubGroup = "";
-    double productSales = 0.00;
+    double actualStockQty = 0.00;
     double targetStockQty = 0.00;
-    List<StockItemData> data = [];
-    Set<String> processedWarehouseCodes = {};
+    List<StockItemData> stkData = [];
+    Set<String> processedItemSubGroupCodes = {};
 
-    for (var warehouse in inventoryList) {
-      if (!processedWarehouseCodes.contains(warehouse.itemSubGroup)) {
-        itemSubGroup = warehouse.itemSubGroup;
-        for (var target in inventoryList.where(
-          (prdelement) => prdelement.itemSubGroup == itemSubGroup,
+    for (var invList in inventoryList) {
+      if (!processedItemSubGroupCodes.contains(invList.itemSubGroup)) {
+        itemSubGroup = invList.itemSubGroup;
+        for (var list in inventoryList.where(
+          (e) => e.itemSubGroup == itemSubGroup,
         )) {
-          double salesAmt = double.parse(target.minInventory);
-          productSales += salesAmt;
-          double targetStock = double.parse(target.quantity);
-          targetStockQty += targetStock;
+          double actualQty = double.parse(list.quantity);
+          actualStockQty += actualQty;
+          double targetQty = double.parse(list.minInventory);
+          targetStockQty += targetQty;
         }
 
-        data.add(
+        stkData.add(
           StockItemData(
             itemSubGroup: itemSubGroup,
             targetStock: targetStockQty,
-            actualStock: productSales,
-            difference: targetStockQty - productSales,
+            actualStock: actualStockQty,
+            difference: targetStockQty - actualStockQty,
           ),
         );
-        processedWarehouseCodes.add(warehouse.itemSubGroup);
+        processedItemSubGroupCodes.add(invList.itemSubGroup);
       }
-      productSales = 0;
+      actualStockQty = 0;
       targetStockQty = 0;
       itemSubGroup = "";
     }
-    
-    for (var warehouse in inventoryList) {
-      double salesAmt = double.parse(warehouse.minInventory);
-      actualStockHeader += salesAmt;
-      double targetStock = double.parse(warehouse.quantity);
-      targetStockHeader += targetStock;
-      differenceStockHeader = actualStockHeader - targetStockHeader;
+
+    actualStockHeader = stkData
+        .map((e) => e.actualStock)
+        .reduce((a, b) => a + b);
+
+    targetStockHeader = stkData
+        .map((e) => e.targetStock)
+        .reduce((a, b) => a + b);
+
+    differenceStockHeader = targetStockHeader - actualStockHeader;
+
+    stkData.sort(
+      (a, b) => (b.targetStock - b.actualStock).compareTo(
+        a.targetStock - a.actualStock,
+      ),
+    );
+
+    stockStatementData = StockItemList(stockData: stkData);
+    chartDataLoaded = true;
+  }
+
+  Future<void> _loadItemGraph() async {
+    var inventoryList = stockData;
+    String itemDescription = "";
+    double actualStockQty = 0.00;
+    double targetStockQty = 0.00;
+    List<StockItemData> stkData = [];
+    Set<String> processedItemCodes = {};
+
+    for (var invList in inventoryList) {
+      if (!processedItemCodes.contains(invList.itemDescription)) {
+        itemDescription = invList.itemDescription;
+        for (var list in inventoryList.where(
+          (e) => e.itemDescription == itemDescription,
+        )) {
+          double actualQty = double.parse(list.quantity);
+          actualStockQty += actualQty;
+          double targetQty = double.parse(list.minInventory);
+          targetStockQty += targetQty;
+        }
+
+        stkData.add(
+          StockItemData(
+            itemSubGroup: itemDescription,
+            targetStock: targetStockQty,
+            actualStock: actualStockQty,
+            difference: targetStockQty - actualStockQty,
+          ),
+        );
+        processedItemCodes.add(invList.itemDescription);
+      }
+      actualStockQty = 0;
+      targetStockQty = 0;
+      itemDescription = "";
     }
 
-    data.sort((a, b) => b.actualStock.compareTo(a.actualStock));
+    actualStockHeader = stkData
+        .map((e) => e.actualStock)
+        .reduce((a, b) => a + b);
 
-    stockStatementData = StockItemList(stockData: data);
+    targetStockHeader = stkData
+        .map((e) => e.targetStock)
+        .reduce((a, b) => a + b);
+
+    differenceStockHeader = targetStockHeader - actualStockHeader;
+
+    stkData.sort(
+      (a, b) => (b.targetStock - b.actualStock).compareTo(
+        a.targetStock - a.actualStock,
+      ),
+    );
+
+    stockStatementItemData = StockItemList(stockData: stkData);
     chartDataLoaded = true;
   }
 
@@ -253,27 +370,47 @@ class _StockStatementPageState extends State<StockStatementPage> {
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadStockStatement(userName, userLevel);
+    _selectedBranch = "All Warehouses";
     await _loadItemSubGroupGraph();
+    await _loadItemGraph();
     chartDataLoaded = true;
   }
 
-  Future<void> loadDataWithBranchFilter(String branch) async {
-    chartDataLoaded = false;
+  Future<void> loadDataWithFilter(String subGroup) async {
+    setState(() {
+      chartDataLoaded = false;
+    });
     stockData = stockDataTemp;
-    stockData = stockData
-        .where((test) => test.warehouseName == branch)
-        .toList();
-    await _loadItemSubGroupGraph();
 
-    setState(() {});
+    stockData = stockData.where((data) {
+      final warehouseMatch =
+          _selectedBranch!.isEmpty ||
+          _selectedBranch == "All Warehouses" ||
+          data.warehouseName == _selectedBranch;
+
+      final subGroupMatch = subGroup.isEmpty || data.itemSubGroup == subGroup;
+
+      return warehouseMatch && subGroupMatch;
+    }).toList();
+
+    await _loadItemSubGroupGraph();
+    await _loadItemGraph();
+
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> loadDataClearFilter() async {
     chartDataLoaded = false;
     stockData = stockDataTemp;
+    touchedSubGroup = "";
+    _selectedBranch = "All Warehouses";
     await _loadItemSubGroupGraph();
-
-    setState(() {});
+    await _loadItemGraph();
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> generateStockStatementExcel(
@@ -283,7 +420,13 @@ class _StockStatementPageState extends State<StockStatementPage> {
     int slNo = 1;
     await reportService.generateExcel(
       sheetName: 'StockStatement',
-      headers: ['SL NO', 'Row Labels', 'Target', 'Actual stock', 'Difference'],
+      headers: [
+        'SL NO',
+        'Sub Group Name',
+        'Target',
+        'Actual stock',
+        'Difference',
+      ],
       rows: stockStatementData.stockData
           .map(
             (stkData) => [
@@ -302,8 +445,35 @@ class _StockStatementPageState extends State<StockStatementPage> {
     );
   }
 
+  Future<void> generateItemStockStatementExcel(
+    BuildContext context,
+    StockItemList stockStatementItemData,
+  ) async {
+    int slNo = 1;
+    await reportService.generateExcel(
+      sheetName: 'ItemWiseStockStatement',
+      headers: ['SL NO', 'Item Name', 'Target', 'Actual stock', 'Difference'],
+      rows: stockStatementItemData.stockData
+          .map(
+            (stkData) => [
+              slNo++,
+              stkData.itemSubGroup,
+              stkData.targetStock,
+              stkData.actualStock,
+              stkData.difference,
+            ],
+          )
+          .toList(),
+      fileName: 'item_wise_stock_statement.xlsx',
+      amountColumns: [3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - Item Wise Stock Statement',
+    );
+  }
+
   final ScrollController _verticalScrollController = ScrollController();
-  final ScrollController _horizontalController = ScrollController();
+  final ScrollController _subGroupHorizontalController = ScrollController();
+  final ScrollController _itemHorizontalController = ScrollController();
 
   @override
   void initState() {
@@ -317,7 +487,8 @@ class _StockStatementPageState extends State<StockStatementPage> {
   @override
   void dispose() {
     _verticalScrollController.dispose();
-    _horizontalController.dispose();
+    _subGroupHorizontalController.dispose();
+    _itemHorizontalController.dispose();
     super.dispose();
   }
 
@@ -348,7 +519,18 @@ class _StockStatementPageState extends State<StockStatementPage> {
                         ),
                       ],
                     ),
-                    const Row(children: [SizedBox(width: 5)]),
+                    const Row(children: [SizedBox(width: 10)]),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -356,8 +538,63 @@ class _StockStatementPageState extends State<StockStatementPage> {
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
-                    title: 'Stock Statement',
+                    title: '',
                     spacing: 10,
+
+                    menuItems: [],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            BranchDropdown(
+                              production: stockData,
+                              selectedValue: _selectedBranch,
+                              onChanged: (newValue) async {
+                                setState(() {
+                                  _selectedBranch =
+                                      newValue ?? "All Warehouses";
+                                });
+                                if (newValue != null) {
+                                  await loadDataWithFilter(touchedSubGroup);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Sub Group Wise Stock Statement',
+                    spacing: 10,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 180, 157, 47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Target', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 91, 181, 103),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
                     menuItems: [
                       PopupMenuItem(
                         onTap: () {
@@ -402,23 +639,82 @@ class _StockStatementPageState extends State<StockStatementPage> {
                     ),
                   ),
                 ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Wise Stock Statement',
+                    spacing: 10,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 180, 157, 47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Target', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 91, 181, 103),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemStockStatementExcel(
+                            context,
+                            stockStatementItemData,
+                          );
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [const SizedBox(height: 16), _itemGraph()],
+                    ),
+                  ),
+                ),
               ],
             ),
           )
         : const Center(child: CircularProgressIndicator());
   }
 
+  showPopupMenu() {
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(25.0, 50.0, 0.0, 0.0),
+      elevation: 8.0,
+      items: [
+        const PopupMenuItem<String>(value: '1', child: Text('Remove Filter?')),
+      ],
+    ).then((value) {
+      if (value == '1') {
+        loadDataClearFilter();
+      }
+    });
+  }
+
   Widget _buildInfoCard(String title, String value) {
     return Padding(
       padding: const EdgeInsets.all(4),
       child: Container(
-        height: double.infinity,
+        height: 50,
         decoration: BoxDecoration(
           color: const Color(0xFF97D7F3),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(2),
           child: Center(
             child: Text('$title\n$value', textAlign: TextAlign.center),
           ),
@@ -446,16 +742,16 @@ class _StockStatementPageState extends State<StockStatementPage> {
               .reduce((a, b) => a > b ? a : b)
         : 0;
     return FinanceHorizontalChartScroll(
-      controller: _horizontalController,
+      controller: _subGroupHorizontalController,
       verticalController: _verticalScrollController,
       child: SizedBox(
-        height: 350,
+        height: 300,
         width: chartWidth,
         child: Padding(
           padding: const EdgeInsets.only(bottom: 20),
           child: BarChart(
             BarChartData(
-              maxY: getMaxValue(maxY, 10000000),
+              maxY: getMaxValue(maxY, 1000000),
               titlesData: FlTitlesData(
                 show: true,
                 leftTitles: AxisTitles(
@@ -493,25 +789,21 @@ class _StockStatementPageState extends State<StockStatementPage> {
                       barTouchResponse.spot != null) {
                     setState(() {
                       if (flTouchEvent is FlTapUpEvent) {
-                        // touchedWarehouseLocation = touchedWarehouseLocation == ""
-                        //     ? warehouseLocationList
-                        //     .warehouseData[
-                        // barTouchResponse.spot!.spot.x.toInt()]
-                        //     .warehouseName
-                        //     : "";
-                        // selectedChart = barTouchResponse.spot!.spot.x;
-                        // showDrillDownChart = true;
-                        // loadDataWithFilter(
-                        //   touchedAging,
-                        //   touchedWarehouseLocation,
-                        //   touchedItemGroup,
-                        //   touchedItemSubGroup,
-                        // );
+                        touchedSubGroup = touchedSubGroup == ""
+                            ? stockStatementData
+                                  .stockData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .itemSubGroup
+                            : "";
+
+                        loadDataWithFilter(touchedSubGroup);
                       }
                     });
                   }
                 },
                 touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
                   maxContentWidth: 200,
                   tooltipBorder: const BorderSide(
                     width: 2.0,
@@ -559,8 +851,6 @@ class _StockStatementPageState extends State<StockStatementPage> {
                     );
                   },
                   getTooltipColor: (group) => Colors.white,
-                  fitInsideVertically: true,
-                  fitInsideHorizontally: true,
                 ),
                 handleBuiltInTouches: true,
                 touchExtraThreshold: const EdgeInsets.all(10),
@@ -569,6 +859,228 @@ class _StockStatementPageState extends State<StockStatementPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _itemGraph() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double chartWidth = 0.0;
+    int len = stockStatementItemData.stockData.take(50).length;
+    if (len > 5) {
+      chartWidth = screenWidth + (50 * len);
+    } else {
+      chartWidth = screenWidth;
+    }
+    double? maxY = stockStatementItemData.stockData.isNotEmpty
+        ? stockStatementItemData.stockData
+              .map(
+                (e) => e.actualStock > e.targetStock
+                    ? e.actualStock
+                    : e.targetStock,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+    return FinanceHorizontalChartScroll(
+      controller: _itemHorizontalController,
+      verticalController: _verticalScrollController,
+      child: SizedBox(
+        height: 300,
+        width: chartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxY, 100000),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemStock,
+                  axisNameSize: 20,
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemStockChartData(
+                stockStatementItemData.stockData.take(50).toList(),
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      stockStatementItemData.stockData[grpIndex].itemSubGroup,
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "\nTarget Stock : ${formatAmount(stockStatementItemData.stockData[grpIndex].targetStock)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nActual Stock : ${formatAmount(stockStatementItemData.stockData[grpIndex].actualStock)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nDifference : ${formatAmount(stockStatementItemData.stockData[grpIndex].difference)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BranchDropdown extends StatefulWidget {
+  final List production;
+  final ValueChanged<String?> onChanged;
+  final String placeholder;
+  final String? selectedValue;
+
+  const BranchDropdown({
+    super.key,
+    required this.production,
+    required this.onChanged,
+    this.selectedValue,
+    this.placeholder = 'All Warehouses',
+  });
+
+  @override
+  State<BranchDropdown> createState() => _BranchDropdownState();
+}
+
+class _BranchDropdownState extends State<BranchDropdown> {
+  late final List<String> _items;
+  String? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = _extractBranches(widget.production);
+    _selected =
+        widget.selectedValue ?? (_items.isNotEmpty ? _items.first : null);
+  }
+
+  @override
+  void didUpdateWidget(covariant BranchDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.selectedValue != oldWidget.selectedValue) {
+      setState(() {
+        _selected = widget.selectedValue;
+      });
+    }
+  }
+
+  List<String> _extractBranches(List list) {
+    final seen = <String>{};
+    final out = <String>[];
+    out.add("All Warehouses");
+    for (var e in list) {
+      String val = '';
+      try {
+        val = (e.warehouseName ?? '').toString().trim();
+      } catch (_) {
+        if (e is Map && e.containsKey('warehouseName')) {
+          val = (e['warehouseName'] ?? '').toString();
+        }
+      }
+      if (val.trim().isEmpty) continue;
+      if (!seen.contains(val)) {
+        seen.add(val);
+        out.add(val);
+      }
+    }
+    return out;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selected,
+              hint: const SizedBox.shrink(),
+              icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+              items: _items.map((s) {
+                return DropdownMenuItem<String>(
+                  value: s,
+                  child: Text(s, style: const TextStyle(fontSize: 14)),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selected = val;
+                });
+                widget.onChanged(val);
+              },
+              isDense: true,
+              isExpanded: false,
+            ),
+          ),
+        ],
+      ),
+      onTap: () {},
     );
   }
 }
