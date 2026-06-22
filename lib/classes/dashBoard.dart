@@ -6557,3 +6557,25 @@ class DailyStockAchievementList {
 
   DailyStockAchievementList({required this.stockData});
 }
+
+class PendingSOChartData {
+  final String groupName;
+  final Map<String, double> warehouseValues;
+
+  PendingSOChartData({required this.groupName, required this.warehouseValues});
+
+  double get total =>
+      warehouseValues.values.fold(0.0, (sum, value) => sum + value);
+}
+
+class ReadyToDispatchChartData {
+  final String groupName;
+  final Map<String, double> readyValues;
+  final Map<String, double> partialValues;
+
+  ReadyToDispatchChartData({
+    required this.groupName,
+    required this.readyValues,
+    required this.partialValues,
+  });
+}
