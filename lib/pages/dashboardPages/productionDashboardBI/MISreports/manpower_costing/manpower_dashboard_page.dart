@@ -354,8 +354,11 @@ class _BranchPickerState extends State<BranchPicker> {
   }
 }
 
+// class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
+//   final controller = ManpowerController();
 class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
   final controller = ManpowerController();
+  final ScrollController _pageScrollController = ScrollController();
 
   Widget _buildHeader() {
     final start = DateFormat(
@@ -623,7 +626,7 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
           Padding(
             padding: const EdgeInsets.all(8),
             child: DashboardCardUI(
-              title: 'Summary',
+              title: 'Man Power Costing',
               spacing: 20,
               menuItems: [
                 PopupMenuItem(

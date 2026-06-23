@@ -6,7 +6,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
@@ -17,121 +16,46 @@ import '../../dashboard_card_ui.dart';
 import '../../ReportService.dart';
 
 class ItemGroupAgeingSummary {
-  String groupName;
-
-  // <30 Days
-  double lessThan30DaysQty = 0.0;
-  double lessThan30DaysValue = 0.0;
-
-  // 31-45 Days
-  double days31to45Qty = 0.0;
-  double days31to45Value = 0.0;
-
-  // 46-60 Days
-  double days46to60Qty = 0.0;
-  double days46to60Value = 0.0;
-
-  // 61-90 Days
+  String itemGroupName;
+  double lessThan60DaysQty = 0.0;
+  double lessThan60DaysValue = 0.0;
   double days61to90Qty = 0.0;
   double days61to90Value = 0.0;
+  double greaterThan90DaysQty = 0.0;
+  double greaterThan90DaysValue = 0.0;
 
-  // 91-120 Days
-  double days91to120Qty = 0.0;
-  double days91to120Value = 0.0;
-
-  // 121-150 Days
-  double days121to150Qty = 0.0;
-  double days121to150Value = 0.0;
-
-  // 151-180 Days
-  double days151to180Qty = 0.0;
-  double days151to180Value = 0.0;
-
-  // 181-365 Days
-  double days181to365Qty = 0.0;
-  double days181to365Value = 0.0;
-
-  // 366-730 Days
-  double days366to730Qty = 0.0;
-  double days366to730Value = 0.0;
-
-  // >730 Days
-  double greaterThan730DaysQty = 0.0;
-  double greaterThan730DaysValue = 0.0;
-
-  ItemGroupAgeingSummary({required this.groupName});
+  ItemGroupAgeingSummary({required this.itemGroupName});
 
   // Convenience getters for totals across all brackets
   double get totalQuantity =>
-      lessThan30DaysQty +
-      days31to45Qty +
-      days46to60Qty +
-      days61to90Qty +
-      days91to120Qty +
-      days121to150Qty +
-      days151to180Qty +
-      days181to365Qty +
-      days366to730Qty +
-      greaterThan730DaysQty;
+      lessThan60DaysQty + days61to90Qty + greaterThan90DaysQty;
 
   double get totalValue =>
-      lessThan30DaysValue +
-      days31to45Value +
-      days46to60Value +
-      days61to90Value +
-      days91to120Value +
-      days121to150Value +
-      days151to180Value +
-      days181to365Value +
-      days366to730Value +
-      greaterThan730DaysValue;
+      lessThan60DaysValue + days61to90Value + greaterThan90DaysValue;
 
   // Add qty & value to the correct bracket (expects exact bracket strings)
   void addToBracket(String ageingBracket, double qty, double val) {
     switch (ageingBracket.trim()) {
       case "<30 Days":
-        lessThan30DaysQty += qty;
-        lessThan30DaysValue += val;
+        lessThan60DaysQty += qty;
+        lessThan60DaysValue += val;
         break;
       case "31-45 Days":
-        days31to45Qty += qty;
-        days31to45Value += val;
+        lessThan60DaysQty += qty;
+        lessThan60DaysValue += val;
         break;
       case "46-60 Days":
-        days46to60Qty += qty;
-        days46to60Value += val;
+        lessThan60DaysQty += qty;
+        lessThan60DaysValue += val;
         break;
       case "61-90 Days":
         days61to90Qty += qty;
         days61to90Value += val;
         break;
-      case "91-120 Days":
-        days91to120Qty += qty;
-        days91to120Value += val;
-        break;
-      case "121-150 Days":
-        days121to150Qty += qty;
-        days121to150Value += val;
-        break;
-      case "151-180 Days":
-        days151to180Qty += qty;
-        days151to180Value += val;
-        break;
-      case "181-365 Days":
-        days181to365Qty += qty;
-        days181to365Value += val;
-        break;
-      case "366-730 Days":
-        days366to730Qty += qty;
-        days366to730Value += val;
-        break;
-      case ">730 Days":
-        greaterThan730DaysQty += qty;
-        greaterThan730DaysValue += val;
-        break;
+
       default:
-        // If ageingBracket might come in different formats, you can
-        // either log it or attempt a normalization here.
+        greaterThan90DaysQty += qty;
+        greaterThan90DaysValue += val;
         break;
     }
   }
@@ -140,15 +64,6 @@ class ItemGroupAgeingSummary {
 class ItemGroupAgeingSummaryList {
   final List<ItemGroupAgeingSummary> items;
   ItemGroupAgeingSummaryList({required this.items});
-}
-
-class AgingReportMISProvider with ChangeNotifier {
-  List<InventoryList> _salesList = [];
-  List<InventoryList> get salesList => _salesList;
-  void updateInventoryList(List<InventoryList> newSalesList) {
-    _salesList = newSalesList;
-    notifyListeners();
-  }
 }
 
 class AgingReportPage extends StatefulWidget {
@@ -164,9 +79,9 @@ class _AgingReportPageState extends State<AgingReportPage> {
   DateTime? currentDate;
   DateTime? fiscalYearStartDate;
   bool chartDataLoaded = false;
-  List<InventoryLevelList> stockData = [];
-  List<InventoryLevelList> stockDataTemp = [];
   List<InventoryList> inventory = [];
+  List<InventoryList> inventoryTemp = [];
+  String _selectedBranch = "";
 
   InventoryAgingMISList inventoryAgingList = InventoryAgingMISList(
     agingData: [],
@@ -350,11 +265,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
         .toList();
   }
 
-  Future<void> _loadInventory(String UserName, String UserLevel) async {
+  Future<void> _loadInventoryAPI(String UserName, String UserLevel) async {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
-    List<InventoryList> salesList = [];
+    List<InventoryList> invList = [];
     try {
       do {
         var body = {
@@ -373,13 +288,13 @@ class _AgingReportPageState extends State<AgingReportPage> {
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryList> newSalesList =
+            List<InventoryList> newinvList =
                 (responseJson['responseData'] as List)
                     .map((item) => InventoryList.fromJson(item))
                     .toList();
 
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
+            invList.addAll(newinvList);
+            fetchedCount = newinvList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -389,11 +304,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
         }
       } while (fetchedCount == limit);
 
-      setState(() {
-        context.read<AgingReportMISProvider>().updateInventoryList(salesList);
-
-        inventory = salesList.toList();
-      });
+      inventory = invList.toList();
+      inventoryTemp = invList.toList();
     } catch (e) {
       if (!mounted) return;
       NotificationService.error(
@@ -411,35 +323,16 @@ class _AgingReportPageState extends State<AgingReportPage> {
     for (var element in inventory) {
       overDueDays = element.ageingBrackets;
       if (overDueDays == "<30 Days") {
-        summary.a0to30DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a0to30DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "31-45 Days") {
-        summary.a31to45DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a31to45DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "46-60 Days") {
-        summary.a46to60DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a46to60DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "61-90 Days") {
+        summary.a0to60DaysTotalQty += (double.parse(element.totalQuantity));
+        summary.a0to60DaysTotalVal += (double.parse(element.totalValue));
+      } else if (overDueDays == "31-45 Days" ||
+          overDueDays == "46-60 Days" ||
+          overDueDays == "61-90 Days") {
         summary.a61to90DaysTotalQty += (double.parse(element.totalQuantity));
         summary.a61to90DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "91-120 Days") {
-        summary.a91to120DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a91to120DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "121-150 Days") {
-        summary.a121to150DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a121to150DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "151-180 Days") {
-        summary.a151to180DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a151to180DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "181-365 Days") {
-        summary.a181to365DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a181to365DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == "366-730 Days") {
-        summary.a366to730DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a366to730DaysTotalVal += (double.parse(element.totalValue));
-      } else if (overDueDays == ">730 Days") {
-        summary.a730DaysTotalQty += (double.parse(element.totalQuantity));
-        summary.a730DaysTotalVal += (double.parse(element.totalValue));
+      } else {
+        summary.a90DaysTotalQty += (double.parse(element.totalQuantity));
+        summary.a90DaysTotalVal += (double.parse(element.totalValue));
       }
     }
     return summary;
@@ -447,130 +340,49 @@ class _AgingReportPageState extends State<AgingReportPage> {
 
   Future<void> _loadInventoryAgingData() async {
     List<InventoryAgingMISData> receivablesAgingDataList = [];
-    double agingGroup30TotalQty = 0;
-    double agingGroup30TotalVal = 0;
-    double agingGroup31to45TotalQty = 0;
-    double agingGroup31to45TotalVal = 0;
-    double agingGroup46to60TotalQty = 0;
-    double agingGroup46to60TotalVal = 0;
-    double agingGroup61to90TotalQty = 0;
-    double agingGroup61to90TotalVal = 0;
-    double agingGroup91to120TotalQty = 0;
-    double agingGroup91to120TotalVal = 0;
-    double agingGroup121to150TotalQty = 0;
-    double agingGroup121to150TotalVal = 0;
-    double agingGroup151to180TotalQty = 0;
-    double agingGroup151to180TotalVal = 0;
-    double agingGroup181to365TotalQty = 0;
-    double agingGroup181to365TotalVal = 0;
-    double agingGroup366to730TotalQty = 0;
-    double agingGroup366to730TotalVal = 0;
-    double agingGroup730TotalQty = 0;
-    double agingGroup730TotalVal = 0;
+    double a0to60DaysTotalQty = 0;
+    double a0to60DaysTotalVal = 0;
+    double a61to90DaysTotalQty = 0;
+    double a61to90DaysTotalVal = 0;
+    double a90DaysTotalQty = 0;
+    double a90DaysTotalVal = 0;
 
     var collectionTargetList = inventory;
 
     InventoryAgingSummaryMISReport summary = summarizeCollectionTargets(
       collectionTargetList,
     );
-    agingGroup30TotalQty = summary.a0to30DaysTotalQty;
-    agingGroup30TotalVal = summary.a0to30DaysTotalVal;
-    agingGroup31to45TotalQty = summary.a31to45DaysTotalQty;
-    agingGroup31to45TotalVal = summary.a31to45DaysTotalVal;
-    agingGroup46to60TotalQty = summary.a46to60DaysTotalQty;
-    agingGroup46to60TotalVal = summary.a46to60DaysTotalVal;
-    agingGroup61to90TotalQty = summary.a61to90DaysTotalQty;
-    agingGroup61to90TotalVal = summary.a61to90DaysTotalVal;
-    agingGroup91to120TotalQty = summary.a91to120DaysTotalQty;
-    agingGroup91to120TotalVal = summary.a91to120DaysTotalVal;
-    agingGroup121to150TotalQty = summary.a121to150DaysTotalQty;
-    agingGroup121to150TotalVal = summary.a121to150DaysTotalVal;
-    agingGroup151to180TotalQty = summary.a151to180DaysTotalQty;
-    agingGroup151to180TotalVal = summary.a151to180DaysTotalVal;
-    agingGroup181to365TotalQty = summary.a181to365DaysTotalQty;
-    agingGroup181to365TotalVal = summary.a181to365DaysTotalVal;
-    agingGroup366to730TotalQty = summary.a366to730DaysTotalQty;
-    agingGroup366to730TotalVal = summary.a366to730DaysTotalVal;
-    agingGroup730TotalQty = summary.a730DaysTotalQty;
-    agingGroup730TotalVal = summary.a730DaysTotalVal;
+    a0to60DaysTotalQty = summary.a0to60DaysTotalQty;
+    a0to60DaysTotalVal = summary.a0to60DaysTotalVal;
+    a61to90DaysTotalQty = summary.a61to90DaysTotalQty;
+    a61to90DaysTotalVal = summary.a61to90DaysTotalVal;
+    a90DaysTotalQty = summary.a90DaysTotalQty;
+    a90DaysTotalVal = summary.a90DaysTotalVal;
+
     receivablesAgingDataList.add(
       InventoryAgingMISData(
-        agingGroup: "0-30",
-        agingTotalQty: agingGroup30TotalQty,
-        agingTotalVal: agingGroup30TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "31-45",
-        agingTotalQty: agingGroup31to45TotalQty,
-        agingTotalVal: agingGroup31to45TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "46-60",
-        agingTotalQty: agingGroup46to60TotalQty,
-        agingTotalVal: agingGroup46to60TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "61-90",
-        agingTotalQty: agingGroup61to90TotalQty,
-        agingTotalVal: agingGroup61to90TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "91-120",
-        agingTotalQty: agingGroup91to120TotalQty,
-        agingTotalVal: agingGroup91to120TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "121-150",
-        agingTotalQty: agingGroup121to150TotalQty,
-        agingTotalVal: agingGroup121to150TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "151-180",
-        agingTotalQty: agingGroup151to180TotalQty,
-        agingTotalVal: agingGroup151to180TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "181-365",
-        agingTotalQty: agingGroup181to365TotalQty,
-        agingTotalVal: agingGroup181to365TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "366-730",
-        agingTotalQty: agingGroup366to730TotalQty,
-        agingTotalVal: agingGroup366to730TotalVal,
-      ),
-    );
-    receivablesAgingDataList.add(
-      InventoryAgingMISData(
-        agingGroup: "731+",
-        agingTotalQty: agingGroup730TotalQty,
-        agingTotalVal: agingGroup730TotalVal,
+        agingGroup: "0-60",
+        agingTotalQty: a0to60DaysTotalQty,
+        agingTotalVal: a0to60DaysTotalVal,
       ),
     );
 
-    // for (InventoryAgingData agingData in receivablesAgingDataList) {
-    //    agingData.agingPercentage = double.tryParse(
-    //        ((agingData.agingGroupTotal / totalDueAmount) * 100)
-    //            .toStringAsFixed(2)) ??
-    //        0;
-    //    agingData.agingGroupTotal = double.tryParse((agingData.agingGroupTotal).toStringAsFixed(2)) ?? 0;
-    // }
+    receivablesAgingDataList.add(
+      InventoryAgingMISData(
+        agingGroup: "61-90",
+        agingTotalQty: a61to90DaysTotalQty,
+        agingTotalVal: a61to90DaysTotalVal,
+      ),
+    );
+
+    receivablesAgingDataList.add(
+      InventoryAgingMISData(
+        agingGroup: "91+",
+        agingTotalQty: a90DaysTotalQty,
+        agingTotalVal: a90DaysTotalVal,
+      ),
+    );
+
     inventoryAgingList = InventoryAgingMISList(
       agingData: receivablesAgingDataList,
     );
@@ -629,7 +441,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
 
       grouped.putIfAbsent(
         groupName,
-        () => ItemGroupAgeingSummary(groupName: groupName),
+        () => ItemGroupAgeingSummary(itemGroupName: groupName),
       );
       grouped[groupName]!.addToBracket(ageing, qty, val);
     }
@@ -647,7 +459,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
         : selectedUser;
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
-    await _loadInventory(userName, userLevel);
+    await _loadInventoryAPI(userName, userLevel);
+    _selectedBranch = "All Warehouses";
     await _loadInventoryAgingData();
     await _loadItemGroupWiseInventory();
     await _loadItemGroupAgeingSummary();
@@ -656,81 +469,72 @@ class _AgingReportPageState extends State<AgingReportPage> {
     });
   }
 
-  Future<void> loadDataWithBranchFilter(String branch) async {
+  Future<void> loadDataWithFilter() async {
     chartDataLoaded = false;
-    stockData = stockDataTemp;
-    stockData = stockData
-        .where((test) => test.warehouseName == branch)
-        .toList();
+    inventory = inventoryTemp;
+    inventory = inventory.where((data) {
+      final warehouseMatch =
+          _selectedBranch.isEmpty ||
+          _selectedBranch == "All Warehouses" ||
+          data.warehouseName == _selectedBranch;
 
-    setState(() {});
+      return warehouseMatch;
+    }).toList();
+
+    await _loadInventoryAgingData();
+    await _loadItemGroupWiseInventory();
+    await _loadItemGroupAgeingSummary();
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> loadDataClearFilter() async {
     chartDataLoaded = false;
-    stockData = stockDataTemp;
-
-    setState(() {});
+    inventory = inventoryTemp;
+    _selectedBranch = "All Warehouses";
+    await _loadInventoryAgingData();
+    await _loadItemGroupWiseInventory();
+    await _loadItemGroupAgeingSummary();
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> generateAgeingReportExcel(BuildContext context) async {
     final headers = [
-      'Group Name',
-      'Sum of 0-30 Days Qty',
-      'Sum of 0-30 Days Val',
-      'Sum of 31-45 Days Qty',
-      'Sum of 31-45 Days Val',
-      'Sum of 46-60 Days Qty',
-      'Sum of 46-60 Days Val',
+      'Item Group Name',
+      'Sum of 0-60 Days Qty',
+      'Sum of 0-60 Days Val',
       'Sum of 61-90 Days Qty',
       'Sum of 61-90 Days Val',
-      'Sum of 91-120 Days Qty',
-      'Sum of 91-120 Days Val',
-      'Sum of 121-150 Days Qty',
-      'Sum of 121-150 Days Val',
-      'Sum of 151-180 Days Qty',
-      'Sum of 151-180 Days Val',
-      'Sum of 181-365 Days Qty',
-      'Sum of 181-365 Days Val',
-      'Sum of 366-730 Days Qty',
-      'Sum of 366-730 Days Val',
-      'Sum of >730 Days Days Qty',
-      'Sum of >730 Days Days Val',
+      'Sum of >90 Days Qty',
+      'Sum of >90 Days Val',
+      'Sum of Closing Stock Qty',
+      'Sum of Closing Stock Val',
     ];
     await reportService.generateExcel(
-      sheetName: 'FG-RM-AgeingReport',
+      sheetName: 'AgeingReport',
       headers: headers,
       rows: itemGroupAgeingSummaryList.items
           .map(
             (data) => [
-              data.groupName,
-              data.lessThan30DaysQty,
-              data.lessThan30DaysValue,
-              data.days31to45Qty,
-              data.days31to45Value,
-              data.days46to60Qty,
-              data.days46to60Value,
+              data.itemGroupName,
+              data.lessThan60DaysQty,
+              data.lessThan60DaysValue,
               data.days61to90Qty,
               data.days61to90Value,
-              data.days91to120Qty,
-              data.days91to120Value,
-              data.days121to150Qty,
-              data.days121to150Value,
-              data.days151to180Qty,
-              data.days151to180Value,
-              data.days181to365Qty,
-              data.days181to365Value,
-              data.days366to730Qty,
-              data.days366to730Value,
-              data.greaterThan730DaysQty,
-              data.greaterThan730DaysValue,
+              data.greaterThan90DaysQty,
+              data.greaterThan90DaysValue,
+              data.totalQuantity,
+              data.totalValue,
             ],
           )
           .toList(),
-      fileName: 'fg_rm_ageingreport.xlsx',
-      amountColumns: [3, 4, 5],
+      fileName: 'ageingreport.xlsx',
+      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9],
       addTotalRow: true,
-      reportTitle: 'Production[MIS] - FG & RM Ageing Report',
+      reportTitle: 'Production[MIS] - Ageing Report $_selectedBranch',
     );
   }
 
@@ -782,11 +586,53 @@ class _AgingReportPageState extends State<AgingReportPage> {
                         ),
                       ],
                     ),
-                    const Row(children: [SizedBox(width: 5)]),
+                    const Row(children: [SizedBox(width: 10)]),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            showPopupMenu();
+                          },
+                          icon: const Icon(Icons.filter_alt_outlined),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                    ),
                   ],
                 ),
 
-                SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Select Warehouse',
+                    spacing: 10,
+                    menuItems: [],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            BranchDropdown(
+                              production: inventory,
+                              selectedValue: _selectedBranch,
+                              onChanged: (newValue) async {
+                                setState(() {
+                                  _selectedBranch =
+                                      newValue ?? "All Warehouses";
+                                });
+                                if (newValue != null) {
+                                  await loadDataWithFilter();
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
                 Padding(
                   padding: const EdgeInsets.all(8),
@@ -815,6 +661,21 @@ class _AgingReportPageState extends State<AgingReportPage> {
             ),
           )
         : const Center(child: CircularProgressIndicator());
+  }
+
+  showPopupMenu() {
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(25.0, 50.0, 0.0, 0.0),
+      elevation: 8.0,
+      items: [
+        const PopupMenuItem<String>(value: '1', child: Text('Remove Filter?')),
+      ],
+    ).then((value) {
+      if (value == '1') {
+        loadDataClearFilter();
+      }
+    });
   }
 
   Widget _inventoryAgeing() {
@@ -1067,6 +928,104 @@ class _AgingReportPageState extends State<AgingReportPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class BranchDropdown extends StatefulWidget {
+  final List production;
+  final ValueChanged<String?> onChanged;
+  final String placeholder;
+  final String? selectedValue;
+
+  const BranchDropdown({
+    super.key,
+    required this.production,
+    required this.onChanged,
+    this.selectedValue,
+    this.placeholder = 'All Warehouses',
+  });
+
+  @override
+  State<BranchDropdown> createState() => _BranchDropdownState();
+}
+
+class _BranchDropdownState extends State<BranchDropdown> {
+  late final List<String> _items;
+  String? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = _extractBranches(widget.production);
+    _selected =
+        widget.selectedValue ?? (_items.isNotEmpty ? _items.first : null);
+  }
+
+  @override
+  void didUpdateWidget(covariant BranchDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.selectedValue != oldWidget.selectedValue) {
+      setState(() {
+        _selected = widget.selectedValue;
+      });
+    }
+  }
+
+  List<String> _extractBranches(List list) {
+    final seen = <String>{};
+    final out = <String>[];
+    out.add("All Warehouses");
+    for (var e in list) {
+      String val = '';
+      try {
+        val = (e.warehouseName ?? '').toString().trim();
+      } catch (_) {
+        if (e is Map && e.containsKey('warehouseName')) {
+          val = (e['warehouseName'] ?? '').toString();
+        }
+      }
+      if (val.trim().isEmpty) continue;
+      if (!seen.contains(val)) {
+        seen.add(val);
+        out.add(val);
+      }
+    }
+    return out;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selected,
+              hint: const SizedBox.shrink(),
+              icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+              items: _items.map((s) {
+                return DropdownMenuItem<String>(
+                  value: s,
+                  child: Text(s, style: const TextStyle(fontSize: 14)),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selected = val;
+                });
+                widget.onChanged(val);
+              },
+              isDense: true,
+              isExpanded: false,
+            ),
+          ),
+        ],
+      ),
+      onTap: () {},
     );
   }
 }

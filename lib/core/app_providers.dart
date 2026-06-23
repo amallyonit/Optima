@@ -10,7 +10,6 @@ import 'package:optima/pages/dashboardPages/financesDashboard/receivablesFinance
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventoryAgeingAnalysis.dart';
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventoryMovementAnalysis.dart';
 import 'package:optima/pages/dashboardPages/inventoryDashboardBI/inventorySlowDeadAnalysis.dart';
-import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/agingReport.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/minimumStockVsActualStock.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/salesVsProduction.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/stockStatement.dart';
@@ -174,14 +173,9 @@ class AppProviders {
     ChangeNotifierProvider(
       create: (_) => SchedulerApprovalProviderForHomePending(),
     ),
-    // ChangeNotifierProvider(create: (_) => ManpowerCostingProductionProvider()),
-    // ChangeNotifierProvider(create: (_) => ManpowerCostingRCPProvider()),
-    // ChangeNotifierProvider(create: (_) => ManpowerCostingCTCProvider()),
-    // ChangeNotifierProvider(create: (_) => ManpowerCostingTargetProvider()),
     ChangeNotifierProvider(create: (_) => StockStatusListMISProvider()),
     ChangeNotifierProvider(create: (_) => StockStatementMISProvider()),
     ChangeNotifierProvider(create: (_) => SummOfRawMaterialMISProvider()),
-    ChangeNotifierProvider(create: (_) => AgingReportMISProvider()),
     ChangeNotifierProvider(
       create: (_) => SalesVsProductionDeliveryDetailsMISProvider(),
     ),

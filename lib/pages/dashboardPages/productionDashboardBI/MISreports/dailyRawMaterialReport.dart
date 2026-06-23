@@ -27,6 +27,8 @@ class DailyRawMaterialReport extends StatefulWidget {
 class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
   DailyStockAchievementList dailyStockAchievementData =
       DailyStockAchievementList(stockData: []);
+  StockItemList stockStatementItemData = StockItemList(stockData: []);
+  StockItemList stockStatementTransitData = StockItemList(stockData: []);
   final reportService = ReportService();
   final ScrollController _tabScrollController = ScrollController();
   late Future<void> loadDataFuture;
@@ -37,13 +39,15 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
   List<InventoryLevelList> stockData = [];
   List<InventoryLevelList> stockDataTemp = [];
-
+  List<StockInTransitList> stockInTransitList = [];
+  List<StockInTransitList> stockInTransitListTemp = [];
   String selectedSubGroup = 'Raw Material';
 
   DateTime selectedDate = DateTime.now();
   String formattedStartDate = "";
   String formattedEndDate = "";
   double targetStock = 0, actualStock = 0;
+  Set<String>? selectedItems;
 
   String formatDate(DateTime date) {
     final formatter = DateFormat('yyyyMMdd');
@@ -109,6 +113,16 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
   }
 
+  SideTitles get _leftTitles => SideTitles(
+    reservedSize: 50,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String leftDouble = "";
+      leftDouble = formatAmount(value);
+      return Text(leftDouble, style: const TextStyle(fontSize: 12));
+    },
+  );
+
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
 
@@ -116,7 +130,96 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     return const Text("");
   }
 
-  Future<void> _loadDailyRMStatement(String UserName, String UserLevel) async {
+  SideTitles get _bottomTitlesItemStock => SideTitles(
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<StockItemData> mData = stockStatementItemData.stockData;
+      text = mData.elementAt(value.toInt()).itemSubGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
+      );
+    },
+  );
+
+  SideTitles get _bottomTitlesStockInTransit => SideTitles(
+    reservedSize: 30,
+    showTitles: true,
+    getTitlesWidget: (value, meta) {
+      String text = '';
+      List<StockItemData> mData = stockStatementTransitData.stockData;
+      text = mData.elementAt(value.toInt()).itemSubGroup;
+      return Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: RotationTransition(
+          turns: const AlwaysStoppedAnimation(-25 / 360),
+          child: text.length > 7
+              ? Text(
+                  '${text.substring(0, 5)}...',
+                  style: const TextStyle(fontSize: 12),
+                )
+              : Text(text, style: const TextStyle(fontSize: 12)),
+        ),
+      );
+    },
+  );
+
+  List<BarChartGroupData> _itemStockChartData(List<StockItemData> data) {
+    return data
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
+              BarChartRodData(
+                color: const Color.fromARGB(255, 180, 157, 47),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.targetStock,
+                width: 15,
+              ),
+              BarChartRodData(
+                color: const Color.fromARGB(255, 91, 181, 103),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.actualStock,
+                width: 15,
+              ),
+            ],
+          ),
+        )
+        .toList();
+  }
+
+  List<BarChartGroupData> _stockInTransitChartData(List<StockItemData> data) {
+    return data
+        .map(
+          (chartData) => BarChartGroupData(
+            x: data.indexOf(chartData),
+            barRods: [
+              BarChartRodData(
+                color: const Color.fromARGB(255, 199, 7, 173),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.actualStock,
+                width: 30,
+              ),
+            ],
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> _loadDailyRMStatementAPI(
+    String UserName,
+    String UserLevel,
+  ) async {
     int index = 0;
     int limit = 10000; // Maximum limit to fetch all data
     int fetchedCount = 0;
@@ -173,6 +276,93 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         message: "Error occured while loading stock statement.",
       );
     }
+  }
+
+  Future<void> _loadStockInTransitListAPI(
+    String userName,
+    String userLevel,
+  ) async {
+    int index = 0;
+    const int limit = 10000;
+    int fetchedCount = 0;
+    List<StockInTransitList> stkList = [];
+    const apiUrl = '${ApiHelper.baseUrl}CRM_StockTransitReport';
+    try {
+      do {
+        final body = {
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+
+        http.Response? response;
+
+        // Retry logic
+        for (int retry = 0; retry < 3; retry++) {
+          try {
+            response = await http
+                .post(
+                  Uri.parse(apiUrl),
+                  headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+                  body: jsonEncode(body),
+                )
+                .timeout(const Duration(seconds: 25));
+
+            if (response.statusCode == 200) break;
+            if (response.statusCode == 502 || response.statusCode == 504) {
+              await Future.delayed(const Duration(seconds: 2));
+              continue;
+            }
+            break;
+          } catch (_) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+        }
+
+        if (response!.statusCode == 200) {
+          final jsonMap = jsonDecode(response.body);
+          final data = jsonMap["responseData"] ?? [];
+
+          if (data == null || (data is List && data.isEmpty)) {
+            fetchedCount = 0;
+          } else {
+            final parsed = parseStockList(data);
+            stkList.addAll(parsed);
+            fetchedCount = parsed.length;
+            index++;
+          }
+        } else {
+          fetchedCount = 0;
+        }
+      } while (fetchedCount == limit);
+
+      // UPDATE UI
+      if (!mounted) return;
+
+      setState(() {
+        if (stkList.isNotEmpty) {
+          stockInTransitList = stkList;
+          stockInTransitListTemp = stkList;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading stock in transit data.",
+      );
+    }
+  }
+
+  List<StockInTransitList> parseStockList(List<dynamic>? data) {
+    if (data == null) {
+      return [];
+    }
+    return data
+        .where((e) => e != null)
+        .map((e) => StockInTransitList.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   List<DailyStockAchievementData> get chartData =>
@@ -293,6 +483,181 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     });
   }
 
+  Future<void> _loadItemGraph() async {
+    if (stockData.isEmpty || _selectedBranch == null) return;
+
+    Map<String, DateTime> monthDates = getMonthStartEndDates(
+      selectedDate.month,
+    );
+    final DateTime startDate = monthDates["start"]!;
+    final DateTime endDate = monthDates["end"]!;
+
+    // Filter selected month records
+    final applyWarehouseFilter =
+        _selectedBranch != null &&
+        _selectedBranch!.isNotEmpty &&
+        _selectedBranch != 'All Warehouses';
+
+    final filteredList = stockData.where((e) {
+      try {
+        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
+
+        if (!(docDate.isAtLeast(startDate) && docDate.isAtMost(endDate))) {
+          return false;
+        }
+
+        if (applyWarehouseFilter && e.warehouseName != _selectedBranch) {
+          return false;
+        }
+
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+
+    var inventoryList = filteredList.where(
+      (e) => e.itemSubGroup == selectedSubGroup,
+    );
+
+    selectedItems = filteredList
+        .where((e) => e.itemSubGroup == selectedSubGroup)
+        .map((e) => e.itemDescription.trim())
+        .toSet(); // to filter the stock in transit list
+
+    String itemDescription = "";
+    double actualStockQty = 0.00;
+    double targetStockQty = 0.00;
+    List<StockItemData> stkData = [];
+    Set<String> processedItemCodes = {};
+
+    for (var invList in inventoryList) {
+      if (!processedItemCodes.contains(invList.itemDescription)) {
+        itemDescription = invList.itemDescription;
+        for (var list in inventoryList.where(
+          (e) => e.itemDescription == itemDescription,
+        )) {
+          double actualQty = double.parse(list.quantity);
+          actualStockQty += actualQty;
+          double targetQty = double.parse(list.minInventory);
+          targetStockQty += targetQty;
+        }
+
+        stkData.add(
+          StockItemData(
+            itemSubGroup: itemDescription,
+            targetStock: targetStockQty,
+            actualStock: actualStockQty,
+            difference: targetStockQty - actualStockQty,
+          ),
+        );
+        processedItemCodes.add(invList.itemDescription);
+      }
+      actualStockQty = 0;
+      targetStockQty = 0;
+      itemDescription = "";
+    }
+
+    stkData.sort(
+      (a, b) => (b.targetStock - b.actualStock).compareTo(
+        a.targetStock - a.actualStock,
+      ),
+    );
+
+    stockStatementItemData = StockItemList(stockData: stkData);
+    chartDataLoaded = true;
+  }
+
+  Future<void> _loadTransitGraph() async {
+    if (stockInTransitList.isEmpty || selectedSubGroup == "") return;
+
+    Map<String, DateTime> monthDates = getMonthStartEndDates(
+      selectedDate.month,
+    );
+    final DateTime startDate = monthDates["start"]!;
+    final DateTime endDate = monthDates["end"]!;
+
+    // Filter selected month and warehouse records
+    String selectedWarehouseCode = "";
+
+    if (_selectedBranch != null &&
+        _selectedBranch!.isNotEmpty &&
+        _selectedBranch != "All Warehouses") {
+      final warehouse = stockData.where(
+        (e) => e.warehouseName == _selectedBranch,
+      );
+
+      if (warehouse.isNotEmpty) {
+        selectedWarehouseCode = warehouse.first.warehouseCode;
+      }
+    }
+
+    final applyWarehouseFilter =
+        _selectedBranch != null &&
+        _selectedBranch!.isNotEmpty &&
+        _selectedBranch != 'All Warehouses';
+
+    final filteredList = stockInTransitList.where((e) {
+      try {
+        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
+
+        if (!(docDate.isAtLeast(startDate) && docDate.isAtMost(endDate))) {
+          return false;
+        }
+
+        if (applyWarehouseFilter && e.fromWarehouse != selectedWarehouseCode) {
+          return false;
+        }
+
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+
+    var inventoryList = filteredList.where((data) {
+      final subGroupMatch =
+          selectedSubGroup.isEmpty ||
+          (selectedItems?.contains(data.itemDescription.trim()) ?? false);
+
+      return subGroupMatch;
+    }).toList();
+
+    String itemDescription = "";
+    double actualStockQty = 0.00;
+    List<StockItemData> stkData = [];
+    Set<String> processedItemCodes = {};
+
+    for (var invList in inventoryList) {
+      if (!processedItemCodes.contains(invList.itemDescription)) {
+        itemDescription = invList.itemDescription;
+        for (var list in inventoryList.where(
+          (e) => e.itemDescription == itemDescription,
+        )) {
+          double actualQty = double.parse(list.quantity);
+          actualStockQty += actualQty;
+        }
+
+        stkData.add(
+          StockItemData(
+            itemSubGroup: itemDescription,
+            targetStock: 0,
+            actualStock: actualStockQty,
+            difference: 0,
+          ),
+        );
+        processedItemCodes.add(invList.itemDescription);
+      }
+      actualStockQty = 0;
+      itemDescription = "";
+    }
+
+    stkData.sort((a, b) => (b.actualStock).compareTo(a.actualStock));
+
+    stockStatementTransitData = StockItemList(stockData: stkData);
+    chartDataLoaded = true;
+  }
+
   Future<void> loadData(String selectedUser) async {
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
@@ -300,17 +665,37 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         : selectedUser;
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
-    await _loadDailyRMStatement(userName, userLevel);
-    // _selectedBranch = "Bangalore FG Inventory Store Warehouse";
+    await _loadDailyRMStatementAPI(userName, userLevel);
+    await _loadStockInTransitListAPI(userName, userLevel);
     _selectedBranch = "All Warehouses";
     await _loadDailyRMGraph();
+    await _loadItemGraph();
+    await _loadTransitGraph();
+  }
+
+  Future<void> loadDataWithFilter() async {
+    setState(() {
+      chartDataLoaded = false;
+    });
+    stockData = stockDataTemp;
+    stockInTransitList = stockInTransitListTemp;
+
+    await _loadItemGraph();
+    await _loadTransitGraph();
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> loadDataClearFilter() async {
     chartDataLoaded = false;
     stockData = stockDataTemp;
+    stockInTransitList = stockInTransitListTemp;
+    selectedSubGroup = selectedSubGroup = 'Raw Material';
     _selectedBranch = "All Warehouses";
-    _loadDailyRMGraph();
+    await _loadDailyRMGraph();
+    await _loadItemGraph();
+    await _loadTransitGraph();
     setState(() {
       chartDataLoaded = true;
     });
@@ -479,6 +864,57 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     );
   }
 
+  Future<void> generateItemStockStatementExcel(
+    BuildContext context,
+    StockItemList stockStatementItemData,
+  ) async {
+    int slNo = 1;
+    await reportService.generateExcel(
+      sheetName: 'ItemWiseStockStatement',
+      headers: ['SL NO', 'Item Name', 'Target', 'Actual stock', 'Difference'],
+      rows: stockStatementItemData.stockData
+          .map(
+            (stkData) => [
+              slNo++,
+              stkData.itemSubGroup,
+              stkData.targetStock,
+              stkData.actualStock,
+              stkData.difference,
+            ],
+          )
+          .toList(),
+      fileName: 'rm_item_wise_stock_statement.xlsx',
+      amountColumns: [3, 4, 5],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - RM Item Wise Stock Statement',
+    );
+  }
+
+  Future<void> generateStockTransitStatementExcel(
+    BuildContext context,
+    StockItemList stockStatementTransitData,
+  ) async {
+    int slNo = 1;
+    await reportService.generateExcel(
+      sheetName: 'StockInTransitStatement',
+      headers: ['SL NO', 'Item Name', 'Stock In Transit'],
+      rows: stockStatementTransitData.stockData
+          .map(
+            (stkData) => [
+              slNo++,
+              stkData
+                  .itemSubGroup, // Item name will come in itemSubGroup field in this chart
+              stkData.actualStock,
+            ],
+          )
+          .toList(),
+      fileName: 'rm_stock_in_transit_statement.xlsx',
+      amountColumns: [3],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - RM Stock In Transit Statement',
+    );
+  }
+
   Future<void> selectMonth(BuildContext context) async {
     final DateTime? picked = await showMonthPicker(
       context: context,
@@ -494,6 +930,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       });
       LoadDates();
       await _loadDailyRMGraph();
+      loadDataWithFilter();
     }
   }
 
@@ -539,6 +976,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
+  final ScrollController _itemHorizontalController = ScrollController();
+  final ScrollController _transitHorizontalController = ScrollController();
   @override
   void initState() {
     super.initState();
@@ -552,11 +991,25 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
   void dispose() {
     _verticalScrollController.dispose();
     _horizontalController.dispose();
+    _itemHorizontalController.dispose();
+    _transitHorizontalController.dispose();
     super.dispose();
   }
 
-  double getMaxValue(double maxValue, double divVal) {
-    return (maxValue / divVal).ceil() * divVal;
+  double getMaxValue(double maxValue) {
+    if (maxValue <= 100000) {
+      return (maxValue / 10000).ceil() * 10000;
+    } else if (maxValue <= 500000) {
+      return (maxValue / 50000).ceil() * 50000;
+    } else if (maxValue <= 1000000) {
+      return (maxValue / 100000).ceil() * 100000;
+    } else if (maxValue <= 5000000) {
+      return (maxValue / 500000).ceil() * 500000;
+    } else if (maxValue <= 10000000) {
+      return (maxValue / 1000000).ceil() * 1000000;
+    } else {
+      return (maxValue / 5000000).ceil() * 5000000;
+    }
   }
 
   @override
@@ -629,6 +1082,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
                                 });
                                 if (newValue != null) {
                                   await _loadDailyRMGraph();
+                                  await _loadItemGraph();
+                                  await _loadTransitGraph();
                                 }
                               },
                             ),
@@ -640,6 +1095,87 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
                         _achievementKPIs(),
                         const SizedBox(height: 12),
                         _achievementTrendChart(),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Wise Stock',
+                    spacing: 10,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 180, 157, 47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Target', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 91, 181, 103),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Actual', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateItemStockStatementExcel(
+                            context,
+                            stockStatementItemData,
+                          );
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [const SizedBox(height: 16), _itemGraph()],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Stock In Transit',
+                    spacing: 10,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 199, 7, 173),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Transit', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {
+                          generateStockTransitStatementExcel(
+                            context,
+                            stockStatementTransitData,
+                          );
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        _stockInTransitGraph(),
                       ],
                     ),
                   ),
@@ -771,25 +1307,6 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
                   getTooltipColor: (_) => Colors.white,
                   tooltipBorder: const BorderSide(color: Colors.grey, width: 1),
 
-                  // getTooltipItems: (spots) {
-                  //   return spots.map((spot) {
-                  //     final item = chartData[spot.x.toInt()];
-                  //     print(
-                  //       "barIndex=${spot.barIndex}, "
-                  //       "spotIndex=${spot.spotIndex}, "
-                  //       "x=${spot.x}, "
-                  //       "y=${spot.y}",
-                  //     );
-                  //     return LineTooltipItem(
-                  //       "${DateFormat('dd-MMM-yyyy').format(item.date)}\n"
-                  //       "Target : ${formatAmount(item.targetStock)}\n"
-                  //       "Actual : ${formatAmount(item.actualStock)}\n"
-                  //       "Achievement : ${item.achievedPercentage.toStringAsFixed(1)}%\n"
-                  //       "Monthly Avg : ${monthlyAveragePercentage.toStringAsFixed(1)}%",
-                  //       const TextStyle(color: Colors.black, fontSize: 12),
-                  //     );
-                  //   }).toList();
-                  // },
                   getTooltipItems: (touchedSpots) {
                     return touchedSpots.map((spot) {
                       if (spot.barIndex == 1) {
@@ -884,6 +1401,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
                         setState(() {
                           selectedSubGroup = group;
                         });
+                        loadDataWithFilter();
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -913,6 +1431,238 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
           ),
         );
       },
+    );
+  }
+
+  Widget _itemGraph() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double chartWidth = 0.0;
+    int len = stockStatementItemData.stockData.take(50).length;
+    if (len > 5) {
+      chartWidth = screenWidth + (50 * len);
+    } else {
+      chartWidth = screenWidth;
+    }
+    double? maxY = stockStatementItemData.stockData.isNotEmpty
+        ? stockStatementItemData.stockData
+              .map(
+                (e) => e.actualStock > e.targetStock
+                    ? e.actualStock
+                    : e.targetStock,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+    return FinanceHorizontalChartScroll(
+      controller: _itemHorizontalController,
+      verticalController: _verticalScrollController,
+      child: SizedBox(
+        height: 300,
+        width: chartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemStock,
+                  axisNameSize: 20,
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemStockChartData(
+                stockStatementItemData.stockData.take(50).toList(),
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      stockStatementItemData.stockData[grpIndex].itemSubGroup,
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "\nTarget Stock : ${formatAmount(stockStatementItemData.stockData[grpIndex].targetStock)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nActual Stock : ${formatAmount(stockStatementItemData.stockData[grpIndex].actualStock)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\nDifference : ${formatAmount(stockStatementItemData.stockData[grpIndex].difference)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stockInTransitGraph() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double chartWidth = 0.0;
+    int len = stockStatementTransitData.stockData.take(50).length;
+    if (len > 5) {
+      chartWidth = screenWidth + (50 * len);
+    } else {
+      chartWidth = screenWidth;
+    }
+    double? maxY = stockStatementTransitData.stockData.isNotEmpty
+        ? stockStatementTransitData.stockData
+              .map(
+                (e) => e.actualStock > e.targetStock
+                    ? e.actualStock
+                    : e.targetStock,
+              )
+              .reduce((a, b) => a > b ? a : b)
+        : 0;
+    return FinanceHorizontalChartScroll(
+      controller: _transitHorizontalController,
+      verticalController: _verticalScrollController,
+      child: SizedBox(
+        height: 300,
+        width: chartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(maxY),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesStockInTransit,
+                  axisNameSize: 20,
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _stockInTransitChartData(
+                stockStatementTransitData.stockData.take(50).toList(),
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      stockStatementTransitData
+                          .stockData[grpIndex]
+                          .itemSubGroup,
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "\nStock In Transit: ${formatAmount(stockStatementTransitData.stockData[grpIndex].actualStock)}",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

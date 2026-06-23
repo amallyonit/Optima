@@ -9,6 +9,7 @@ import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/dai
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpower_costing/manpower_dashboard_page.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
 import '../../../../notificationService.dart';
+import 'pendingSOReport.dart';
 import 'sampleDataDetailsPage.dart';
 import 'agingReport.dart';
 import 'cmsCostingReport.dart';
@@ -72,7 +73,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
         _items[20],
       ],
 
-      "Sales Reports": [_items[6], _items[7], _items[11]],
+      "Sales Reports": [_items[6], _items[7], _items[11], _items[21]],
 
       "Production Reports": [
         _items[8],
@@ -106,7 +107,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
       pageBuilder: () => const SummaryOfRawMaterials(),
     ),
     ReportItem(
-      title: 'FG & RM Ageing',
+      title: 'Inventory Ageing',
       pageBuilder: () => const AgingReportPage(),
     ),
     ReportItem(
@@ -170,6 +171,10 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
     ReportItem(
       title: 'Daily Finished Goods',
       pageBuilder: () => const DailyFinishedGoodsReport(),
+    ),
+    ReportItem(
+      title: 'Pending Sales Orders',
+      pageBuilder: () => const PendingSOReportPage(),
     ),
   ];
 

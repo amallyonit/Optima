@@ -1982,26 +1982,12 @@ class InventoryAgingSummary {
 }
 
 class InventoryAgingSummaryMISReport {
-  double a0to30DaysTotalQty = 0;
-  double a0to30DaysTotalVal = 0;
-  double a31to45DaysTotalQty = 0;
-  double a31to45DaysTotalVal = 0;
-  double a46to60DaysTotalQty = 0;
-  double a46to60DaysTotalVal = 0;
+  double a0to60DaysTotalQty = 0;
+  double a0to60DaysTotalVal = 0;
   double a61to90DaysTotalQty = 0;
   double a61to90DaysTotalVal = 0;
-  double a91to120DaysTotalQty = 0;
-  double a91to120DaysTotalVal = 0;
-  double a121to150DaysTotalQty = 0;
-  double a121to150DaysTotalVal = 0;
-  double a151to180DaysTotalQty = 0;
-  double a151to180DaysTotalVal = 0;
-  double a181to365DaysTotalQty = 0;
-  double a181to365DaysTotalVal = 0;
-  double a366to730DaysTotalQty = 0;
-  double a366to730DaysTotalVal = 0;
-  double a730DaysTotalQty = 0;
-  double a730DaysTotalVal = 0;
+  double a90DaysTotalQty = 0;
+  double a90DaysTotalVal = 0;
 }
 
 class InventoryAgingList {
@@ -5595,11 +5581,13 @@ class StockItemData {
   final double targetStock;
   final double actualStock;
   final double difference;
+  String warehouseCode;
   StockItemData({
     required this.itemSubGroup,
     required this.targetStock,
     required this.actualStock,
     required this.difference,
+    this.warehouseCode = "",
   });
 }
 
@@ -6578,4 +6566,27 @@ class ReadyToDispatchChartData {
     required this.readyValues,
     required this.partialValues,
   });
+}
+
+class PartialDispatchChartData {
+  final String groupName;
+  final Map<String, double> partialValues;
+
+  PartialDispatchChartData({
+    required this.groupName,
+    required this.partialValues,
+  });
+}
+
+class WarehouseWiseStockData {
+  final String groupName;
+  final Map<String, double> warehouseValues;
+
+  WarehouseWiseStockData({
+    required this.groupName,
+    required this.warehouseValues,
+  });
+
+  double get total =>
+      warehouseValues.values.fold(0.0, (sum, value) => sum + value);
 }

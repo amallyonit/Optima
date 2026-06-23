@@ -3,24 +3,23 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 import '../../../../notificationService.dart';
 import '../../dashboard_card_ui.dart';
 import '../../ReportService.dart';
-
-final reportService = ReportService();
-
-StockItemList stockStatementData = StockItemList(stockData: []);
-StockItemList stockStatementItemData = StockItemList(stockData: []);
-StockItemList stockStatementTransitData = StockItemList(stockData: []);
+import '../../report_service_platform.dart';
 
 class StockStatementMISProvider with ChangeNotifier {
   List<InventoryLevelList> _salesList = [];
@@ -38,7 +37,27 @@ class StockStatementPage extends StatefulWidget {
   State<StockStatementPage> createState() => _StockStatementPageState();
 }
 
+class WarehouseStockRow {
+  final String rowLabel;
+
+  final Map<String, double> target;
+  final Map<String, double> actual;
+  final Map<String, double> difference;
+
+  WarehouseStockRow({
+    required this.rowLabel,
+    required this.target,
+    required this.actual,
+    required this.difference,
+  });
+}
+
 class _StockStatementPageState extends State<StockStatementPage> {
+  final reportService = ReportService();
+
+  StockItemList stockStatementData = StockItemList(stockData: []);
+  StockItemList stockStatementItemData = StockItemList(stockData: []);
+  StockItemList stockStatementTransitData = StockItemList(stockData: []);
   late Future<void> loadDataFuture;
   DateTime? currentDate;
   DateTime? fiscalYearStartDate;
@@ -48,6 +67,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
   List<InventoryLevelList> stockDataTemp = [];
   List<StockInTransitList> stockInTransitList = [];
   List<StockInTransitList> stockInTransitListTemp = [];
+  List<WarehouseWiseStockData> warehouseWiseStockData = [];
 
   double targetStockHeader = 0;
   double actualStockHeader = 0;
@@ -616,6 +636,285 @@ class _StockStatementPageState extends State<StockStatementPage> {
     });
   }
 
+  Future<String> getStorageDirectory() async {
+    String? externalDir = (await getExternalStorageDirectory())?.path;
+    if (externalDir != null) {
+      return externalDir;
+    } else {
+      return (await getApplicationDocumentsDirectory()).path;
+    }
+  }
+
+  String _getExcelColumnName(int columnNumber) {
+    String columnName = '';
+
+    while (columnNumber > 0) {
+      int remainder = (columnNumber - 1) % 26;
+
+      columnName = String.fromCharCode(65 + remainder) + columnName;
+
+      columnNumber = (columnNumber - remainder - 1) ~/ 26;
+    }
+
+    return columnName;
+  }
+
+  List<WarehouseStockRow> _prepareWarehouseWiseStockData() {
+    final Map<String, WarehouseStockRow> result = {};
+
+    for (final item in stockData) {
+      final rowLabel = item.itemSubGroup;
+      final warehouse = item.warehouseCode;
+
+      final target =
+          double.tryParse(item.minInventory.replaceAll(',', '')) ?? 0;
+
+      final actual = double.tryParse(item.quantity.replaceAll(',', '')) ?? 0;
+
+      final difference = target - actual;
+
+      result.putIfAbsent(
+        rowLabel,
+        () => WarehouseStockRow(
+          rowLabel: rowLabel,
+          target: {},
+          actual: {},
+          difference: {},
+        ),
+      );
+
+      final row = result[rowLabel]!;
+
+      row.target[warehouse] = (row.target[warehouse] ?? 0) + target;
+
+      row.actual[warehouse] = (row.actual[warehouse] ?? 0) + actual;
+
+      row.difference[warehouse] = (row.difference[warehouse] ?? 0) + difference;
+    }
+
+    return result.values.toList();
+  }
+
+  Future<void> exportWarehouseWiseStockExcel() async {
+    try {
+      final data = _prepareWarehouseWiseStockData();
+
+      if (data.isEmpty) {
+        NotificationService.warning(
+          title: "Warning",
+          message: "No data available to export.",
+        );
+        return;
+      }
+
+      final warehouses = stockData.map((e) => e.warehouseCode).toSet().toList()
+        ..sort();
+
+      final workbook = xlsio.Workbook();
+      final sheet = workbook.worksheets[0];
+
+      sheet.name = "Stock Statement";
+
+      // --------------------------------------------------
+      // TITLE
+      // --------------------------------------------------
+
+      final totalColumns = 2 + (warehouses.length * 3) + 3;
+
+      final titleRange = sheet.getRangeByIndex(1, 1, 1, totalColumns);
+
+      titleRange.merge();
+
+      titleRange.setText(
+        "${ApiHelper.companyName}\nOptima CRM - Production[MIS] - Stock Statement",
+      );
+
+      titleRange.cellStyle.bold = true;
+      titleRange.cellStyle.fontSize = 14;
+      titleRange.cellStyle.wrapText = true;
+
+      sheet.getRangeByIndex(1, 1).rowHeight = 50;
+
+      // --------------------------------------------------
+      // USER
+      // --------------------------------------------------
+
+      final userName = await reportService.getUserName();
+
+      sheet.getRangeByIndex(2, 1).setText("User : $userName");
+
+      // --------------------------------------------------
+      // HEADER ROW 1
+      // --------------------------------------------------
+
+      sheet.getRangeByIndex(4, 1, 5, 1).merge();
+      sheet.getRangeByIndex(4, 1).setText("SL NO");
+
+      sheet.getRangeByIndex(4, 2, 5, 2).merge();
+      sheet.getRangeByIndex(4, 2).setText("Row Labels");
+
+      int col = 3;
+
+      for (final warehouse in warehouses) {
+        sheet.getRangeByIndex(4, col, 4, col + 2).merge();
+
+        sheet.getRangeByIndex(4, col).setText(warehouse);
+
+        sheet.getRangeByIndex(5, col).setText("Target");
+
+        sheet.getRangeByIndex(5, col + 1).setText("Actual Stock");
+
+        sheet.getRangeByIndex(5, col + 2).setText("Difference");
+
+        col += 3;
+      }
+      sheet.getRangeByIndex(4, col, 4, col + 2).merge();
+
+      sheet.getRangeByIndex(4, col).setText('Grand Total');
+
+      sheet.getRangeByIndex(5, col).setText('Target');
+
+      sheet.getRangeByIndex(5, col + 1).setText('Actual Stock');
+
+      sheet.getRangeByIndex(5, col + 2).setText('Difference');
+
+      // --------------------------------------------------
+      // HEADER STYLE
+      // --------------------------------------------------
+
+      final headerRange = sheet.getRangeByIndex(4, 1, 5, totalColumns);
+
+      headerRange.cellStyle.bold = true;
+      headerRange.cellStyle.backColor = "#E7F3FF";
+      headerRange.cellStyle.hAlign = xlsio.HAlignType.center;
+      headerRange.cellStyle.vAlign = xlsio.VAlignType.center;
+
+      sheet.getRangeByIndex(4, col, 5, col + 2).cellStyle.backColor = '#FFF2CC';
+
+      sheet.getRangeByIndex(4, col, 5, col + 2).cellStyle.bold = true;
+      // --------------------------------------------------
+      // DATA
+      // --------------------------------------------------
+
+      int rowIndex = 6;
+      int slNo = 1;
+
+      for (final rowData in data) {
+        sheet.getRangeByIndex(rowIndex, 1).setNumber(slNo.toDouble());
+
+        sheet.getRangeByIndex(rowIndex, 2).setText(rowData.rowLabel);
+
+        col = 3;
+        double grandTarget = 0;
+        double grandActual = 0;
+        double grandDifference = 0;
+
+        for (final warehouse in warehouses) {
+          final target = rowData.target[warehouse] ?? 0;
+
+          final actual = rowData.actual[warehouse] ?? 0;
+
+          final difference = rowData.difference[warehouse] ?? 0;
+
+          grandTarget += target;
+          grandActual += actual;
+          grandDifference += difference;
+
+          sheet.getRangeByIndex(rowIndex, col).setNumber(target);
+
+          sheet.getRangeByIndex(rowIndex, col + 1).setNumber(actual);
+
+          sheet.getRangeByIndex(rowIndex, col + 2).setNumber(difference);
+
+          col += 3;
+        }
+
+        sheet.getRangeByIndex(rowIndex, col).setNumber(grandTarget);
+
+        sheet.getRangeByIndex(rowIndex, col + 1).setNumber(grandActual);
+
+        sheet.getRangeByIndex(rowIndex, col + 2).setNumber(grandDifference);
+
+        rowIndex++;
+        slNo++;
+      }
+
+      // --------------------------------------------------
+      // TOTAL ROW
+      // --------------------------------------------------
+
+      sheet.getRangeByIndex(rowIndex, 1).setText("Total");
+
+      sheet
+              .getRangeByIndex(rowIndex, 1, rowIndex, totalColumns)
+              .cellStyle
+              .backColor =
+          "#FFF2CC";
+
+      sheet
+              .getRangeByIndex(rowIndex, 1, rowIndex, totalColumns)
+              .cellStyle
+              .bold =
+          true;
+
+      for (int c = 3; c <= totalColumns; c++) {
+        final letter = _getExcelColumnName(c);
+
+        sheet
+            .getRangeByIndex(rowIndex, c)
+            .setFormula('SUM(${letter}6:${letter}${rowIndex - 1})');
+      }
+
+      // --------------------------------------------------
+      // NUMBER FORMAT
+      // --------------------------------------------------
+
+      for (int c = 3; c <= totalColumns; c++) {
+        sheet.getRangeByIndex(6, c, rowIndex, c).numberFormat = '#,##0';
+      }
+
+      // --------------------------------------------------
+      // BORDERS
+      // --------------------------------------------------
+
+      final fullRange = sheet.getRangeByIndex(4, 1, rowIndex, totalColumns);
+
+      fullRange.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+      // --------------------------------------------------
+      // AUTOFIT
+      // --------------------------------------------------
+
+      for (int c = 1; c <= totalColumns; c++) {
+        sheet.autoFitColumn(c);
+      }
+
+      // --------------------------------------------------
+      // SAVE
+      // --------------------------------------------------
+
+      final bytes = workbook.saveAsStream();
+      workbook.dispose();
+
+      final fileName =
+          "stock_statement_${DateTime.now().millisecondsSinceEpoch}.xlsx";
+
+      if (kIsWeb) {
+        downloadExcelWeb(fileName, bytes);
+      } else {
+        final dir = await getStorageDirectory();
+
+        final file = File('$dir/$fileName');
+
+        await file.writeAsBytes(bytes, flush: true);
+
+        OpenFile.open(file.path);
+      }
+    } catch (e) {
+      debugPrint("Stock Statement Excel Error : $e");
+    }
+  }
+
   Future<void> generateStockStatementExcel(
     BuildContext context,
     StockItemList stockStatementData,
@@ -770,7 +1069,23 @@ class _StockStatementPageState extends State<StockStatementPage> {
                           },
                           icon: const Icon(Icons.filter_alt_outlined),
                         ),
-                        const SizedBox(width: 5),
+                        PopupMenuButton(
+                          onSelected: (value) {},
+                          itemBuilder: (BuildContext bc) {
+                            return [
+                              PopupMenuItem(
+                                onTap: () {
+                                  setState(() {
+                                    exportWarehouseWiseStockExcel();
+                                  });
+                                },
+                                child: const Row(
+                                  children: [Text("Download Excel")],
+                                ),
+                              ),
+                            ];
+                          },
+                        ),
                       ],
                     ),
                   ],
