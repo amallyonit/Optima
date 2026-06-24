@@ -101,13 +101,10 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
           "ToDate": formatApiRequestDate(currentDate!),
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "sapToken":
-              DataManager.readSapToken(), // Ensure DataManager is imported
+          "sapToken": DataManager.readSapToken(),
         };
 
-        // Replace with your actual API Endpoint
-        const apiUrl =
-            '${ApiHelper.baseUrl}CRM_TransportCostList'; // Assuming Sales/Outward endpoint name
+        const apiUrl = '${ApiHelper.baseUrl}CRM_TransportCostList';
 
         final response = await http.post(
           Uri.parse(apiUrl),
@@ -191,7 +188,9 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
             : item.customerName;
 
         // Summation
-        groupedData[key] = (groupedData[key] ?? 0) + cost;
+        if (cost != 0) {
+          groupedData[key] = (groupedData[key] ?? 0) + cost;
+        }
       }
     }
 
@@ -270,16 +269,16 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
     }
 
     await reportService.generateExcel(
-      sheetName: 'OutwardFreight',
+      sheetName: 'CarriageOutward',
       headers: ['Customer Name', 'Freight Charges'],
       rows: _graphData
           .map((data) => [data.customerName, data.totalFreight])
           .toList(),
-      fileName: 'freight_outward.xlsx',
+      fileName: 'carriage_outward.xlsx',
       amountColumns: [2],
       addTotalRow: true,
       reportTitle:
-          'Production[MIS] - Freight Outward - Branch: $_selectedBranch - ${DateFormat('MMMM yyyy').format(selectedDate)}',
+          'Production[MIS] - Carriage Outward - Branch: $_selectedBranch - ${DateFormat('MMMM yyyy').format(selectedDate)}',
     );
   }
 
@@ -408,7 +407,7 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
                     children: [
                       const SizedBox(width: 15),
                       Text(
-                        "Outward Carriage Cost",
+                        "Carriage Outward",
                         style: TextStyle(
                           fontSize: 14,
                           fontFamily: 'Poppins',
@@ -434,7 +433,7 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
                       child: const Text("Download Excel"),
                     ),
                   ],
-                  
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

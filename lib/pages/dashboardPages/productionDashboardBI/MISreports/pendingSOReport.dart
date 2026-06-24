@@ -771,7 +771,6 @@ class _PendingSOReportPageState extends State<PendingSOReportPage> {
                             ];
                           },
                         ),
-                      
                       ],
                     ),
                   ],

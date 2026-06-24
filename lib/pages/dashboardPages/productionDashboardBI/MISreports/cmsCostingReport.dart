@@ -149,7 +149,7 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
 
   Future<void> _loadInventoryLevel(String UserName, String UserLevel) async {
     int index = 0;
-    int limit = 10000; // Maximum limit to fetch all data
+    int limit = 10000;
     int fetchedCount = 0;
     List<InventoryLevelList> invLevelList = [];
     try {
@@ -372,7 +372,6 @@ class _CMSCostingReportPageState extends State<CMSCostingReportPage> {
                     ),
                   ),
                 ),
-              
               ],
             ),
           )

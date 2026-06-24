@@ -6590,3 +6590,26 @@ class WarehouseWiseStockData {
   double get total =>
       warehouseValues.values.fold(0.0, (sum, value) => sum + value);
 }
+
+class WarehouseSalesSummary {
+  double totalOrders = 0;
+  double totalValue = 0;
+
+  double deliveredOrders = 0;
+  double deliveredValue = 0;
+
+  double pendingOrders = 0;
+  double pendingValue = 0;
+
+  double onTimeOrders = 0;
+  double onTimeValue = 0;
+
+  double delay1to5Orders = 0;
+  double delay1to5Value = 0;
+
+  double delay6to10Orders = 0;
+  double delay6to10Value = 0;
+
+  double delayAbove10Orders = 0;
+  double delayAbove10Value = 0;
+}

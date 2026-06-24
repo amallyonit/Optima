@@ -190,7 +190,10 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
     return {'start': firstDayOfMonth, 'end': lastDayOfMonth};
   }
 
-  Future<void> _loadDeliveryDetails(String UserName, String UserLevel) async {
+  Future<void> _loadDeliveryDetailsAPI(
+    String UserName,
+    String UserLevel,
+  ) async {
     int index = 0;
     int limit = 10000;
     int fetchedCount = 0;
@@ -237,9 +240,6 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
 
         deliveryData = salesList.toList();
         deliveryDataTemp = salesList.toList();
-        deliveryData = deliveryData
-            .where((test) => test.branchName == selectedBranch)
-            .toList();
       });
     } catch (e) {
       if (!mounted) return;
@@ -531,8 +531,8 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
         : selectedUser;
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
-    selectedBranch = "Karnataka State";
-    await _loadDeliveryDetails(userName, userLevel);
+    selectedBranch = "All Branches";
+    await _loadDeliveryDetailsAPI(userName, userLevel);
     await _loadSalesVsProduction();
     await _loadMonthlySalesVsProduction();
     setState(() {
@@ -555,8 +555,10 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
     setState(() {
       chartDataLoaded = false;
     });
-
-    await loadData("");
+    selectedDate = currentDate;
+    selectedBranch = "All Branches";
+    LoadDates();
+    await applyFilters();
 
     setState(() {
       chartDataLoaded = true;
@@ -639,9 +641,14 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
 
     chartDataLoaded = false;
 
-    deliveryData = deliveryDataTemp
-        .where((e) => e.branchName == selectedBranch)
-        .toList();
+    deliveryData = deliveryDataTemp.where((data) {
+      final warehouseMatch =
+          selectedBranch.isEmpty ||
+          selectedBranch == "All Branches" ||
+          data.branchName == selectedBranch;
+
+      return warehouseMatch;
+    }).toList();
 
     await _loadSalesVsProduction();
     await _loadMonthlySalesVsProduction();
@@ -737,265 +744,260 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            ItemSubGroupDropdown(
+                            BranchDropdown(
                               production: deliveryDataTemp,
                               onChanged: (newValue) {
-                                selectedBranch = newValue ?? "Karnataka State";
+                                selectedBranch = newValue ?? "All Branches";
                                 loadDataWithBranchFilter(newValue!);
                               },
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
+
+                        // Center(
+                        //   child: Row(
+                        //     mainAxisAlignment: MainAxisAlignment.center,
+                        //     children: [
+                        //       SizedBox(
+                        //         child: Row(
+                        //           children: [
+                        //             Padding(
+                        //               padding: const EdgeInsets.only(
+                        //                 top: 4.0,
+                        //                 right: 4.0,
+                        //               ),
+                        //               child: CircularPercentIndicator(
+                        //                 arcType: ArcType.HALF,
+                        //                 radius: 70.0,
+                        //                 lineWidth: 27.0,
+                        //                 animation: true,
+                        //                 percent: completedOrdersPercent / 100,
+                        //                 curve: Curves.linear,
+                        //                 circularStrokeCap:
+                        //                     CircularStrokeCap.butt,
+                        //                 progressColor: Colors.green,
+                        //                 arcBackgroundColor: Colors.red,
+                        //                 center: Column(
+                        //                   mainAxisAlignment:
+                        //                       MainAxisAlignment.center,
+                        //                   children: [
+                        //                     const SizedBox(height: 45),
+                        //                     Row(
+                        //                       mainAxisAlignment:
+                        //                           MainAxisAlignment.center,
+                        //                       children: [
+                        //                         Text(
+                        //                           "Completed: $completedOrders",
+                        //                           style: const TextStyle(
+                        //                             fontWeight: FontWeight.bold,
+                        //                             fontSize: 11.0,
+                        //                             color: Colors.green,
+                        //                           ),
+                        //                         ),
+                        //                       ],
+                        //                     ),
+                        //                     Row(
+                        //                       mainAxisAlignment:
+                        //                           MainAxisAlignment.center,
+                        //                       children: [
+                        //                         Text(
+                        //                           "Pending: $pendingOrders",
+                        //                           textAlign: TextAlign.center,
+                        //                           style: const TextStyle(
+                        //                             fontSize: 10.0,
+                        //                             color: Colors.black,
+                        //                           ),
+                        //                         ),
+                        //                       ],
+                        //                     ),
+                        //                   ],
+                        //                 ),
+                        //               ),
+                        //             ),
+                        //             const SizedBox(width: 30),
+                        //             Padding(
+                        //               padding: const EdgeInsets.only(
+                        //                 top: 4.0,
+                        //                 right: 4.0,
+                        //               ),
+                        //               child: CircularPercentIndicator(
+                        //                 arcType: ArcType.HALF,
+                        //                 radius: 70.0,
+                        //                 lineWidth: 27.0,
+                        //                 animation: true,
+                        //                 percent:
+                        //                     completedOrdersPercentage / 100,
+                        //                 curve: Curves.linear,
+                        //                 circularStrokeCap:
+                        //                     CircularStrokeCap.butt,
+                        //                 progressColor: Colors.green,
+                        //                 arcBackgroundColor: Colors.red,
+                        //                 center: Column(
+                        //                   mainAxisAlignment:
+                        //                       MainAxisAlignment.center,
+                        //                   children: [
+                        //                     const SizedBox(height: 45),
+                        //                     Row(
+                        //                       mainAxisAlignment:
+                        //                           MainAxisAlignment.center,
+                        //                       children: [
+                        //                         Text(
+                        //                           "Completed: ${completedOrdersPercentage.toStringAsFixed(2)}",
+                        //                           style: const TextStyle(
+                        //                             fontWeight: FontWeight.bold,
+                        //                             fontSize: 11.0,
+                        //                             color: Colors.green,
+                        //                           ),
+                        //                         ),
+                        //                       ],
+                        //                     ),
+                        //                     Row(
+                        //                       mainAxisAlignment:
+                        //                           MainAxisAlignment.center,
+                        //                       children: [
+                        //                         Text(
+                        //                           "Pending: ${pendingOrdersPercentage.toStringAsFixed(2)}",
+                        //                           textAlign: TextAlign.center,
+                        //                           style: const TextStyle(
+                        //                             fontSize: 10.0,
+                        //                             color: Colors.black,
+                        //                           ),
+                        //                         ),
+                        //                       ],
+                        //                     ),
+                        //                   ],
+                        //                 ),
+                        //               ),
+                        //             ),
+                        //           ],
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
                         Center(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                child: Row(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 4.0,
-                                        right: 4.0,
+                              // COUNT INDICATOR
+                              Column(
+                                children: [
+                                  CircularPercentIndicator(
+                                    arcType: ArcType.HALF,
+                                    radius: 70.0,
+                                    lineWidth: 27.0,
+                                    animation: true,
+                                    percent: completedOrdersPercent / 100,
+                                    curve: Curves.linear,
+                                    circularStrokeCap: CircularStrokeCap.butt,
+                                    progressColor: Colors.green,
+                                    arcBackgroundColor: Colors.red,
+                                    center: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 0,
                                       ),
-                                      child: CircularPercentIndicator(
-                                        arcType: ArcType.HALF,
-                                        radius: 70.0,
-                                        lineWidth: 27.0,
-                                        animation: true,
-                                        percent: completedOrdersPercent / 100,
-                                        curve: Curves.linear,
-                                        circularStrokeCap:
-                                            CircularStrokeCap.butt,
-                                        progressColor: Colors.green,
-                                        arcBackgroundColor: Colors.red,
-                                        center: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const SizedBox(height: 45),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  "Completed: $completedOrders",
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 11.0,
-                                                    color: Colors.green,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  "Pending: $pendingOrders",
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                    fontSize: 10.0,
-                                                    color: Colors.black,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.blue.shade200,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Count",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 30),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 4.0,
-                                        right: 4.0,
-                                      ),
-                                      child: CircularPercentIndicator(
-                                        arcType: ArcType.HALF,
-                                        radius: 70.0,
-                                        lineWidth: 27.0,
-                                        animation: true,
-                                        percent:
-                                            completedOrdersPercentage / 100,
-                                        curve: Curves.linear,
-                                        circularStrokeCap:
-                                            CircularStrokeCap.butt,
-                                        progressColor: Colors.green,
-                                        arcBackgroundColor: Colors.red,
-                                        center: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const SizedBox(height: 45),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  "Completed: ${completedOrdersPercentage.toStringAsFixed(2)}",
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 11.0,
-                                                    color: Colors.green,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  "Pending: ${pendingOrdersPercentage.toStringAsFixed(2)}",
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                    fontSize: 10.0,
-                                                    color: Colors.black,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16.0,
-                            right: 16.0,
-                            bottom: 16.0,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              SizedBox(
-                                height: 150,
-                                width: 100,
-                                child: PieChart(
-                                  PieChartData(
-                                    pieTouchData: PieTouchData(
-                                      touchCallback:
-                                          (
-                                            FlTouchEvent event,
-                                            pieTouchResponse,
-                                          ) {
-                                            setState(() {
-                                              if (!event
-                                                      .isInterestedForInteractions ||
-                                                  pieTouchResponse == null ||
-                                                  pieTouchResponse
-                                                          .touchedSection ==
-                                                      null) {
-                                                touchedIndex = -1;
-                                                return;
-                                              }
-                                              touchedIndex = pieTouchResponse
-                                                  .touchedSection!
-                                                  .touchedSectionIndex;
-                                            });
-                                          },
-                                    ),
-                                    borderData: FlBorderData(show: false),
-                                    sectionsSpace: 1,
-                                    centerSpaceRadius: 0,
-                                    startDegreeOffset: 180,
-                                    sections: _receivablesCategoryChart(),
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 75.0),
-                          child: Row(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // for (final categoryData in receivablesCategoryList.categoryData)
-                                    Column(
+                                  Transform.translate(
+                                    offset: const Offset(0, -45),
+                                    child: Column(
                                       children: [
-                                        Container(
-                                          height: 8,
-                                          width: 16,
-                                          color: Colors.green,
-                                          // color: getCategoryColor(categoryData.categoryId),
+                                        Text(
+                                          "Completed: $completedOrders",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: Colors.green,
+                                          ),
                                         ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          height: 8,
-                                          width: 16,
-                                          color: Colors.orange,
-                                          // color: getCategoryColor(categoryData.categoryId),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          height: 8,
-                                          width: 16,
-                                          color: Colors.grey,
-                                          // color: getCategoryColor(categoryData.categoryId),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          height: 8,
-                                          width: 16,
-                                          color: Colors.lightBlue,
-                                          // color: getCategoryColor(categoryData.categoryId),
+                                        Text(
+                                          "Pending: $pendingOrders",
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.black87,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
+
+                              const SizedBox(width: 40),
+
+                              // PERCENTAGE INDICATOR
                               Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 8.0),
-                                    child: Text(
-                                      "No. orders cleared before/on time: ${receivablesCategoryList.categoryData[0].noOfOrders}",
-                                      textAlign: TextAlign.left,
-                                      style: const TextStyle(fontSize: 10),
+                                  CircularPercentIndicator(
+                                    arcType: ArcType.HALF,
+                                    radius: 70.0,
+                                    lineWidth: 27.0,
+                                    animation: true,
+                                    percent: completedOrdersPercentage / 100,
+                                    curve: Curves.linear,
+                                    circularStrokeCap: CircularStrokeCap.butt,
+                                    progressColor: Colors.green,
+                                    arcBackgroundColor: Colors.red,
+                                    center: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                        vertical: 0,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.shade50,
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.purple.shade200,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "%",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 8.0),
-                                    child: Text(
-                                      "No. of orders delayed by 1 to 5 days: ${receivablesCategoryList.categoryData[1].noOfOrders} ",
-                                      textAlign: TextAlign.left,
-                                      style: const TextStyle(fontSize: 10),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 8.0),
-                                    child: Text(
-                                      "No. of orders delayed by 6 to 10 days:  ${receivablesCategoryList.categoryData[2].noOfOrders}",
-                                      textAlign: TextAlign.left,
-                                      style: const TextStyle(fontSize: 10),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 8.0),
-                                    child: Text(
-                                      "No. of orders delayed > 10 days: ${receivablesCategoryList.categoryData[3].noOfOrders}",
-                                      textAlign: TextAlign.left,
-                                      style: const TextStyle(fontSize: 10),
+                                  Transform.translate(
+                                    offset: const Offset(0, -45),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          "Completed: ${completedOrdersPercentage.toStringAsFixed(2)}%",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        Text(
+                                          "Pending: ${pendingOrdersPercentage.toStringAsFixed(2)}%",
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -1003,7 +1005,124 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        Transform.translate(
+                          offset: const Offset(0, -45),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  left: 16.0,
+                                  right: 16.0,
+                                  bottom: 16.0,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    SizedBox(
+                                      height: 150,
+                                      width: 100,
+                                      child: PieChart(
+                                        PieChartData(
+                                          pieTouchData: PieTouchData(
+                                            touchCallback:
+                                                (
+                                                  FlTouchEvent event,
+                                                  pieTouchResponse,
+                                                ) {
+                                                  setState(() {
+                                                    if (!event
+                                                            .isInterestedForInteractions ||
+                                                        pieTouchResponse ==
+                                                            null ||
+                                                        pieTouchResponse
+                                                                .touchedSection ==
+                                                            null) {
+                                                      touchedIndex = -1;
+                                                      return;
+                                                    }
+                                                    touchedIndex =
+                                                        pieTouchResponse
+                                                            .touchedSection!
+                                                            .touchedSectionIndex;
+                                                  });
+                                                },
+                                          ),
+                                          borderData: FlBorderData(show: false),
+                                          sectionsSpace: 1,
+                                          centerSpaceRadius: 0,
+                                          startDegreeOffset: 180,
+                                          sections: _receivablesCategoryChart(),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Transform.translate(
+                          offset: const Offset(0, -20),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Column(
+                                  children: [
+                                    Container(
+                                      height: 8,
+                                      width: 16,
+                                      color: Colors.green,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      height: 8,
+                                      width: 16,
+                                      color: Colors.orange,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      height: 8,
+                                      width: 16,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      height: 8,
+                                      width: 16,
+                                      color: Colors.lightBlue,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "No. orders cleared before/on time: ${receivablesCategoryList.categoryData[0].noOfOrders}",
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                    Text(
+                                      "No. of orders delayed by 1 to 5 days: ${receivablesCategoryList.categoryData[1].noOfOrders}",
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                    Text(
+                                      "No. of orders delayed by 6 to 10 days: ${receivablesCategoryList.categoryData[2].noOfOrders}",
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                    Text(
+                                      "No. of orders delayed > 10 days: ${receivablesCategoryList.categoryData[3].noOfOrders}",
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
                         _itemSubGroupGraph(),
                       ],
                     ),
@@ -1174,12 +1293,12 @@ class _SalesVsProductionPageState extends State<SalesVsProductionPage> {
   }
 }
 
-class ItemSubGroupDropdown extends StatefulWidget {
+class BranchDropdown extends StatefulWidget {
   final List production;
   final ValueChanged<String?> onChanged;
   final String placeholder;
 
-  const ItemSubGroupDropdown({
+  const BranchDropdown({
     super.key,
     required this.production,
     required this.onChanged,
@@ -1187,23 +1306,24 @@ class ItemSubGroupDropdown extends StatefulWidget {
   });
 
   @override
-  State<ItemSubGroupDropdown> createState() => _ItemSubGroupDropdownState();
+  State<BranchDropdown> createState() => _BranchDropdownState();
 }
 
-class _ItemSubGroupDropdownState extends State<ItemSubGroupDropdown> {
+class _BranchDropdownState extends State<BranchDropdown> {
   late final List<String> _items;
   String? _selected;
 
   @override
   void initState() {
     super.initState();
-    _items = _extractItemSubGroups(widget.production);
+    _items = _extractBranches(widget.production);
     _selected = _items.isNotEmpty ? _items.first : null;
   }
 
-  List<String> _extractItemSubGroups(List list) {
+  List<String> _extractBranches(List list) {
     final seen = <String>{};
     final out = <String>[];
+    out.add("All Branches");
     for (var e in list) {
       String val = '';
       try {
