@@ -203,7 +203,6 @@ class MonthlyProductionBarChart extends StatelessWidget {
   final ManpowerController controller;
   final List<MonthlyProductionData> data;
   final VoidCallback onFilterApplied;
-  final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
   MonthlyProductionBarChart({
     super.key,
@@ -225,7 +224,6 @@ class MonthlyProductionBarChart extends StatelessWidget {
     final step = niceDivVal(maxProduction);
     return FinanceHorizontalChartScroll(
       controller: _horizontalController,
-      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: barChartWidth,
@@ -350,7 +348,6 @@ class MonthlyProductionBarChart extends StatelessWidget {
 class DailyProductionBarChart extends StatelessWidget {
   final List<DailyProductionData> data;
   final double avgBoxes;
-  final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
   DailyProductionBarChart({
     super.key,
@@ -372,7 +369,6 @@ class DailyProductionBarChart extends StatelessWidget {
 
     return FinanceHorizontalChartScroll(
       controller: _horizontalController,
-      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -483,7 +479,6 @@ class DailyProductionBarChart extends StatelessWidget {
 
 class MonthlyProductionLineChart extends StatelessWidget {
   final List<MonthlyProductionData> data;
-  final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
   MonthlyProductionLineChart({super.key, required this.data});
 
@@ -599,7 +594,6 @@ class MonthlyProductionLineChart extends StatelessWidget {
 
     return FinanceHorizontalChartScroll(
       controller: _horizontalController,
-      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
@@ -659,7 +653,6 @@ class MonthlyProductionLineChart extends StatelessWidget {
 
 class DailyProductionLineChart extends StatelessWidget {
   final List<DailyProductionData> data;
-  final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
   DailyProductionLineChart({super.key, required this.data});
 
@@ -778,7 +771,6 @@ class DailyProductionLineChart extends StatelessWidget {
 
     return FinanceHorizontalChartScroll(
       controller: _horizontalController,
-      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,

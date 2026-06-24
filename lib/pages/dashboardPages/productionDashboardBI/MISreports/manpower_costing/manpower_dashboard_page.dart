@@ -405,6 +405,12 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _pageScrollController.dispose();
+    super.dispose();
+  }
+
   void showPopupMenu() {
     showMenu<String>(
       context: context,
@@ -619,6 +625,7 @@ class _ManpowerDashboardPageState extends State<ManpowerDashboardPage> {
     }
 
     return SingleChildScrollView(
+      controller: _pageScrollController,
       child: Column(
         children: [
           _buildHeader(),

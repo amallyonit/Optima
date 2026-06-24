@@ -89,8 +89,12 @@ class FinanceHorizontalChartScroll extends StatelessWidget {
         if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) {
           return;
         }
+
         GestureBinding.instance.pointerSignalResolver.register(event, (_) {
-          if (!verticalController!.hasClients) return;
+          if (!verticalController!.hasClients) {
+            return;
+          }
+
           final target = (verticalController!.offset + event.scrollDelta.dy)
               .clamp(
                 verticalController!.position.minScrollExtent,
