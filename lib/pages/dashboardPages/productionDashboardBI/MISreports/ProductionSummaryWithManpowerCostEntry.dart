@@ -13,10 +13,10 @@ import '../../../../notificationService.dart';
 import '../../../../widgets/permanent_horizontal_scrollbar.dart';
 import '../../ReportService.dart';
 
-class WrapsheetCalculationPage extends StatefulWidget {
+class ProductionSummaryWithManpowerCostEntryPage extends StatefulWidget {
   @override
-  _WrapsheetCalculationPageState createState() =>
-      _WrapsheetCalculationPageState();
+  _ProductionSummaryWithManpowerCostEntryState createState() =>
+      _ProductionSummaryWithManpowerCostEntryState();
 }
 
 class MoveUpIntent extends Intent {
@@ -35,7 +35,8 @@ class MoveRightIntent extends Intent {
   const MoveRightIntent();
 }
 
-class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
+class _ProductionSummaryWithManpowerCostEntryState
+    extends State<ProductionSummaryWithManpowerCostEntryPage> {
   final String plant = "";
   DateTime? date;
   final bool isSunday = false;
