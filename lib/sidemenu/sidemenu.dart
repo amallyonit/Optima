@@ -24,6 +24,7 @@ import 'package:excel/excel.dart' as xl;
 import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
 import '../notificationService.dart';
+import '../pages/dashboardPages/productionDashboardBI/MISreports/ProductionSummaryWithManpowerCostEntry.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/scrapDataInput.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/sterilizationExpenses.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/wrapsheetCalculationEntry.dart';
@@ -861,6 +862,20 @@ class SideMenuState extends State<SideMenu> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => WrapsheetCalculationPage(),
+                      ),
+                    );
+                  },
+                ),
+              if (userRoleCode == "R1" || userRoleCode == "R5")
+                buildHoverTile(
+                  icon: Icons.analytics_outlined,
+                  title: 'ProductionSummary\nWithManpowerCost',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProductionSummaryWithManpowerCostEntryPage(),
                       ),
                     );
                   },

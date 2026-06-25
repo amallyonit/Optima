@@ -44,45 +44,26 @@ class _ProductionSummaryWithManpowerCostEntryState
   final List<String> headers = [
     "Action",
     "Date",
-
-    "Qty. Prod. 1",
-    "Lg 1",
-    "Wd 1",
-
-    "Qty. Prod. 2",
-    "Lg 2",
-    "Wd 2",
-
-    "Qty. Prod. 3",
-    "Lg 3",
-    "Wd 3",
-
-    "GSM",
-    "Roll Width",
-    "Open Wt.",
-    "New Roll Wt.",
-    "Closing Wt.",
-    "Lay Lg",
-    "No. of Lays",
-
-    "Catcher Waste Lg",
-    "Catcher Waste Wd",
-    "Catcher Waste Wastage",
-
-    "Add. Waste 1 Lg",
-    "Add. Waste 1 Wd",
-    "Add. Waste 1 Wastage",
-
-    "Add. Waste 2 Lg",
-    "Add. Waste 2 Wd",
-    "Add. Waste 2 Wastage",
-
-    "Std. Cons.",
-    "Act. Cons.",
-    "Cons. Dif.",
-    "% Waste",
-
-    "Remarks",
+    "Gown/Kit/Drape Qty.",
+    "Gown/Kit/Drape Box",
+    "Gown/Kit/Drape Worker",
+    "Wrap Sheet Qty.",
+    "Wrap Sheet Box",
+    "Wrap Sheet Worker",
+    "Total Qty.",
+    "Target Box Qty.",
+    "Total Box",
+    "Man Day Target",
+    "Man Day Attended",
+    "Labour Cost / Box",
+    "Cumulative Qty.",
+    "Cumulative Target Box Qty.",
+    "Cumulative Box",
+    "Cumulative Man Day Target",
+    "Cumulative Man Day Attended",
+    "Cumulative Labour Cost / Box",
+    "Productivity Day",
+    "Productivity MTD",
   ];
 
   final List<String> dates = [];
@@ -107,6 +88,26 @@ class _ProductionSummaryWithManpowerCostEntryState
   late List<double> totals = [];
   List<List<double>> cellValues = [];
   late ValueNotifier<List<double>> totalsNotifier;
+
+  static const double _monthlyCtc = 27080;
+  static const double _ctcDays = 26;
+  static const double _wrapSheetWorkerDivisor = 6000;
+  static const int _dataColumnCount = 20;
+  static const Set<int> _formulaColumns = {
+    5,
+    6,
+    8,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+  };
 
   final ScrollController _horizontalController = ScrollController();
   final _verticalController = ScrollController();
@@ -133,7 +134,11 @@ class _ProductionSummaryWithManpowerCostEntryState
   final reportService = ReportService();
 
   bool isNumericColumn(int colIndex) {
-    return colIndex < controllers[0].length - 1;
+    return true;
+  }
+
+  bool isFormulaColumn(int colIndex) {
+    return _formulaColumns.contains(colIndex);
   }
 
   Future<void> _pickFrom() async {
@@ -233,7 +238,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     _isSyncing = false;
   }
 
-  Future<void> exportWrapsheetExcel() async {
+  Future<void> exportProductionSummaryExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
       if (!mounted) return;
       NotificationService.warning(
@@ -246,7 +251,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     List<List<dynamic>> rows = [];
 
     String caption =
-        "Wrapsheet Calculation - ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
+        "Production Summary With Manpower Cost - ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
         "(${_format(_from!)} to ${_format(_to!)})";
 
     rows = List<List<dynamic>>.generate(
@@ -254,11 +259,11 @@ class _ProductionSummaryWithManpowerCostEntryState
       (i) => [dates[i], ...controllers[i].map((e) => e.text)],
     );
     reportService.generateExcel(
-      sheetName: 'Wrapsheet Calculation',
+      sheetName: 'Production Summary',
       headers: headers.sublist(1),
       rows: rows,
-      fileName: 'Wrapsheet_Calculation.xlsx',
-      amountColumns: List.generate(headers.length - 3, (i) => i + 2),
+      fileName: 'Production_Summary_With_Manpower_Cost.xlsx',
+      amountColumns: List.generate(headers.length - 2, (i) => i + 1),
       addTotalRow: true,
       reportTitle: caption,
     );
@@ -302,7 +307,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     });
   }
 
-  Future<void> _saveWrapsheetCalculationDetails() async {
+  Future<void> _saveProductionSummaryWithManpowerCostDetails() async {
     if (_from == null || _to == null) {
       if (!mounted) return;
       NotificationService.warning(
@@ -317,141 +322,60 @@ class _ProductionSummaryWithManpowerCostEntryState
     final userJwtToken = prefs.getString('userJwtToken') ?? '';
     final userMailID = prefs.getString('userMailID') ?? '';
 
-    List<Map<String, dynamic>> wrapsheetData = [];
+    _recalculateSheet();
+
+    List<Map<String, dynamic>> productionSummaryData = [];
 
     for (int i = 0; i < dates.length; i++) {
-      final row = controllers[i];
+      final values = List<double>.generate(
+        _dataColumnCount,
+        (index) => _cellNumber(i, index),
+      );
 
-      double qtyProd1 = double.tryParse(row[0].text) ?? 0;
-      double lg1 = double.tryParse(row[1].text) ?? 0;
-      double wd1 = double.tryParse(row[2].text) ?? 0;
-
-      double qtyProd2 = double.tryParse(row[3].text) ?? 0;
-      double lg2 = double.tryParse(row[4].text) ?? 0;
-      double wd2 = double.tryParse(row[5].text) ?? 0;
-
-      double qtyProd3 = double.tryParse(row[6].text) ?? 0;
-      double lg3 = double.tryParse(row[7].text) ?? 0;
-      double wd3 = double.tryParse(row[8].text) ?? 0;
-
-      double gsm = double.tryParse(row[9].text) ?? 0;
-      double rollWidth = double.tryParse(row[10].text) ?? 0;
-
-      double openWt = double.tryParse(row[11].text) ?? 0;
-      double newRollWt = double.tryParse(row[12].text) ?? 0;
-      double closingWt = double.tryParse(row[13].text) ?? 0;
-
-      double layLg = double.tryParse(row[14].text) ?? 0;
-      double noOfLays = double.tryParse(row[15].text) ?? 0;
-
-      double catcherWasteLg = double.tryParse(row[16].text) ?? 0;
-      double catcherWasteWd = double.tryParse(row[17].text) ?? 0;
-      double catcherWaste = double.tryParse(row[18].text) ?? 0;
-
-      double addWaste1Lg = double.tryParse(row[19].text) ?? 0;
-      double addWaste1Wd = double.tryParse(row[20].text) ?? 0;
-      double addWaste1 = double.tryParse(row[21].text) ?? 0;
-
-      double addWaste2Lg = double.tryParse(row[22].text) ?? 0;
-      double addWaste2Wd = double.tryParse(row[23].text) ?? 0;
-      double addWaste2 = double.tryParse(row[24].text) ?? 0;
-
-      double stdCons = double.tryParse(row[25].text) ?? 0;
-      double actCons = double.tryParse(row[26].text) ?? 0;
-      double consDif = double.tryParse(row[27].text) ?? 0;
-      double percentWaste = double.tryParse(row[28].text) ?? 0;
-
-      String remarks = row[29].text.trim();
-
-      bool isRowEmpty =
-          [
-            qtyProd1,
-            lg1,
-            wd1,
-            qtyProd2,
-            lg2,
-            wd2,
-            qtyProd3,
-            lg3,
-            wd3,
-            gsm,
-            rollWidth,
-            openWt,
-            newRollWt,
-            closingWt,
-            layLg,
-            noOfLays,
-            catcherWasteLg,
-            catcherWasteWd,
-            catcherWaste,
-            addWaste1Lg,
-            addWaste1Wd,
-            addWaste1,
-            addWaste2Lg,
-            addWaste2Wd,
-            addWaste2,
-            stdCons,
-            actCons,
-            consDif,
-            percentWaste,
-          ].every((e) => e == 0) &&
-          remarks.isEmpty;
+      bool isRowEmpty = [
+        values[0],
+        values[1],
+        values[2],
+        values[3],
+        values[4],
+        values[7],
+        values[9],
+      ].every((e) => e == 0);
 
       bool existedInDb = existingDbDates.contains(dates[i]);
 
       if (isRowEmpty && !existedInDb) continue;
-      wrapsheetData.add({
-        "WrapsheetId": rowIds[i],
+      productionSummaryData.add({
+        "ProductionSummaryWithManpowerCostId": rowIds[i],
         "UserId": int.tryParse(userID) ?? 0,
-        "WrapsheetPlant": _selectedPlant,
-        "WrapsheetShift": _selectedShift,
-        "WrapsheetDate": convertToIso(dates[i]),
-
-        "QtyProd1": qtyProd1,
-        "Lg1": lg1,
-        "Wd1": wd1,
-
-        "QtyProd2": qtyProd2,
-        "Lg2": lg2,
-        "Wd2": wd2,
-
-        "QtyProd3": qtyProd3,
-        "Lg3": lg3,
-        "Wd3": wd3,
-
-        "GSM": gsm,
-        "RollWidth": rollWidth,
-
-        "OpenWt": openWt,
-        "NewRollWt": newRollWt,
-        "ClosingWt": closingWt,
-
-        "LayLg": layLg,
-        "NoOfLays": noOfLays,
-
-        "CatcherWasteLg": catcherWasteLg,
-        "CatcherWasteWd": catcherWasteWd,
-        "CatcherWaste": catcherWaste,
-
-        "AddWaste1Lg": addWaste1Lg,
-        "AddWaste1Wd": addWaste1Wd,
-        "AddWaste1": addWaste1,
-
-        "AddWaste2Lg": addWaste2Lg,
-        "AddWaste2Wd": addWaste2Wd,
-        "AddWaste2": addWaste2,
-
-        "StdCons": stdCons,
-        "ActCons": actCons,
-        "ConsDif": consDif,
-        "PercentWaste": percentWaste,
-
-        "Remarks": remarks,
+        "ProductionSummaryPlant": _selectedPlant,
+        "ProductionSummaryShift": _selectedShift,
+        "ProductionSummaryDate": convertToIso(dates[i]),
+        "GownKitDrapeQuantity": values[0],
+        "GownKitDrapeNoOfBox": values[1],
+        "GownKitDrapeNoOfWorker": values[2],
+        "WrapSheetQuantity": values[3],
+        "WrapSheetNoOfBox": values[4],
+        "WrapSheetNoOfWorker": values[5],
+        "TotalQuantity": values[6],
+        "TargetBoxQty": values[7],
+        "TotalNoOfBox": values[8],
+        "ManDayTarget": values[9],
+        "ManDayAttended": values[10],
+        "LabourCostPerBox": values[11],
+        "CumulativeQuantity": values[12],
+        "CumulativeTargetBoxQty": values[13],
+        "CumulativeNoOfBox": values[14],
+        "CumulativeManDayTarget": values[15],
+        "CumulativeManDayAttended": values[16],
+        "CumulativeLabourCostPerBox": values[17],
+        "ProductivityBoxPerPersonDay": values[18],
+        "ProductivityBoxPerPersonMTD": values[19],
       });
     }
 
     // If nothing to save
-    if (wrapsheetData.isEmpty) {
+    if (productionSummaryData.isEmpty) {
       if (!mounted) return;
       NotificationService.warning(
         title: "Warning",
@@ -464,11 +388,12 @@ class _ProductionSummaryWithManpowerCostEntryState
       'UserID': userID,
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      "WrapsheetData": wrapsheetData,
+      "ProductionSummaryWithManpowerCostData": productionSummaryData,
       'DeletedIds': deletedRowIds,
     };
 
-    const apiUrl = '${ApiHelper.baseUrl}insertorupdatewrapsheetcalculation';
+    const apiUrl =
+        '${ApiHelper.baseUrl}insertorupdateproductionsummarywithmanpowercost';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
 
     try {
@@ -500,7 +425,83 @@ class _ProductionSummaryWithManpowerCostEntryState
     }
   }
 
-  Future<void> fetchWrapsheetCalculationDetails(
+  dynamic _firstValue(Map<String, dynamic> row, List<String> keys) {
+    for (final key in keys) {
+      if (row.containsKey(key) && row[key] != null) return row[key];
+    }
+    return null;
+  }
+
+  String _rowText(Map<String, dynamic> row, List<String> keys) {
+    final value = _firstValue(row, keys);
+    return value?.toString() ?? '0';
+  }
+
+  int _rowId(Map<String, dynamic> row) {
+    return int.tryParse(
+          _firstValue(row, const [
+                'ProductionSummaryWithManpowerCostId',
+                'ProductionSummaryId',
+                'Id',
+              ])?.toString() ??
+              '0',
+        ) ??
+        0;
+  }
+
+  String _rowDate(Map<String, dynamic> row) {
+    final value = _firstValue(row, const [
+      'ProductionSummaryDate',
+      'ProductionDate',
+      'Date',
+    ]);
+    return formatDate(value?.toString() ?? DateTime.now().toIso8601String());
+  }
+
+  List<TextEditingController> _controllersFromApiRow(Map<String, dynamic> row) {
+    return [
+      TextEditingController(
+        text: _rowText(row, const ['GownKitDrapeQuantity', 'GownQuantity']),
+      ),
+      TextEditingController(
+        text: _rowText(row, const ['GownKitDrapeNoOfBox', 'GownNoOfBox']),
+      ),
+      TextEditingController(
+        text: _rowText(row, const ['GownKitDrapeNoOfWorker', 'GownNoOfWorker']),
+      ),
+      TextEditingController(text: _rowText(row, const ['WrapSheetQuantity'])),
+      TextEditingController(text: _rowText(row, const ['WrapSheetNoOfBox'])),
+      TextEditingController(text: _rowText(row, const ['WrapSheetNoOfWorker'])),
+      TextEditingController(text: _rowText(row, const ['TotalQuantity'])),
+      TextEditingController(text: _rowText(row, const ['TargetBoxQty'])),
+      TextEditingController(text: _rowText(row, const ['TotalNoOfBox'])),
+      TextEditingController(text: _rowText(row, const ['ManDayTarget'])),
+      TextEditingController(text: _rowText(row, const ['ManDayAttended'])),
+      TextEditingController(text: _rowText(row, const ['LabourCostPerBox'])),
+      TextEditingController(text: _rowText(row, const ['CumulativeQuantity'])),
+      TextEditingController(
+        text: _rowText(row, const ['CumulativeTargetBoxQty']),
+      ),
+      TextEditingController(text: _rowText(row, const ['CumulativeNoOfBox'])),
+      TextEditingController(
+        text: _rowText(row, const ['CumulativeManDayTarget']),
+      ),
+      TextEditingController(
+        text: _rowText(row, const ['CumulativeManDayAttended']),
+      ),
+      TextEditingController(
+        text: _rowText(row, const ['CumulativeLabourCostPerBox']),
+      ),
+      TextEditingController(
+        text: _rowText(row, const ['ProductivityBoxPerPersonDay']),
+      ),
+      TextEditingController(
+        text: _rowText(row, const ['ProductivityBoxPerPersonMTD']),
+      ),
+    ];
+  }
+
+  Future<void> fetchProductionSummaryWithManpowerCostDetails(
     String plant,
     String shift,
   ) async {
@@ -520,13 +521,14 @@ class _ProductionSummaryWithManpowerCostEntryState
     final payload = {
       'UserJwtToken': userJwtToken,
       'UsermailID': userMailID,
-      "WrapsheetPlant": plant,
-      "WrapsheetShift": shift,
+      "ProductionSummaryPlant": plant,
+      "ProductionSummaryShift": shift,
       "FromDate": _from?.toIso8601String(),
       "ToDate": _to?.toIso8601String(),
     };
 
-    const apiUrl = '${ApiHelper.baseUrl}selectwrapsheetcalculation';
+    const apiUrl =
+        '${ApiHelper.baseUrl}selectproductionsummarywithmanpowercost';
     var headerss = {HttpHeaders.contentTypeHeader: 'application/json'};
 
     try {
@@ -542,173 +544,45 @@ class _ProductionSummaryWithManpowerCostEntryState
         if (decoded['Status'] == true && decoded['Data'] != null) {
           final List<dynamic> result = decoded['Data'];
 
-          Map<String, List<dynamic>> apiDataByDate = {};
+          Map<String, List<Map<String, dynamic>>> apiDataByDate = {};
           existingDbDates.clear();
 
           for (var row in result) {
-            String formatted = formatDate(row['WrapsheetDate']);
+            final typedRow = Map<String, dynamic>.from(row as Map);
+            String formatted = _rowDate(typedRow);
 
             apiDataByDate.putIfAbsent(formatted, () => []);
-            apiDataByDate[formatted]!.add(row);
+            apiDataByDate[formatted]!.add(typedRow);
 
             existingDbDates.add(formatted);
           }
 
-          for (final row in controllers) {
-            for (final controller in row) {
-              controller.dispose();
-            }
-          }
-
-          // Rebuild focusNodes with same structure
-          for (final row in focusNodes) {
-            for (final node in row) {
-              node.dispose();
-            }
-          }
-          focusNodes.clear();
+          _disposeRows();
 
           final originalDates = List<String>.from(dates);
           controllers.clear();
           rowIds.clear();
           dates.clear();
+          focusNodes.clear();
 
           for (final date in originalDates) {
             final rowsForDate = apiDataByDate[date];
 
             if (rowsForDate == null || rowsForDate.isEmpty) {
-              // Empty row for missing date
-
               dates.add(date);
               rowIds.add(0);
-
-              final rowControllers = List.generate(
-                30,
-                (index) => TextEditingController(text: index == 29 ? '' : '0'),
-              );
-
-              controllers.add(rowControllers);
+              controllers.add(_createEmptyRowControllers());
             } else {
-              // One UI row per DB row
-
               for (final row in rowsForDate) {
                 dates.add(date);
-
-                rowIds.add(
-                  int.tryParse(row['WrapsheetId']?.toString() ?? '0') ?? 0,
-                );
-
-                final rowControllers = <TextEditingController>[
-                  TextEditingController(
-                    text: row['QtyProd1']?.toString() ?? '0',
-                  ),
-                  TextEditingController(text: row['Lg1']?.toString() ?? '0'),
-                  TextEditingController(text: row['Wd1']?.toString() ?? '0'),
-
-                  TextEditingController(
-                    text: row['QtyProd2']?.toString() ?? '0',
-                  ),
-                  TextEditingController(text: row['Lg2']?.toString() ?? '0'),
-                  TextEditingController(text: row['Wd2']?.toString() ?? '0'),
-
-                  TextEditingController(
-                    text: row['QtyProd3']?.toString() ?? '0',
-                  ),
-                  TextEditingController(text: row['Lg3']?.toString() ?? '0'),
-                  TextEditingController(text: row['Wd3']?.toString() ?? '0'),
-
-                  TextEditingController(text: row['GSM']?.toString() ?? '0'),
-                  TextEditingController(
-                    text: row['RollWidth']?.toString() ?? '0',
-                  ),
-
-                  TextEditingController(text: row['OpenWt']?.toString() ?? '0'),
-                  TextEditingController(
-                    text: row['NewRollWt']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['ClosingWt']?.toString() ?? '0',
-                  ),
-
-                  TextEditingController(text: row['LayLg']?.toString() ?? '0'),
-                  TextEditingController(
-                    text: row['NoOfLays']?.toString() ?? '0',
-                  ),
-
-                  TextEditingController(
-                    text: row['CatcherWasteLg']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['CatcherWasteWd']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['CatcherWaste']?.toString() ?? '0',
-                  ),
-
-                  TextEditingController(
-                    text: row['AddWaste1Lg']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['AddWaste1Wd']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['AddWaste1']?.toString() ?? '0',
-                  ),
-
-                  TextEditingController(
-                    text: row['AddWaste2Lg']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['AddWaste2Wd']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['AddWaste2']?.toString() ?? '0',
-                  ),
-
-                  TextEditingController(
-                    text: row['StdCons']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['ActCons']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['ConsDif']?.toString() ?? '0',
-                  ),
-                  TextEditingController(
-                    text: row['PercentWaste']?.toString() ?? '0',
-                  ),
-
-                  TextEditingController(text: row['Remarks']?.toString() ?? ''),
-                ];
-
-                controllers.add(rowControllers);
+                rowIds.add(_rowId(row));
+                controllers.add(_controllersFromApiRow(row));
               }
             }
           }
 
-          for (int i = 0; i < controllers.length; i++) {
-            List<FocusNode> rowFocusNodes = [];
-
-            for (int j = 0; j < controllers[i].length; j++) {
-              final node = FocusNode();
-
-              node.addListener(() {
-                if (node.hasFocus) {
-                  controllers[i][j].selection = TextSelection(
-                    baseOffset: 0,
-                    extentOffset: controllers[i][j].text.length,
-                  );
-                }
-              });
-
-              rowFocusNodes.add(node);
-            }
-
-            focusNodes.add(rowFocusNodes);
-          }
-
-          initializeCellValues();
-          calculateTotals();
+          _buildFocusNodes();
+          _recalculateSheet();
 
           if (mounted) {
             setState(() {});
@@ -718,18 +592,18 @@ class _ProductionSummaryWithManpowerCostEntryState
         }
       } else {
         if (!mounted) return;
-        NotificationService.error(
-          title: "Error",
+        emptyTableCreation();
+        NotificationService.info(
+          title: "Info",
           message:
-              "Error occured while selecting the wrapsheet calculation details",
+              "Error occured while selecting the production summary details",
         );
       }
     } catch (e) {
       if (!mounted) return;
       NotificationService.error(
         title: "Error",
-        message:
-            "Error occured while selecting the wrapsheet calculation details",
+        message: "Error occured while selecting the production summary details",
       );
     }
   }
@@ -739,52 +613,45 @@ class _ProductionSummaryWithManpowerCostEntryState
 
     // Create empty controllers for fresh entry
     controllers.clear();
+    rowIds.clear();
 
     for (int i = 0; i < dates.length; i++) {
       rowIds.add(0);
-      final rowControllers = <TextEditingController>[
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: ''),
-      ];
-
-      for (var controller in rowControllers) {
-        controller.addListener(() {
-          calculateTotals();
-        });
-      }
-
-      controllers.add(rowControllers);
+      controllers.add(_createEmptyRowControllers());
     }
 
     // Build focusNodes
+    _buildFocusNodes();
+
+    _recalculateSheet();
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  List<TextEditingController> _createEmptyRowControllers() {
+    return List.generate(
+      _dataColumnCount,
+      (_) => TextEditingController(text: '0'),
+    );
+  }
+
+  void _disposeRows() {
+    for (final row in controllers) {
+      for (final controller in row) {
+        controller.dispose();
+      }
+    }
+
+    for (final row in focusNodes) {
+      for (final node in row) {
+        node.dispose();
+      }
+    }
+  }
+
+  void _buildFocusNodes() {
     focusNodes.clear();
 
     for (int i = 0; i < controllers.length; i++) {
@@ -807,21 +674,17 @@ class _ProductionSummaryWithManpowerCostEntryState
 
       focusNodes.add(rowFocusNodes);
     }
-
-    initializeCellValues();
-    calculateTotals();
-
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   Future<void> loadData() async {
     setState(() => isLoading = true);
 
-    totals = List.filled(headers.length - 1, 0.0);
+    totals = List.filled(_dataColumnCount, 0.0);
 
-    await fetchWrapsheetCalculationDetails(_selectedPlant!, _selectedShift!);
+    await fetchProductionSummaryWithManpowerCostDetails(
+      _selectedPlant!,
+      _selectedShift!,
+    );
 
     setState(() => isLoading = false);
   }
@@ -846,39 +709,118 @@ class _ProductionSummaryWithManpowerCostEntryState
     cellValues = List.generate(
       controllers.length,
       (row) => List.generate(controllers[row].length, (col) {
-        if (col == controllers[row].length - 1) {
-          return 0; // Remarks column
-        }
-
         return double.tryParse(controllers[row][col].text) ?? 0;
       }),
     );
   }
 
+  double _cellNumber(int row, int col) {
+    if (row < 0 ||
+        row >= controllers.length ||
+        col < 0 ||
+        col >= controllers[row].length) {
+      return 0;
+    }
+    return double.tryParse(controllers[row][col].text.trim()) ?? 0;
+  }
+
+  void _setCalculatedCell(int row, int col, double value) {
+    final controller = controllers[row][col];
+    final text = _formatNumber(value);
+    if (controller.text == text) return;
+    controller.text = text;
+  }
+
+  String _formatNumber(double value) {
+    if (value.isNaN || value.isInfinite) return '0';
+    final rounded = double.parse(value.toStringAsFixed(2));
+    if (rounded == rounded.roundToDouble()) {
+      return rounded.toStringAsFixed(0);
+    }
+    return rounded.toStringAsFixed(2);
+  }
+
+  void _recalculateSheet({int startRow = 0}) {
+    if (controllers.isEmpty) {
+      totals = List.filled(_dataColumnCount, 0.0);
+      totalsNotifier.value = List<double>.from(totals);
+      return;
+    }
+
+    final perDayCtc = _monthlyCtc / _ctcDays;
+    final safeStart = startRow.clamp(0, controllers.length - 1).toInt();
+
+    for (int row = safeStart; row < controllers.length; row++) {
+      final gownQty = _cellNumber(row, 0);
+      final gownBox = _cellNumber(row, 1);
+      final gownWorker = _cellNumber(row, 2);
+      final wrapQty = _cellNumber(row, 3);
+      final wrapBox = _cellNumber(row, 4);
+      final targetBoxQty = _cellNumber(row, 7);
+      final manDayTarget = _cellNumber(row, 9);
+
+      final wrapWorker = wrapQty / _wrapSheetWorkerDivisor;
+      final totalQty = gownQty + wrapQty;
+      final totalBox = gownBox + wrapBox;
+      final manDayAttended = gownWorker + wrapWorker;
+      final labourCostPerBox = totalBox == 0
+          ? 0.0
+          : perDayCtc * manDayAttended / totalBox;
+
+      final prevCumulativeQty = row == 0 ? 0.0 : _cellNumber(row - 1, 12);
+      final prevCumulativeTargetBox = row == 0 ? 0.0 : _cellNumber(row - 1, 13);
+      final prevCumulativeBox = row == 0 ? 0.0 : _cellNumber(row - 1, 14);
+      final prevCumulativeManDayTarget = row == 0
+          ? 0.0
+          : _cellNumber(row - 1, 15);
+      final prevCumulativeManDayAttended = row == 0
+          ? 0.0
+          : _cellNumber(row - 1, 16);
+
+      final cumulativeQty = prevCumulativeQty + totalQty;
+      final cumulativeTargetBox = prevCumulativeTargetBox + targetBoxQty;
+      final cumulativeBox = prevCumulativeBox + totalBox;
+      final cumulativeManDayTarget = prevCumulativeManDayTarget + manDayTarget;
+      final cumulativeManDayAttended =
+          prevCumulativeManDayAttended + manDayAttended;
+      final cumulativeLabourCostPerBox = cumulativeBox == 0
+          ? 0.0
+          : perDayCtc * cumulativeManDayAttended / cumulativeBox;
+      final productivityDay = manDayAttended == 0
+          ? 0.0
+          : totalBox / manDayAttended;
+      final productivityMtd = cumulativeManDayAttended == 0
+          ? 0.0
+          : cumulativeBox / cumulativeManDayAttended;
+
+      _setCalculatedCell(row, 5, wrapWorker);
+      _setCalculatedCell(row, 6, totalQty);
+      _setCalculatedCell(row, 8, totalBox);
+      _setCalculatedCell(row, 10, manDayAttended);
+      _setCalculatedCell(row, 11, labourCostPerBox);
+      _setCalculatedCell(row, 12, cumulativeQty);
+      _setCalculatedCell(row, 13, cumulativeTargetBox);
+      _setCalculatedCell(row, 14, cumulativeBox);
+      _setCalculatedCell(row, 15, cumulativeManDayTarget);
+      _setCalculatedCell(row, 16, cumulativeManDayAttended);
+      _setCalculatedCell(row, 17, cumulativeLabourCostPerBox);
+      _setCalculatedCell(row, 18, productivityDay);
+      _setCalculatedCell(row, 19, productivityMtd);
+    }
+
+    initializeCellValues();
+    calculateTotals();
+  }
+
   void updateColumnTotal(int row, int col) {
-    // Ignore Remarks column
-    if (col == controllers[row].length - 1) return;
-
-    final oldValue = cellValues[row][col];
-
-    // final newValue = double.tryParse(controllers[row][col].text.trim()) ?? 0;
-    final text = controllers[row][col].text;
-    final newValue = double.tryParse(text) ?? 0;
-
-    if (oldValue == newValue) return;
-
-    cellValues[row][col] = newValue;
-
-    totals[col] = totals[col] - oldValue + newValue;
-
-    // totalsNotifier.value = [...totals];
-    totalsNotifier.value = List<double>.from(totals);
+    if (isFormulaColumn(col)) return;
+    _recalculateSheet(startRow: row);
   }
 
   void calculateTotals() {
     if (controllers.isEmpty) return;
 
-    int numericColumnCount = controllers[0].length - 1;
+    int numericColumnCount = controllers[0].length;
 
     totals = List.filled(numericColumnCount, 0.0);
 
@@ -897,12 +839,10 @@ class _ProductionSummaryWithManpowerCostEntryState
     }
     controllers = List.generate(
       dates.length,
-      (_) => List.generate(
-        headers.length - 1,
-        (index) =>
-            TextEditingController(text: index == headers.length - 2 ? "" : "0"),
-      ),
+      (_) => _createEmptyRowControllers(),
     );
+    _buildFocusNodes();
+    _recalculateSheet();
   }
 
   void _generateDateArray() async {
@@ -935,9 +875,12 @@ class _ProductionSummaryWithManpowerCostEntryState
       dates.add(_format(current));
       current = current.add(const Duration(days: 1));
     }
-    totals = List.filled(headers.length - 1, 0.0);
+    totals = List.filled(_dataColumnCount, 0.0);
 
-    await fetchWrapsheetCalculationDetails(_selectedPlant!, _selectedShift!);
+    await fetchProductionSummaryWithManpowerCostDetails(
+      _selectedPlant!,
+      _selectedShift!,
+    );
   }
 
   void _insertRowBelow(int rowIndex) {
@@ -945,9 +888,7 @@ class _ProductionSummaryWithManpowerCostEntryState
 
     final newControllers = List.generate(
       controllers[rowIndex].length,
-      (index) => TextEditingController(
-        text: index == controllers[rowIndex].length - 1 ? '' : '0',
-      ),
+      (_) => TextEditingController(text: '0'),
     );
 
     final newFocusNodes = List.generate(
@@ -964,6 +905,7 @@ class _ProductionSummaryWithManpowerCostEntryState
       focusNodes.insert(rowIndex + 1, newFocusNodes);
       highlightedRowIndex = rowIndex + 1;
     });
+    _recalculateSheet(startRow: rowIndex + 1);
 
     Future.delayed(const Duration(milliseconds: 50), () {
       if (!mounted) return;
@@ -999,10 +941,11 @@ class _ProductionSummaryWithManpowerCostEntryState
       focusNodes.removeAt(rowIndex);
     });
 
-    for (int i = 0; i < totals.length && i < deletedValues.length - 1; i++) {
+    for (int i = 0; i < totals.length && i < deletedValues.length; i++) {
       totals[i] -= deletedValues[i];
     }
     totalsNotifier.value = List<double>.from(totals);
+    _recalculateSheet(startRow: rowIndex);
   }
 
   Future<void> _runRowAction({
@@ -1047,7 +990,7 @@ class _ProductionSummaryWithManpowerCostEntryState
         backgroundColor: Colors.white,
         elevation: 0.0,
         title: const Text(
-          "WRAPSHEET CALCULATION SHEET",
+          "PRODUCTION SUMMARY WITH MANPOWER COST",
           style: TextStyle(
             color: Colors.blue,
             fontFamily: "Poppins",
@@ -1427,7 +1370,7 @@ class _ProductionSummaryWithManpowerCostEntryState
             final colIndex = index + _frozenColumnCount;
             final totalIndex = colIndex - 2;
 
-            if (colIndex == headers.length - 1) {
+            if ({11, 17, 18, 19}.contains(totalIndex)) {
               return const SizedBox(height: _rowHeight);
             }
 
@@ -1438,10 +1381,15 @@ class _ProductionSummaryWithManpowerCostEntryState
               child: ValueListenableBuilder<List<double>>(
                 valueListenable: totalsNotifier,
                 builder: (context, totals, child) {
+                  final text = totalIndex >= 12 && totalIndex <= 16
+                      ? (controllers.isEmpty
+                            ? "0.00"
+                            : controllers.last[totalIndex].text)
+                      : (totalIndex < totals.length
+                            ? totals[totalIndex].toStringAsFixed(2)
+                            : "0.00");
                   return Text(
-                    totalIndex < totals.length
-                        ? totals[totalIndex].toStringAsFixed(2)
-                        : "0.00",
+                    text,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   );
                 },
@@ -1483,7 +1431,7 @@ class _ProductionSummaryWithManpowerCostEntryState
                       ? null
                       : () async {
                           setState(() => isSaving = true);
-                          await _saveWrapsheetCalculationDetails();
+                          await _saveProductionSummaryWithManpowerCostDetails();
                           setState(() => isSaving = false);
                         },
                   child: isSaving
@@ -1510,7 +1458,7 @@ class _ProductionSummaryWithManpowerCostEntryState
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: exportWrapsheetExcel,
+                  onPressed: exportProductionSummaryExcel,
                   child: Text(
                     "Download Excel",
                     style: TextStyle(
@@ -1693,6 +1641,8 @@ class _ProductionSummaryWithManpowerCostEntryState
   }
 
   Widget _buildEditableCell(int rowIndex, int colIndex) {
+    final isCalculated = isFormulaColumn(colIndex);
+
     return SizedBox(
       height: _rowHeight,
       child: Padding(
@@ -1735,6 +1685,7 @@ class _ProductionSummaryWithManpowerCostEntryState
             child: TextField(
               controller: controllers[rowIndex][colIndex],
               focusNode: focusNodes[rowIndex][colIndex],
+              readOnly: isCalculated,
               keyboardType: isNumericColumn(colIndex)
                   ? const TextInputType.numberWithOptions(decimal: true)
                   : TextInputType.text,
@@ -1754,9 +1705,11 @@ class _ProductionSummaryWithManpowerCostEntryState
                   extentOffset: controllers[rowIndex][colIndex].text.length,
                 );
               },
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                filled: isCalculated,
+                fillColor: const Color(0xfff3f6f8),
+                contentPadding: const EdgeInsets.symmetric(
                   vertical: 8,
                   horizontal: 8,
                 ),
