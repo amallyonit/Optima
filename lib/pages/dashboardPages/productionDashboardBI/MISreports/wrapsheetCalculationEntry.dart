@@ -4,17 +4,36 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import '../../../../notificationService.dart';
+import '../../../../widgets/permanent_horizontal_scrollbar.dart';
 import '../../ReportService.dart';
+// import '../widgets/permanent_horizontal_scrollbar.dart';
 
 class WrapsheetCalculationPage extends StatefulWidget {
   @override
   _WrapsheetCalculationPageState createState() =>
       _WrapsheetCalculationPageState();
+}
+
+class MoveUpIntent extends Intent {
+  const MoveUpIntent();
+}
+
+class MoveDownIntent extends Intent {
+  const MoveDownIntent();
+}
+
+class MoveLeftIntent extends Intent {
+  const MoveLeftIntent();
+}
+
+class MoveRightIntent extends Intent {
+  const MoveRightIntent();
 }
 
 class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
@@ -70,6 +89,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   Set<String> existingDbDates = {};
 
   bool isSaving = false;
+  bool _isSyncing = false;
+
   String formatDate(String isoDate) {
     final dt = DateTime.parse(isoDate);
     final d = dt.day.toString().padLeft(2, '0');
@@ -87,7 +108,9 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   List<List<double>> cellValues = [];
   late ValueNotifier<List<double>> totalsNotifier;
 
+  final ScrollController _horizontalController = ScrollController();
   final _verticalController = ScrollController();
+  final ScrollController _horizontalScrollbarController = ScrollController();
   final _headerHorizontalController = ScrollController();
   final _bodyHorizontalController = ScrollController();
 
@@ -146,6 +169,41 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     return '$dd-$mm-$yyyy';
   }
 
+  static const Map<int, TableColumnWidth> _columnWidths = {
+    0: FixedColumnWidth(90),
+    1: FixedColumnWidth(120),
+    2: FixedColumnWidth(135),
+    3: FixedColumnWidth(135),
+    4: FixedColumnWidth(135),
+    5: FixedColumnWidth(135),
+    6: FixedColumnWidth(135),
+    7: FixedColumnWidth(135),
+    8: FixedColumnWidth(135),
+    9: FixedColumnWidth(135),
+    10: FixedColumnWidth(135),
+    11: FixedColumnWidth(135),
+    12: FixedColumnWidth(135),
+    13: FixedColumnWidth(135),
+    14: FixedColumnWidth(135),
+    15: FixedColumnWidth(135),
+    16: FixedColumnWidth(135),
+    17: FixedColumnWidth(135),
+    18: FixedColumnWidth(135),
+    19: FixedColumnWidth(135),
+    20: FixedColumnWidth(135),
+    21: FixedColumnWidth(135),
+    22: FixedColumnWidth(135),
+    23: FixedColumnWidth(135),
+    24: FixedColumnWidth(135),
+    25: FixedColumnWidth(135),
+    26: FixedColumnWidth(135),
+    27: FixedColumnWidth(135),
+    28: FixedColumnWidth(135),
+    29: FixedColumnWidth(135),
+    30: FixedColumnWidth(135),
+    31: FixedColumnWidth(180),
+  };
+
   @override
   void initState() {
     super.initState();
@@ -155,9 +213,37 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         _headerHorizontalController.jumpTo(_bodyHorizontalController.offset);
       }
     });
+    _horizontalScrollbarController.addListener(_syncHorizontalScroll);
     _from = DateTime(DateTime.now().year, DateTime.now().month, 1);
     _to = DateTime.now();
     _generateDateArray();
+  }
+
+  void _syncHorizontalScroll() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+
+    final source = [
+      _headerHorizontalController,
+      _bodyHorizontalController,
+      _horizontalScrollbarController,
+    ].firstWhere((c) => c.hasClients);
+
+    final offset = source.offset;
+
+    for (final controller in [
+      _headerHorizontalController,
+      _bodyHorizontalController,
+      _horizontalScrollbarController,
+    ]) {
+      if (controller.hasClients && controller.offset != offset) {
+        controller.jumpTo(
+          offset.clamp(0.0, controller.position.maxScrollExtent),
+        );
+      }
+    }
+
+    _isSyncing = false;
   }
 
   Future<void> exportWrapsheetExcel() async {
@@ -202,6 +288,31 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     return "${dt.year.toString().padLeft(4, '0')}-"
         "${dt.month.toString().padLeft(2, '0')}-"
         "${dt.day.toString().padLeft(2, '0')}";
+  }
+
+  void _moveFocus(int row, int col, {int rowOffset = 0, int colOffset = 0}) {
+    final newRow = row + rowOffset;
+    final newCol = col + colOffset;
+
+    if (newRow < 0 ||
+        newRow >= focusNodes.length ||
+        newCol < 0 ||
+        newCol >= focusNodes[newRow].length) {
+      return;
+    }
+
+    FocusScope.of(context).requestFocus(focusNodes[newRow][newCol]);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final controller = controllers[newRow][newCol];
+
+      controller.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: controller.text.length,
+      );
+    });
   }
 
   Future<void> _saveWrapsheetCalculationDetails() async {
@@ -763,7 +874,9 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
 
     final oldValue = cellValues[row][col];
 
-    final newValue = double.tryParse(controllers[row][col].text.trim()) ?? 0;
+    // final newValue = double.tryParse(controllers[row][col].text.trim()) ?? 0;
+    final text = controllers[row][col].text;
+    final newValue = double.tryParse(text) ?? 0;
 
     if (oldValue == newValue) return;
 
@@ -771,7 +884,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
 
     totals[col] = totals[col] - oldValue + newValue;
 
-    totalsNotifier.value = [...totals];
+    // totalsNotifier.value = [...totals];
+    totalsNotifier.value = List<double>.from(totals);
   }
 
   void calculateTotals() {
@@ -967,259 +1081,6 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     );
   }
 
-  Widget _buildStickyTable() {
-    return Column(
-      children: [
-        // STICKY HEADER (not scrollable by user)
-        SingleChildScrollView(
-          controller: _headerHorizontalController,
-          physics: const NeverScrollableScrollPhysics(),
-          scrollDirection: Axis.horizontal,
-          child: _buildHeaderTable(),
-        ),
-
-        const SizedBox(height: 0),
-
-        // BODY (scrolls vertically + horizontally)
-        Expanded(
-          child: Scrollbar(
-            controller: _verticalController,
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              controller: _verticalController,
-              scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                controller: _bodyHorizontalController,
-                scrollDirection: Axis.horizontal,
-                child: _buildBodyTable(),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeaderTable() {
-    return Table(
-      border: TableBorder.all(color: Colors.black),
-      columnWidths: const {
-        0: const FixedColumnWidth(90),
-        1: FixedColumnWidth(120),
-        2: FixedColumnWidth(135),
-        3: FixedColumnWidth(135),
-        4: FixedColumnWidth(135),
-        5: FixedColumnWidth(135),
-        6: FixedColumnWidth(135),
-        7: FixedColumnWidth(135),
-        8: FixedColumnWidth(135),
-        9: FixedColumnWidth(135),
-        10: FixedColumnWidth(135),
-        11: FixedColumnWidth(135),
-        12: FixedColumnWidth(135),
-        13: FixedColumnWidth(135),
-        14: FixedColumnWidth(135),
-        15: FixedColumnWidth(135),
-        16: FixedColumnWidth(135),
-        17: FixedColumnWidth(135),
-        18: FixedColumnWidth(135),
-        19: FixedColumnWidth(135),
-        20: FixedColumnWidth(135),
-        21: FixedColumnWidth(135),
-        22: FixedColumnWidth(135),
-        23: FixedColumnWidth(135),
-        24: FixedColumnWidth(135),
-        25: FixedColumnWidth(135),
-        26: FixedColumnWidth(135),
-        27: FixedColumnWidth(135),
-        28: FixedColumnWidth(135),
-        29: FixedColumnWidth(135),
-        30: FixedColumnWidth(135),
-        31: FixedColumnWidth(180),
-      },
-      children: [
-        TableRow(
-          decoration: const BoxDecoration(color: Color(0xffc0e4f3)),
-          children: headers
-              .map(
-                (text) => Container(
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    text,
-                    textAlign: TextAlign.center,
-                    softWrap: true,
-                    maxLines: 3,
-                    overflow: TextOverflow.visible,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBodyTable() {
-    return Table(
-      border: TableBorder.all(color: Colors.black),
-      columnWidths: const {
-        0: const FixedColumnWidth(90),
-        1: FixedColumnWidth(120),
-        2: FixedColumnWidth(135),
-        3: FixedColumnWidth(135),
-        4: FixedColumnWidth(135),
-        5: FixedColumnWidth(135),
-        6: FixedColumnWidth(135),
-        7: FixedColumnWidth(135),
-        8: FixedColumnWidth(135),
-        9: FixedColumnWidth(135),
-        10: FixedColumnWidth(135),
-        11: FixedColumnWidth(135),
-        12: FixedColumnWidth(135),
-        13: FixedColumnWidth(135),
-        14: FixedColumnWidth(135),
-        15: FixedColumnWidth(135),
-        16: FixedColumnWidth(135),
-        17: FixedColumnWidth(135),
-        18: FixedColumnWidth(135),
-        19: FixedColumnWidth(135),
-        20: FixedColumnWidth(135),
-        21: FixedColumnWidth(135),
-        22: FixedColumnWidth(135),
-        23: FixedColumnWidth(135),
-        24: FixedColumnWidth(135),
-        25: FixedColumnWidth(135),
-        26: FixedColumnWidth(135),
-        27: FixedColumnWidth(135),
-        28: FixedColumnWidth(135),
-        29: FixedColumnWidth(135),
-        30: FixedColumnWidth(135),
-        31: FixedColumnWidth(180),
-      },
-      children: [
-        for (int i = 0; i < dates.length; i++) buildRow(i),
-
-        TableRow(
-          decoration: BoxDecoration(color: Colors.green.shade200),
-          children: List.generate(headers.length, (colIndex) {
-            // Action column
-            if (colIndex == 0) {
-              return const SizedBox();
-            }
-
-            // Date column
-            if (colIndex == 1) {
-              return Container(
-                alignment: Alignment.center,
-                height: 55,
-                child: const Text(
-                  "Total",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              );
-            }
-
-            // Remarks column
-            if (colIndex == headers.length - 1) {
-              return const SizedBox();
-            }
-
-            final totalIndex = colIndex - 2;
-
-            return Container(
-              alignment: Alignment.centerRight,
-              height: 55,
-              padding: const EdgeInsets.all(8),
-              child: ValueListenableBuilder<List<double>>(
-                valueListenable: totalsNotifier,
-                builder: (context, totals, child) {
-                  return Text(
-                    totalIndex < totals.length
-                        ? totals[totalIndex].toStringAsFixed(2)
-                        : "0.00",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  );
-                },
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16.0),
-      child: SafeArea(
-        child: SizedBox(
-          height: 50,
-          child: Row(
-            children: [
-              /// SAVE
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff2ca9df),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                    ),
-                  ),
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          setState(() => isSaving = true);
-                          await _saveWrapsheetCalculationDetails();
-                          setState(() => isSaving = false);
-                        },
-                  child: isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "Save",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              /// DOWNLOAD EXCEL
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff2ca9df),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                    ),
-                  ),
-                  onPressed: exportWrapsheetExcel,
-                  child: const Text(
-                    "Download Excel",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildDatePickers() {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
@@ -1374,6 +1235,232 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     }
   }
 
+  Widget _buildStickyTable() {
+    return Container(
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade400, width: 1),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [
+          BoxShadow(blurRadius: 4, color: Colors.black12, offset: Offset(0, 2)),
+        ],
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        children: [
+          //==========================
+          // Sticky Header
+          //==========================
+          SingleChildScrollView(
+            controller: _headerHorizontalController,
+            physics: const NeverScrollableScrollPhysics(),
+            scrollDirection: Axis.horizontal,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6, left: 6, right: 6),
+              child: _buildHeaderTable(),
+            ),
+          ),
+
+          Divider(height: 1, color: Colors.grey.shade300),
+
+          //==========================
+          // Body
+          //==========================
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 6, left: 6, right: 6),
+              child: RawScrollbar(
+                controller: _verticalController,
+                thumbVisibility: true,
+                trackVisibility: true,
+                thickness: 8,
+                radius: const Radius.circular(12),
+                interactive: true,
+                child: SingleChildScrollView(
+                  controller: _verticalController,
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    controller: _bodyHorizontalController,
+                    scrollDirection: Axis.horizontal,
+                    child: _buildBodyTable(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          //==========================
+          // Permanent Bottom Scrollbar
+          //==========================
+          Container(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.grey.shade300)),
+            ),
+            child: PermanentHorizontalScrollbar(
+              controller: _bodyHorizontalController,
+              height: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderTable() {
+    return Table(
+      border: TableBorder.all(color: Colors.black),
+      columnWidths: _columnWidths,
+      children: [
+        TableRow(
+          decoration: const BoxDecoration(color: Color(0xffc0e4f3)),
+          children: headers
+              .map(
+                (text) => Container(
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    softWrap: true,
+                    maxLines: 3,
+                    overflow: TextOverflow.visible,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBodyTable() {
+    return Table(
+      border: TableBorder.all(color: Colors.black),
+      columnWidths: _columnWidths,
+      children: [
+        for (int i = 0; i < dates.length; i++) buildRow(i),
+
+        TableRow(
+          decoration: BoxDecoration(color: Colors.green.shade200),
+          children: List.generate(headers.length, (colIndex) {
+            // Action column
+            if (colIndex == 0) {
+              return const SizedBox();
+            }
+
+            // Date column
+            if (colIndex == 1) {
+              return Container(
+                alignment: Alignment.center,
+                height: 55,
+                child: const Text(
+                  "Total",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              );
+            }
+
+            // Remarks column
+            if (colIndex == headers.length - 1) {
+              return const SizedBox();
+            }
+
+            final totalIndex = colIndex - 2;
+
+            return Container(
+              alignment: Alignment.centerRight,
+              height: 55,
+              padding: const EdgeInsets.all(8),
+              child: ValueListenableBuilder<List<double>>(
+                valueListenable: totalsNotifier,
+                builder: (context, totals, child) {
+                  return Text(
+                    totalIndex < totals.length
+                        ? totals[totalIndex].toStringAsFixed(2)
+                        : "0.00",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  );
+                },
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16.0),
+      child: SafeArea(
+        child: SizedBox(
+          height: 50,
+          child: Row(
+            children: [
+              /// SAVE
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2ca9df),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                  ),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setState(() => isSaving = true);
+                          await _saveWrapsheetCalculationDetails();
+                          setState(() => isSaving = false);
+                        },
+                  child: isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Save",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              /// DOWNLOAD EXCEL
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2ca9df),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                  ),
+                  onPressed: exportWrapsheetExcel,
+                  child: const Text(
+                    "Download Excel",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   TableRow buildRow(int rowIndex) {
     if (controllers.length != dates.length ||
         focusNodes.length != dates.length) {
@@ -1490,30 +1577,73 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         // Other cells: Editable TextFields
         ...List.generate(controllers[rowIndex].length, (colIndex) {
           return Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: TextField(
-              controller: controllers[rowIndex][colIndex],
-              focusNode: focusNodes[rowIndex][colIndex],
-              keyboardType: isNumericColumn(colIndex)
-                  ? const TextInputType.numberWithOptions(decimal: true)
-                  : TextInputType.text,
-              textAlign: isNumericColumn(colIndex)
-                  ? TextAlign.right
-                  : TextAlign.left,
-              onChanged: (_) {
-                updateColumnTotal(rowIndex, colIndex);
+            padding: const EdgeInsets.all(4),
+            child: Shortcuts(
+              shortcuts: {
+                SingleActivator(LogicalKeyboardKey.arrowDown): MoveDownIntent(),
+                SingleActivator(LogicalKeyboardKey.arrowUp): MoveUpIntent(),
+                SingleActivator(LogicalKeyboardKey.tab): MoveRightIntent(),
+                SingleActivator(LogicalKeyboardKey.tab, shift: true):
+                    MoveLeftIntent(),
               },
-              onTap: () {
-                controllers[rowIndex][colIndex].selection = TextSelection(
-                  baseOffset: 0,
-                  extentOffset: controllers[rowIndex][colIndex].text.length,
-                );
-              },
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 8,
+              child: Actions(
+                actions: {
+                  MoveDownIntent: CallbackAction<MoveDownIntent>(
+                    onInvoke: (_) {
+                      _moveFocus(rowIndex, colIndex, rowOffset: 1);
+                      return null;
+                    },
+                  ),
+                  MoveUpIntent: CallbackAction<MoveUpIntent>(
+                    onInvoke: (_) {
+                      _moveFocus(rowIndex, colIndex, rowOffset: -1);
+                      return null;
+                    },
+                  ),
+                  MoveLeftIntent: CallbackAction<MoveLeftIntent>(
+                    onInvoke: (_) {
+                      _moveFocus(rowIndex, colIndex, colOffset: -1);
+                      return null;
+                    },
+                  ),
+
+                  MoveRightIntent: CallbackAction<MoveRightIntent>(
+                    onInvoke: (_) {
+                      _moveFocus(rowIndex, colIndex, colOffset: 1);
+                      return null;
+                    },
+                  ),
+                },
+
+                child: TextField(
+                  controller: controllers[rowIndex][colIndex],
+                  focusNode: focusNodes[rowIndex][colIndex],
+                  keyboardType: isNumericColumn(colIndex)
+                      ? const TextInputType.numberWithOptions(decimal: true)
+                      : TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                  textAlign: isNumericColumn(colIndex)
+                      ? TextAlign.right
+                      : TextAlign.left,
+                  onChanged: (_) {
+                    updateColumnTotal(rowIndex, colIndex);
+                  },
+                  onSubmitted: (_) {
+                    _moveFocus(rowIndex, colIndex, rowOffset: 1);
+                  },
+                  onTap: () {
+                    controllers[rowIndex][colIndex].selection = TextSelection(
+                      baseOffset: 0,
+                      extentOffset: controllers[rowIndex][colIndex].text.length,
+                    );
+                  },
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 8,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1535,7 +1665,10 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         node.dispose();
       }
     }
+    _horizontalController.dispose();
     _verticalController.dispose();
+
+    _horizontalScrollbarController.dispose();
     _headerHorizontalController.dispose();
     _bodyHorizontalController.dispose();
     totalsNotifier.dispose();
