@@ -89,9 +89,14 @@ class _ProductionSummaryWithManpowerCostEntryState
   List<List<double>> cellValues = [];
   late ValueNotifier<List<double>> totalsNotifier;
 
-  static const double _monthlyCtc = 27080;
-  static const double _ctcDays = 26;
-  static const double _wrapSheetWorkerDivisor = 6000;
+  double _monthlyCtc = 27080;
+  double _ctcDays = 26;
+  double _wrapSheetWorkerDivisor = 6000;
+
+  late final TextEditingController _monthlyCtcController;
+  late final TextEditingController _ctcDaysController;
+  late final TextEditingController _workerDivisorController;
+
   static const int _dataColumnCount = 20;
   static const Set<int> _formulaColumns = {
     5,
@@ -199,6 +204,14 @@ class _ProductionSummaryWithManpowerCostEntryState
   @override
   void initState() {
     super.initState();
+    _monthlyCtcController = TextEditingController(text: _monthlyCtc.toString());
+
+    _ctcDaysController = TextEditingController(text: _ctcDays.toString());
+
+    _workerDivisorController = TextEditingController(
+      text: _wrapSheetWorkerDivisor.toString(),
+    );
+
     totalsNotifier = ValueNotifier([]);
     _bodyHorizontalController.addListener(() {
       if (_headerHorizontalController.hasClients) {
@@ -351,6 +364,9 @@ class _ProductionSummaryWithManpowerCostEntryState
         "ProductionSummaryPlant": _selectedPlant,
         "ProductionSummaryShift": _selectedShift,
         "ProductionSummaryDate": convertToIso(dates[i]),
+        "MonthlyCTC": _monthlyCtc,
+        "CTCDays": _ctcDays,
+        "WrapSheetWorkerDivisor": _wrapSheetWorkerDivisor,
         "GownKitDrapeQuantity": values[0],
         "GownKitDrapeNoOfBox": values[1],
         "GownKitDrapeNoOfWorker": values[2],
@@ -1002,7 +1018,7 @@ class _ProductionSummaryWithManpowerCostEntryState
       ),
 
       body: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(4),
 
         child: Column(
           children: [
@@ -1011,14 +1027,16 @@ class _ProductionSummaryWithManpowerCostEntryState
               Card(
                 elevation: 3,
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
-                    children: [const SizedBox(height: 10), _buildDatePickers()],
+                    children: [
+                      _buildDatePickers(),
+                      const SizedBox(height: 8),
+                      _buildCalculationSettings(),
+                    ],
                   ),
                 ),
               ),
-
-            const SizedBox(height: 12),
 
             /// MAIN TABLE AREA (sticky header compatible)
             Expanded(
@@ -1194,6 +1212,94 @@ class _ProductionSummaryWithManpowerCostEntryState
         ],
       );
     }
+  }
+
+  Widget _buildCalculationSettings() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 140,
+            child: TextFormField(
+              controller: _monthlyCtcController,
+              textAlign: TextAlign.right,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Monthly CTC',
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5.8,
+                ),
+              ),
+              onChanged: (value) {
+                _monthlyCtc = double.tryParse(value) ?? 0;
+                _recalculateSheet();
+                setState(() {});
+              },
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          SizedBox(
+            width: 100,
+            child: TextFormField(
+              controller: _ctcDaysController,
+              textAlign: TextAlign.right,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'CTC Days',
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5.8,
+                ),
+              ),
+              onChanged: (value) {
+                _ctcDays = double.tryParse(value) ?? 0;
+                _recalculateSheet();
+                setState(() {});
+              },
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          SizedBox(
+            width: 140,
+            child: TextFormField(
+              controller: _workerDivisorController,
+              textAlign: TextAlign.right,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'WS Worker Divisor',
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5.8,
+                ),
+              ),
+              onChanged: (value) {
+                _wrapSheetWorkerDivisor = double.tryParse(value) ?? 0;
+                _recalculateSheet();
+                setState(() {});
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStickyTable() {
@@ -1739,6 +1845,11 @@ class _ProductionSummaryWithManpowerCostEntryState
     _horizontalScrollbarController.dispose();
     _headerHorizontalController.dispose();
     _bodyHorizontalController.dispose();
+
+    _monthlyCtcController.dispose();
+    _ctcDaysController.dispose();
+    _workerDivisorController.dispose();
+
     totalsNotifier.dispose();
     super.dispose();
   }
