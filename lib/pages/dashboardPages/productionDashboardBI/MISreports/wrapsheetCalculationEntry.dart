@@ -119,7 +119,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   final DateFormat displayFormat = DateFormat('MMM/yyyy');
   bool isLoading = false;
 
-  String? _selectedPlant = 'Rajapalayam Plant';
+  String? _selectedPlant = 'Rajapalayam IPD Plant';
   String? _selectedShift = 'DAY';
 
   List<int> rowIds = [];
@@ -1090,7 +1090,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    _selectedPlant ??= 'Rajapalayam Plant'; // default selection
+    _selectedPlant ??= 'Rajapalayam IPD Plant'; // default selection
     _selectedShift ??= 'DAY'; // default selection
 
     final dropdownPlant = SizedBox(
@@ -1108,16 +1108,12 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         ),
         items: const [
           DropdownMenuItem(
-            value: 'Rajapalayam Plant',
-            child: Text('Rajapalayam Plant'),
+            value: 'Rajapalayam IPD Plant',
+            child: Text('Rajapalayam IPD Plant'),
           ),
           DropdownMenuItem(
             value: 'Bangalore IPD Plant',
             child: Text('Bangalore IPD Plant'),
-          ),
-          DropdownMenuItem(
-            value: 'Bangalore MD Plant',
-            child: Text('Bangalore MD Plant'),
           ),
         ],
         onChanged: (value) async {

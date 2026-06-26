@@ -25,6 +25,7 @@ import 'package:optima/pages/dashboardPages/excel_helper_web.dart';
 
 import '../notificationService.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/ProductionSummaryWithManpowerCostEntry.dart';
+import '../pages/dashboardPages/productionDashboardBI/MISreports/dailyLayEntry.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/scrapDataInput.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/sterilizationExpenses.dart';
 import '../pages/dashboardPages/productionDashboardBI/MISreports/wrapsheetCalculationEntry.dart';
@@ -876,6 +877,19 @@ class SideMenuState extends State<SideMenu> {
                       MaterialPageRoute(
                         builder: (context) =>
                             ProductionSummaryWithManpowerCostEntryPage(),
+                      ),
+                    );
+                  },
+                ),
+              if (userRoleCode == "R1" || userRoleCode == "R5")
+                buildHoverTile(
+                  icon: Icons.analytics_outlined,
+                  title: 'Daily Lay Entry',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DailyLayEntryPage(),
                       ),
                     );
                   },
