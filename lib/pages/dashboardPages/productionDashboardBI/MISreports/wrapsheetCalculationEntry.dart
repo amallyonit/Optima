@@ -173,6 +173,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   static const double _rowHeight = 55;
   static const double _actionColumnWidth = 90;
   static const double _dateColumnWidth = 120;
+  static const int _dataColumnCount = 30;
 
   double get _frozenTableWidth => _actionColumnWidth + _dateColumnWidth;
 
@@ -581,12 +582,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
               dates.add(date);
               rowIds.add(0);
 
-              final rowControllers = List.generate(
-                30,
-                (index) => TextEditingController(text: index == 29 ? '' : '0'),
-              );
-
-              controllers.add(rowControllers);
+              controllers.add(_createEmptyRowControllers());
             } else {
               // One UI row per DB row
 
@@ -736,54 +732,50 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   void emptyTableCreation() {
     existingDbDates.clear();
 
-    // Create empty controllers for fresh entry
+    _disposeRows();
     controllers.clear();
+    focusNodes.clear();
+    rowIds.clear();
 
     for (int i = 0; i < dates.length; i++) {
       rowIds.add(0);
-      final rowControllers = <TextEditingController>[
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: '0'),
-        TextEditingController(text: ''),
-      ];
-
-      for (var controller in rowControllers) {
-        controller.addListener(() {
-          calculateTotals();
-        });
-      }
-
-      controllers.add(rowControllers);
+      controllers.add(_createEmptyRowControllers());
     }
 
     // Build focusNodes
+    _buildFocusNodes();
+
+    initializeCellValues();
+    calculateTotals();
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  List<TextEditingController> _createEmptyRowControllers() {
+    return List.generate(
+      _dataColumnCount,
+      (index) =>
+          TextEditingController(text: index == _dataColumnCount - 1 ? '' : '0'),
+    );
+  }
+
+  void _disposeRows() {
+    for (final row in controllers) {
+      for (final controller in row) {
+        controller.dispose();
+      }
+    }
+
+    for (final row in focusNodes) {
+      for (final node in row) {
+        node.dispose();
+      }
+    }
+  }
+
+  void _buildFocusNodes() {
     focusNodes.clear();
 
     for (int i = 0; i < controllers.length; i++) {
@@ -805,13 +797,6 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       }
 
       focusNodes.add(rowFocusNodes);
-    }
-
-    initializeCellValues();
-    calculateTotals();
-
-    if (mounted) {
-      setState(() {});
     }
   }
 
@@ -891,17 +876,20 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   }
 
   void clearValues() {
-    for (int i = 0; i < totals.length; i++) {
-      totals[i] = 0.0;
-    }
-    controllers = List.generate(
-      dates.length,
-      (_) => List.generate(
-        headers.length - 1,
-        (index) =>
-            TextEditingController(text: index == headers.length - 2 ? "" : "0"),
-      ),
-    );
+    _disposeRows();
+
+    setState(() {
+      for (int i = 0; i < totals.length; i++) {
+        totals[i] = 0.0;
+      }
+      controllers = List.generate(
+        dates.length,
+        (_) => _createEmptyRowControllers(),
+      );
+      _buildFocusNodes();
+      initializeCellValues();
+      calculateTotals();
+    });
   }
 
   void _generateDateArray() async {

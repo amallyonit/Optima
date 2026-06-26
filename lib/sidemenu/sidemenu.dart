@@ -869,7 +869,7 @@ class SideMenuState extends State<SideMenu> {
               if (userRoleCode == "R1" || userRoleCode == "R5")
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
-                  title: 'ProductionSummary\nWithManpowerCost',
+                  title: 'Prod. Summary With\nMan Power Cost',
                   onTap: () {
                     Navigator.push(
                       context,

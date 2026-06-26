@@ -560,6 +560,22 @@ class _ProductionSummaryWithManpowerCostEntryState
         if (decoded['Status'] == true && decoded['Data'] != null) {
           final List<dynamic> result = decoded['Data'];
 
+          if (result.isNotEmpty) {
+            final firstRow = Map<String, dynamic>.from(result.first as Map);
+
+            _monthlyCtc = (firstRow["MonthlyCTC"] as num?)?.toDouble() ?? 27080;
+
+            _ctcDays = (firstRow["CTCDays"] as num?)?.toDouble() ?? 26;
+
+            _wrapSheetWorkerDivisor =
+                (firstRow["WrapSheetWorkerDivisor"] as num?)?.toDouble() ??
+                6000;
+
+            _monthlyCtcController.text = _monthlyCtc.toString();
+            _ctcDaysController.text = _ctcDays.toString();
+            _workerDivisorController.text = _wrapSheetWorkerDivisor.toString();
+          }
+
           Map<String, List<Map<String, dynamic>>> apiDataByDate = {};
           existingDbDates.clear();
 
@@ -850,15 +866,19 @@ class _ProductionSummaryWithManpowerCostEntryState
   }
 
   void clearValues() {
-    for (int i = 0; i < totals.length; i++) {
-      totals[i] = 0.0;
-    }
-    controllers = List.generate(
-      dates.length,
-      (_) => _createEmptyRowControllers(),
-    );
-    _buildFocusNodes();
-    _recalculateSheet();
+    _disposeRows();
+
+    setState(() {
+      for (int i = 0; i < totals.length; i++) {
+        totals[i] = 0.0;
+      }
+      controllers = List.generate(
+        dates.length,
+        (_) => _createEmptyRowControllers(),
+      );
+      _buildFocusNodes();
+      _recalculateSheet();
+    });
   }
 
   void _generateDateArray() async {
