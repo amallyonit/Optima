@@ -35,6 +35,26 @@ class MoveRightIntent extends Intent {
   const MoveRightIntent();
 }
 
+class DecimalInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    String text = newValue.text.replaceAll(',', '');
+
+    // Allow only digits and one decimal point
+    if (!RegExp(r'^\d*\.?\d*$').hasMatch(text)) {
+      return oldValue;
+    }
+
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
+
 class _ProductionSummaryWithManpowerCostEntryState
     extends State<ProductionSummaryWithManpowerCostEntryPage> {
   final String plant = "";
@@ -126,7 +146,7 @@ class _ProductionSummaryWithManpowerCostEntryState
   final DateFormat displayFormat = DateFormat('MMM/yyyy');
   bool isLoading = false;
 
-  String? _selectedPlant = 'Rajapalayam Plant';
+  String? _selectedPlant = 'Rajapalayam IPD Plant';
   String? _selectedShift = 'DAY';
 
   List<int> rowIds = [];
@@ -791,7 +811,7 @@ class _ProductionSummaryWithManpowerCostEntryState
       final targetBoxQty = _cellNumber(row, 7);
       final manDayTarget = _cellNumber(row, 9);
 
-      final wrapWorker = wrapQty / _wrapSheetWorkerDivisor;
+      final wrapWorker = (wrapQty / _wrapSheetWorkerDivisor).round().toDouble();
       final totalQty = gownQty + wrapQty;
       final totalBox = gownBox + wrapBox;
       final manDayAttended = gownWorker + wrapWorker;
@@ -1084,7 +1104,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    _selectedPlant ??= 'Rajapalayam Plant'; // default selection
+    _selectedPlant ??= 'Rajapalayam IPD Plant'; // default selection
     _selectedShift ??= 'DAY'; // default selection
 
     final dropdownPlant = SizedBox(
@@ -1102,8 +1122,12 @@ class _ProductionSummaryWithManpowerCostEntryState
         ),
         items: const [
           DropdownMenuItem(
-            value: 'Rajapalayam Plant',
-            child: Text('Rajapalayam Plant'),
+            value: 'Rajapalayam IPD Plant',
+            child: Text('Rajapalayam IPD Plant'),
+          ),
+          DropdownMenuItem(
+            value: 'Rajapalayam CMS Plant',
+            child: Text('Rajapalayam CMS Plant'),
           ),
           DropdownMenuItem(
             value: 'Bangalore IPD Plant',
@@ -1247,6 +1271,7 @@ class _ProductionSummaryWithManpowerCostEntryState
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              inputFormatters: [DecimalInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Monthly CTC',
                 border: OutlineInputBorder(),
@@ -1274,6 +1299,7 @@ class _ProductionSummaryWithManpowerCostEntryState
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              inputFormatters: [DecimalInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'CTC Days',
                 border: OutlineInputBorder(),
@@ -1301,6 +1327,7 @@ class _ProductionSummaryWithManpowerCostEntryState
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              inputFormatters: [DecimalInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'WS Worker Divisor',
                 border: OutlineInputBorder(),
@@ -1815,6 +1842,9 @@ class _ProductionSummaryWithManpowerCostEntryState
               keyboardType: isNumericColumn(colIndex)
                   ? const TextInputType.numberWithOptions(decimal: true)
                   : TextInputType.text,
+              inputFormatters: isNumericColumn(colIndex)
+                  ? [DecimalInputFormatter()]
+                  : [],
               textInputAction: TextInputAction.next,
               textAlign: isNumericColumn(colIndex)
                   ? TextAlign.right
