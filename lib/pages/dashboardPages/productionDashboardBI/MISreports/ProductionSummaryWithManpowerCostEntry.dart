@@ -271,7 +271,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     _isSyncing = false;
   }
 
-  Future<void> exportProductionSummaryExcel() async {
+  Future<void> exportProductionDetailedExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
       if (!mounted) return;
       NotificationService.warning(
@@ -298,6 +298,174 @@ class _ProductionSummaryWithManpowerCostEntryState
       fileName: 'Production_Summary_With_Manpower_Cost.xlsx',
       amountColumns: List.generate(headers.length - 2, (i) => i + 1),
       addTotalRow: true,
+      reportTitle: caption,
+    );
+  }
+
+  Future<void> _showDownloadOptions() async {
+    if (dates.isEmpty || controllers.isEmpty) {
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No data available to export.",
+      );
+      return;
+    }
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Download Excel"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.table_chart_outlined),
+                title: const Text("Detailed"),
+                onTap: () => Navigator.of(context).pop("detailed"),
+              ),
+              ListTile(
+                leading: const Icon(Icons.summarize_outlined),
+                title: const Text("Summary"),
+                onTap: () => Navigator.of(context).pop("summary"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == "detailed") {
+      await exportProductionDetailedExcel();
+    } else if (selected == "summary") {
+      await exportProductionSummaryExcel();
+    }
+  }
+
+  Future<void> exportProductionSummaryExcel() async {
+    if (dates.isEmpty || controllers.isEmpty) {
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No data available to export.",
+      );
+      return;
+    }
+
+    _recalculateSheet();
+
+    final summaryDate = _to ?? DateTime.now();
+    final summaryDateText = _format(summaryDate);
+    final rowsForDate = <int>[
+      for (int i = 0; i < dates.length; i++)
+        if (dates[i] == summaryDateText) i,
+    ];
+
+    if (rowsForDate.isEmpty) {
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No data found for $summaryDateText.",
+      );
+      return;
+    }
+
+    final lastDateRow = rowsForDate.last;
+
+    double sumForDate(int col) {
+      return rowsForDate.fold<double>(
+        0,
+        (sum, row) => sum + _cellNumber(row, col),
+      );
+    }
+
+    String percentText(double achieved, double target) {
+      if (target == 0) return "0.00%";
+      return "${(achieved / target * 100).toStringAsFixed(2)}%";
+    }
+
+    final dayBoxTarget = sumForDate(7);
+    final dayBoxAchieved = sumForDate(8);
+    final dayManTarget = sumForDate(9);
+    final dayManAchieved = sumForDate(10);
+    final perDayCtc = _ctcDays == 0 ? 0.0 : _monthlyCtc / _ctcDays;
+    final dayLabourCost = dayBoxAchieved == 0
+        ? 0.0
+        : perDayCtc * dayManAchieved / dayBoxAchieved;
+    final dayProductivity = dayManAchieved == 0
+        ? 0.0
+        : dayBoxAchieved / dayManAchieved;
+
+    final mtdBoxTarget = _cellNumber(lastDateRow, 13);
+    final mtdBoxAchieved = _cellNumber(lastDateRow, 14);
+    final mtdManTarget = _cellNumber(lastDateRow, 15);
+    final mtdManAchieved = _cellNumber(lastDateRow, 16);
+    final mtdLabourCost = _cellNumber(lastDateRow, 17);
+    final mtdProductivity = _cellNumber(lastDateRow, 19);
+
+    const labourCostTarget = 375.0;
+    const productivityTarget = 2.1;
+
+    final List<List<dynamic>> rows = [
+      [
+        "Box qty",
+        dayBoxTarget,
+        dayBoxAchieved,
+        percentText(dayBoxAchieved, dayBoxTarget),
+        mtdBoxTarget,
+        mtdBoxAchieved,
+        percentText(mtdBoxAchieved, mtdBoxTarget),
+      ],
+      [
+        "Man days",
+        dayManTarget,
+        dayManAchieved,
+        percentText(dayManAchieved, dayManTarget),
+        mtdManTarget,
+        mtdManAchieved,
+        percentText(mtdManAchieved, mtdManTarget),
+      ],
+      [
+        "Labour cost/box",
+        labourCostTarget,
+        dayLabourCost,
+        percentText(dayLabourCost, labourCostTarget),
+        labourCostTarget,
+        mtdLabourCost,
+        percentText(mtdLabourCost, labourCostTarget),
+      ],
+      [
+        "Productivity (Avg Box per person)",
+        productivityTarget,
+        dayProductivity,
+        percentText(dayProductivity, productivityTarget),
+        productivityTarget,
+        mtdProductivity,
+        percentText(mtdProductivity, productivityTarget),
+      ],
+    ];
+
+    final monthYear = DateFormat('MMM yyyy').format(summaryDate).toUpperCase();
+    final caption =
+        "Production With Manpower Cost Per Box For The Month Of $monthYear "
+        "- ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
+        "- As On $summaryDateText";
+
+    await reportService.generateExcel(
+      sheetName: 'Summary',
+      headers: const [
+        'Particular',
+        'Date Target',
+        'Date Achieved',
+        'Date Ach %',
+        'MTD Target',
+        'MTD Achieved',
+        'MTD Ach %',
+      ],
+      rows: rows,
+      fileName: 'Production_Summary_With_Manpower_Cost_Summary.xlsx',
+      amountColumns: const [2, 3, 5, 6],
       reportTitle: caption,
     );
   }
@@ -1108,7 +1276,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     _selectedShift ??= 'DAY'; // default selection
 
     final dropdownPlant = SizedBox(
-      width: 194,
+      width: 240,
       height: 40,
       child: DropdownButtonFormField<String>(
         initialValue: _selectedPlant,
@@ -1611,7 +1779,7 @@ class _ProductionSummaryWithManpowerCostEntryState
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: exportProductionSummaryExcel,
+                  onPressed: _showDownloadOptions,
                   child: Text(
                     "Download Excel",
                     style: TextStyle(
