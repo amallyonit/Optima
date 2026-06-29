@@ -112,10 +112,14 @@ class _ProductionSummaryWithManpowerCostEntryState
   double _monthlyCtc = 27080;
   double _ctcDays = 26;
   double _wrapSheetWorkerDivisor = 6000;
+  double _labourCostTarget = 375.0;
+  double _productivityTarget = 2.1;
 
   late final TextEditingController _monthlyCtcController;
   late final TextEditingController _ctcDaysController;
   late final TextEditingController _workerDivisorController;
+  late final TextEditingController _labourCostTargetController;
+  late final TextEditingController _productivityTargetController;
 
   static const int _dataColumnCount = 20;
   static const Set<int> _formulaColumns = {
@@ -232,6 +236,13 @@ class _ProductionSummaryWithManpowerCostEntryState
       text: _wrapSheetWorkerDivisor.toString(),
     );
 
+    _labourCostTargetController = TextEditingController(
+      text: _labourCostTarget.toString(),
+    );
+    _productivityTargetController = TextEditingController(
+      text: _productivityTarget.toString(),
+    );
+
     totalsNotifier = ValueNotifier([]);
     _bodyHorizontalController.addListener(() {
       if (_headerHorizontalController.hasClients) {
@@ -339,11 +350,28 @@ class _ProductionSummaryWithManpowerCostEntryState
     if (selected == "detailed") {
       await exportProductionDetailedExcel();
     } else if (selected == "summary") {
-      await exportProductionSummaryExcel();
+      final now = _to;
+      final firstDay = DateTime(now!.year, now.month, 1);
+      final lastDay = DateTime(now.year, now.month + 1, 0);
+
+      DateTime initialDate = now;
+      if (initialDate.isBefore(firstDay)) initialDate = firstDay;
+      if (initialDate.isAfter(lastDay)) initialDate = lastDay;
+
+      final selectedDate = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        firstDate: firstDay,
+        lastDate: lastDay,
+      );
+
+      if (selectedDate != null) {
+        await exportProductionSummaryExcel(selectedDate);
+      }
     }
   }
 
-  Future<void> exportProductionSummaryExcel() async {
+  Future<void> exportProductionSummaryExcel(DateTime _to) async {
     if (dates.isEmpty || controllers.isEmpty) {
       if (!mounted) return;
       NotificationService.warning(
@@ -355,7 +383,7 @@ class _ProductionSummaryWithManpowerCostEntryState
 
     _recalculateSheet();
 
-    final summaryDate = _to ?? DateTime.now();
+    final summaryDate = _to;
     final summaryDateText = _format(summaryDate);
     final rowsForDate = <int>[
       for (int i = 0; i < dates.length; i++)
@@ -389,10 +417,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     final dayBoxAchieved = sumForDate(8);
     final dayManTarget = sumForDate(9);
     final dayManAchieved = sumForDate(10);
-    final perDayCtc = _ctcDays == 0 ? 0.0 : _monthlyCtc / _ctcDays;
-    final dayLabourCost = dayBoxAchieved == 0
-        ? 0.0
-        : perDayCtc * dayManAchieved / dayBoxAchieved;
+    final dayLabourCost = _cellNumber(lastDateRow, 11);
     final dayProductivity = dayManAchieved == 0
         ? 0.0
         : dayBoxAchieved / dayManAchieved;
@@ -403,9 +428,6 @@ class _ProductionSummaryWithManpowerCostEntryState
     final mtdManAchieved = _cellNumber(lastDateRow, 16);
     final mtdLabourCost = _cellNumber(lastDateRow, 17);
     final mtdProductivity = _cellNumber(lastDateRow, 19);
-
-    const labourCostTarget = 375.0;
-    const productivityTarget = 2.1;
 
     final List<List<dynamic>> rows = [
       [
@@ -428,21 +450,21 @@ class _ProductionSummaryWithManpowerCostEntryState
       ],
       [
         "Labour cost/box",
-        labourCostTarget,
+        _labourCostTarget,
         dayLabourCost,
-        percentText(dayLabourCost, labourCostTarget),
-        labourCostTarget,
+        percentText(dayLabourCost, _labourCostTarget),
+        _labourCostTarget,
         mtdLabourCost,
-        percentText(mtdLabourCost, labourCostTarget),
+        percentText(mtdLabourCost, _labourCostTarget),
       ],
       [
         "Productivity (Avg Box per person)",
-        productivityTarget,
+        _productivityTarget,
         dayProductivity,
-        percentText(dayProductivity, productivityTarget),
-        productivityTarget,
+        percentText(dayProductivity, _productivityTarget),
+        _productivityTarget,
         mtdProductivity,
-        percentText(mtdProductivity, productivityTarget),
+        percentText(mtdProductivity, _productivityTarget),
       ],
     ];
 
@@ -555,6 +577,8 @@ class _ProductionSummaryWithManpowerCostEntryState
         "MonthlyCTC": _monthlyCtc,
         "CTCDays": _ctcDays,
         "WrapSheetWorkerDivisor": _wrapSheetWorkerDivisor,
+        "LabourCostTarget": _labourCostTarget,
+        "ProductivityTarget": _productivityTarget,
         "GownKitDrapeQuantity": values[0],
         "GownKitDrapeNoOfBox": values[1],
         "GownKitDrapeNoOfWorker": values[2],
@@ -759,9 +783,17 @@ class _ProductionSummaryWithManpowerCostEntryState
                 (firstRow["WrapSheetWorkerDivisor"] as num?)?.toDouble() ??
                 6000;
 
+            _labourCostTarget =
+                (firstRow["LabourCostTarget"] as num?)?.toDouble() ?? 375;
+
+            _productivityTarget =
+                (firstRow["ProductivityTarget"] as num?)?.toDouble() ?? 2.1;
+
             _monthlyCtcController.text = _monthlyCtc.toString();
             _ctcDaysController.text = _ctcDays.toString();
             _workerDivisorController.text = _wrapSheetWorkerDivisor.toString();
+            _labourCostTargetController.text = _labourCostTarget.toString();
+            _productivityTargetController.text = _productivityTarget.toString();
           }
 
           Map<String, List<Map<String, dynamic>>> apiDataByDate = {};
@@ -967,7 +999,6 @@ class _ProductionSummaryWithManpowerCostEntryState
       return;
     }
 
-    final perDayCtc = _monthlyCtc / _ctcDays;
     final safeStart = startRow.clamp(0, controllers.length - 1).toInt();
 
     for (int row = safeStart; row < controllers.length; row++) {
@@ -983,9 +1014,10 @@ class _ProductionSummaryWithManpowerCostEntryState
       final totalQty = gownQty + wrapQty;
       final totalBox = gownBox + wrapBox;
       final manDayAttended = gownWorker + wrapWorker;
+
       final labourCostPerBox = totalBox == 0
           ? 0.0
-          : perDayCtc * manDayAttended / totalBox;
+          : (_monthlyCtc * manDayAttended) / totalBox;
 
       final prevCumulativeQty = row == 0 ? 0.0 : _cellNumber(row - 1, 12);
       final prevCumulativeTargetBox = row == 0 ? 0.0 : _cellNumber(row - 1, 13);
@@ -1003,9 +1035,11 @@ class _ProductionSummaryWithManpowerCostEntryState
       final cumulativeManDayTarget = prevCumulativeManDayTarget + manDayTarget;
       final cumulativeManDayAttended =
           prevCumulativeManDayAttended + manDayAttended;
+
       final cumulativeLabourCostPerBox = cumulativeBox == 0
           ? 0.0
-          : perDayCtc * cumulativeManDayAttended / cumulativeBox;
+          : (_monthlyCtc * cumulativeManDayAttended) / cumulativeBox;
+
       final productivityDay = manDayAttended == 0
           ? 0.0
           : totalBox / manDayAttended;
@@ -1507,6 +1541,62 @@ class _ProductionSummaryWithManpowerCostEntryState
               ),
               onChanged: (value) {
                 _wrapSheetWorkerDivisor = double.tryParse(value) ?? 0;
+                _recalculateSheet();
+                setState(() {});
+              },
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          SizedBox(
+            width: 100,
+            child: TextFormField(
+              controller: _labourCostTargetController,
+              textAlign: TextAlign.right,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [DecimalInputFormatter()],
+              decoration: const InputDecoration(
+                labelText: 'LC Target',
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5.8,
+                ),
+              ),
+              onChanged: (value) {
+                _labourCostTarget = double.tryParse(value) ?? 0;
+                _recalculateSheet();
+                setState(() {});
+              },
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          SizedBox(
+            width: 100,
+            child: TextFormField(
+              controller: _productivityTargetController,
+              textAlign: TextAlign.right,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [DecimalInputFormatter()],
+              decoration: const InputDecoration(
+                labelText: 'Prod. Target',
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5.8,
+                ),
+              ),
+              onChanged: (value) {
+                _productivityTarget = double.tryParse(value) ?? 0;
                 _recalculateSheet();
                 setState(() {});
               },
@@ -2067,6 +2157,9 @@ class _ProductionSummaryWithManpowerCostEntryState
     _monthlyCtcController.dispose();
     _ctcDaysController.dispose();
     _workerDivisorController.dispose();
+
+    _labourCostTargetController.dispose();
+    _productivityTargetController.dispose();
 
     totalsNotifier.dispose();
     super.dispose();
