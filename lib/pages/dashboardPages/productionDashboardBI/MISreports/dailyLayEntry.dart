@@ -2,14 +2,13 @@
 
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:optima/api_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../../../notificationService.dart';
 import '../../../../widgets/permanent_horizontal_scrollbar.dart';
 import '../../ReportService.dart';
@@ -93,6 +92,16 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   late List<double> totals = [];
   late ValueNotifier<List<double>> totalsNotifier;
 
+  double _manualLayTarget = 1800;
+  double _automatedLayTarget = 2720;
+  double _gownStitchingTarget = 160;
+  double _gownFoldingTarget = 560;
+
+  late final TextEditingController _manualLayTargetController;
+  late final TextEditingController _automatedLayTargetController;
+  late final TextEditingController _gownStitchingTargetController;
+  late final TextEditingController _gownFoldingTargetController;
+
   final ScrollController _verticalController = ScrollController();
   final ScrollController _headerHorizontalController = ScrollController();
   final ScrollController _bodyHorizontalController = ScrollController();
@@ -115,6 +124,18 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   @override
   void initState() {
     super.initState();
+    _manualLayTargetController = TextEditingController(
+      text: _manualLayTarget.toString(),
+    );
+    _automatedLayTargetController = TextEditingController(
+      text: _automatedLayTarget.toString(),
+    );
+    _gownStitchingTargetController = TextEditingController(
+      text: _gownStitchingTarget.toString(),
+    );
+    _gownFoldingTargetController = TextEditingController(
+      text: _gownFoldingTarget.toString(),
+    );
     totalsNotifier = ValueNotifier([]);
     _bodyHorizontalController.addListener(_syncHeaderToBodyScroll);
     _headerHorizontalController.addListener(_syncBodyToHeaderScroll);
@@ -206,7 +227,7 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
     if (picked != null) setState(() => _to = picked);
   }
 
-  Future<void> exportDailyLayExcel() async {
+  Future<void> exportDailyLayDetailedExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
       NotificationService.warning(
         title: 'Warning',
@@ -233,6 +254,206 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
       fileName: 'Daily_Lay_Entry.xlsx',
       amountColumns: List.generate(headers.length - 2, (i) => i + 1),
       addTotalRow: true,
+      reportTitle: caption,
+    );
+  }
+
+  Future<void> _showDownloadOptions() async {
+    if (dates.isEmpty || controllers.isEmpty) {
+      NotificationService.warning(
+        title: 'Warning',
+        message: 'No data available to export.',
+      );
+      return;
+    }
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Download Excel'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.table_chart_outlined),
+                title: const Text('Detailed'),
+                onTap: () => Navigator.of(context).pop('detailed'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.summarize_outlined),
+                title: const Text('Summary'),
+                onTap: () => Navigator.of(context).pop('summary'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == 'detailed') {
+      await exportDailyLayDetailedExcel();
+    } else if (selected == 'summary') {
+      final now = _to;
+      if (now == null) return;
+
+      final firstDay = DateTime(now.year, now.month, 1);
+      final lastDay = DateTime(now.year, now.month + 1, 0);
+
+      DateTime initialDate = now;
+      if (initialDate.isBefore(firstDay)) initialDate = firstDay;
+      if (initialDate.isAfter(lastDay)) initialDate = lastDay;
+
+      final selectedDate = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        firstDate: firstDay,
+        lastDate: lastDay,
+      );
+
+      if (selectedDate != null) {
+        await exportDailyLaySummaryExcel(selectedDate);
+      }
+    }
+  }
+
+  Future<void> exportDailyLaySummaryExcel(DateTime summaryDate) async {
+    if (dates.isEmpty || controllers.isEmpty) {
+      NotificationService.warning(
+        title: 'Warning',
+        message: 'No data available to export.',
+      );
+      return;
+    }
+
+    _recalculateSheet();
+
+    final summaryDateText = _format(summaryDate);
+    final rowsForDate = <int>[
+      for (int i = 0; i < dates.length; i++)
+        if (dates[i] == summaryDateText) i,
+    ];
+
+    if (rowsForDate.isEmpty) {
+      NotificationService.warning(
+        title: 'Warning',
+        message: 'No data found for $summaryDateText.',
+      );
+      return;
+    }
+
+    bool isOnOrBeforeSummaryDate(int row) {
+      final rowDate = DateFormat('dd-MM-yyyy').parse(dates[row]);
+      return rowDate.isBefore(summaryDate) ||
+          rowDate.isAtSameMomentAs(summaryDate);
+    }
+
+    double sumRows(Iterable<int> rowIndexes, int col) {
+      return rowIndexes.fold<double>(
+        0,
+        (sum, row) => sum + _cellNumber(row, col),
+      );
+    }
+
+    int countRowsWithValue(int workerCol) {
+      return [
+        for (int i = 0; i < dates.length; i++)
+          if (isOnOrBeforeSummaryDate(i) && _cellNumber(i, workerCol) != 0) i,
+      ].length;
+    }
+
+    String percentText(double achieved, double target) {
+      if (target == 0) return '0.00%';
+      return '${(achieved / target * 100).toStringAsFixed(2)}%';
+    }
+
+    List<dynamic> summaryRow({
+      required String unit,
+      required String description,
+      required double target,
+      required String uom,
+      required int achievementCol,
+      required int countCol,
+    }) {
+      final dayAchievement = sumRows(rowsForDate, achievementCol);
+      final cumulativeAchievement = sumRows([
+        for (int i = 0; i < dates.length; i++)
+          if (isOnOrBeforeSummaryDate(i)) i,
+      ], achievementCol);
+
+      final cumulativeTarget = target * countRowsWithValue(countCol);
+
+      return [
+        unit,
+        description,
+        target,
+        uom,
+        dayAchievement,
+        percentText(dayAchievement, target),
+        cumulativeTarget,
+        cumulativeAchievement,
+        percentText(cumulativeAchievement, cumulativeTarget),
+      ];
+    }
+
+    final rows = [
+      summaryRow(
+        unit: _selectedPlant?.contains('Bangalore') == true
+            ? 'Bangalore'
+            : 'Rajapalayam',
+        description: 'Manual Lay',
+        target: _manualLayTarget,
+        uom: 'Mtr',
+        achievementCol: 3,
+        countCol: 0,
+      ),
+      summaryRow(
+        unit: '',
+        description: 'Automated Lay',
+        target: _automatedLayTarget,
+        uom: 'Mtr',
+        achievementCol: 7,
+        countCol: 0,
+      ),
+      summaryRow(
+        unit: '',
+        description: 'Gown Stitching',
+        target: _gownStitchingTarget,
+        uom: 'Nos',
+        achievementCol: 10,
+        countCol: 8,
+      ),
+      summaryRow(
+        unit: '',
+        description: 'Gown Folding',
+        target: _gownFoldingTarget,
+        uom: 'Nos',
+        achievementCol: 13,
+        countCol: 11,
+      ),
+    ];
+
+    final monthYear = DateFormat('MMM yyyy').format(summaryDate).toUpperCase();
+    final caption =
+        'Lay Cutting, Gown Stitching And Folding For The Month Of $monthYear '
+        '- ${_selectedPlant ?? ''} - As On $summaryDateText';
+
+    await reportService.generateExcel(
+      sheetName: 'DailyLaySummary',
+      headers: const [
+        'Manufacturing Unit',
+        'Description',
+        'Target (per Man power)',
+        'UOM',
+        'For the day Achievement',
+        'Target vs Achievement %',
+        'Cumulative Target',
+        'Cumulative Achievement',
+        'Target vs Achievement %',
+      ],
+      rows: rows,
+      fileName: 'Daily_Lay_Summary.xlsx',
+      amountColumns: [],
       reportTitle: caption,
     );
   }
@@ -282,6 +503,12 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
         'UserId': int.tryParse(userID) ?? 0,
         'DailyLayPlant': _selectedPlant,
         'DailyLayDate': convertToIso(dates[i]),
+
+        'ManualLayTarget': _manualLayTarget,
+        'AutomatedLayTarget': _automatedLayTarget,
+        'GownStitchingTarget': _gownStitchingTarget,
+        'GownFoldingTarget': _gownFoldingTarget,
+
         'LayReportDomNoOfWorker': values[0],
         'LayReportDomMeters': values[1],
         'LayReportDomKgs': values[2],
@@ -352,6 +579,16 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   String _rowText(Map<String, dynamic> row, List<String> keys) {
     final value = _firstValue(row, keys);
     return value?.toString() ?? '0';
+  }
+
+  double _rowDouble(
+    Map<String, dynamic> row,
+    List<String> keys,
+    double fallback,
+  ) {
+    final value = _firstValue(row, keys);
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
   int _rowId(Map<String, dynamic> row) {
@@ -468,6 +705,30 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
 
         if (decoded['Status'] == true && decoded['Data'] != null) {
           final result = decoded['Data'] as List<dynamic>;
+
+          if (result.isNotEmpty) {
+            final firstRow = Map<String, dynamic>.from(result.first as Map);
+
+            _manualLayTarget = _rowDouble(firstRow, const [
+              'ManualLayTarget',
+            ], 1800);
+            _automatedLayTarget = _rowDouble(firstRow, const [
+              'AutomatedLayTarget',
+            ], 2720);
+            _gownStitchingTarget = _rowDouble(firstRow, const [
+              'GownStitchingTarget',
+            ], 160);
+            _gownFoldingTarget = _rowDouble(firstRow, const [
+              'GownFoldingTarget',
+            ], 560);
+
+            _manualLayTargetController.text = _manualLayTarget.toString();
+            _automatedLayTargetController.text = _automatedLayTarget.toString();
+            _gownStitchingTargetController.text = _gownStitchingTarget
+                .toString();
+            _gownFoldingTargetController.text = _gownFoldingTarget.toString();
+          }
+
           final apiDataByDate = <String, List<Map<String, dynamic>>>{};
           existingDbDates.clear();
 
@@ -884,7 +1145,13 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
                 elevation: 3,
                 child: Padding(
                   padding: const EdgeInsets.all(10),
-                  child: _buildDatePickers(),
+                  child: Column(
+                    children: [
+                      _buildDatePickers(),
+                      const SizedBox(height: 8),
+                      _buildTargetSettings(),
+                    ],
+                  ),
                 ),
               ),
             Expanded(
@@ -904,6 +1171,73 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
       bottomNavigationBar: hasRows && !keyboardVisible
           ? _buildSaveButton()
           : null,
+    );
+  }
+
+  Widget _buildTargetSettings() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildTargetField(
+            width: 150,
+            label: 'Manual Lay Target',
+            controller: _manualLayTargetController,
+            onChanged: (value) => _manualLayTarget = value,
+          ),
+          const SizedBox(width: 12),
+          _buildTargetField(
+            width: 170,
+            label: 'Automated Lay Target',
+            controller: _automatedLayTargetController,
+            onChanged: (value) => _automatedLayTarget = value,
+          ),
+          const SizedBox(width: 12),
+          _buildTargetField(
+            width: 170,
+            label: 'Gown Stitching Target',
+            controller: _gownStitchingTargetController,
+            onChanged: (value) => _gownStitchingTarget = value,
+          ),
+          const SizedBox(width: 12),
+          _buildTargetField(
+            width: 160,
+            label: 'Gown Folding Target',
+            controller: _gownFoldingTargetController,
+            onChanged: (value) => _gownFoldingTarget = value,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTargetField({
+    required double width,
+    required String label,
+    required TextEditingController controller,
+    required ValueChanged<double> onChanged,
+  }) {
+    return SizedBox(
+      width: width,
+      child: TextFormField(
+        controller: controller,
+        textAlign: TextAlign.right,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [DecimalInputFormatter()],
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 5.8,
+          ),
+        ),
+        onChanged: (value) {
+          onChanged(double.tryParse(value) ?? 0);
+          setState(() {});
+        },
+      ),
     );
   }
 
@@ -1472,7 +1806,7 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: exportDailyLayExcel,
+                  onPressed: _showDownloadOptions,
                   child: Text(
                     'Download Excel',
                     style: TextStyle(
@@ -1493,6 +1827,10 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   @override
   void dispose() {
     _disposeRows();
+    _manualLayTargetController.dispose();
+    _automatedLayTargetController.dispose();
+    _gownStitchingTargetController.dispose();
+    _gownFoldingTargetController.dispose();
     _verticalController.dispose();
     _headerHorizontalController.dispose();
     _bodyHorizontalController.dispose();
