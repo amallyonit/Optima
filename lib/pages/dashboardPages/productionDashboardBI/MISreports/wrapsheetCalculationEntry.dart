@@ -174,6 +174,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   static const double _actionColumnWidth = 90;
   static const double _dateColumnWidth = 120;
   static const int _dataColumnCount = 30;
+  static const Set<int> _formulaColumnIndexes = {18, 24, 25, 26, 27, 28};
 
   double get _frozenTableWidth => _actionColumnWidth + _dateColumnWidth;
 
@@ -189,6 +190,111 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       for (int i = start; i < end; i++)
         i - start: FixedColumnWidth(_getColumnWidth(i)),
     };
+  }
+
+  bool _isFormulaColumn(int colIndex) {
+    return _formulaColumnIndexes.contains(colIndex);
+  }
+
+  double _numericValue(List<TextEditingController> row, int index) {
+    if (index < 0 || index >= row.length) return 0;
+    return double.tryParse(row[index].text.trim()) ?? 0;
+  }
+
+  String _formatCalculatedValue(double value) {
+    if (!value.isFinite) return '0';
+    final rounded = double.parse(value.toStringAsFixed(4));
+    if (rounded == 0) return '0';
+    return rounded.toStringAsFixed(4).replaceFirst(RegExp(r'\.?0+$'), '');
+  }
+
+  void _setCalculatedValue(
+    List<TextEditingController> row,
+    int index,
+    double value,
+  ) {
+    final text = _formatCalculatedValue(value);
+    if (row[index].text == text) return;
+    row[index].text = text;
+  }
+
+  void _recalculateRow(int rowIndex) {
+    if (rowIndex < 0 || rowIndex >= controllers.length) return;
+
+    final row = controllers[rowIndex];
+
+    final qtyProd1 = _numericValue(row, 0);
+    final lg1 = _numericValue(row, 1);
+    final wd1 = _numericValue(row, 2);
+    final qtyProd2 = _numericValue(row, 3);
+    final lg2 = _numericValue(row, 4);
+    final wd2 = _numericValue(row, 5);
+    final qtyProd3 = _numericValue(row, 6);
+    final lg3 = _numericValue(row, 7);
+    final wd3 = _numericValue(row, 8);
+    final gsm = _numericValue(row, 9);
+    final openWt = _numericValue(row, 11);
+    final newRollWt = _numericValue(row, 12);
+    final closingWt = _numericValue(row, 13);
+    final noOfLays = _numericValue(row, 15);
+    final catcherWasteLg = _numericValue(row, 16);
+    final catcherWasteWd = _numericValue(row, 17);
+    final addWaste1 = _numericValue(row, 21);
+    final addWaste2Lg = _numericValue(row, 22);
+    final addWaste2Wd = _numericValue(row, 23);
+
+    final catcherWaste =
+        catcherWasteLg * catcherWasteWd * gsm * noOfLays / 10000 / 1000;
+    final addWaste2 = addWaste2Lg * addWaste2Wd * noOfLays * gsm / 10000 / 1000;
+    final stdCons =
+        ((lg1 * wd1 * gsm * qtyProd1) +
+                (lg2 * wd2 * gsm * qtyProd2) +
+                (qtyProd3 * lg3 * wd3 * gsm)) /
+            10000 /
+            1000 +
+        catcherWaste +
+        addWaste2 +
+        addWaste1;
+    final actCons = openWt + newRollWt - closingWt;
+    final consDif = actCons - stdCons;
+    final percentWaste = actCons == 0 ? 0.0 : consDif / actCons;
+
+    _setCalculatedValue(row, 18, catcherWaste);
+    _setCalculatedValue(row, 24, addWaste2);
+    _setCalculatedValue(row, 25, stdCons);
+    _setCalculatedValue(row, 26, actCons);
+    _setCalculatedValue(row, 27, consDif);
+    _setCalculatedValue(row, 28, percentWaste);
+  }
+
+  void _recalculateAllRows() {
+    for (int i = 0; i < controllers.length; i++) {
+      _recalculateRow(i);
+    }
+  }
+
+  void _refreshCalculatedValuesAndTotals({int? rowIndex}) {
+    if (rowIndex == null) {
+      _recalculateAllRows();
+    } else {
+      _recalculateRow(rowIndex);
+    }
+    initializeCellValues();
+    calculateTotals();
+  }
+
+  bool _hasRowData(int rowIndex) {
+    if (rowIndex < 0 || rowIndex >= controllers.length) return false;
+
+    final row = controllers[rowIndex];
+    final remarks = row.last.text.trim();
+    final hasNumericValue = row
+        .take(row.length - 1)
+        .any(
+          (controller) => (double.tryParse(controller.text.trim()) ?? 0) != 0,
+        );
+
+    return hasNumericValue || remarks.isNotEmpty;
   }
 
   @override
@@ -243,16 +349,27 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       return;
     }
 
+    _refreshCalculatedValuesAndTotals();
+
     List<List<dynamic>> rows = [];
 
     String caption =
         "Wrapsheet Calculation - ${_selectedPlant ?? ''} - ${_selectedShift ?? ''} "
         "(${_format(_from!)} to ${_format(_to!)})";
 
-    rows = List<List<dynamic>>.generate(
-      dates.length,
-      (i) => [dates[i], ...controllers[i].map((e) => e.text)],
-    );
+    rows = [
+      for (int i = 0; i < dates.length; i++)
+        if (_hasRowData(i)) [dates[i], ...controllers[i].map((e) => e.text)],
+    ];
+
+    if (rows.isEmpty) {
+      if (!mounted) return;
+      NotificationService.warning(
+        title: "Warning",
+        message: "No table data available to export.",
+      );
+      return;
+    }
     reportService.generateExcel(
       sheetName: 'Wrapsheet Calculation',
       headers: headers.sublist(1),
@@ -311,6 +428,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       );
       return;
     }
+
+    _refreshCalculatedValuesAndTotals();
 
     final prefs = await SharedPreferences.getInstance();
     userID = prefs.getString('userId') ?? '';
@@ -702,8 +821,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
             focusNodes.add(rowFocusNodes);
           }
 
-          initializeCellValues();
-          calculateTotals();
+          _refreshCalculatedValuesAndTotals();
 
           if (mounted) {
             setState(() {});
@@ -745,8 +863,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     // Build focusNodes
     _buildFocusNodes();
 
-    initializeCellValues();
-    calculateTotals();
+    _refreshCalculatedValuesAndTotals();
 
     if (mounted) {
       setState(() {});
@@ -887,8 +1004,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
         (_) => _createEmptyRowControllers(),
       );
       _buildFocusNodes();
-      initializeCellValues();
-      calculateTotals();
+      _refreshCalculatedValuesAndTotals();
     });
   }
 
@@ -951,6 +1067,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       focusNodes.insert(rowIndex + 1, newFocusNodes);
       highlightedRowIndex = rowIndex + 1;
     });
+
+    _refreshCalculatedValuesAndTotals(rowIndex: rowIndex + 1);
 
     Future.delayed(const Duration(milliseconds: 50), () {
       if (!mounted) return;
@@ -1676,6 +1794,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   }
 
   Widget _buildEditableCell(int rowIndex, int colIndex) {
+    final isFormulaColumn = _isFormulaColumn(colIndex);
+
     return SizedBox(
       height: _rowHeight,
       child: Padding(
@@ -1718,6 +1838,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
             child: TextField(
               controller: controllers[rowIndex][colIndex],
               focusNode: focusNodes[rowIndex][colIndex],
+              readOnly: isFormulaColumn,
               keyboardType: isNumericColumn(colIndex)
                   ? const TextInputType.numberWithOptions(decimal: true)
                   : TextInputType.text,
@@ -1726,7 +1847,8 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
                   ? TextAlign.right
                   : TextAlign.left,
               onChanged: (_) {
-                updateColumnTotal(rowIndex, colIndex);
+                if (isFormulaColumn) return;
+                _refreshCalculatedValuesAndTotals(rowIndex: rowIndex);
               },
               onSubmitted: (_) {
                 _moveFocus(rowIndex, colIndex, rowOffset: 1);
@@ -1737,9 +1859,11 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
                   extentOffset: controllers[rowIndex][colIndex].text.length,
                 );
               },
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                filled: isFormulaColumn,
+                fillColor: isFormulaColumn ? Colors.grey.shade100 : null,
+                contentPadding: const EdgeInsets.symmetric(
                   vertical: 8,
                   horizontal: 8,
                 ),
