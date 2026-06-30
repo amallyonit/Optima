@@ -1498,6 +1498,7 @@ class _SalesVsDeliveryPageState extends State<SalesVsDeliveryPage> {
       ),
     );
   }
+
 }
 
 class BranchDropdown extends StatefulWidget {

@@ -49,9 +49,10 @@ class CarriageInwardPage extends StatefulWidget {
 class _CarriageInwardPageState extends State<CarriageInwardPage> {
   // UI State
   DateTime selectedDate = DateTime.now();
+
   String? _selectedBranch;
   List<VendorFreightData> _graphData = [];
-  bool isLoading = false; // Internal loading for graph processing
+  bool isLoading = true; // Internal loading for graph processing
 
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
@@ -75,6 +76,14 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
   }
 
   Future<void> loadData(String selectedUser) async {
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        chartDataLoaded = false;
+        _graphData = [];
+      });
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
         ? prefs.getString('userName') ?? ''
@@ -132,7 +141,6 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
       if (mounted) {
         setState(() {
           carriageInwardList = fetchedList;
-          chartDataLoaded = true;
           _selectedBranch = "Karnataka State";
         });
         await _processDataAndGenerateGraph();
@@ -148,6 +156,12 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
               "Error occured while loading inward transportation cost data.",
         );
       }
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          chartDataLoaded = true;
+        });
+      }
     }
   }
 
@@ -157,9 +171,17 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
   }
 
   Future<void> _processDataAndGenerateGraph() async {
-    if (carriageInwardList.isEmpty || _selectedBranch == null) return;
+    if (mounted) setState(() => isLoading = true);
 
-    setState(() => isLoading = true);
+    if (carriageInwardList.isEmpty || _selectedBranch == null) {
+      if (!mounted) return;
+      setState(() {
+        _graphData = [];
+        isLoading = false;
+        chartDataLoaded = true;
+      });
+      return;
+    }
 
     await Future.delayed(Duration(milliseconds: 50));
 
@@ -209,6 +231,7 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
     setState(() {
       _graphData = resultList;
       isLoading = false;
+      chartDataLoaded = true;
     });
   }
 
@@ -455,7 +478,12 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      _buildFreightChart(),
+                      isLoading
+                          ? const SizedBox(
+                              height: 350,
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          : _buildFreightChart(),
                     ],
                   ),
                 ),

@@ -170,6 +170,33 @@ class _ProductionSummaryWithManpowerCostEntryState
     return _formulaColumns.contains(colIndex);
   }
 
+  DateTime? _dateFromText(String value) {
+    try {
+      final parts = value.split('-');
+      if (parts.length != 3) return null;
+
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+
+      return DateTime(year, month, day);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isSundayRow(int rowIndex) {
+    if (rowIndex < 0 || rowIndex >= dates.length) return false;
+    return _dateFromText(dates[rowIndex])?.weekday == DateTime.sunday;
+  }
+
+  Color? _rowBackgroundColor(int rowIndex) {
+    if (highlightedRowIndex == rowIndex || _isSundayRow(rowIndex)) {
+      return Colors.yellow.shade100;
+    }
+    return null;
+  }
+
   Future<void> _pickFrom() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -1014,10 +1041,13 @@ class _ProductionSummaryWithManpowerCostEntryState
       final totalQty = gownQty + wrapQty;
       final totalBox = gownBox + wrapBox;
       final manDayAttended = gownWorker + wrapWorker;
+      final labourCostMultiplier = _isSundayRow(row) ? 2.0 : 1.0;
+      final labourCostAmount =
+          _monthlyCtc * manDayAttended * labourCostMultiplier;
 
       final labourCostPerBox = totalBox == 0
           ? 0.0
-          : (_monthlyCtc * manDayAttended) / totalBox;
+          : labourCostAmount / totalBox;
 
       final prevCumulativeQty = row == 0 ? 0.0 : _cellNumber(row - 1, 12);
       final prevCumulativeTargetBox = row == 0 ? 0.0 : _cellNumber(row - 1, 13);
@@ -1028,6 +1058,9 @@ class _ProductionSummaryWithManpowerCostEntryState
       final prevCumulativeManDayAttended = row == 0
           ? 0.0
           : _cellNumber(row - 1, 16);
+      final prevCumulativeLabourCostAmount = row == 0
+          ? 0.0
+          : _cellNumber(row - 1, 17) * prevCumulativeBox;
 
       final cumulativeQty = prevCumulativeQty + totalQty;
       final cumulativeTargetBox = prevCumulativeTargetBox + targetBoxQty;
@@ -1035,10 +1068,12 @@ class _ProductionSummaryWithManpowerCostEntryState
       final cumulativeManDayTarget = prevCumulativeManDayTarget + manDayTarget;
       final cumulativeManDayAttended =
           prevCumulativeManDayAttended + manDayAttended;
+      final cumulativeLabourCostAmount =
+          prevCumulativeLabourCostAmount + labourCostAmount;
 
       final cumulativeLabourCostPerBox = cumulativeBox == 0
           ? 0.0
-          : (_monthlyCtc * cumulativeManDayAttended) / cumulativeBox;
+          : cumulativeLabourCostAmount / cumulativeBox;
 
       final productivityDay = manDayAttended == 0
           ? 0.0
@@ -1896,9 +1931,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     }
 
     return TableRow(
-      decoration: BoxDecoration(
-        color: highlightedRowIndex == rowIndex ? Colors.yellow.shade100 : null,
-      ),
+      decoration: BoxDecoration(color: _rowBackgroundColor(rowIndex)),
       children: [
         Container(
           height: _rowHeight,
@@ -2042,9 +2075,7 @@ class _ProductionSummaryWithManpowerCostEntryState
     }
 
     return TableRow(
-      decoration: BoxDecoration(
-        color: highlightedRowIndex == rowIndex ? Colors.yellow.shade100 : null,
-      ),
+      decoration: BoxDecoration(color: _rowBackgroundColor(rowIndex)),
       children: List.generate(controllers[rowIndex].length, (colIndex) {
         return _buildEditableCell(rowIndex, colIndex);
       }),

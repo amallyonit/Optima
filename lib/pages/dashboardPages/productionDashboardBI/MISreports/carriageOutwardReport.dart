@@ -50,7 +50,7 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
   DateTime selectedDate = DateTime.now();
   String? _selectedBranch;
   List<CustomerFreightData> _graphData = [];
-  bool isLoading = false; // Internal loading for graph processing
+  bool isLoading = true; // Internal loading for graph processing
 
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
@@ -74,6 +74,14 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
   }
 
   Future<void> loadData(String selectedUser) async {
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        chartDataLoaded = false;
+        _graphData = [];
+      });
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final userName = selectedUser == ""
         ? prefs.getString('userName') ?? ''
@@ -132,7 +140,6 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
         setState(() {
           // Update Global List
           carriageOutwardList = fetchedList;
-          chartDataLoaded = true;
           _selectedBranch = "Karnataka State";
         });
         await _processDataAndGenerateGraph();
@@ -147,6 +154,12 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
           message: "Error occured while loading transportation cost data.",
         );
       }
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          chartDataLoaded = true;
+        });
+      }
     }
   }
 
@@ -156,9 +169,17 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
   }
 
   Future<void> _processDataAndGenerateGraph() async {
-    if (carriageOutwardList.isEmpty || _selectedBranch == null) return;
+    if (mounted) setState(() => isLoading = true);
 
-    setState(() => isLoading = true);
+    if (carriageOutwardList.isEmpty || _selectedBranch == null) {
+      if (!mounted) return;
+      setState(() {
+        _graphData = [];
+        isLoading = false;
+        chartDataLoaded = true;
+      });
+      return;
+    }
 
     await Future.delayed(Duration(milliseconds: 50));
 
@@ -210,6 +231,7 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
     setState(() {
       _graphData = resultList;
       isLoading = false;
+      chartDataLoaded = true;
     });
   }
 
@@ -380,6 +402,7 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
                       Text("$formattedFiscalYearStartDate - $formattedDateNow"),
                     ],
                   ),
+
                   Row(
                     children: [
                       IconButton(
@@ -456,7 +479,12 @@ class _CarriageOutwardPageState extends State<CarriageOutwardPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      _buildFreightChart(),
+                      isLoading
+                          ? const SizedBox(
+                              height: 350,
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          : _buildFreightChart(),
                     ],
                   ),
                 ),

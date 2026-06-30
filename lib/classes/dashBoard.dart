@@ -6613,3 +6613,34 @@ class WarehouseSalesSummary {
   double delayAbove10Orders = 0;
   double delayAbove10Value = 0;
 }
+
+class PendingPurchaseChartModel {
+  final String description;
+
+  final double targetPurchaseOrder;
+  final double totalPendingPOValue;
+  final double grnValue;
+
+  final double previousMonthPending;
+  final double currentMonthPending;
+  final double nextMonthPending;
+
+  PendingPurchaseChartModel({
+    required this.description,
+    required this.targetPurchaseOrder,
+    required this.totalPendingPOValue,
+    required this.grnValue,
+    required this.previousMonthPending,
+    required this.currentMonthPending,
+    required this.nextMonthPending,
+  });
+
+  List<double> get chartValues => [
+    targetPurchaseOrder,
+    totalPendingPOValue,
+    grnValue,
+    previousMonthPending,
+    currentMonthPending,
+    nextMonthPending,
+  ];
+}
