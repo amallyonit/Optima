@@ -645,12 +645,31 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 5),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 15),
+                        Text(
+                          "Purchase Price Analysis",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: const Color.fromARGB(255, 115, 3, 121),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
 
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
-                    title: 'Month wise purchase summary ',
+                    title: 'Month Wise Purchase Summary',
                     spacing: 10,
                     menuItems: [
                       PopupMenuItem(
@@ -665,7 +684,21 @@ class _PurchasePriceMISState extends State<PurchasePriceMIS> {
                       children: [
                         const SizedBox(height: 10),
                         _monthWisePurchase(),
-                        const SizedBox(height: 15),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Item Group Wise Summary',
+                    spacing: 10,
+                    menuItems: [],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
                         _itemGroupWisePurchase(),
                       ],
                     ),

@@ -1094,7 +1094,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
-                    title: 'Select Warehouse',
+                    title: 'Stock Statement',
                     spacing: 10,
                     menuItems: [],
                     child: Column(

@@ -128,11 +128,8 @@ String touchedSupplier = "";
 String touchedSupplierType = "";
 String touchedDocumentType = "";
 String touchedBPgroup = "";
-
 double selectedChart = 0;
-
 List<String> selectedSalesData = [];
-
 final List<String> categories = [
   'Category',
   'Supplier',

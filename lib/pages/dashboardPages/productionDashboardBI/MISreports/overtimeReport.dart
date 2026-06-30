@@ -499,6 +499,8 @@ class _OvertimeReportPageState extends State<OvertimeReportPage> {
           setState(() {
             _selectedPlant = value!;
           });
+          loadData();
+          calculateTotals();
         },
       ),
     );

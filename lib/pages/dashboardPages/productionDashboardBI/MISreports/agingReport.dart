@@ -604,7 +604,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
-                    title: 'Select Warehouse',
+                    title: 'Inventory Ageing',
                     spacing: 10,
                     menuItems: [],
                     child: Column(

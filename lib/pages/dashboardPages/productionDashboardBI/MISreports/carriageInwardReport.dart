@@ -406,7 +406,7 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
                     children: [
                       const SizedBox(width: 15),
                       Text(
-                        "Outward Carriage Cost",
+                        "Carriage Inward Cost",
                         style: TextStyle(
                           fontSize: 14,
                           fontFamily: 'Poppins',

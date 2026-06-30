@@ -779,7 +779,7 @@ class _PendingSOReportPageState extends State<PendingSOReportPage> {
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: DashboardCardUI(
-                    title: 'Select Warehouse',
+                    title: 'Pending SO Analysis',
                     spacing: 10,
                     menuItems: [],
                     child: Column(

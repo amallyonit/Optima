@@ -20,6 +20,7 @@ import '../../../login_screen.dart';
 import 'package:flutter/gestures.dart';
 import '../../../notificationService.dart';
 import '../ReportService.dart';
+import '../dashboard_card_ui.dart';
 
 final reportService = ReportService();
 
@@ -4229,6 +4230,20 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
   }
 
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _monthlySalesHorizontalController = ScrollController();
+  final ScrollController _regionalManagerHorizontalController =
+      ScrollController();
+  final ScrollController _salesManagerHorizontalController = ScrollController();
+  final ScrollController _salesPersonHorizontalController = ScrollController();
+  final ScrollController _customerStateWiseHorizontalController =
+      ScrollController();
+  final ScrollController _customerSalesHorizontalController =
+      ScrollController();
+  final ScrollController _itemGroupWiseHorizontalController =
+      ScrollController();
+  final ScrollController _itemWiseHorizontalController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -4341,6 +4356,15 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _monthlySalesHorizontalController.dispose();
+    _regionalManagerHorizontalController.dispose();
+    _salesManagerHorizontalController.dispose();
+    _salesPersonHorizontalController.dispose();
+    _customerStateWiseHorizontalController.dispose();
+    _customerSalesHorizontalController.dispose();
+    _itemGroupWiseHorizontalController.dispose();
+    _itemWiseHorizontalController.dispose();
     clearVariables();
     _longPressGestureRecognizer.dispose();
     ytdSalesList = YTDSalesList(ytdData: []);
@@ -4364,8 +4388,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   Widget build(BuildContext context) {
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoaded == true
-        ? SingleChildScrollView(
-            controller: salesPerformancePageController,
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -4416,10 +4440,10 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                         ),
                       ],
                     ),
-                  
                   ],
                 ),
                 const SizedBox(height: 10),
+
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -4815,6 +4839,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
                 ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -4958,6 +4983,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                       ? const SizedBox.shrink()
                       : const Divider(thickness: 2),
                 ),
+
                 Visibility(
                   visible: asmwiseSalesList.asmwiseData.isNotEmpty,
                   child: Row(
@@ -5028,12 +5054,14 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                       ? const SizedBox.shrink()
                       : _salesManagerAnalysis(),
                 ),
+
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: asmwiseSalesList.asmwiseData.isEmpty
                       ? const SizedBox.shrink()
                       : const Divider(thickness: 2),
                 ),
+
                 Visibility(
                   visible: tsmwiseSalesList.tsmwiseData.isNotEmpty,
                   child: Row(
@@ -5104,6 +5132,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                       ? const SizedBox.shrink()
                       : _salesPersonAnalysis(),
                 ),
+
                 Padding(
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0),
                   child: tsmwiseSalesList.tsmwiseData.isEmpty
@@ -5179,6 +5208,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   padding: const EdgeInsets.all(8.0),
                   child: _buildCustomerStateWiseSalesChart(),
                 ),
+
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
@@ -5252,10 +5282,12 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   padding: const EdgeInsets.all(8.0),
                   child: _buildCustomerSalesChart(),
                 ),
+
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
                 ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -5325,6 +5357,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   padding: const EdgeInsets.all(8.0),
                   child: _itemGroupWiseAnalysis(),
                 ),
+
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
@@ -5396,6 +5429,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   padding: const EdgeInsets.all(8.0),
                   child: _itemWiseAnalysis(),
                 ),
+
                 const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 16.0),
                   child: Divider(thickness: 2),
