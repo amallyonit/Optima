@@ -125,6 +125,23 @@ class SideMenuState extends State<SideMenu> {
     });
   }
 
+  Set<String> get userRoles => userRoleCode
+      .split(',')
+      .map((role) => role.trim().toUpperCase())
+      .where((role) => role.isNotEmpty)
+      .toSet();
+
+  bool hasRole(String roleCode) {
+    final roles = userRoles;
+    return roles.contains('R1') || roles.contains(roleCode.toUpperCase());
+  }
+
+  bool hasAnyRole(List<String> roleCodes) {
+    final roles = userRoles;
+    return roles.contains('R1') ||
+        roleCodes.any((roleCode) => roles.contains(roleCode.toUpperCase()));
+  }
+
   Future<void> generateAttendaanceExcel(String fromDt, String toDt) async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId') ?? '';
@@ -673,7 +690,7 @@ class SideMenuState extends State<SideMenu> {
               );
             },
           ),
-          if (userRoleCode == "R1" || userRoleCode == "R2")
+          if (hasRole("R2"))
             buildHoverTile(
               icon: Icons.calendar_month,
               title: 'Monthly Scheduler',
@@ -686,7 +703,7 @@ class SideMenuState extends State<SideMenu> {
                 );
               },
             ),
-          if (userRoleCode == "R1" || userRoleCode == "R2")
+          if (hasRole("R2"))
             buildHoverTile(
               icon: Icons.calendar_month,
               title: 'Schedule Approval',
@@ -699,7 +716,7 @@ class SideMenuState extends State<SideMenu> {
                 );
               },
             ),
-          if (userRoleCode == "R1" || userRoleCode == "R2")
+          if (hasRole("R2"))
             buildHoverTile(
               icon: Icons.people_alt_outlined,
               title: 'Leads',
@@ -713,11 +730,12 @@ class SideMenuState extends State<SideMenu> {
                 );
               },
             ),
+
           ExpansionTile(
             leading: const Icon(Icons.dashboard_customize_outlined),
             title: const Text('BI Dashboard'),
             children: [
-              if (userRoleCode == "R1" || userRoleCode == "R2")
+              if (hasRole("R2"))
                 buildHoverTile(
                   icon: Icons.show_chart_outlined,
                   title: 'Sales',
@@ -731,7 +749,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R3")
+              if (hasRole("R3"))
                 buildHoverTile(
                   icon: Icons.price_change_outlined,
                   title: 'Finance',
@@ -745,7 +763,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R4")
+              if (hasRole("R4"))
                 buildHoverTile(
                   icon: Icons.cases_outlined,
                   title: 'Purchase',
@@ -759,7 +777,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.factory_outlined,
                   title: 'Production',
@@ -773,7 +791,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R6")
+              if (hasRole("R6"))
                 buildHoverTile(
                   icon: Icons.inventory_2_outlined,
                   title: 'Inventory',
@@ -793,7 +811,7 @@ class SideMenuState extends State<SideMenu> {
             leading: const Icon(Icons.calculate),
             title: const Text('Dashboard Data Inputs'),
             children: [
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'CTC Entry - Production',
@@ -806,7 +824,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'Manpower Costing',
@@ -819,7 +837,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'Attendance',
@@ -830,7 +848,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'Scrap Details',
@@ -841,7 +859,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'Sterilization Expenses',
@@ -854,7 +872,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'Wrap Sheet Calculation',
@@ -867,7 +885,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'Prod. Summary With\nMan Power Cost',
@@ -881,7 +899,7 @@ class SideMenuState extends State<SideMenu> {
                     );
                   },
                 ),
-              if (userRoleCode == "R1" || userRoleCode == "R5")
+              if (hasRole("R5"))
                 buildHoverTile(
                   icon: Icons.analytics_outlined,
                   title: 'Daily Lay Entry',
@@ -896,9 +914,7 @@ class SideMenuState extends State<SideMenu> {
                 ),
             ],
           ),
-          if (userRoleCode == "R1" ||
-              userRoleCode == "R2" ||
-              userRoleCode == "R3")
+          if (hasAnyRole(["R2", "R3"]))
             buildHoverTile(
               icon: Icons.pie_chart_outline_outlined,
               title: 'Customer Data',
@@ -914,7 +930,7 @@ class SideMenuState extends State<SideMenu> {
                 }),
               },
             ),
-          if (userRoleCode == "R1")
+          if (hasRole("R1"))
             buildHoverTile(
               icon: Icons.person_2_outlined,
               title: 'Download Attendance',
@@ -925,7 +941,7 @@ class SideMenuState extends State<SideMenu> {
                 setDatePopup(context);
               },
             ),
-          if (userRoleCode == "R1")
+          if (hasRole("R1"))
             buildHoverTile(
               icon: Icons.person_2_outlined,
               title: 'Download Checkins',
@@ -936,7 +952,7 @@ class SideMenuState extends State<SideMenu> {
                 setDatePopup(context);
               },
             ),
-          if (userRoleCode == "R1")
+          if (hasRole("R1"))
             buildHoverTile(
               icon: Icons.person_2_outlined,
               title: 'Download Usage Log',

@@ -28,6 +28,23 @@ class TabsPage extends StatefulWidget {
 String userRoleCode = "";
 String _selectedRoleCode = "";
 
+Set<String> get userRoles => userRoleCode
+    .split(',')
+    .map((role) => role.trim().toUpperCase())
+    .where((role) => role.isNotEmpty)
+    .toSet();
+
+bool hasRole(String roleCode) {
+  final roles = userRoles;
+  return roles.contains('R1') || roles.contains(roleCode.toUpperCase());
+}
+
+bool hasAnyRole(List<String> roleCodes) {
+  final roles = userRoles;
+  return roles.contains('R1') ||
+      roleCodes.any((roleCode) => roles.contains(roleCode.toUpperCase()));
+}
+
 class TabsPageState extends State<TabsPage> {
   int _selectedIndex = 0;
   void navigateToSalesAnalysis() async {
@@ -99,9 +116,8 @@ class TabsPageState extends State<TabsPage> {
         selectedItemColor: Colors.white,
         onTap: (index) {
           final isUnauthorized =
-              (index == 1 || index == 3) &&
-              userRoleCode != "R1" &&
-              userRoleCode != "R2";
+              (index == 1 && !hasRole("R2")) ||
+              (index == 3 && !hasAnyRole(["R2", "R3"]));
 
           if (isUnauthorized) {
             NotificationService.error(
@@ -143,31 +159,26 @@ class TabNavigationItem {
 
     TabNavigationItem(
       page: _selectedRoleCode.isNotEmpty
-          ? (userRoleCode == "R1" || userRoleCode == "R2") &&
-                    _selectedRoleCode == "R2"
+          ? hasRole("R2") && _selectedRoleCode == "R2"
                 ? const SalesBI()
-                : (userRoleCode == "R1" || userRoleCode == "R3") &&
-                      _selectedRoleCode == "R3"
+                : hasRole("R3") && _selectedRoleCode == "R3"
                 ? const FinanceBIPage()
-                : (userRoleCode == "R1" || userRoleCode == "R4") &&
-                      _selectedRoleCode == "R4"
+                : hasRole("R4") && _selectedRoleCode == "R4"
                 ? const PurchaseBI()
-                : (userRoleCode == "R1" || userRoleCode == "R5") &&
-                      _selectedRoleCode == "R5"
+                : hasRole("R5") && _selectedRoleCode == "R5"
                 ? const ProductionFI()
-                : (userRoleCode == "R1" || userRoleCode == "R6") &&
-                      _selectedRoleCode == "R6"
+                : hasRole("R6") && _selectedRoleCode == "R6"
                 ? const InventoryBI()
                 : const SalesBI()
-          : (userRoleCode == "R1" || userRoleCode == "R2")
+          : hasRole("R2")
           ? const SalesBI()
-          : (userRoleCode == "R1" || userRoleCode == "R3")
+          : hasRole("R3")
           ? const FinanceBIPage()
-          : (userRoleCode == "R1" || userRoleCode == "R4")
+          : hasRole("R4")
           ? const PurchaseBI()
-          : (userRoleCode == "R1" || userRoleCode == "R5")
+          : hasRole("R5")
           ? const ProductionFI()
-          : (userRoleCode == "R1" || userRoleCode == "R6")
+          : hasRole("R6")
           ? const InventoryBI()
           : const SalesBI(), // Default case
       icon: const Icon(Icons.dashboard_customize),
