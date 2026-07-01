@@ -1510,7 +1510,7 @@ class _ProductionSummaryWithManpowerCostEntryState
               ),
               inputFormatters: [DecimalInputFormatter()],
               decoration: const InputDecoration(
-                labelText: 'Monthly CTC',
+                labelText: 'Per Day CTC',
                 border: OutlineInputBorder(),
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(

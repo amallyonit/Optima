@@ -25,6 +25,18 @@ class DailyFinishedGoodsReport extends StatefulWidget {
       _DailyFinishedGoodsReportState();
 }
 
+class MonthInfo {
+  final String previous;
+  final String current;
+  final String next;
+
+  MonthInfo({
+    required this.previous,
+    required this.current,
+    required this.next,
+  });
+}
+
 class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
   DailyStockAchievementList dailyStockAchievementData =
       DailyStockAchievementList(stockData: []);
@@ -42,7 +54,9 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
   List<InventoryLevelList> stockDataTemp = [];
   List<StockInTransitList> stockInTransitList = [];
   List<StockInTransitList> stockInTransitListTemp = [];
-  String selectedSubGroup = 'Medical Device';
+  List<SalesTargetList> salesTargetList = [];
+
+  String selectedGroup = 'Medical Device';
 
   DateTime selectedDate = DateTime.now();
   String formattedStartDate = "";
@@ -217,6 +231,101 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         .toList();
   }
 
+  List<SalesTargetList> parseSalesTargetList(List<dynamic> data) {
+    return data.map((e) => SalesTargetList.fromJson(e)).toList();
+  }
+
+  Future<void> _loadSalesTargetAPI(String userName, String userLevel) async {
+    final fromDate = formatDate(fiscalYearStartDate!);
+
+    final toDate = formatDate(currentDate!);
+
+    final body = {
+      "FromDate": fromDate,
+      "ToDate": toDate,
+      "Index": 0,
+      "Limit": 0,
+      "sapToken": DataManager.readSapToken(),
+    };
+
+    const apiUrl = '${ApiHelper.baseUrl}BicxoSalesTargetList';
+
+    try {
+      late http.Response response;
+
+      // Retry for network/504/502 issues
+      for (int retry = 0; retry < 3; retry++) {
+        try {
+          response = await http
+              .post(
+                Uri.parse(apiUrl),
+                headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+                body: jsonEncode(body),
+              )
+              .timeout(const Duration(seconds: 25));
+
+          if (response.statusCode == 200) break;
+
+          if (response.statusCode == 502 || response.statusCode == 504) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+
+          break; // other errors → stop retry
+        } catch (_) {
+          await Future.delayed(const Duration(seconds: 2));
+        }
+      }
+
+      // Handle token expiration
+      if (response.statusCode == 401 ||
+          response.body.contains("Invalid or Expired Token")) {
+        if (!mounted) return;
+        NotificationService.warning(
+          title: "Security Alert",
+          message: "Invalid or Expired Token.",
+        );
+        return;
+      }
+
+      if (response.statusCode != 200) {
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading sales target data.",
+        );
+        return;
+      }
+
+      final jsonMap = jsonDecode(response.body);
+
+      final List<dynamic>? data = jsonMap["responseData"] ?? [];
+
+      if (data == null || data.isEmpty) {
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading sales target data.",
+        );
+        return;
+      }
+
+      final parsedList = parseSalesTargetList(data);
+      if (!mounted) return;
+
+      // UPDATE UI
+      setState(() {
+        salesTargetList = List.from(parsedList); // applies to all user levels
+      });
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading sales target data.",
+      );
+    }
+  }
+
   Future<void> _loadDailyFGStatementAPI(
     String UserName,
     String UserLevel,
@@ -368,7 +477,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
 
   List<DailyStockAchievementData> get chartData =>
       dailyStockAchievementData.stockData
-          .where((e) => e.itemSubGroup == selectedSubGroup)
+          .where((e) => e.itemGroup == selectedGroup)
           .toList()
         ..sort((a, b) => a.date.compareTo(b.date));
 
@@ -382,16 +491,43 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         .reduce((a, b) => a > b ? a : b);
   }
 
-  List<String> get subGroups {
+  List<String> get groupList {
     final groups =
         dailyStockAchievementData.stockData
-            .map((e) => e.itemSubGroup.trim())
+            .map((e) => e.itemGroup.trim())
             .where((e) => e.isNotEmpty)
             .toSet()
             .toList()
           ..sort();
 
     return groups;
+  }
+
+  MonthInfo getMonths(DateTime date) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    final previous = months[(date.month + 10) % 12];
+    final current = months[date.month - 1];
+    final next = months[(date.month) % 12];
+
+    return MonthInfo(previous: previous, current: current, next: next);
+  }
+
+  double parseValue(String? value) {
+    return double.tryParse(value?.replaceAll(',', '') ?? '') ?? 0;
   }
 
   Future<void> _loadDailyFGGraph() async {
@@ -409,6 +545,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       59,
     );
 
+    final months = getMonths(selected);
     List<DailyStockAchievementData> stockDataList = [];
 
     // Filter selected month records
@@ -444,9 +581,24 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       double actualStock = 0;
       double targetStock = 0;
 
+      targetStock = salesTargetList
+          .where((target) {
+            if (rows.first.groupName == 'Other (GP)') {
+              return target.salesRep != 'Raw Material' &&
+                  target.salesRep != 'Packing Material' &&
+                  target.salesRep != 'Traded Material';
+            }
+
+            return target.salesRep == rows.first.groupName;
+          })
+          .fold(
+            0.0,
+            (sum, target) =>
+                sum + parseValue(target.getTargetForMonth(months.current)),
+          );
+
       for (final row in rows) {
         actualStock += double.tryParse(row.quantity) ?? 0;
-        targetStock += double.tryParse(row.minInventory) ?? 0;
       }
 
       double achievedPercentage = targetStock > 0
@@ -456,7 +608,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       stockDataList.add(
         DailyStockAchievementData(
           date: DateFormat('dd/MM/yyyy').parse(rows.first.documentDate),
-          itemSubGroup: rows.first.itemSubGroup,
+          itemGroup: rows.first.itemSubGroup,
           targetStock: targetStock,
           actualStock: actualStock,
           achievedPercentage: achievedPercentage,
@@ -471,12 +623,12 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     );
 
     final groups = stockDataList
-        .map((e) => e.itemSubGroup.trim())
+        .map((e) => e.itemGroup.trim())
         .toSet()
         .toList();
 
-    if (groups.isNotEmpty && !groups.contains(selectedSubGroup)) {
-      selectedSubGroup = groups.first;
+    if (groups.isNotEmpty && !groups.contains(selectedGroup)) {
+      selectedGroup = groups.first;
     }
 
     setState(() {
@@ -517,12 +669,26 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       }
     }).toList();
 
-    var inventoryList = filteredList.where(
-      (e) => e.itemSubGroup == selectedSubGroup,
-    );
+    var inventoryList = filteredList.where((e) {
+      if (e.groupName == 'Other (GP)') {
+        return e.groupName != 'Raw Material' &&
+            e.groupName != 'Packing Material' &&
+            e.groupName != 'Traded Material';
+      }
+
+      return e.groupName == selectedGroup;
+    });
 
     selectedItems = filteredList
-        .where((e) => e.itemSubGroup == selectedSubGroup)
+        .where((e) {
+          if (e.groupName == 'Other (GP)') {
+            return e.groupName != 'Raw Material' &&
+                e.groupName != 'Packing Material' &&
+                e.groupName != 'Traded Material';
+          }
+
+          return e.groupName == selectedGroup;
+        })
         .map((e) => e.itemDescription.trim())
         .toSet(); // to filter the stock in transit list
 
@@ -570,7 +736,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
   }
 
   Future<void> _loadTransitGraph() async {
-    if (stockInTransitList.isEmpty || selectedSubGroup == "") return;
+    if (stockInTransitList.isEmpty || selectedGroup == "") return;
 
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       selectedDate.month,
@@ -617,11 +783,11 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     }).toList();
 
     var inventoryList = filteredList.where((data) {
-      final subGroupMatch =
-          selectedSubGroup.isEmpty ||
+      final groupMatch =
+          selectedGroup.isEmpty ||
           (selectedItems?.contains(data.itemDescription.trim()) ?? false);
 
-      return subGroupMatch;
+      return groupMatch;
     }).toList();
 
     String itemDescription = "";
@@ -668,6 +834,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadDailyFGStatementAPI(userName, userLevel);
     await _loadStockInTransitListAPI(userName, userLevel);
+    await _loadSalesTargetAPI(userName, userLevel);
     _selectedBranch = "All Warehouses";
     await _loadDailyFGGraph();
     await _loadItemGraph();
@@ -692,7 +859,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     chartDataLoaded = false;
     stockData = stockDataTemp;
     stockInTransitList = stockInTransitListTemp;
-    selectedSubGroup = selectedSubGroup = 'Medical Device';
+    selectedGroup = selectedGroup = 'Medical Device';
     _selectedBranch = "All Warehouses";
     await _loadDailyFGGraph();
     await _loadItemGraph();
@@ -1071,7 +1238,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _subGroupTabs(),
+                        _groupTabs(),
                         const SizedBox(height: 10),
                         _achievementKPIs(),
                         const SizedBox(height: 12),
@@ -1353,8 +1520,8 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     );
   }
 
-  Widget _subGroupTabs() {
-    if (subGroups.isEmpty) {
+  Widget _groupTabs() {
+    if (groupList.isEmpty) {
       return const SizedBox();
     }
     return LayoutBuilder(
@@ -1368,19 +1535,19 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(subGroups.length, (index) {
-                  final group = subGroups[index];
-                  final isSelected = group == selectedSubGroup;
+                children: List.generate(groupList.length, (index) {
+                  final group = groupList[index];
+                  final isSelected = group == selectedGroup;
 
                   return Padding(
                     padding: EdgeInsets.only(
-                      right: index == subGroups.length - 1 ? 0 : 8,
+                      right: index == groupList.length - 1 ? 0 : 8,
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(25),
                       onTap: () {
                         setState(() {
-                          selectedSubGroup = group;
+                          selectedGroup = group;
                         });
                         loadDataWithFilter();
                       },

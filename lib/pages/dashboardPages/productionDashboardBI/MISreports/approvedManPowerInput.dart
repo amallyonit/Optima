@@ -256,11 +256,17 @@ class _AttendancePageState extends State<AttendancePage> {
           });
 
           if (!mounted) return;
-          NotificationService.error(title: "Error", message: "No data found.");
+          NotificationService.info(
+            title: "Info",
+            message: "No data found for the selected range.",
+          );
         }
       } else {
         if (!mounted) return;
-        NotificationService.error(title: "Error", message: "No data found.");
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while fetching attendance data.",
+        );
       }
     } catch (e) {
       if (!mounted) return;

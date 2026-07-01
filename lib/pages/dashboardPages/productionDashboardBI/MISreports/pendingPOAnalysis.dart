@@ -11,6 +11,7 @@ import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
 import '../../../../notificationService.dart';
+import '../../ReportService.dart';
 import '../../dashboard_card_ui.dart';
 
 class PendingPOAnalysisPage extends StatefulWidget {
@@ -33,6 +34,7 @@ class MonthInfo {
 }
 
 class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
+  final reportService = ReportService();
   int touchedIndex = -1;
   late Future<void> loadDataFuture;
   String UserLevel = '';
@@ -93,17 +95,10 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
   }
 
   DateTime addMonth(DateTime date, int addMonth) {
-    int currentMonth = date.month;
-    int currentYear = date.year;
-    int nextMonth = currentMonth + addMonth;
-    int nextYear = currentYear;
-    // Handle the case when the next month is December
-    if (nextMonth > 12) {
-      nextMonth = 1;
-      nextYear++;
-    }
-
-    int lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
+    final nextDate = DateTime(date.year, date.month + addMonth, 1);
+    final nextYear = nextDate.year;
+    final nextMonth = nextDate.month;
+    final lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
     // Handle the case when the original date is at the end of the month
     int originalDay = date.day;
     if (originalDay > lastDayOfNextMonth) {
@@ -298,9 +293,16 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     required List<POList> poList,
     required List<SalesTargetList> salesTargetList,
   }) {
-    final months = getMonths(DateTime.now());
-    purchaseList = purchaseList.where((e) => e.whsCode != 'BAGALUWH').toList();
-    poList = poList.where((e) => e.warehouse != 'BAGALUWH').toList();
+    final analysisDate = dateFilterFlag && toDateFilter != null
+        ? toDateFilter!
+        : DateTime.now();
+    final months = getMonths(analysisDate);
+    purchaseList = purchaseList
+        .where((e) => e.whsCode != 'BAGALUWH' && e.itemSubGroup != "Suture")
+        .toList();
+    poList = poList
+        .where((e) => e.warehouse != 'BAGALUWH' && e.itemSubGroup != "Suture")
+        .toList();
     // Fixed chart groups
     const chartGroups = [
       'Raw Material',
@@ -315,11 +317,12 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
       //-----------------------------------------
       // STEP 6 : GRN VALUE
       //-----------------------------------------
-      final now = DateTime.now();
+      final now = analysisDate;
 
       final currentMonthStart = DateTime(now.year, now.month, 1);
       final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
       final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+      final nextMonthEnd = DateTime(now.year, now.month + 2, 0);
 
       double grnValue = purchaseList
           .where((purchase) {
@@ -354,25 +357,29 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
           continue;
         }
 
-        final poDate = tryParseDate(po.poDate);
+        final expectedDeliveryDate = tryParseExpectedDeliveryDate(
+          po.expectedTimeofDelivey,
+          analysisDate,
+        );
 
-        if (poDate == null) {
+        if (expectedDeliveryDate == null) {
           continue;
         }
 
         final pendingValue = parseValue(po.pendingValue);
 
         // Previous Pending (everything before current month)
-        if (poDate.isBefore(currentMonthStart)) {
+        if (expectedDeliveryDate.isBefore(currentMonthStart)) {
           previousPending += pendingValue;
         }
         // Current Month
-        else if (!poDate.isBefore(currentMonthStart) &&
-            !poDate.isAfter(currentMonthEnd)) {
+        else if (!expectedDeliveryDate.isBefore(currentMonthStart) &&
+            !expectedDeliveryDate.isAfter(currentMonthEnd)) {
           currentPending += pendingValue;
         }
         // Next Month
-        else if (!poDate.isBefore(nextMonthStart)) {
+        else if (!expectedDeliveryDate.isBefore(nextMonthStart) &&
+            !expectedDeliveryDate.isAfter(nextMonthEnd)) {
           nextPending += pendingValue;
         }
       }
@@ -459,7 +466,9 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
 
       setState(() {
         poList = tmpList
-            .where((po) => po.type == "Item Purchase" && po.poStatus == "Open")
+            .where(
+              (po) => po.poStatus == "Open" && po.groupName != "Fixed Assets",
+            )
             .toList();
         poListTemp = poList;
       });
@@ -663,9 +672,6 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
       _loadPurchaseList(userName, userLevel),
       _loadSalesTarget(userName, userLevel),
     ]);
-    // await _loadPOList(userName, userLevel);
-    // await _loadPurchaseList(userName, userLevel);
-    // await _loadSalesTarget(userName, userLevel);
 
     pendingPurchaseChartData = prepareChartData(
       purchaseList: purchaseList,
@@ -686,6 +692,116 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     return data.map((e) => PurchaseList.fromJson(e)).toList();
   }
 
+  DateTime get analysisDate =>
+      dateFilterFlag && toDateFilter != null ? toDateFilter! : DateTime.now();
+
+  String monthYearLabel(DateTime date) {
+    return DateFormat('MMM yyyy').format(date).toUpperCase();
+  }
+
+  Future<void> generatePendingPOSummaryExcel() async {
+    final months = getMonths(analysisDate);
+    final previousMonthLabel = monthYearLabel(
+      DateTime(analysisDate.year, analysisDate.month - 1, 1),
+    );
+    final currentMonthLabel = monthYearLabel(analysisDate);
+    final nextMonthLabel = monthYearLabel(
+      DateTime(analysisDate.year, analysisDate.month + 1, 1),
+    );
+
+    final headers = [
+      'Description',
+      'Target Purchase order',
+      'Total Pending PO Value',
+      'GRN Value',
+      'Pending PO value up to $previousMonthLabel',
+      'Pending PO value of $currentMonthLabel',
+      'Pending PO value of $nextMonthLabel',
+    ];
+
+    final rows = pendingPurchaseChartData
+        .map(
+          (item) => [
+            item.description,
+            item.targetPurchaseOrder,
+            item.totalPendingPOValue,
+            item.grnValue,
+            item.previousMonthPending,
+            item.currentMonthPending,
+            item.nextMonthPending,
+          ],
+        )
+        .toList();
+    rows.add([
+      'Total=',
+      pendingPurchaseChartData.fold<double>(
+        0.0,
+        (sum, item) => sum + item.targetPurchaseOrder,
+      ),
+      pendingPurchaseChartData.fold<double>(
+        0.0,
+        (sum, item) => sum + item.totalPendingPOValue,
+      ),
+      pendingPurchaseChartData.fold<double>(
+        0.0,
+        (sum, item) => sum + item.grnValue,
+      ),
+      pendingPurchaseChartData.fold<double>(
+        0.0,
+        (sum, item) => sum + item.previousMonthPending,
+      ),
+      pendingPurchaseChartData.fold<double>(
+        0.0,
+        (sum, item) => sum + item.currentMonthPending,
+      ),
+      pendingPurchaseChartData.fold<double>(
+        0.0,
+        (sum, item) => sum + item.nextMonthPending,
+      ),
+    ]);
+
+    final excludedBagalurRows = poList
+        .where((po) => po.warehouse.trim().toUpperCase() == 'BAGALUWH')
+        .map(
+          (po) => [
+            po.poNo,
+            po.vendorName,
+            parseValue(po.pendingValue),
+            po.groupName,
+            '',
+            '',
+            '',
+          ],
+        )
+        .toList();
+
+    final footerRows = <List<dynamic>>[
+      [
+        "Below PO details are not considered because these are related to Bagalur plant",
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+      ],
+      ['PO NO', 'Vendor name', 'Pending Value', 'Group', '', '', ''],
+      ...excludedBagalurRows,
+    ];
+
+    await reportService.generateExcel(
+      sheetName: 'Summary',
+      headers: headers,
+      rows: rows,
+      fileName: 'purchase_order_pending_summary.xlsx',
+      amountColumns: [2, 3, 4, 5, 6, 7],
+      addTotalRow: false,
+      footerRows: footerRows,
+      reportTitle:
+          'Production[MIS] - Purchase Order Details For The Month Of ${months.current} ${analysisDate.year} - Consolidated',
+    );
+  }
+
   void clearVariables() {
     setState(() {
       chartDataLoaded = false;
@@ -699,26 +815,11 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     loadDataFuture = loadData("");
     toDateFilter = currentDate;
     fromDateFilter = fiscalYearStartDate;
-    setState(() {
-      chartDataLoaded = true;
-    });
   }
 
   String formatDateString(DateTime date) {
     final formatter = DateFormat('dd/MM/yyyy');
     return formatter.format(date);
-  }
-
-  Future<void> _dateFilterTarget(
-    String UserName,
-    String UserLevel,
-    bool FromFilter,
-  ) async {
-    poList = poList.where((target) {
-      DateTime dueon = DateFormat('dd/MM/yyyy').parse(target.poDate);
-      return (dueon.isAtLeast(fromDateFilter!) &&
-          dueon.isAtMost(toDateFilter!));
-    }).toList();
   }
 
   Future<void> filterFunction() async {
@@ -797,6 +898,47 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     return DateTime.tryParse(input);
   }
 
+  DateTime? tryParseExpectedDeliveryDate(String? input, DateTime baseDate) {
+    final parsed = tryParseDate(input);
+    if (parsed != null) {
+      return parsed;
+    }
+
+    final value = input?.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    for (final pattern in [
+      'dd-MMM-yyyy',
+      'd-MMM-yyyy',
+      'dd-MMM-yy',
+      'd-MMM-yy',
+      'MMM yyyy',
+      'MMMM yyyy',
+      'MMM-yy',
+      'MMM yy',
+      'MMMM',
+      'MMM',
+    ]) {
+      try {
+        final date = DateFormat(pattern, 'en_US').parseStrict(value);
+        if (pattern == 'MMMM' || pattern == 'MMM') {
+          var year = baseDate.year;
+          if (baseDate.month >= 4 && date.month < 4) {
+            year++;
+          } else if (baseDate.month < 4 && date.month >= 4) {
+            year--;
+          }
+          return DateTime(year, date.month, 1);
+        }
+        return date;
+      } catch (_) {}
+    }
+
+    return null;
+  }
+
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
 
@@ -863,8 +1005,10 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
 
                     menuItems: [
                       PopupMenuItem(
-                        onTap: () {},
-                        child: const Text("Download Excel"),
+                        onTap: () {
+                          generatePendingPOSummaryExcel();
+                        },
+                        child: const Text("Download Summary Excel"),
                       ),
                     ],
                     child: Column(
@@ -972,6 +1116,7 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
                         final item = pendingPurchaseChartData[group.x];
 
                         final labels = _pendingPurchaseLabels;
+                        final values = item.chartValues;
 
                         return BarTooltipItem(
                           item.description,
@@ -979,24 +1124,17 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
-                          children: [
-                            TextSpan(
-                              text: "\n${labels[rodIndex]}",
-                              style: const TextStyle(
+                          children: List.generate(labels.length, (index) {
+                            return TextSpan(
+                              text:
+                                  "\n${labels[index]} : ${formatAmount(values[index])}",
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
+                                color: _pendingPurchaseColors[index],
+                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-
-                            TextSpan(
-                              text: "\n${rod.toY.toStringAsFixed(0)}",
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
+                            );
+                          }),
                         );
                       },
                     ),
