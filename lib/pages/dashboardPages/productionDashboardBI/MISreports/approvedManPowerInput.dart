@@ -57,6 +57,11 @@ class AttendancePage extends StatefulWidget {
 }
 
 class _AttendancePageState extends State<AttendancePage> {
+  static const double _tableColumnWidth = 100;
+  static const double _tableFieldHeight = 38;
+  static const double _tableRowHeight = _tableFieldHeight;
+  static const double _tableVerticalGap = 4;
+
   DateTime? _from;
   DateTime? _to;
   final List<AttendanceRow> _rows = [];
@@ -567,12 +572,14 @@ class _AttendancePageState extends State<AttendancePage> {
               scrollDirection: Axis.horizontal,
               child: _buildHeaderRow(),
             ),
-
-            const SizedBox(height: 4),
+            const SizedBox(height: _tableVerticalGap),
 
             /// BODY (this must be height-bounded)
             SizedBox(
-              height: availableHeight - 60, // header + spacing approx
+              height:
+                  availableHeight -
+                  _tableRowHeight -
+                  _tableVerticalGap, // header + spacing
               child: Scrollbar(
                 controller: _verticalController,
                 thumbVisibility: true,
@@ -610,7 +617,8 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Widget _headerCell(String title, TextStyle style) {
     return Container(
-      width: 100,
+      width: _tableColumnWidth,
+      height: _tableRowHeight,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       alignment: Alignment.center,
       color: Colors.blueGrey.shade50,
@@ -620,23 +628,31 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Widget _dataCell(Widget child, {bool isDate = false}) {
     if (isDate) {
-      return Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
-          borderRadius: BorderRadius.circular(4),
+      return SizedBox(
+        width: _tableColumnWidth,
+        height: _tableFieldHeight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Container(
+            height: _tableFieldHeight,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            alignment: Alignment.center,
+            child: child,
+          ),
         ),
-        alignment: Alignment.center,
-        child: child,
       );
     }
 
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      alignment: Alignment.center,
-      child: child,
+    return SizedBox(
+      width: _tableColumnWidth,
+      height: _tableRowHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Center(child: child),
+      ),
     );
   }
 
@@ -645,7 +661,6 @@ class _AttendancePageState extends State<AttendancePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Divider(height: 0),
         Column(
           mainAxisSize: MainAxisSize.min,
           children: _rows.map((r) {
@@ -660,7 +675,7 @@ class _AttendancePageState extends State<AttendancePage> {
 
             return Container(
               color: bg,
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              margin: const EdgeInsets.only(bottom: _tableVerticalGap),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -696,20 +711,23 @@ class _AttendancePageState extends State<AttendancePage> {
                     isSun
                         ? Container(
                             alignment: Alignment.center,
-                            padding: const EdgeInsets.all(8),
+                            height: _tableFieldHeight,
                             child: Text('Sunday', style: textStyle),
                           )
-                        : Container(
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade400),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              r.computeAbsentPercent(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                        : SizedBox(
+                            height: _tableFieldHeight,
+                            width: double.infinity,
+                            child: Container(
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade400),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                r.computeAbsentPercent(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
@@ -725,13 +743,16 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Widget _buildTextField(TextEditingController controller) {
     return SizedBox(
+      height: _tableFieldHeight,
+      width: double.infinity,
       child: TextField(
         controller: controller,
         keyboardType: TextInputType.number,
         scrollPadding: const EdgeInsets.only(bottom: 200),
         keyboardAppearance: Brightness.light,
+        textAlignVertical: TextAlignVertical.center,
         decoration: const InputDecoration(
-          contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           border: OutlineInputBorder(),
           isDense: true,
           hintText: '0',
