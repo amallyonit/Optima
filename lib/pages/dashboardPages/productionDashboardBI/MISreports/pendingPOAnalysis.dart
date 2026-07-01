@@ -10,15 +10,14 @@ import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
 import 'package:optima/classes/dataManager.dart';
 import 'package:optima/classes/globals.dart';
-
 import '../../../../notificationService.dart';
 import '../../dashboard_card_ui.dart';
 
-class PendingPOAnalysis extends StatefulWidget {
-  const PendingPOAnalysis({super.key});
+class PendingPOAnalysisPage extends StatefulWidget {
+  const PendingPOAnalysisPage({super.key});
 
   @override
-  State<PendingPOAnalysis> createState() => _PendingPOAnalysisState();
+  State<PendingPOAnalysisPage> createState() => _PendingPOAnalysisPageState();
 }
 
 class MonthInfo {
@@ -33,7 +32,7 @@ class MonthInfo {
   });
 }
 
-class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
+class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
   int touchedIndex = -1;
   late Future<void> loadDataFuture;
   String UserLevel = '';
@@ -48,6 +47,7 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
   List<PendingPurchaseChartModel> pendingPurchaseChartData = [];
   List<SalesTargetList> salesTargetList = [];
   List<PurchaseList> purchaseList = [];
+  List<PurchaseList> purchaseListTemp = [];
 
   final List<String> categories = ['Date'];
   bool fromFilter = false;
@@ -299,7 +299,8 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
     required List<SalesTargetList> salesTargetList,
   }) {
     final months = getMonths(DateTime.now());
-
+    purchaseList = purchaseList.where((e) => e.whsCode != 'BAGALUWH').toList();
+    poList = poList.where((e) => e.warehouse != 'BAGALUWH').toList();
     // Fixed chart groups
     const chartGroups = [
       'Raw Material',
@@ -421,16 +422,13 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
     int limit = 10000; // Maximum limit to fetch all data
     int fetchedCount = 0;
     List<POList> tmpList = [];
-    int monthIndex = currentDate!.month;
+    final fromDate = formatDate(addMonth(fiscalYearStartDate!, -13));
+    final toDate = formatDate(addMonth(currentDate!, 12));
     try {
       do {
         var body = {
-          "FromDate": formatDate(
-            monthIndex == 4
-                ? DateTime(currentDate!.year, currentDate!.month - 1, 1)
-                : fiscalYearStartDate!,
-          ),
-          "ToDate": formatDate(currentDate!),
+          "FromDate": fromDate,
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
@@ -479,7 +477,7 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
     const int limit = 10000;
     int fetchedCount = 0;
 
-    List<PurchaseList> purchaseList = [];
+    List<PurchaseList> tmpList = [];
 
     final fromDate = dateFilterFlag
         ? formatDate(fromDateFilter!)
@@ -535,7 +533,7 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
             fetchedCount = 0;
           } else {
             final parsed = parsePurchaseList(data);
-            purchaseList.addAll(parsed);
+            tmpList.addAll(parsed);
             fetchedCount = parsed.length;
             index++;
           }
@@ -544,13 +542,9 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
         }
       } while (fetchedCount == limit);
 
-      // Update UI safely
-      if (!mounted) return;
-      if (purchaseList.isEmpty) {
-        purchaseList = List.from(purchaseList);
-      }
+      purchaseList = List.from(tmpList);
 
-      purchasePriceTemp = List.from(purchaseList);
+      purchaseListTemp = List.from(tmpList);
     } catch (e) {
       if (!mounted) return;
       NotificationService.error(
@@ -644,7 +638,7 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
 
       // UPDATE UI
       setState(() {
-        salesTarget = List.from(parsedList); // applies to all user levels
+        salesTargetList = List.from(parsedList); // applies to all user levels
       });
     } catch (e) {
       if (!mounted) return;
@@ -664,9 +658,14 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
 
     UserName = userName;
     UserLevel = userLevel;
-
-    await _loadPOList(userName, userLevel);
-    await _loadSalesTarget(userName, userLevel);
+    await Future.wait([
+      _loadPOList(userName, userLevel),
+      _loadPurchaseList(userName, userLevel),
+      _loadSalesTarget(userName, userLevel),
+    ]);
+    // await _loadPOList(userName, userLevel);
+    // await _loadPurchaseList(userName, userLevel);
+    // await _loadSalesTarget(userName, userLevel);
 
     pendingPurchaseChartData = prepareChartData(
       purchaseList: purchaseList,
@@ -726,13 +725,18 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
     setState(() {
       chartDataLoaded = false;
     });
-    setState(() async {
-      await _loadPOList(UserName, UserLevel);
-      await _dateFilterTarget(UserName, UserLevel, true);
-
-      setState(() {
-        chartDataLoaded = true;
-      });
+    await Future.wait([
+      _loadPOList(UserName, UserLevel),
+      _loadPurchaseList(UserName, UserLevel),
+      _loadSalesTarget(UserName, UserLevel),
+    ]);
+    pendingPurchaseChartData = prepareChartData(
+      purchaseList: purchaseList,
+      poList: poList,
+      salesTargetList: salesTargetList,
+    );
+    setState(() {
+      chartDataLoaded = true;
     });
   }
 
@@ -817,7 +821,8 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
   @override
   Widget build(BuildContext context) {
     return chartDataLoaded == true
-        ? SingleChildScrollView(
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -848,59 +853,29 @@ class _PendingPOAnalysisState extends State<PendingPOAnalysis> {
                     ),
                   ],
                 ),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Purchase Order Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 10),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Purchase Order Pending Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {});
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _pendingPurchaseAnalysisGraph(),
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Purchase Order Pending Analysis',
+                    spacing: 10,
+
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () {},
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        _pendingPurchaseAnalysisGraph(),
+                        const SizedBox(height: 15),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

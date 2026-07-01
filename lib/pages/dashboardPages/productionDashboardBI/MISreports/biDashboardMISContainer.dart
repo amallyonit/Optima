@@ -9,6 +9,7 @@ import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/dai
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/manpower_costing/manpower_dashboard_page.dart';
 import 'package:optima/pages/dashboardPages/productionDashboardBI/MISreports/monthlyProductionSummary.dart';
 import '../../../../notificationService.dart';
+import 'pendingPOAnalysis.dart';
 import 'pendingSOReport.dart';
 import 'sampleDataDetailsPage.dart';
 import 'agingReport.dart';
@@ -62,6 +63,7 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
         _items[1], // Overtime
         _items[10], // Purchase Price
         _items[12], // CMS Costing
+        _items[22], // Pending Purchase Orders
       ],
 
       "Inventory Reports": [
@@ -175,6 +177,11 @@ class _ProductionReportsMISState extends State<ProductionReportsMIS> {
     ReportItem(
       title: 'Pending Sales Orders',
       pageBuilder: () => const PendingSOReportPage(),
+    ),
+
+    ReportItem(
+      title: 'Pending Purchase Orders',
+      pageBuilder: () => const PendingPOAnalysisPage(),
     ),
   ];
 
