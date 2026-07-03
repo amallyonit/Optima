@@ -84,6 +84,7 @@ List<Users> usersListForFilter = [];
 List<Users> usersList = [];
 List<Users> childUsers = [];
 String UserLevel = "0";
+String UserName = "0";
 String touchedRegionalManager = "";
 String touchedSalesManager = "";
 String touchedSalesRep = "";
@@ -252,23 +253,24 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   ScrollController salesPerformancePageController = ScrollController();
 
   Future<void> _dateFilterTarget(
-    String UserName,
-    String UserLevel,
-    bool FromFilter,
+    String userName,
+    String userLevel,
+    bool fromFilter,
   ) async {
-    setState(() {
-      List<String> menuNames = usersList
-          .where((element) => element.parentMenuId == 0)
-          .map((user) => user.menuName)
-          .toList();
-      menuNames.insert(0, UserName);
-      context.read<SalesListSalesAnalysisProvider>().updateSalesList(sales);
+    context.read<SalesListSalesAnalysisProvider>().updateSalesList(sales);
 
-      sales = sales.where((target) {
-        DateTime dueon = target.invoiceDate;
-        return (dueon.isAtLeast(fromDateFilter!) &&
-            dueon.isAtMost(toDateFilter!));
-      }).toList();
+    final filteredSales = sales.where((target) {
+      final dueon = target.invoiceDate;
+
+      if (fromDateFilter == null || toDateFilter == null) {
+        return true;
+      }
+
+      return dueon.isAtLeast(fromDateFilter!) && dueon.isAtMost(toDateFilter!);
+    }).toList();
+
+    setState(() {
+      sales = filteredSales;
     });
   }
 
@@ -276,90 +278,91 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     setState(() {
       chartDataLoaded = false;
     });
-    String selectedUser = '';
-    final prefs = await SharedPreferences.getInstance();
-    final userName = selectedUser == ""
-        ? prefs.getString('userName') ?? ''
-        : selectedUser;
-    final userLevel = prefs.getString('userLevel') ?? '';
-    UserLevel = userLevel;
-    setState(() async {
-      await _loadSalesWithLazyLoading(userName, userLevel);
-      _dateFilterTarget("", "", false);
-      await _loadEachQtrValues();
-      await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
-      showDrillDownChart = true;
-      touchedYearGraph = true;
-      showProductSaleChart = true;
-      if (UserLevel != "1") {
-        await _loadTSMSalesBarChartData(0, filteredSales, filteredTargets);
-        await _loadASMSalesBarChartData(0, filteredSales, filteredTargets);
-        await _loadRSMSalesBarChartData(0, filteredSales, filteredTargets);
-      }
-      await _loadMonthlyProductGroupwiseSalesBarChartData(0, filteredSales);
-      await _loadMonthlyProductwiseSalesBarChartData(0, filteredSales);
-      await _loadMonthlyCustomerStateWiseSalesBarChartData(0, filteredSales);
-      await _loadMonthlyCustomerWiseSalesBarChartData(0, filteredSales);
 
-      List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+    // Apply Date Filter
+    await _dateFilterTarget("", "", false);
+
+    // -----------------------------
+    // Apply RSM / ASM / TSM Filters
+    // -----------------------------
+
+    final trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    final trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    final trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    if (trueRSMOptions.isNotEmpty) {
+      sales = sales
+          .where((e) => trueRSMOptions.contains(e.regionalManager))
           .toList();
+    }
 
-      List<String> trueASMOptions = (allCategoriesState['ASM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+    if (trueASMOptions.isNotEmpty) {
+      sales = sales
+          .where((e) => trueASMOptions.contains(e.salesManager))
           .toList();
+    }
 
-      List<String> trueTSMOptions = (allCategoriesState['TSM'] ?? {}).entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
+    if (trueTSMOptions.isNotEmpty) {
+      sales = sales.where((e) => trueTSMOptions.contains(e.salesRep)).toList();
+    }
+
+    buildFilteredLists();
+    monthlySales = {};
+    // -------------------------
+    // Rebuild all calculations
+    // -------------------------
+
+    await _loadEachQtrValues();
+    await _updateMonthlySales(filteredSales);
+    await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
+
+    showDrillDownChart = true;
+    touchedYearGraph = true;
+    showProductSaleChart = true;
+
+    if (UserLevel != "1") {
+      await _loadTSMSalesBarChartData(0, filteredSales, filteredTargets);
+
+      await _loadASMSalesBarChartData(0, filteredSales, filteredTargets);
+
+      await _loadRSMSalesBarChartData(0, filteredSales, filteredTargets);
+    }
+
+    await _loadMonthlyProductGroupwiseSalesBarChartData(0, filteredSales);
+
+    await _loadMonthlyProductwiseSalesBarChartData(0, filteredSales);
+
+    await _loadMonthlyCustomerStateWiseSalesBarChartData(0, filteredSales);
+
+    await _loadMonthlyCustomerWiseSalesBarChartData(0, filteredSales);
+
+    // -------------------------
+    // Rebuild Filter Lists
+    // -------------------------
+
+    filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
+
+    if (savedFinanceReceivablesOptionsTemp.isEmpty) {
+      savedFinanceReceivablesOptions = filterOptions
+          .map((e) => List<bool>.filled(e.length, false))
           .toList();
+    } else {
+      savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
+    }
 
-      List<SalesList> filteredList = [];
-
-      if (trueRSMOptions.isNotEmpty) {
-        filteredList = sales
-            .where((person) => trueRSMOptions.contains(person.regionalManager))
-            .toList();
-        sales = filteredList;
-      }
-
-      if (trueASMOptions.isNotEmpty) {
-        filteredList = sales
-            .where((person) => trueASMOptions.contains(person.salesManager))
-            .toList();
-        sales = filteredList;
-      }
-
-      if (trueTSMOptions.isNotEmpty) {
-        filteredList = sales
-            .where((person) => trueTSMOptions.contains(person.salesRep))
-            .toList();
-        sales = filteredList;
-      }
-
+    setState(() {
       chartDataLoaded = true;
-
-      setState(() {
-        filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
-
-        savedFinanceReceivablesOptions = filterOptions
-            .map((options) => List<bool>.filled(options.length, false))
-            .toList();
-
-        if (savedFinanceReceivablesOptionsTemp.isEmpty) {
-          savedFinanceReceivablesOptions = filterOptions
-              .map((options) => List<bool>.filled(options.length, false))
-              .toList();
-        } else {
-          savedFinanceReceivablesOptions = savedFinanceReceivablesOptionsTemp;
-        }
-      });
-
-      setState(() {
-        chartDataLoaded = true;
-      });
     });
   }
 
@@ -382,6 +385,39 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
   double roundDownToLakhs(double value, double roundValue) {
     return (value / roundValue).floor() * roundValue.toDouble();
+  }
+
+  double _chartAxisStep(double value) {
+    final absValue = value.abs();
+    if (absValue >= 10000000) {
+      return 10000000;
+    } else if (absValue >= 1000000) {
+      return 1000000;
+    } else if (absValue >= 50000) {
+      return 50000;
+    }
+    return 1000;
+  }
+
+  double _roundedPositiveMaxY(Iterable<double> values) {
+    final maxValue = values.fold<double>(
+      0,
+      (currentMax, value) => max(currentMax, value),
+    );
+    final step = _chartAxisStep(maxValue);
+    return max(1, ((maxValue / step).floor() + 1) * step);
+  }
+
+  double _roundedNegativeMinY(Iterable<double> values) {
+    final minValue = values.fold<double>(
+      0,
+      (currentMin, value) => min(currentMin, value),
+    );
+    if (minValue >= 0) {
+      return 0;
+    }
+    final step = _chartAxisStep(minValue);
+    return (minValue / step).floor() * step;
   }
 
   SideTitles get _emptyTitlesTop =>
@@ -558,14 +594,18 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
               fromY: 0,
               toY: sales.salesTarget,
               show: true,
-              color: const Color(0xFFF49136),
+              color: isSelected
+                  ? const Color(0xFFE87512)
+                  : const Color(0xFFF49136),
             ),
-            color: const Color(0xFF97D7F3),
+            color: isSelected
+                ? const Color(0xFF3BA8D7)
+                : const Color(0xFF97D7F3),
             borderRadius: BorderRadius.zero,
             toY: sales.salesAmount,
-            width: isSelected ? 36 : 30,
+            width: 30,
             borderSide: isSelected
-                ? const BorderSide(color: Colors.black, width: 1.5)
+                ? const BorderSide(color: Color(0xFF1F2937), width: 2)
                 : BorderSide.none,
           ),
         ],
@@ -756,191 +796,69 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   }
 
   double getMaxValue(MonthlySalesList monthlySalesList) {
-    double maxValue = 0.0;
-    for (var monthlyData in monthlySalesList.monthlyData) {
-      maxValue = maxValue > monthlyData.salesAmount
-          ? maxValue
-          : monthlyData.salesAmount;
-      maxValue = maxValue > monthlyData.salesTarget
-          ? maxValue
-          : monthlyData.salesTarget;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      monthlySalesList.monthlyData.expand(
+        (monthlyData) => [monthlyData.salesAmount, monthlyData.salesTarget],
+      ),
+    );
   }
 
   double getCustomerStateMaxValue(
     CustomerStateWiseSalesList customerStateWiseSalesList,
   ) {
-    double maxValue = 0.0;
-    for (var soData in customerStateWiseSalesList.customerStateData) {
-      maxValue = maxValue > soData.saleAmount ? maxValue : soData.saleAmount;
-      maxValue = maxValue > soData.targetAmount
-          ? maxValue
-          : soData.targetAmount;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      customerStateWiseSalesList.customerStateData.expand(
+        (soData) => [soData.saleAmount, soData.targetAmount],
+      ),
+    );
   }
 
   double getCustomerMaxValue(CustomerWiseSalesList customerAnalysisData) {
-    double maxValue = 0.0;
-    for (var soData in customerAnalysisData.customerData) {
-      maxValue = maxValue > soData.saleAmount ? maxValue : soData.saleAmount;
-      maxValue = maxValue > soData.targetAmount
-          ? maxValue
-          : soData.targetAmount;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      customerAnalysisData.customerData.expand(
+        (soData) => [soData.saleAmount, soData.targetAmount],
+      ),
+    );
   }
 
   double getRsmMaxValue(RsmwiseSalesList rsmManagerData) {
-    double maxValue = 0.0;
-    for (var soData in rsmManagerData.rsmwiseData) {
-      maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
-      maxValue = maxValue > soData.targetAmount
-          ? maxValue
-          : soData.targetAmount;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      rsmManagerData.rsmwiseData.expand(
+        (soData) => [soData.salesAmount, soData.targetAmount],
+      ),
+    );
   }
 
   double getAsmMaxValue(AsmwiseSalesList salesManagerData) {
-    double maxValue = 0.0;
-    for (var soData in salesManagerData.asmwiseData) {
-      maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
-      maxValue = maxValue > soData.targetAmount
-          ? maxValue
-          : soData.targetAmount;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      salesManagerData.asmwiseData.expand(
+        (soData) => [soData.salesAmount, soData.targetAmount],
+      ),
+    );
   }
 
   double getTsmMaxValue(TsmwiseSalesList salesPersonData) {
-    double maxValue = 0.0;
-    for (var soData in salesPersonData.tsmwiseData) {
-      maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
-      maxValue = maxValue > soData.targetAmount
-          ? maxValue
-          : soData.targetAmount;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      salesPersonData.tsmwiseData.expand(
+        (soData) => [soData.salesAmount, soData.targetAmount],
+      ),
+    );
   }
 
   double getItemGroupMaxValue(ProductGroupwiseSalesList itemGroupWiseData) {
-    double maxValue = 0.0;
-    for (var soData in itemGroupWiseData.productGroupData) {
-      maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
-      maxValue = maxValue > soData.targetAmount
-          ? maxValue
-          : soData.targetAmount;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      itemGroupWiseData.productGroupData.expand(
+        (soData) => [soData.salesAmount, soData.targetAmount],
+      ),
+    );
   }
 
   double getItemMaxValue(ProductwiseSalesList itemAnalysisData) {
-    double maxValue = 0.0;
-    for (var soData in itemAnalysisData.productData) {
-      maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
-      maxValue = maxValue > soData.targetAmount
-          ? maxValue
-          : soData.targetAmount;
-    }
-    double divVal = 0;
-    if (maxValue >= 10000000) {
-      divVal = 10000000;
-    } else if (maxValue >= 1000000 && maxValue <= 10000000) {
-      divVal = 1000000;
-    } else if (maxValue >= 100000 && maxValue <= 1000000) {
-      divVal = 50000;
-    } else if (maxValue >= 50000 && maxValue <= 100000) {
-      divVal = 50000;
-    } else {
-      divVal = 1000;
-    }
-    return ((maxValue ~/ divVal) + 1) * divVal;
+    return _roundedPositiveMaxY(
+      itemAnalysisData.productData.expand(
+        (soData) => [soData.salesAmount, soData.targetAmount],
+      ),
+    );
   }
 
   String formatDate(DateTime date) {
@@ -1342,13 +1260,13 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     loadedBatchCount++;
     _updateSteppedProgress();
     watch.stop();
-    print('Initial visible load time: ${watch.elapsedMilliseconds} ms');
+    // print('Initial visible load time: ${watch.elapsedMilliseconds} ms');
 
     // Start background loading (non-blocking)
     _loadSalesInBackground(userName: userName, userLevel: userLevel);
   }
 
-  void _updateMonthlySales(List<SalesList> batch) {
+  Future<void> _updateMonthlySales(List<SalesList> batch) async {
     for (final s in batch) {
       final DateTime d = s.invoiceDate;
 
@@ -1735,11 +1653,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           sum = 0;
           double salesAmt = 0;
           for (var target in curQtrSales.toList()) {
-            // if (target.invoiceType != "Sales Return") {
-            //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-            // } else {
-            //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-            // }
             salesAmt = double.tryParse(target.rowTotal) ?? 0;
             sum += salesAmt;
           }
@@ -1789,11 +1702,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           sum = 0;
           double salesAmt = 0;
           for (var target in curQtrSales.toList()) {
-            // if (target.invoiceType != "Sales Return") {
-            //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-            // } else {
-            //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-            // }
             salesAmt = double.tryParse(target.rowTotal) ?? 0;
             sum += salesAmt;
           }
@@ -1842,11 +1750,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           sum = 0;
           double salesAmt = 0;
           for (var target in curQtrSales.toList()) {
-            // if (target.invoiceType != "Sales Return") {
-            //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-            // } else {
-            //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-            // }
             salesAmt = double.tryParse(target.rowTotal) ?? 0;
             sum += salesAmt;
           }
@@ -1899,11 +1802,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           sum = 0;
           double salesAmt = 0;
           for (var target in curQtrSales.toList()) {
-            // if (target.invoiceType != "Sales Return") {
-            //   salesAmt = double.tryParse(target.rowTotal) ?? 0;
-            // } else {
-            //   salesAmt = (double.tryParse(target.rowTotal) ?? 0) * -1;
-            // }
             salesAmt = double.tryParse(target.rowTotal) ?? 0;
             sum += salesAmt;
           }
@@ -2875,6 +2773,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
     /// FINAL LIST
     tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: tsmwiseDataList);
+
+    listOfTSM = tsmwiseDataList.map((e) => e.tsmName).toList();
   }
 
   Future<void> _loadASMSalesBarChartData(
@@ -2952,6 +2852,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     asmwiseDataList.sort((a, b) => a.salesAmount.compareTo(b.salesAmount));
 
     asmwiseSalesList = AsmwiseSalesList(asmwiseData: asmwiseDataList);
+
+    listOfASM = asmwiseDataList.map((e) => e.asmName).toList();
   }
 
   Future<void> _loadRSMSalesBarChartData(
@@ -3029,6 +2931,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     rsmwiseDataList.sort((a, b) => a.salesAmount.compareTo(b.salesAmount));
 
     rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: rsmwiseDataList);
+
+    listOfRSM = rsmwiseDataList.map((e) => e.rsmName).toList();
   }
 
   List<String> getFinancialYearMonthsToInclude(int monthIndex) {
@@ -3097,6 +3001,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
+    UserName = userName;
     await _loadUserList(
       userId,
       userJwtToken,
@@ -3162,6 +3067,10 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
 
     rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
+
+    listOfRSM.clear();
+    listOfASM.clear();
+    listOfTSM.clear();
   }
 
   Future<void> removeFilter() async {
@@ -3188,10 +3097,30 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
     allCategoriesState.clear();
 
-    loadDataFuture = loadDataWithFilter(0, "", "", "", "", "", "", "");
-
     setState(() {
       chartDataLoaded = false;
+    });
+
+    // Wait until everything is loaded again
+    sales = await _applyUserFilter(_allSales, UserName, UserLevel);
+    monthlySales = {};
+    buildFilteredLists();
+    await _updateMonthlySales(filteredSales);
+    await loadDataWithFilter(0, "", "", "", "", "", "", "");
+
+    // Rebuild checkbox states
+    filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
+
+    savedFinanceReceivablesOptions = filterOptions
+        .map((e) => List<bool>.filled(e.length, false))
+        .toList();
+
+    savedFinanceReceivablesOptionsTemp = filterOptions
+        .map((e) => List<bool>.filled(e.length, false))
+        .toList();
+
+    setState(() {
+      chartDataLoaded = true;
     });
   }
 
@@ -3205,6 +3134,9 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     String productGroupCode,
     String productCode,
   ) async {
+    setState(() {
+      chartDataLoaded = false;
+    });
     bool showASMChart = true;
     bool showTSMChart = true;
 
@@ -3220,9 +3152,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     clearVariablesForFilter();
     LoadDates();
     LoadAllQuarterFromToDates();
-
-    final prefs = await SharedPreferences.getInstance();
-    UserLevel = prefs.getString('userLevel') ?? "";
 
     showDrillDownChart = true;
     touchedYearGraph = true;
@@ -3282,8 +3211,15 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     ]);
 
     await Future.wait(futures);
+    filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
 
-    chartDataLoaded = true;
+    savedFinanceReceivablesOptions = filterOptions
+        .map((e) => List<bool>.filled(e.length, false))
+        .toList();
+
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   bool hasASMChildren(String regionalManager) {
@@ -3446,8 +3382,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       sheetName: 'MonthWiseSalesAnalysis',
       headers: [
         'Month',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -3478,8 +3414,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       title: 'MonthWiseSalesAnalysis',
       headers: [
         'Month',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -3508,8 +3444,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       sheetName: 'RSMSalesAnalysis',
       headers: [
         'RSM Name',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -3540,8 +3476,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       title: 'RSMSalesAnalysis',
       headers: [
         'RSM Name',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -3570,8 +3506,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       sheetName: 'ASMSalesAnalysis',
       headers: [
         'ASM Name',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -3602,8 +3538,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       title: 'ASMSalesAnalysis',
       headers: [
         'ASM Name',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -3632,8 +3568,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       sheetName: 'TSMSalesAnalysis',
       headers: [
         'TSM Name',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -3664,8 +3600,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       title: 'TSMSalesAnalysis',
       headers: [
         'TSM Name',
-        'Sales Amount',
         'Sales Target',
+        'Sales Amount',
         'Percentage',
         'Difference',
       ],
@@ -5690,54 +5626,59 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
               barTouchData: BarTouchData(
                 allowTouchBarBackDraw: true,
                 touchCallback: (flTouchEvent, barTouchResponse) async {
-                  if (barTouchResponse != null &&
-                      barTouchResponse.spot != null) {
-                    setState(() {
-                      selectedMonthIndex =
-                          (selectedMonthIndex !=
-                              barTouchResponse.spot!.touchedBarGroupIndex
-                          ? barTouchResponse.spot!.touchedBarGroupIndex
-                          : -1);
-                      touchedMonth = monthlySalesList
-                          .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
-                          .monthName;
-                      List months = [
-                        'Jan',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
-                        'Jun',
-                        'Jul',
-                        'Aug',
-                        'Sep',
-                        'Oct',
-                        'Nov',
-                        'Dec',
-                      ];
-                      if (flTouchEvent is FlTapUpEvent) {
-                        touchedMonthIndex = (touchedMonthIndex == 0
-                            ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-                            : 0);
-                        selectedChart = barTouchResponse.spot!.spot.x;
-                        showDrillDownChart = true;
-                        loadDataWithFilter(
-                          touchedMonthIndex,
-                          touchedRegionalManager,
-                          touchedSalesManager,
-                          touchedSalesRep,
-                          touchedState,
-                          touchedCustomer,
-                          touchedProductGroup,
-                          touchedProduct,
-                        );
-                        touchedYearGraph = true;
-                      }
-                    });
-                    if (showProductSaleChart != true) {
-                      await Future.delayed(const Duration(milliseconds: 50));
-                      _scrollDown();
-                    }
+                  if (flTouchEvent is! FlTapUpEvent ||
+                      barTouchResponse == null ||
+                      barTouchResponse.spot == null) {
+                    return;
+                  }
+
+                  final index = barTouchResponse.spot!.spot.x.toInt();
+                  if (index < 0 ||
+                      index >= monthlySalesList.monthlyData.length) {
+                    return;
+                  }
+
+                  final isDeselecting = selectedMonthIndex == index;
+
+                  setState(() {
+                    selectedMonthIndex = isDeselecting ? -1 : index;
+                    touchedMonth =
+                        monthlySalesList.monthlyData[index].monthName;
+                    List months = [
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Aug',
+                      'Sep',
+                      'Oct',
+                      'Nov',
+                      'Dec',
+                    ];
+
+                    touchedMonthIndex = (touchedMonthIndex == 0
+                        ? months.indexOf(touchedMonth.substring(0, 3)) + 1
+                        : 0);
+                    selectedChart = index.toDouble();
+                    showDrillDownChart = true;
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedRegionalManager,
+                      touchedSalesManager,
+                      touchedSalesRep,
+                      touchedState,
+                      touchedCustomer,
+                      touchedProductGroup,
+                      touchedProduct,
+                    );
+                    touchedYearGraph = true;
+                  });
+                  if (showProductSaleChart != true) {
+                    await Future.delayed(const Duration(milliseconds: 50));
+                    _scrollDown();
                   }
                 },
                 touchTooltipData: BarTouchTooltipData(
@@ -6560,8 +6501,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         : barChartWidth = screenWidth;
 
     final amounts = customerWiseSalesList.customerData
-        .map((e) => e.saleAmount)
-        .whereType<double>()
+        .expand((e) => [e.saleAmount, e.targetAmount])
         .toList();
 
     final hasPositive = amounts.any((a) => a > 0);
@@ -6577,16 +6517,16 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       double maxNegative = amounts
           .where((a) => a < 0)
           .reduce((a, b) => a < b ? a : b);
-      chartMaxY = roundUpToLakhs(maxPositive, 1000000);
-      chartMinY = roundDownToLakhs(maxNegative, 250000);
+      chartMaxY = _roundedPositiveMaxY([maxPositive]);
+      chartMinY = _roundedNegativeMinY([maxNegative]);
     } else if (hasPositive) {
       double maxPositive = amounts.reduce((a, b) => a > b ? a : b);
-      chartMaxY = roundUpToLakhs(maxPositive, 1000000);
+      chartMaxY = _roundedPositiveMaxY([maxPositive]);
       chartMinY = 0;
     } else if (hasNegative) {
       double maxNegative = amounts.reduce((a, b) => a < b ? a : b);
       chartMaxY = 0;
-      chartMinY = roundDownToLakhs(maxNegative, 250000);
+      chartMinY = _roundedNegativeMinY([maxNegative]);
     }
 
     return FinanceHorizontalChartScroll(
@@ -6905,8 +6845,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         : barChartWidth = screenWidth;
 
     final amounts = productwiseSalesList.productData
-        .map((e) => e.salesAmount)
-        .whereType<double>()
+        .expand((e) => [e.salesAmount, e.targetAmount])
         .toList();
 
     final hasPositive = amounts.any((a) => a > 0);
@@ -6922,16 +6861,16 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       double maxNegative = amounts
           .where((a) => a < 0)
           .reduce((a, b) => a < b ? a : b);
-      chartMaxY = roundUpToLakhs(maxPositive, 500000);
-      chartMinY = roundDownToLakhs(maxNegative, 250000);
+      chartMaxY = _roundedPositiveMaxY([maxPositive]);
+      chartMinY = _roundedNegativeMinY([maxNegative]);
     } else if (hasPositive) {
       double maxPositive = amounts.reduce((a, b) => a > b ? a : b);
-      chartMaxY = roundUpToLakhs(maxPositive, 500000);
+      chartMaxY = _roundedPositiveMaxY([maxPositive]);
       chartMinY = 0;
     } else if (hasNegative) {
       double maxNegative = amounts.reduce((a, b) => a < b ? a : b);
       chartMaxY = 0;
-      chartMinY = roundDownToLakhs(maxNegative, 250000);
+      chartMinY = _roundedNegativeMinY([maxNegative]);
     }
 
     return FinanceHorizontalChartScroll(
@@ -7205,7 +7144,14 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                               filterOptions[selectedCategoryIndex][index],
                                             ),
                                             value:
-                                                savedFinanceReceivablesOptions[selectedCategoryIndex][index],
+                                                (selectedCategoryIndex <
+                                                        savedFinanceReceivablesOptions
+                                                            .length &&
+                                                    index <
+                                                        savedFinanceReceivablesOptions[selectedCategoryIndex]
+                                                            .length)
+                                                ? savedFinanceReceivablesOptions[selectedCategoryIndex][index]
+                                                : false,
                                             onChanged: (bool? value) {
                                               setState(() {
                                                 if (value == true) {
@@ -7225,7 +7171,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                                 savedFinanceReceivablesOptions =
                                                     selectedFinanceReceivablesOptions;
                                               });
-                                              // your checkbox logic
                                             },
                                           );
                                         },
@@ -7275,7 +7220,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                           optionsState[filterOptions[catIndex][optionIndex]] =
                                               selectedFinanceReceivablesOptions[catIndex][optionIndex];
                                         }
-
                                         allCategoriesState[categoryName] =
                                             optionsState;
                                       }
