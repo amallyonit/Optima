@@ -20,46 +20,6 @@ import '../dashboard_card_ui.dart';
 
 final reportService = ReportService();
 
-class SparklinePainter extends CustomPainter {
-  final Color color;
-
-  SparklinePainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..moveTo(0, 16)
-      ..lineTo(size.width * .15, 15)
-      ..lineTo(size.width * .30, 4)
-      ..lineTo(size.width * .45, 15)
-      ..lineTo(size.width * .60, 6)
-      ..lineTo(size.width * .75, 14)
-      ..lineTo(size.width * .90, 5)
-      ..lineTo(size.width, 4);
-
-    canvas.drawPath(path, paint);
-
-    final fillPaint = Paint()
-      ..color = color.withValues(alpha: 0.10)
-      ..style = PaintingStyle.fill;
-
-    final fillPath = Path.from(path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(fillPath, fillPaint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
 class ProductionOrderAnalysis extends StatefulWidget {
   const ProductionOrderAnalysis({super.key});
 
@@ -4572,72 +4532,6 @@ class _ProductionOrderAnalysisState extends State<ProductionOrderAnalysis> {
                 painter: SparklinePainter(color),
                 size: const Size(double.infinity, 20),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildQuarterCardOld({
-    required String quarter,
-    required String percentage,
-    required Color color,
-    required String target,
-    required String achieved,
-    required String difference,
-    required String average,
-  }) {
-    return Tooltip(
-      triggerMode: TooltipTriggerMode.tap,
-      preferBelow: false,
-
-      richMessage: WidgetSpan(
-        child: Column(
-          children: [
-            Text(
-              "$quarter Analysis",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text("Target : $target"),
-            Text("Achieved : $achieved"),
-            Text("Difference : $difference"),
-            Text("Monthly Avg : $average"),
-          ],
-        ),
-      ),
-
-      child: Container(
-        width: 90,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: color.withValues(alpha: 0.15),
-              child: Text(
-                quarter,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              percentage,
-              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),

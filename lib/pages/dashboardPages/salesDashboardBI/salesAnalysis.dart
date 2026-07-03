@@ -3823,9 +3823,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
   }
 
-  Future<void> generateItemGroupSalesExcel(
-    ProductGroupwiseSalesList productGroupwiseSalesList,
-  ) async {
+  Future<void> generateItemGroupSalesExcel() async {
     if (ytdItemSalesList.ytdData.isEmpty) {
       await _loadMonthlyItemSalesData();
     }
@@ -3904,9 +3902,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     );
   }
 
-  Future<void> generateItemGroupSalesPDF(
-    List<ItemYTDSalesData> productGroupwiseSalesList,
-  ) async {
+  Future<void> generateItemGroupSalesPDF() async {
     if (ytdItemSalesList.ytdData.isEmpty) {
       await _loadMonthlyItemSalesData();
     }
@@ -4386,6 +4382,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.sizeOf(context);
+    final screenWidth = media.width;
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoaded == true
         ? FinanceVerticalScroll(
@@ -4415,1024 +4413,1094 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           },
                           icon: const Icon(Icons.filter_alt_outlined),
                         ),
-                        const SizedBox(width: 5),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    showLoaderDialog(context);
-
-                                    generateSalesAnalysisYTDExcel();
-                                    if (YtdSalesBarChartData == true) {
-                                      Navigator.pop(context);
-                                    }
-                                  });
-                                },
-                                child: const Row(
-                                  children: [Text("Download Excel")],
-                                ),
-                              ),
-                            ];
-                          },
-                        ),
+                        const SizedBox(width: 10),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
 
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Sales Analysis',
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          showLoaderDialog(context);
+                          generateSalesAnalysisYTDExcel();
+                          if (YtdSalesBarChartData == true) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Text("Download Excel"),
+                      ),
+                    ],
+
+                    child: Column(
                       children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Sales Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        _buildLazyLoadIndicator(),
+                        SizedBox(
+                          height: screenWidth < 600 ? 240 : 300,
+                          child: Stack(
+                            children: [
+                              Center(
+                                child: CircularPercentIndicator(
+                                  arcType: ArcType.HALF,
+                                  radius: 100.0,
+                                  lineWidth: 32.0,
+                                  animation: true,
+                                  percent: CurrentMonthSalesPercentage / 100,
+                                  center: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 30.0,
+                                        ),
+                                        child: Text(
+                                          CurrentMonthSalesPercentageStr,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20.0,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        CurrentMonthSalesStr,
+                                        style: const TextStyle(fontSize: 14.0),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        "${getMonthName(currentDate!.month)} Goal - $SalesGoalStr",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  circularStrokeCap: CircularStrokeCap.butt,
+                                  progressColor: Colors.red,
+                                  arcBackgroundColor: Colors.grey.shade200,
+                                ),
+                              ),
+                              Positioned.fill(
+                                top: screenWidth < 600 ? 125 : 150,
+                                left: 0,
+                                child: SizedBox(
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final isMobile =
+                                          constraints.maxWidth < 360;
+
+                                      return isMobile
+                                          ? Wrap(
+                                              alignment: WrapAlignment.center,
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: [
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 4.0,
+                                                        right: 4.0,
+                                                      ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 45.0,
+                                                      lineWidth: 16.0,
+                                                      animation: true,
+                                                      percent:
+                                                          LastMonthPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 26,
+                                                          ),
+                                                          Text(
+                                                            LastMonthPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            LastMonthSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Center(
+                                                            child: Text(
+                                                              "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                              style: TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize:
+                                                                    touchedMonthGoals
+                                                                    ? 11.0
+                                                                    : 10.0,
+                                                                color:
+                                                                    touchedMonthGoals
+                                                                    ? Colors
+                                                                          .cyan
+                                                                    : Colors
+                                                                          .black,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor: Colors.red,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 45.0,
+                                                      lineWidth: 16.0,
+                                                      animation: true,
+                                                      percent:
+                                                          CurrentQtrPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 26,
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.orange,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 45.0,
+                                                      lineWidth: 16.0,
+                                                      animation: true,
+                                                      percent:
+                                                          YtdPercentage / 100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 26,
+                                                          ),
+                                                          Text(
+                                                            YtdPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            YtdSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "YTD \n($YtdTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.green,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 4.0,
+                                                        right: 4.0,
+                                                      ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 55.0,
+                                                      lineWidth: 20.0,
+                                                      animation: true,
+                                                      percent:
+                                                          LastMonthPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 30,
+                                                          ),
+                                                          Text(
+                                                            LastMonthPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            LastMonthSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedMonthGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedMonthGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Center(
+                                                            child: Text(
+                                                              "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                              style: TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize:
+                                                                    touchedMonthGoals
+                                                                    ? 11.0
+                                                                    : 10.0,
+                                                                color:
+                                                                    touchedMonthGoals
+                                                                    ? Colors
+                                                                          .cyan
+                                                                    : Colors
+                                                                          .black,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor: Colors.red,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 55.0,
+                                                      lineWidth: 20.0,
+                                                      animation: true,
+                                                      percent:
+                                                          CurrentQtrPercentage /
+                                                          100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 30,
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            CurrentQtrSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedQuarterGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedQuarterGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.orange,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    4.0,
+                                                  ),
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {});
+                                                    },
+                                                    child: CircularPercentIndicator(
+                                                      arcType: ArcType.HALF,
+                                                      radius: 55.0,
+                                                      lineWidth: 20.0,
+                                                      animation: true,
+                                                      percent:
+                                                          YtdPercentage / 100,
+                                                      center: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            height: 30,
+                                                          ),
+                                                          Text(
+                                                            YtdPercentageStr,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 13.0
+                                                                  : 12.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            YtdSalesStr,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Text(
+                                                            "YTD \n($YtdTargetStr)",
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize:
+                                                                  touchedYTDGoals
+                                                                  ? 11.0
+                                                                  : 10.0,
+                                                              color:
+                                                                  touchedYTDGoals
+                                                                  ? Colors.cyan
+                                                                  : Colors
+                                                                        .black,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      curve: Curves.linear,
+                                                      circularStrokeCap:
+                                                          CircularStrokeCap
+                                                              .butt,
+                                                      progressColor:
+                                                          Colors.green,
+                                                      arcBackgroundColor:
+                                                          Colors.grey.shade200,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        RepaintBoundary(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q1",
+                                  percentage: Q1PercentageStr,
+                                  color: const Color(0xFF6CCC3F),
+                                  target: Q1TargetStr,
+                                  achieved: Q1SalesStr,
+                                  difference: Q1DiffStr,
+                                  average: Q1AverageStr,
+                                ),
+                              ),
+
+                              const SizedBox(width: 6),
+
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q2",
+                                  percentage: Q2PercentageStr,
+                                  color: const Color(0xFFF49136),
+                                  target: Q2TargetStr,
+                                  achieved: Q2SalesStr,
+                                  difference: Q2DiffStr,
+                                  average: Q2AverageStr,
+                                ),
+                              ),
+
+                              const SizedBox(width: 6),
+
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q3",
+                                  percentage: Q3PercentageStr,
+                                  color: const Color(0xFFE92729),
+                                  target: Q3TargetStr,
+                                  achieved: Q3SalesStr,
+                                  difference: Q3DiffStr,
+                                  average: Q3AverageStr,
+                                ),
+                              ),
+
+                              const SizedBox(width: 6),
+
+                              Expanded(
+                                child: buildQuarterCard(
+                                  quarter: "Q4",
+                                  percentage: Q4PercentageStr,
+                                  color: const Color(0xFF6CCC3F),
+                                  target: Q4TargetStr,
+                                  achieved: Q4SalesStr,
+                                  difference: Q4DiffStr,
+                                  average: Q4AverageStr,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    Row(children: [SizedBox(width: 5)]),
-                  ],
-                ),
-                _buildLazyLoadIndicator(),
-                SizedBox(
-                  height: 300, //  SAFE HEIGHT FOR WEB + MOBILE
-                  child: Stack(
-                    children: [
-                      /// ================= MAIN BIG INDICATOR =================
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: CircularPercentIndicator(
-                          arcType: ArcType.HALF,
-                          radius: 120.0,
-                          lineWidth: 50.0,
-                          animation: true,
-                          percent: CurrentMonthSalesPercentage / 100,
-
-                          /// WEB-SAFE CENTER (KEEP THIS)
-                          center: SizedBox(
-                            height: 90,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    CurrentMonthSalesPercentageStr,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20.0,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    CurrentMonthSalesStr,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 14.0),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    "${getMonthName(currentDate!.month)} Goal - $SalesGoalStr",
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14.0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          circularStrokeCap: CircularStrokeCap.butt,
-                          progressColor: Colors.red,
-                          arcBackgroundColor: Colors.grey.shade200,
-                        ),
-                      ),
-
-                      /// ================= BOTTOM SMALL INDICATORS =================
-                      Positioned(
-                        top: 170,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: FittedBox(
-                            fit: BoxFit
-                                .scaleDown, // prevents overflow on small devices
-                            child: Row(
-                              mainAxisSize: MainAxisSize
-                                  .min, // prevents landscape gap expansion
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                /// ---------- LAST MONTH ----------
-                                Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (selectedPiechartIndex != 1) {
-                                          loadMonthlySalesBarChartDataFromPieChart(
-                                            selectedPiechartIndex == 1 ? -1 : 1,
-                                          );
-                                        } else {
-                                          selectedPiechartIndex = -1;
-                                          touchedMonthGoals = false;
-                                          touchedQuarterGoals = false;
-                                          _loadMonthlySalesBarChartData(
-                                            filteredSales,
-                                            filteredTargets,
-                                          );
-                                        }
-
-                                        _monthlySalesAnalysisChart(
-                                          monthlySalesList.monthlyData,
-                                        );
-                                        showProductSaleChart = false;
-                                        showDrillDownChart = false;
-                                        lastMonthChartFunc = true;
-                                        lastThreeMonthChartFunc = false;
-                                        touchedMonthGoals =
-                                            selectedPiechartIndex == 1
-                                            ? !touchedMonthGoals
-                                            : touchedMonthGoals;
-                                        touchedQuarterGoals = false;
-                                        touchedYTDGoals = false;
-                                      });
-                                    },
-                                    child: SizedBox(
-                                      height: 110,
-                                      width: 110,
-                                      child: CircularPercentIndicator(
-                                        arcType: ArcType.HALF,
-                                        radius: 55.0,
-                                        lineWidth: 20.0,
-                                        animation: true,
-                                        percent: LastMonthPercentage / 100,
-                                        center: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const SizedBox(height: 30),
-                                            Text(
-                                              LastMonthPercentageStr,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: touchedMonthGoals
-                                                    ? 13.0
-                                                    : 12.0,
-                                                color: touchedMonthGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                            Text(
-                                              LastMonthSalesStr,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: touchedMonthGoals
-                                                    ? 11.0
-                                                    : 10.0,
-                                                color: touchedMonthGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              "${getMonthName(currentDate!.month - 1)} Sales\n($LastMonthTargetStr)",
-                                              textAlign: TextAlign.center,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: touchedMonthGoals
-                                                    ? 11.0
-                                                    : 10.0,
-                                                color: touchedMonthGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        circularStrokeCap:
-                                            CircularStrokeCap.butt,
-                                        progressColor: Colors.red,
-                                        arcBackgroundColor:
-                                            Colors.grey.shade200,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                /// ---------- CURRENT QUARTER ----------
-                                Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        lastMonthChartFunc = false;
-                                        lastThreeMonthChartFunc = true;
-                                        if (selectedPiechartIndex != 3) {
-                                          loadMonthlySalesBarChartDataFromPieChart(
-                                            selectedPiechartIndex == 3 ? -1 : 3,
-                                          );
-                                        } else {
-                                          selectedPiechartIndex = -1;
-                                          touchedQuarterGoals = false;
-                                          touchedMonthGoals = false;
-                                          _loadMonthlySalesBarChartData(
-                                            filteredSales,
-                                            filteredTargets,
-                                          );
-                                        }
-                                        _monthlySalesAnalysisChart(
-                                          monthlySalesList.monthlyData,
-                                        );
-                                        showProductSaleChart = false;
-                                        showDrillDownChart = false;
-                                        touchedMonthGoals = false;
-                                        touchedQuarterGoals =
-                                            selectedPiechartIndex == 3
-                                            ? !touchedQuarterGoals
-                                            : touchedQuarterGoals;
-                                        touchedYTDGoals = false;
-                                      });
-                                    },
-                                    child: SizedBox(
-                                      height: 110,
-                                      width: 110,
-                                      child: CircularPercentIndicator(
-                                        arcType: ArcType.HALF,
-                                        radius: 55.0,
-                                        lineWidth: 20.0,
-                                        animation: true,
-                                        percent: CurrentQtrPercentage / 100,
-                                        center: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const SizedBox(height: 30),
-                                            Text(
-                                              CurrentQtrPercentageStr,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: touchedQuarterGoals
-                                                    ? 13.0
-                                                    : 12.0,
-                                                color: touchedQuarterGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                            Text(
-                                              CurrentQtrSalesStr,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: touchedQuarterGoals
-                                                    ? 11.0
-                                                    : 10.0,
-                                                color: touchedQuarterGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              "Q$currentQuarter Sales\n($CurrentQtrTargetStr)",
-                                              textAlign: TextAlign.center,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: touchedQuarterGoals
-                                                    ? 11.0
-                                                    : 10.0,
-                                                color: touchedQuarterGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        circularStrokeCap:
-                                            CircularStrokeCap.butt,
-                                        progressColor: Colors.orange,
-                                        arcBackgroundColor:
-                                            Colors.grey.shade200,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                /// ---------- YTD ----------
-                                Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _loadMonthlySalesBarChartData(
-                                          filteredSales,
-                                          filteredTargets,
-                                        );
-                                        _monthlySalesAnalysisChart(
-                                          monthlySalesList.monthlyData,
-                                        );
-                                        showProductSaleChart = false;
-                                        showDrillDownChart = false;
-                                        lastThreeMonthChartFunc = false;
-                                        lastMonthChartFunc = false;
-                                        touchedMonthGoals = false;
-                                        touchedQuarterGoals = false;
-                                        touchedYTDGoals = true;
-                                      });
-                                    },
-                                    child: SizedBox(
-                                      height: 110,
-                                      width: 110,
-                                      child: CircularPercentIndicator(
-                                        arcType: ArcType.HALF,
-                                        radius: 55.0,
-                                        lineWidth: 20.0,
-                                        animation: true,
-                                        percent: YtdPercentage / 100,
-                                        center: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const SizedBox(height: 30),
-                                            Text(
-                                              YtdPercentageStr,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: touchedYTDGoals
-                                                    ? 13.0
-                                                    : 12.0,
-                                                color: touchedYTDGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                            Text(
-                                              YtdSalesStr,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: touchedYTDGoals
-                                                    ? 11.0
-                                                    : 10.0,
-                                                color: touchedYTDGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              "YTD\n($YtdTargetStr)",
-                                              textAlign: TextAlign.center,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: touchedYTDGoals
-                                                    ? 11.0
-                                                    : 10.0,
-                                                color: touchedYTDGoals
-                                                    ? Colors.cyan
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        circularStrokeCap:
-                                            CircularStrokeCap.butt,
-                                        progressColor: Colors.green,
-                                        arcBackgroundColor:
-                                            Colors.grey.shade200,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
 
-                const SizedBox(height: 1),
-                buildQuarterAnalysisRow(),
-
-                const SizedBox(height: 10),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Monthwise Sales Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Achieved", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFF49136),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Goal", style: TextStyle(fontSize: 12)),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateSalesExcel(monthlySalesList);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateSalesPDF(monthlySalesList);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: _buildMonthlySalesChart(),
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Monthwise Sales Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFF2CA9DF),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Achieved', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Target', style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateSalesExcel(monthlySalesList);
+                        },
+                        child: const Text('Download Excel'),
+                      ),
+
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateSalesPDF(monthlySalesList);
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _buildMonthlySalesChart(),
+                  ),
                 ),
 
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
                 Visibility(
                   visible: rsmwiseSalesList.rsmwiseData.isNotEmpty,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Regional Manager Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Regional Manager Analysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
                             height: 8,
                             width: 8,
-                            color: const Color(0xFF97D7F3),
+                            color: const Color(0xFF2CA9DF),
                           ),
                           const SizedBox(width: 5),
                           const Text(
-                            "Achieved",
+                            'Achieved',
                             style: TextStyle(fontSize: 12),
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 10),
                           Container(
                             height: 8,
                             width: 8,
-                            color: const Color(0xFFF49136),
+                            color: Color(0xFFFF9F47),
                           ),
                           const SizedBox(width: 5),
-                          const Text("Goal", style: TextStyle(fontSize: 12)),
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateRsmSalesExcel(rsmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateRsmSalesPDF(rsmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
-                          ),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
                         ],
                       ),
-                    ],
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateRsmSalesExcel(rsmwiseSalesList);
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateRsmSalesPDF(rsmwiseSalesList);
+                          },
+                          child: const Text("Download PDF"),
+                        ),
+                      ],
+                      child: _regionalManagerAnalysis(),
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: rsmwiseSalesList.rsmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : _regionalManagerAnalysis(),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: rsmwiseSalesList.rsmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : const Divider(thickness: 2),
                 ),
 
                 Visibility(
                   visible: asmwiseSalesList.asmwiseData.isNotEmpty,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Sales Manager Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Sales Manager\nAnalysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
                             height: 8,
                             width: 8,
-                            color: const Color(0xFF97D7F3),
+                            color: const Color(0xFF2CA9DF),
                           ),
                           const SizedBox(width: 5),
                           const Text(
-                            "Achieved",
+                            'Achieved',
                             style: TextStyle(fontSize: 12),
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 10),
                           Container(
                             height: 8,
                             width: 8,
-                            color: const Color(0xFFF49136),
+                            color: Color(0xFFFF9F47),
                           ),
                           const SizedBox(width: 5),
-                          const Text("Goal", style: TextStyle(fontSize: 12)),
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateAsmSalesExcel(asmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateAsmSalesPDF(asmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
-                          ),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
                         ],
                       ),
-                    ],
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateAsmSalesExcel(asmwiseSalesList);
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateAsmSalesPDF(asmwiseSalesList);
+                          },
+                          child: const Text("Download PDF"),
+                        ),
+                      ],
+                      child: _salesManagerAnalysis(),
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: asmwiseSalesList.asmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : _salesManagerAnalysis(),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: asmwiseSalesList.asmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : const Divider(thickness: 2),
                 ),
 
                 Visibility(
                   visible: tsmwiseSalesList.tsmwiseData.isNotEmpty,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Sales Person Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Sales Person\nAnalysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
                             height: 8,
                             width: 8,
-                            color: const Color(0xFF97D7F3),
+                            color: const Color(0xFF2CA9DF),
                           ),
                           const SizedBox(width: 5),
                           const Text(
-                            "Achieved",
+                            'Achieved',
                             style: TextStyle(fontSize: 12),
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 10),
                           Container(
                             height: 8,
                             width: 8,
-                            color: const Color(0xFFF49136),
+                            color: Color(0xFFFF9F47),
                           ),
                           const SizedBox(width: 5),
-                          const Text("Goal", style: TextStyle(fontSize: 12)),
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateTsmSalesExcel(tsmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateTsmSalesPDF(tsmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
-                          ),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
                         ],
                       ),
-                    ],
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateTsmSalesExcel(tsmwiseSalesList);
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateTsmSalesPDF(tsmwiseSalesList);
+                          },
+                          child: const Text("Download PDF"),
+                        ),
+                      ],
+                      child: _salesPersonAnalysis(),
+                    ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: tsmwiseSalesList.tsmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : _salesPersonAnalysis(),
-                ),
 
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: tsmwiseSalesList.tsmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : const Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Customer State \nwise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Achieved", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFF49136),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Month Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateCustomerStateSalesExcel(
-                                      customerStateWiseSalesList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateCustomerStateSalesPDF(
-                                      customerStateWiseSalesList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
+                Visibility(
+                  visible:
+                      customerStateWiseSalesList.customerStateData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Customer State Wise\nAnalysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF2CA9DF),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateCustomerStateSalesExcel(
+                              customerStateWiseSalesList,
+                            );
                           },
+                          child: const Text('Download Excel'),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: _buildCustomerStateWiseSalesChart(),
-                ),
-
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Customer Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Achieved", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFF49136),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Month Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateCustomerSalesExcel(
-                                      customerWiseSalesList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateCustomerSalesPDF(
-                                      customerWiseSalesList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateCustomerStateSalesPDF(
+                              customerStateWiseSalesList,
+                            );
                           },
+                          child: const Text("Download PDF"),
                         ),
                       ],
+                      child: _buildCustomerStateWiseSalesChart(),
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: _buildCustomerSalesChart(),
+                  ),
                 ),
 
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Groupwise \nAnalysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Achieved", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFF49136),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Month Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupSalesExcel(
-                                      itemGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupSalesExcel(
-                                      itemGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
+                Visibility(
+                  visible: customerWiseSalesList.customerData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Customer Analysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF2CA9DF),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateCustomerSalesExcel(customerWiseSalesList);
                           },
+                          child: const Text('Download Excel'),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: _itemGroupWiseAnalysis(),
-                ),
-
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFF97D7F3),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text("Achieved", style: TextStyle(fontSize: 12)),
-                        const SizedBox(width: 5),
-                        Container(
-                          height: 8,
-                          width: 8,
-                          color: const Color(0xFFF49136),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "3 Month Avg.",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSalesExcel(
-                                      productwiseSalesList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemSalesPDF(productwiseSalesList);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateCustomerSalesPDF(customerWiseSalesList);
                           },
+                          child: const Text("Download PDF"),
                         ),
                       ],
+                      child: _buildCustomerSalesChart(),
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: _itemWiseAnalysis(),
+                  ),
                 ),
 
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
+                Visibility(
+                  visible:
+                      productGroupwiseSalesList.productGroupData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Item Groupwise\nAnalysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF2CA9DF),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemGroupSalesExcel();
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemGroupSalesPDF();
+                          },
+                          child: const Text('Download PDF'),
+                        ),
+                      ],
+                      child: _itemGroupWiseAnalysis(),
+                    ),
+                  ),
+                ),
+
+                Visibility(
+                  visible: productwiseSalesList.productData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Item Analysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF2CA9DF),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemSalesExcel(productwiseSalesList);
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemSalesPDF(productwiseSalesList);
+                          },
+                          child: const Text('Download PDF'),
+                        ),
+                      ],
+                      child: _itemWiseAnalysis(),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -5457,176 +5525,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     });
   }
 
-  void _scrollDown() {
-    salesPerformancePageController.animateTo(
-      800, //salesPerformancePageController.position.maxScrollExtent
-      duration: const Duration(seconds: 1),
-      curve: Curves.fastOutSlowIn,
-    );
-  }
-
-  Widget _buildMonthlySalesChart() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    double barChartWidth = 0.0;
-    monthlySalesList.monthlyData.length > 6
-        ? barChartWidth = screenWidth * 1.4
-        : barChartWidth = screenWidth;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: 350,
-        width: barChartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(monthlySalesList),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitles2,
-                axisNameSize: 14,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _monthlySalesAnalysisChart(monthlySalesList.monthlyData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    selectedMonthIndex =
-                        (selectedMonthIndex !=
-                            barTouchResponse.spot!.touchedBarGroupIndex
-                        ? barTouchResponse.spot!.touchedBarGroupIndex
-                        : -1);
-                    touchedMonth = monthlySalesList
-                        .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
-                        .monthName;
-                    List months = [
-                      'Jan',
-                      'Feb',
-                      'Mar',
-                      'Apr',
-                      'May',
-                      'Jun',
-                      'Jul',
-                      'Aug',
-                      'Sep',
-                      'Oct',
-                      'Nov',
-                      'Dec',
-                    ];
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedMonthIndex = (touchedMonthIndex == 0
-                          ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-                          : 0);
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedState,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                      );
-                      touchedYearGraph = true;
-                    }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${monthlySalesList.monthlyData[grpIndex].monthName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(rodData.toY / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Target : ${(rodData.backDrawRodData.toY / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((rodData.toY / 100000) - (rodData.backDrawRodData.toY / 100000)).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${(((rodData.toY / 100000) / (rodData.backDrawRodData.toY / 100000)) * 100).toStringAsFixed(2)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
-              ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   int determineGrpIndex(
     Offset tapPosition,
     List<AsmwiseData> asmwiseData,
@@ -5642,207 +5540,484 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     }
   }
 
+  void _scrollDown() {
+    salesPerformancePageController.animateTo(
+      800, //salesPerformancePageController.position.maxScrollExtent
+      duration: const Duration(seconds: 1),
+      curve: Curves.fastOutSlowIn,
+    );
+  }
+
+  Widget buildQuarterCard({
+    required String quarter,
+    required String percentage,
+    required Color color,
+    required String target,
+    required String achieved,
+    required String difference,
+    required String average,
+  }) {
+    return Tooltip(
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: false,
+      richMessage: WidgetSpan(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "$quarter Analysis",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text("Target : $target"),
+            Text("Achieved : $achieved"),
+            Text("Difference : $difference"),
+            Text("Monthly Avg : $average"),
+          ],
+        ),
+      ),
+      child: Container(
+        // width: 110,
+        height: 130,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: color.withValues(alpha: 0.12),
+              child: Text(
+                quarter,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              percentage,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              achieved,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+
+            const Spacer(),
+
+            SizedBox(
+              height: 20,
+              child: CustomPaint(
+                painter: SparklinePainter(color),
+                size: const Size(double.infinity, 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthlySalesChart() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double barChartWidth = 0.0;
+    monthlySalesList.monthlyData.length > 6
+        ? barChartWidth = screenWidth * 1.4
+        : barChartWidth = screenWidth;
+    return FinanceHorizontalChartScroll(
+      controller: _monthlySalesHorizontalController,
+      verticalController: _verticalScrollController,
+      child: SizedBox(
+        height: 350,
+        width: barChartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(monthlySalesList),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitles2,
+                  axisNameSize: 14,
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _monthlySalesAnalysisChart(
+                monthlySalesList.monthlyData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      selectedMonthIndex =
+                          (selectedMonthIndex !=
+                              barTouchResponse.spot!.touchedBarGroupIndex
+                          ? barTouchResponse.spot!.touchedBarGroupIndex
+                          : -1);
+                      touchedMonth = monthlySalesList
+                          .monthlyData[barTouchResponse.spot!.spot.x.toInt()]
+                          .monthName;
+                      List months = [
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec',
+                      ];
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedMonthIndex = (touchedMonthIndex == 0
+                            ? months.indexOf(touchedMonth.substring(0, 3)) + 1
+                            : 0);
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedState,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                        );
+                        touchedYearGraph = true;
+                      }
+                    });
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
+                    }
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${monthlySalesList.monthlyData[grpIndex].monthName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(rodData.toY / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Target : ${(rodData.backDrawRodData.toY / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((rodData.toY / 100000) - (rodData.backDrawRodData.toY / 100000)).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${(((rodData.toY / 100000) / (rodData.backDrawRodData.toY / 100000)) * 100).toStringAsFixed(2)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _regionalManagerAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
-
     int len = rsmwiseSalesList.rsmwiseData.length;
-
     double chartWidth = len > 5 ? screenWidth + (70 * len) + 100 : screenWidth;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _regionalManagerHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            /// SAFE MAX Y
-            maxY: max(1, getRsmMaxValue(rsmwiseSalesList)),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              /// SAFE MAX Y
+              maxY: max(1, getRsmMaxValue(rsmwiseSalesList)),
 
-            titlesData: FlTitlesData(
-              show: true,
+              titlesData: FlTitlesData(
+                show: true,
 
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
 
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesRsm,
+                  axisNameSize: 20,
+                ),
               ),
 
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesRsm,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
 
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
 
-            barGroups: _regionalManagerAnalysisChart(
-              rsmwiseSalesList.rsmwiseData,
-            ),
+              barGroups: _regionalManagerAnalysisChart(
+                rsmwiseSalesList.rsmwiseData,
+              ),
 
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
 
-              handleBuiltInTouches: true,
+                handleBuiltInTouches: true,
 
-              touchExtraThreshold: const EdgeInsets.all(10),
+                touchExtraThreshold: const EdgeInsets.all(10),
 
-              touchCallback: (event, response) async {
-                if (response == null || response.spot == null) return;
+                touchCallback: (event, response) async {
+                  if (response == null || response.spot == null) return;
 
-                int index = response.spot!.spot.x.toInt();
+                  int index = response.spot!.spot.x.toInt();
 
-                /// SAFETY CHECK
-                if (index < 0 || index >= rsmwiseSalesList.rsmwiseData.length) {
-                  return;
-                }
-
-                /// LONG PRESS → TOOLTIP
-                if (event is FlLongPressStart) {
-                  setState(() {
-                    tooltipIndex = index;
-
-                    showTooltip = true;
-                  });
-
-                  return;
-                }
-
-                /// LONG PRESS END
-                if (event is FlLongPressEnd) {
-                  setState(() {
-                    showTooltip = false;
-                  });
-
-                  return;
-                }
-
-                /// TAP → DRILLDOWN
-                if (event is FlTapUpEvent) {
-                  setState(() {
-                    showTooltip = false;
-
-                    touchedRegionalManager = touchedRegionalManager == ""
-                        ? rsmwiseSalesList.rsmwiseData[index].rsmName
-                        : "";
-
-                    selectedChart = index.toDouble();
-
-                    showDrillDownChart = true;
-
-                    touchedYearGraph = true;
-                  });
-
-                  loadDataWithFilter(
-                    touchedMonthIndex,
-
-                    touchedRegionalManager,
-
-                    touchedSalesManager,
-
-                    touchedSalesRep,
-
-                    touchedState,
-
-                    touchedCustomer,
-
-                    touchedProductGroup,
-
-                    touchedProduct,
-                  );
-
-                  if (!showProductSaleChart) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-
-                    _scrollDown();
-                  }
-                }
-              },
-
-              touchTooltipData: BarTouchTooltipData(
-                fitInsideHorizontally: true,
-
-                fitInsideVertically: true,
-
-                getTooltipColor: (group) => Colors.white,
-
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  if (!showTooltip || tooltipIndex != groupIndex) {
-                    return null;
+                  /// SAFETY CHECK
+                  if (index < 0 ||
+                      index >= rsmwiseSalesList.rsmwiseData.length) {
+                    return;
                   }
 
-                  final data = rsmwiseSalesList.rsmwiseData[groupIndex];
+                  /// LONG PRESS → TOOLTIP
+                  if (event is FlLongPressStart) {
+                    setState(() {
+                      tooltipIndex = index;
 
-                  final salesL = data.salesAmount / 100000;
+                      showTooltip = true;
+                    });
 
-                  final targetL = data.targetAmount / 100000;
+                    return;
+                  }
 
-                  final diffL = salesL - targetL;
+                  /// LONG PRESS END
+                  if (event is FlLongPressEnd) {
+                    setState(() {
+                      showTooltip = false;
+                    });
 
-                  final percent = data.targetAmount == 0
-                      ? "0%"
-                      : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
+                    return;
+                  }
 
-                  return BarTooltipItem(
-                    '${data.rsmName}\n',
+                  /// TAP → DRILLDOWN
+                  if (event is FlTapUpEvent) {
+                    setState(() {
+                      showTooltip = false;
 
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                      touchedRegionalManager = touchedRegionalManager == ""
+                          ? rsmwiseSalesList.rsmwiseData[index].rsmName
+                          : "";
 
-                    children: [
-                      TextSpan(
-                        text: "Achievement : ${salesL.toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      selectedChart = index.toDouble();
 
-                      TextSpan(
-                        text: "Target : ${targetL.toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      showDrillDownChart = true;
 
-                      TextSpan(
-                        text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      touchedYearGraph = true;
+                    });
 
-                      TextSpan(
-                        text: "Percentage : $percent",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  );
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+
+                      touchedRegionalManager,
+
+                      touchedSalesManager,
+
+                      touchedSalesRep,
+
+                      touchedState,
+
+                      touchedCustomer,
+
+                      touchedProductGroup,
+
+                      touchedProduct,
+                    );
+
+                    if (!showProductSaleChart) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+
+                      _scrollDown();
+                    }
+                  }
                 },
+
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+
+                  fitInsideVertically: true,
+
+                  getTooltipColor: (group) => Colors.white,
+
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    if (!showTooltip || tooltipIndex != groupIndex) {
+                      return null;
+                    }
+
+                    final data = rsmwiseSalesList.rsmwiseData[groupIndex];
+
+                    final salesL = data.salesAmount / 100000;
+
+                    final targetL = data.targetAmount / 100000;
+
+                    final diffL = salesL - targetL;
+
+                    final percent = data.targetAmount == 0
+                        ? "0%"
+                        : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
+
+                    return BarTooltipItem(
+                      '${data.rsmName}\n',
+
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+
+                      children: [
+                        TextSpan(
+                          text:
+                              "Achievement : ${salesL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Target : ${targetL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Percentage : $percent",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -5858,173 +6033,184 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         ? screenWidth + (70.0 * len) + 100
         : screenWidth;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _salesManagerHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            /// SAFE MAX Y
-            maxY: max(1, getAsmMaxValue(asmwiseSalesList)),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              /// SAFE MAX Y
+              maxY: max(1, getAsmMaxValue(asmwiseSalesList)),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesAsm,
+                  axisNameSize: 20,
+                ),
               ),
 
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesAsm,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
 
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
 
-            barGroups: _salesManagerAnalysisChart(asmwiseSalesList.asmwiseData),
+              barGroups: _salesManagerAnalysisChart(
+                asmwiseSalesList.asmwiseData,
+              ),
 
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
 
-              touchCallback: (event, response) async {
-                if (response == null || response.spot == null) return;
+                touchCallback: (event, response) async {
+                  if (response == null || response.spot == null) return;
 
-                int index = response.spot!.spot.x.toInt();
+                  int index = response.spot!.spot.x.toInt();
 
-                /// SAFETY CHECK
-                if (index < 0 || index >= asmwiseSalesList.asmwiseData.length) {
-                  return;
-                }
-
-                /// LONG PRESS → TOOLTIP
-                if (event is FlLongPressStart) {
-                  setState(() {
-                    tooltipIndex = index;
-
-                    showTooltip = true;
-                  });
-
-                  return;
-                }
-
-                /// LONG PRESS END
-                if (event is FlLongPressEnd) {
-                  setState(() {
-                    showTooltip = false;
-                  });
-
-                  return;
-                }
-
-                /// TAP → DRILLDOWN
-                if (event is FlTapUpEvent) {
-                  setState(() {
-                    showTooltip = false;
-                    touchedSalesManager = touchedSalesManager == ""
-                        ? asmwiseSalesList.asmwiseData[index].asmName
-                        : "";
-                    selectedChart = index.toDouble();
-                    showDrillDownChart = true;
-                    touchedYearGraph = true;
-                  });
-
-                  loadDataWithFilter(
-                    touchedMonthIndex,
-                    touchedRegionalManager,
-                    touchedSalesManager,
-                    touchedSalesRep,
-                    touchedState,
-                    touchedCustomer,
-                    touchedProductGroup,
-                    touchedProduct,
-                  );
-
-                  if (!showProductSaleChart) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-
-                    _scrollDown();
+                  /// SAFETY CHECK
+                  if (index < 0 ||
+                      index >= asmwiseSalesList.asmwiseData.length) {
+                    return;
                   }
-                }
-              },
 
-              touchTooltipData: BarTouchTooltipData(
-                fitInsideHorizontally: true,
-                fitInsideVertically: true,
-                getTooltipColor: (group) => Colors.white,
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  if (!showTooltip || tooltipIndex != groupIndex) {
-                    return null;
+                  /// LONG PRESS → TOOLTIP
+                  if (event is FlLongPressStart) {
+                    setState(() {
+                      tooltipIndex = index;
+
+                      showTooltip = true;
+                    });
+
+                    return;
                   }
-                  final data = asmwiseSalesList.asmwiseData[groupIndex];
-                  final salesL = data.salesAmount / 100000;
-                  final targetL = data.targetAmount / 100000;
-                  final diffL = salesL - targetL;
-                  final percent = data.targetAmount == 0
-                      ? "0%"
-                      : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
 
-                  return BarTooltipItem(
-                    '${data.asmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                  /// LONG PRESS END
+                  if (event is FlLongPressEnd) {
+                    setState(() {
+                      showTooltip = false;
+                    });
 
-                    children: [
-                      TextSpan(
-                        text: "Achievement : ${salesL.toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                    return;
+                  }
 
-                      TextSpan(
-                        text: "Target : ${targetL.toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                  /// TAP → DRILLDOWN
+                  if (event is FlTapUpEvent) {
+                    setState(() {
+                      showTooltip = false;
+                      touchedSalesManager = touchedSalesManager == ""
+                          ? asmwiseSalesList.asmwiseData[index].asmName
+                          : "";
+                      selectedChart = index.toDouble();
+                      showDrillDownChart = true;
+                      touchedYearGraph = true;
+                    });
 
-                      TextSpan(
-                        text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedRegionalManager,
+                      touchedSalesManager,
+                      touchedSalesRep,
+                      touchedState,
+                      touchedCustomer,
+                      touchedProductGroup,
+                      touchedProduct,
+                    );
 
-                      TextSpan(
-                        text: "Percentage : $percent",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  );
+                    if (!showProductSaleChart) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+
+                      _scrollDown();
+                    }
+                  }
                 },
+
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipColor: (group) => Colors.white,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    if (!showTooltip || tooltipIndex != groupIndex) {
+                      return null;
+                    }
+                    final data = asmwiseSalesList.asmwiseData[groupIndex];
+                    final salesL = data.salesAmount / 100000;
+                    final targetL = data.targetAmount / 100000;
+                    final diffL = salesL - targetL;
+                    final percent = data.targetAmount == 0
+                        ? "0%"
+                        : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
+
+                    return BarTooltipItem(
+                      '${data.asmName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+
+                      children: [
+                        TextSpan(
+                          text:
+                              "Achievement : ${salesL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Target : ${targetL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Percentage : $percent",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -6042,152 +6228,162 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _salesPersonHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: max(1, getTsmMaxValue(tsmwiseSalesList)),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: max(1, getTsmMaxValue(tsmwiseSalesList)),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesTsm,
+                  axisNameSize: 20,
+                ),
               ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesTsm,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _salesPersonAnalysisChart(tsmwiseSalesList.tsmwiseData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
-              touchCallback: (event, response) async {
-                if (response == null || response.spot == null) return;
-                int index = response.spot!.spot.x.toInt();
-                if (index < 0 || index >= tsmwiseSalesList.tsmwiseData.length) {
-                  return;
-                }
-
-                /// LONG PRESS → Tooltip
-                if (event is FlLongPressStart) {
-                  setState(() {
-                    tooltipIndex = index;
-                    showTooltip = true;
-                  });
-                  return;
-                }
-
-                /// LONG PRESS END → Hide tooltip
-                if (event is FlLongPressEnd) {
-                  setState(() {
-                    showTooltip = false;
-                  });
-                  return;
-                }
-
-                /// TAP → Drilldown
-                if (event is FlTapUpEvent) {
-                  setState(() {
-                    showTooltip = false;
-                    touchedSalesRep = touchedSalesRep == ""
-                        ? tsmwiseSalesList.tsmwiseData[index].tsmName
-                        : "";
-                    selectedChart = index.toDouble();
-                    showDrillDownChart = true;
-                    touchedYearGraph = true;
-                  });
-
-                  loadDataWithFilter(
-                    touchedMonthIndex,
-                    touchedRegionalManager,
-                    touchedSalesManager,
-                    touchedSalesRep,
-                    touchedState,
-                    touchedCustomer,
-                    touchedProductGroup,
-                    touchedProduct,
-                  );
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
+              barGroups: _salesPersonAnalysisChart(
+                tsmwiseSalesList.tsmwiseData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+                touchCallback: (event, response) async {
+                  if (response == null || response.spot == null) return;
+                  int index = response.spot!.spot.x.toInt();
+                  if (index < 0 ||
+                      index >= tsmwiseSalesList.tsmwiseData.length) {
+                    return;
                   }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                fitInsideHorizontally: true,
-                fitInsideVertically: true,
-                getTooltipColor: (group) => Colors.white,
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  if (!showTooltip || tooltipIndex != groupIndex) {
-                    return null;
+
+                  /// LONG PRESS → Tooltip
+                  if (event is FlLongPressStart) {
+                    setState(() {
+                      tooltipIndex = index;
+                      showTooltip = true;
+                    });
+                    return;
                   }
-                  return BarTooltipItem(
-                    '${tsmwiseSalesList.tsmwiseData[groupIndex].tsmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: [
-                      TextSpan(
-                        text:
-                            "Achievement : ${(tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Target : ${(tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount - tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount == 0 ? "0%" : "${((tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount / tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount) * 100).toStringAsFixed(0)}%"}",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  );
+
+                  /// LONG PRESS END → Hide tooltip
+                  if (event is FlLongPressEnd) {
+                    setState(() {
+                      showTooltip = false;
+                    });
+                    return;
+                  }
+
+                  /// TAP → Drilldown
+                  if (event is FlTapUpEvent) {
+                    setState(() {
+                      showTooltip = false;
+                      touchedSalesRep = touchedSalesRep == ""
+                          ? tsmwiseSalesList.tsmwiseData[index].tsmName
+                          : "";
+                      selectedChart = index.toDouble();
+                      showDrillDownChart = true;
+                      touchedYearGraph = true;
+                    });
+
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedRegionalManager,
+                      touchedSalesManager,
+                      touchedSalesRep,
+                      touchedState,
+                      touchedCustomer,
+                      touchedProductGroup,
+                      touchedProduct,
+                    );
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
+                    }
+                  }
                 },
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipColor: (group) => Colors.white,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    if (!showTooltip || tooltipIndex != groupIndex) {
+                      return null;
+                    }
+                    return BarTooltipItem(
+                      '${tsmwiseSalesList.tsmwiseData[groupIndex].tsmName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: [
+                        TextSpan(
+                          text:
+                              "Achievement : ${(tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Target : ${(tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount - tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount == 0 ? "0%" : "${((tsmwiseSalesList.tsmwiseData[groupIndex].salesAmount / tsmwiseSalesList.tsmwiseData[groupIndex].targetAmount) * 100).toStringAsFixed(0)}%"}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -6205,138 +6401,149 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _customerStateWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getCustomerStateMaxValue(customerStateWiseSalesList),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedState = touchedState == ""
-                          ? customerStateWiseSalesList
-                                .customerStateData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .stateName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedState,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                      );
-                      touchedYearGraph = true;
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getCustomerStateMaxValue(customerStateWiseSalesList),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedState = touchedState == ""
+                            ? customerStateWiseSalesList
+                                  .customerStateData[barTouchResponse
+                                      .spot!
+                                      .spot
+                                      .x
+                                      .toInt()]
+                                  .stateName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedState,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                        );
+                        touchedYearGraph = true;
+                      }
+                    });
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
                     }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
                   }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${customerStateWiseSalesList.customerStateData[grpIndex].stateName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(customerStateWiseSalesList.customerStateData[grpIndex].saleAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(customerStateWiseSalesList.customerStateData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((customerStateWiseSalesList.customerStateData[grpIndex].saleAmount - customerStateWiseSalesList.customerStateData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((customerStateWiseSalesList.customerStateData[grpIndex].saleAmount / customerStateWiseSalesList.customerStateData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 4.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${customerStateWiseSalesList.customerStateData[grpIndex].stateName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(customerStateWiseSalesList.customerStateData[grpIndex].saleAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(customerStateWiseSalesList.customerStateData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((customerStateWiseSalesList.customerStateData[grpIndex].saleAmount - customerStateWiseSalesList.customerStateData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${((customerStateWiseSalesList.customerStateData[grpIndex].saleAmount / customerStateWiseSalesList.customerStateData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
-            ),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesCustomerState,
+                  axisNameSize: 20,
+                ),
               ),
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesCustomerState,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _customerStateWiseAnalysisChart(
-              customerStateWiseSalesList.customerStateData,
+              barGroups: _customerStateWiseAnalysisChart(
+                customerStateWiseSalesList.customerStateData,
+              ),
             ),
           ),
         ),
@@ -6382,139 +6589,147 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       chartMinY = roundDownToLakhs(maxNegative, 250000);
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _customerSalesHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: barChartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedCustomer = touchedCustomer == ""
-                          ? customerWiseSalesList
-                                .customerData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .customerCode
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedState,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                      );
-                      touchedYearGraph = true;
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: chartMaxY,
+              minY: chartMinY,
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedCustomer = touchedCustomer == ""
+                            ? customerWiseSalesList
+                                  .customerData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .customerCode
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedState,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                        );
+                        touchedYearGraph = true;
+                      }
+                    });
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
                     }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
                   }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${customerWiseSalesList.customerData[grpIndex].customerName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(customerWiseSalesList.customerData[grpIndex].saleAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(customerWiseSalesList.customerData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${customerWiseSalesList.customerData[grpIndex].targetAmount == 0 ? 0 : ((customerWiseSalesList.customerData[grpIndex].saleAmount - customerWiseSalesList.customerData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${customerWiseSalesList.customerData[grpIndex].targetAmount == 0 ? 0 : ((customerWiseSalesList.customerData[grpIndex].saleAmount / customerWiseSalesList.customerData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 4.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${customerWiseSalesList.customerData[grpIndex].customerName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(customerWiseSalesList.customerData[grpIndex].saleAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(customerWiseSalesList.customerData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${customerWiseSalesList.customerData[grpIndex].targetAmount == 0 ? 0 : ((customerWiseSalesList.customerData[grpIndex].saleAmount - customerWiseSalesList.customerData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${customerWiseSalesList.customerData[grpIndex].targetAmount == 0 ? 0 : ((customerWiseSalesList.customerData[grpIndex].saleAmount / customerWiseSalesList.customerData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
-            ),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesCustomer,
+                  axisNameSize: 20,
+                ),
               ),
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesCustomer,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _customerWiseAnalysisChart(
-              customerWiseSalesList.customerData,
+              barGroups: _customerWiseAnalysisChart(
+                customerWiseSalesList.customerData,
+              ),
             ),
           ),
         ),
@@ -6531,138 +6746,149 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemGroupWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getItemGroupMaxValue(productGroupwiseSalesList),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesProductGroup,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _productsGroupWiseAnalysisChart(
-              productGroupwiseSalesList.productGroupData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedProductGroup = touchedProductGroup == ""
-                          ? productGroupwiseSalesList
-                                .productGroupData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .productGroupName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedState,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                      );
-                      touchedYearGraph = true;
-                    }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getItemGroupMaxValue(productGroupwiseSalesList),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${productGroupwiseSalesList.productGroupData[grpIndex].productGroupName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(productGroupwiseSalesList.productGroupData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(productGroupwiseSalesList.productGroupData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((productGroupwiseSalesList.productGroupData[grpIndex].salesAmount - productGroupwiseSalesList.productGroupData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((productGroupwiseSalesList.productGroupData[grpIndex].salesAmount / productGroupwiseSalesList.productGroupData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesProductGroup,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _productsGroupWiseAnalysisChart(
+                productGroupwiseSalesList.productGroupData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedProductGroup = touchedProductGroup == ""
+                            ? productGroupwiseSalesList
+                                  .productGroupData[barTouchResponse
+                                      .spot!
+                                      .spot
+                                      .x
+                                      .toInt()]
+                                  .productGroupName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedState,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                        );
+                        touchedYearGraph = true;
+                      }
+                    });
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
+                    }
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 4.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${productGroupwiseSalesList.productGroupData[grpIndex].productGroupName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(productGroupwiseSalesList.productGroupData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(productGroupwiseSalesList.productGroupData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((productGroupwiseSalesList.productGroupData[grpIndex].salesAmount - productGroupwiseSalesList.productGroupData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${((productGroupwiseSalesList.productGroupData[grpIndex].salesAmount / productGroupwiseSalesList.productGroupData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -6708,135 +6934,143 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       chartMinY = roundDownToLakhs(maxNegative, 250000);
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: barChartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: chartMaxY,
-            minY: chartMinY,
-            barTouchData: BarTouchData(
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  if (flTouchEvent is FlTapUpEvent) {
-                    setState(() {
-                      touchedProduct = touchedProduct == ""
-                          ? productwiseSalesList
-                                .productData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .productCode
-                          : "";
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedState,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                      );
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showProductSaleChart = true;
-                      touchedYearGraph = true;
-                    });
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: chartMaxY,
+              minY: chartMinY,
+              barTouchData: BarTouchData(
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    if (flTouchEvent is FlTapUpEvent) {
+                      setState(() {
+                        touchedProduct = touchedProduct == ""
+                            ? productwiseSalesList
+                                  .productData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .productCode
+                            : "";
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedState,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                        );
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showProductSaleChart = true;
+                        touchedYearGraph = true;
+                      });
+                    }
                   }
-                }
-              },
-              allowTouchBarBackDraw: true,
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${productwiseSalesList.productData[grpIndex].productName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(productwiseSalesList.productData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(productwiseSalesList.productData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((productwiseSalesList.productData[grpIndex].salesAmount - productwiseSalesList.productData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((productwiseSalesList.productData[grpIndex].salesAmount / productwiseSalesList.productData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                allowTouchBarBackDraw: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 4.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${productwiseSalesList.productData[grpIndex].productName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(productwiseSalesList.productData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(productwiseSalesList.productData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((productwiseSalesList.productData[grpIndex].salesAmount - productwiseSalesList.productData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${((productwiseSalesList.productData[grpIndex].salesAmount / productwiseSalesList.productData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
-            ),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesProduct,
+                  axisNameSize: 20,
+                ),
               ),
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesProduct,
-                axisNameSize: 20,
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
               ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
               ),
-            ),
-            barGroups: _productsWiseAnalysisChart(
-              productwiseSalesList.productData,
+              barGroups: _productsWiseAnalysisChart(
+                productwiseSalesList.productData,
+              ),
             ),
           ),
         ),
