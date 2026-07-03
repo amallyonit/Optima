@@ -4495,7 +4495,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                                           ),
                                                           Center(
                                                             child: Text(
-                                                              "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
+                                                              "${getMonthName(currentDate!.month - 1)} Sales \n($LastMonthTargetStr)",
                                                               textAlign:
                                                                   TextAlign
                                                                       .center,
@@ -4584,7 +4584,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                                             height: 5,
                                                           ),
                                                           Text(
-                                                            "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
+                                                            "Q$currentQuarter Sales \n($CurrentQtrTargetStr)",
                                                             textAlign: TextAlign
                                                                 .center,
                                                             style: TextStyle(
@@ -4766,7 +4766,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                                           ),
                                                           Center(
                                                             child: Text(
-                                                              "${getMonthName(currentDate!.month - 1)} Production \n($LastMonthTargetStr)",
+                                                              "${getMonthName(currentDate!.month - 1)} Sales \n($LastMonthTargetStr)",
                                                               textAlign:
                                                                   TextAlign
                                                                       .center,
@@ -4855,7 +4855,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                                                             height: 5,
                                                           ),
                                                           Text(
-                                                            "Q$currentQuarter Production \n($CurrentQtrTargetStr)",
+                                                            "Q$currentQuarter Sales \n($CurrentQtrTargetStr)",
                                                             textAlign: TextAlign
                                                                 .center,
                                                             style: TextStyle(
