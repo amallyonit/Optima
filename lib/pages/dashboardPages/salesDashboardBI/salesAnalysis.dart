@@ -5755,7 +5755,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     final screenWidth = MediaQuery.of(context).size.width;
     int len = rsmwiseSalesList.rsmwiseData.length;
     double chartWidth = len > 5 ? screenWidth + (70 * len) + 100 : screenWidth;
-
     return FinanceHorizontalChartScroll(
       controller: _regionalManagerHorizontalController,
       verticalController: _verticalScrollController,
@@ -5768,21 +5767,16 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
             BarChartData(
               /// SAFE MAX Y
               maxY: max(1, getRsmMaxValue(rsmwiseSalesList)),
-
               titlesData: FlTitlesData(
                 show: true,
-
                 leftTitles: AxisTitles(
                   sideTitles: _leftTitles,
                   axisNameSize: 14,
                 ),
-
                 rightTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false),
                 ),
-
                 topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-
                 bottomTitles: AxisTitles(
                   sideTitles: _bottomTitlesRsm,
                   axisNameSize: 20,
@@ -5808,17 +5802,12 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
               barGroups: _regionalManagerAnalysisChart(
                 rsmwiseSalesList.rsmwiseData,
               ),
-
               barTouchData: BarTouchData(
                 allowTouchBarBackDraw: true,
-
                 handleBuiltInTouches: true,
-
                 touchExtraThreshold: const EdgeInsets.all(10),
-
                 touchCallback: (event, response) async {
                   if (response == null || response.spot == null) return;
-
                   int index = response.spot!.spot.x.toInt();
 
                   /// SAFETY CHECK
@@ -5831,10 +5820,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   if (event is FlLongPressStart) {
                     setState(() {
                       tooltipIndex = index;
-
                       showTooltip = true;
                     });
-
                     return;
                   }
 
@@ -5843,7 +5830,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                     setState(() {
                       showTooltip = false;
                     });
-
                     return;
                   }
 
@@ -5851,39 +5837,27 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                   if (event is FlTapUpEvent) {
                     setState(() {
                       showTooltip = false;
-
                       touchedRegionalManager = touchedRegionalManager == ""
                           ? rsmwiseSalesList.rsmwiseData[index].rsmName
                           : "";
-
                       selectedChart = index.toDouble();
-
                       showDrillDownChart = true;
-
                       touchedYearGraph = true;
                     });
 
                     loadDataWithFilter(
                       touchedMonthIndex,
-
                       touchedRegionalManager,
-
                       touchedSalesManager,
-
                       touchedSalesRep,
-
                       touchedState,
-
                       touchedCustomer,
-
                       touchedProductGroup,
-
                       touchedProduct,
                     );
 
                     if (!showProductSaleChart) {
                       await Future.delayed(const Duration(milliseconds: 50));
-
                       _scrollDown();
                     }
                   }
