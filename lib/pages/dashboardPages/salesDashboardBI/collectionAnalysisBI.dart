@@ -18,184 +18,15 @@ import '../../../classes/dashBoard.dart';
 import '../../../notificationService.dart';
 import '../ReportService.dart';
 
-final reportService = ReportService();
-
-bool touchedLastMonthGoals = false;
-bool touchedThisMonthGoals = false;
-bool touchedYTDGoals = false;
-bool YtdColBarChartData = false;
-YTDCollectionList ytdCollectionList = YTDCollectionList(ytdColData: []);
-MonthlyColectionList monthlyCollectionList = MonthlyColectionList(
-  monthlyData: [],
-);
-CustomerWiseCollectionList customerWiseCollectionList =
-    CustomerWiseCollectionList(customerData: []);
-TsmwiseCollectionList tsmwiseCollectionList = TsmwiseCollectionList(
-  tsmwiseData: [],
-);
-AsmwiseCollectionList asmwiseCollectionList = AsmwiseCollectionList(
-  asmwiseData: [],
-);
-RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
-  rsmwiseData: [],
-);
-ReceivablesCategoryList receivablesCategoryList = ReceivablesCategoryList(
-  categoryData: [],
-);
-ReceivablesAgingList receivablesAgingList = ReceivablesAgingList(agingData: []);
-
-int touchedMonthIndex = 0;
-String touchedRegionalManager = "";
-String touchedSalesManager = "";
-String touchedSalesRep = "";
-String touchedMonth = "";
-String touchedState = "";
-String touchedCustomer = "";
-String touchedProductGroup = "";
-String touchedProduct = "";
-String touchedAgingCategory = "";
-String UserLevel = "0";
-double maxMonthY = 0.0;
-double barChartWidthProduct = 0.0;
-double maxItemMonthY = 0.0;
-double selectedChart = 0;
-List<Map<String, dynamic>> userList = [];
-List<Map<String, dynamic>> collectionsTargetList = [];
-late Future<void> loadDataFuture;
-List<Users> usersList = [];
-List<Users> childUsers = [];
-List<Users> usersListForFilter = [];
-double Collections = 0;
-String CollectionsStr = "";
-String CollectionsGoalStr = "";
-int CollectionPercentage = 0;
-String CollectionPercentageStr = "";
-String CurrentMonthCollectionsStr = "";
-double CurrentMonthCollections = 0;
-double CollectionGoal = 0;
-double LastMonthCollections = 0;
-String LastMonthCollectionsStr = "";
-double LastMonthTarget = 0;
-String LastMonthTargetStr = "";
-int LastMonthPercentage = 0;
-double CurrentQtrCollections = 0;
-String CurrentQtrCollectionsStr = "";
-double CurrentQtrTarget = 0;
-String CurrentQtrTargetStr = "";
-int CurrentQtrPercentage = 0;
-double YtdCollections = 0;
-String YtdCollectionsStr = "";
-double YtdTarget = 0;
-String YtdTargetStr = "";
-int YtdPercentage = 0;
-double CurrentMonthCollectionsPercentage = 0;
-String CurrentMonthCollectionsPercentageStr = "";
-String LastMonthPercentageStr = "";
-String CurrentQtrPercentageStr = "";
-String YtdPercentageStr = "";
-List<Map<String, dynamic>> collectionList = [];
-List<CollectionList> collection = [];
-List<DebtorsAgingList> target = [];
-List<Map<String, dynamic>> collectionsList = [];
-bool noUserList = false;
-bool chartDataLoaded = false;
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? currentMonthToDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-DateTime? q1FromDate;
-DateTime? q1ToDate;
-DateTime? q2FromDate;
-DateTime? q2ToDate;
-DateTime? q3FromDate;
-DateTime? q3ToDate;
-DateTime? q4FromDate;
-DateTime? q4ToDate;
-String financialYear = "";
-String prevFinancialYear = "";
-double selectedProduct = 0;
-int currentQuarter = 0;
-
-double Q1Collection = 0;
-double Q1Target = 0;
-double Q1Diff = 0;
-int Q1Percentage = 0;
-String Q1CollectionStr = "";
-String Q1TargetStr = "";
-String Q1DiffStr = "";
-String Q1PercentageStr = "";
-double Q2Collection = 0;
-double Q2Target = 0;
-double Q2Diff = 0;
-int Q2Percentage = 0;
-String Q2CollectionStr = "";
-String Q2TargetStr = "";
-String Q2DiffStr = "";
-String Q2PercentageStr = "";
-double Q3Collection = 0;
-double Q3Target = 0;
-double Q3Diff = 0;
-int Q3Percentage = 0;
-String Q3CollectionStr = "";
-String Q3TargetStr = "";
-String Q3DiffStr = "";
-String Q3PercentageStr = "";
-double Q4Collection = 0;
-double Q4Target = 0;
-double Q4Diff = 0;
-int Q4Percentage = 0;
-String Q4CollectionStr = "";
-String Q4TargetStr = "";
-String Q4DiffStr = "";
-String Q4PercentageStr = "";
-
-double Q1Average = 0;
-String Q1AverageStr = "";
-double Q2Average = 0;
-String Q2AverageStr = "";
-double Q3Average = 0;
-String Q3AverageStr = "";
-double Q4Average = 0;
-String Q4AverageStr = "";
-
-final List<String> categories = ['RSM', 'ASM', 'TSM', 'Date'];
-
 List<List<String>> filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
-
-List<List<bool>> selectedFinanceReceivablesOptions = [];
-
-List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
 
 List<List<bool>> savedFinanceReceivablesOptions = filterOptions
     .map((options) => List<bool>.filled(options.length, false))
     .toList();
 
-List<DebtorsAgingList> targetListTemp = target;
-
 List<String> listOfRSM = [];
 List<String> listOfASM = [];
 List<String> listOfTSM = [];
-
-double sumOfCustomerCategoryWise = 0;
-
-Map<String, Map<String, bool>> allCategoriesState = {};
-
-int selectedCategoryIndex = 0;
-
-bool fromFilter = false;
-List<String> selectedSalesData = [];
-
-DateTime? fromDateFilter;
-DateTime? toDateFilter;
-bool dateFilterFlag = false;
 
 class CollectionListCollectionsAnalysisBIProvider with ChangeNotifier {
   List<CollectionList> _collectionList = [];
@@ -223,6 +54,175 @@ class CollectionAnalysisPage extends StatefulWidget {
 }
 
 class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
+  final reportService = ReportService();
+
+  bool touchedLastMonthGoals = false;
+  bool touchedThisMonthGoals = false;
+  bool touchedYTDGoals = false;
+  bool YtdColBarChartData = false;
+  YTDCollectionList ytdCollectionList = YTDCollectionList(ytdColData: []);
+  MonthlyColectionList monthlyCollectionList = MonthlyColectionList(
+    monthlyData: [],
+  );
+  CustomerWiseCollectionList customerWiseCollectionList =
+      CustomerWiseCollectionList(customerData: []);
+  TsmwiseCollectionList tsmwiseCollectionList = TsmwiseCollectionList(
+    tsmwiseData: [],
+  );
+  AsmwiseCollectionList asmwiseCollectionList = AsmwiseCollectionList(
+    asmwiseData: [],
+  );
+  RsmwiseCollectionList rsmwiseCollectionList = RsmwiseCollectionList(
+    rsmwiseData: [],
+  );
+  ReceivablesCategoryList receivablesCategoryList = ReceivablesCategoryList(
+    categoryData: [],
+  );
+  ReceivablesAgingList receivablesAgingList = ReceivablesAgingList(
+    agingData: [],
+  );
+
+  int touchedMonthIndex = 0;
+  String touchedRegionalManager = "";
+  String touchedSalesManager = "";
+  String touchedSalesRep = "";
+  String touchedMonth = "";
+  String touchedState = "";
+  String touchedCustomer = "";
+  String touchedProductGroup = "";
+  String touchedProduct = "";
+  String touchedAgingCategory = "";
+  String UserLevel = "0";
+  double maxMonthY = 0.0;
+  double barChartWidthProduct = 0.0;
+  double maxItemMonthY = 0.0;
+  double selectedChart = 0;
+  List<Map<String, dynamic>> userList = [];
+  List<Map<String, dynamic>> collectionsTargetList = [];
+  late Future<void> loadDataFuture;
+  List<Users> usersList = [];
+  List<Users> childUsers = [];
+  List<Users> usersListForFilter = [];
+  double Collections = 0;
+  String CollectionsStr = "";
+  String CollectionsGoalStr = "";
+  int CollectionPercentage = 0;
+  String CollectionPercentageStr = "";
+  String CurrentMonthCollectionsStr = "";
+  double CurrentMonthCollections = 0;
+  double CollectionGoal = 0;
+  double LastMonthCollections = 0;
+  String LastMonthCollectionsStr = "";
+  double LastMonthTarget = 0;
+  String LastMonthTargetStr = "";
+  int LastMonthPercentage = 0;
+  double CurrentQtrCollections = 0;
+  String CurrentQtrCollectionsStr = "";
+  double CurrentQtrTarget = 0;
+  String CurrentQtrTargetStr = "";
+  int CurrentQtrPercentage = 0;
+  double YtdCollections = 0;
+  String YtdCollectionsStr = "";
+  double YtdTarget = 0;
+  String YtdTargetStr = "";
+  int YtdPercentage = 0;
+  double CurrentMonthCollectionsPercentage = 0;
+  String CurrentMonthCollectionsPercentageStr = "";
+  String LastMonthPercentageStr = "";
+  String CurrentQtrPercentageStr = "";
+  String YtdPercentageStr = "";
+  List<Map<String, dynamic>> collectionList = [];
+  List<CollectionList> collection = [];
+  List<DebtorsAgingList> target = [];
+  List<DebtorsAgingList> targetListTemp = [];
+  List<Map<String, dynamic>> collectionsList = [];
+  bool noUserList = false;
+  bool chartDataLoaded = false;
+  DateTime? currentDate;
+  DateTime? currentMonthFromDate;
+  DateTime? currentMonthToDate;
+  DateTime? lastMonthFromDate;
+  DateTime? lastMonthToDate;
+  DateTime? currentQuarterFromDate;
+  DateTime? currentQuarterToDate;
+  DateTime? lastQuarterFromDate;
+  DateTime? lastQuarterToDate;
+  DateTime? fiscalYearStartDate;
+  DateTime? prevFiscalYearStartDate;
+  DateTime? prevFiscalYearEndDate;
+  DateTime? q1FromDate;
+  DateTime? q1ToDate;
+  DateTime? q2FromDate;
+  DateTime? q2ToDate;
+  DateTime? q3FromDate;
+  DateTime? q3ToDate;
+  DateTime? q4FromDate;
+  DateTime? q4ToDate;
+  String financialYear = "";
+  String prevFinancialYear = "";
+  double selectedProduct = 0;
+  int currentQuarter = 0;
+
+  double Q1Collection = 0;
+  double Q1Target = 0;
+  double Q1Diff = 0;
+  int Q1Percentage = 0;
+  String Q1CollectionStr = "";
+  String Q1TargetStr = "";
+  String Q1DiffStr = "";
+  String Q1PercentageStr = "";
+  double Q2Collection = 0;
+  double Q2Target = 0;
+  double Q2Diff = 0;
+  int Q2Percentage = 0;
+  String Q2CollectionStr = "";
+  String Q2TargetStr = "";
+  String Q2DiffStr = "";
+  String Q2PercentageStr = "";
+  double Q3Collection = 0;
+  double Q3Target = 0;
+  double Q3Diff = 0;
+  int Q3Percentage = 0;
+  String Q3CollectionStr = "";
+  String Q3TargetStr = "";
+  String Q3DiffStr = "";
+  String Q3PercentageStr = "";
+  double Q4Collection = 0;
+  double Q4Target = 0;
+  double Q4Diff = 0;
+  int Q4Percentage = 0;
+  String Q4CollectionStr = "";
+  String Q4TargetStr = "";
+  String Q4DiffStr = "";
+  String Q4PercentageStr = "";
+
+  double Q1Average = 0;
+  String Q1AverageStr = "";
+  double Q2Average = 0;
+  String Q2AverageStr = "";
+  double Q3Average = 0;
+  String Q3AverageStr = "";
+  double Q4Average = 0;
+  String Q4AverageStr = "";
+
+  final List<String> categories = ['RSM', 'ASM', 'TSM', 'Date'];
+
+  List<List<bool>> selectedFinanceReceivablesOptions = [];
+
+  List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
+
+  double sumOfCustomerCategoryWise = 0;
+
+  Map<String, Map<String, bool>> allCategoriesState = {};
+
+  int selectedCategoryIndex = 0;
+
+  bool fromFilter = false;
+  List<String> selectedSalesData = [];
+
+  DateTime? fromDateFilter;
+  DateTime? toDateFilter;
+  bool dateFilterFlag = false;
   ScrollController collectionAnalysisController = ScrollController();
   int touchedIndex = -1;
   bool showDrillDownChart = false;
@@ -233,7 +233,7 @@ class _CollectionAnalysisPageState extends State<CollectionAnalysisPage> {
   bool touchedYearGraph = false;
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
-  bool touchedYTDGoals = false;
+
   Color getCategoryColor(int categoryId) {
     switch (categoryId) {
       case 0:

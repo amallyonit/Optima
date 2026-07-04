@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -16,140 +17,7 @@ import '../../../classes/dataManager.dart';
 import '../../../login_screen.dart';
 import '../../../notificationService.dart';
 import '../ReportService.dart';
-
-final reportService = ReportService();
-
-bool touchedMonthGoals = false;
-bool touchedQuarterGoals = false;
-bool touchedYTDGoals = false;
-bool showDrillDownChart = false;
-bool showProductSaleChart = false;
-bool showLastMonthBarChart = false;
-bool lastMonthChartFunc = false;
-bool lastThreeMonthChartFunc = false;
-int touchedMonthIndex = 0;
-String touchedRegionalManager = "";
-String touchedSalesManager = "";
-String touchedSalesRep = "";
-String touchedMonth = "";
-String touchedState = "";
-String touchedCustomer = "";
-String touchedProductGroup = "";
-String touchedProduct = "";
-String touchedAgingCategory = "";
-late Future<void> loadDataFuture;
-bool chartDataLoaded = false;
-double selectedChart = 0;
-ScrollController salesOrderPageController = ScrollController();
-List<Users> usersList = [];
-List<Users> childUsers = [];
-List<Users> usersListForFilter = [];
-List<Map<String, dynamic>> userList = [];
-String UserLevel = "0";
-String SalesGoalStr = "";
-String CurrentMonthSalesStr = "";
-double CurrentMonthSales = 0;
-double SalesGoal = 0;
-double LastMonthSales = 0;
-String LastMonthSalesStr = "";
-double LastMonthTarget = 0;
-String LastMonthTargetStr = "";
-int LastMonthPercentage = 0;
-double CurrentMonthTarget = 0;
-String CurrentMonthTargetStr = "";
-int CurrentMonthPercentage = 0;
-double YtdSales = 0;
-String YtdSalesStr = "";
-double YtdTarget = 0;
-String YtdTargetStr = "";
-int YtdPercentage = 0;
-int CurrentMonthSalesPercentage = 0;
-String CurrentMonthSalesPercentageStr = "";
-String LastMonthPercentageStr = "";
-String CurrentMonthPercentageStr = "";
-String YtdPercentageStr = "";
-DateTime? currentDate;
-DateTime? currentMonthFromDate;
-DateTime? lastMonthFromDate;
-DateTime? lastMonthToDate;
-DateTime? currentQuarterFromDate;
-DateTime? currentQuarterToDate;
-DateTime? lastQuarterFromDate;
-DateTime? lastQuarterToDate;
-DateTime? fiscalYearStartDate;
-DateTime? prevFiscalYearStartDate;
-DateTime? prevFiscalYearEndDate;
-DateTime? q1FromDate;
-DateTime? q1ToDate;
-DateTime? q2FromDate;
-DateTime? q2ToDate;
-DateTime? q3FromDate;
-DateTime? q3ToDate;
-DateTime? q4FromDate;
-DateTime? q4ToDate;
-String financialYear = "";
-String prevFinancialYear = "";
-double selectedProduct = 0;
-int currentQuarter = 0;
-double Q1Sales = 0;
-double Q1Target = 0;
-double Q1Diff = 0;
-int Q1Percentage = 0;
-String Q1SalesStr = "";
-String Q1TargetStr = "";
-String Q1DiffStr = "";
-String Q1PercentageStr = "";
-double Q2Sales = 0;
-double Q2Target = 0;
-double Q2Diff = 0;
-int Q2Percentage = 0;
-String Q2SalesStr = "";
-String Q2TargetStr = "";
-String Q2DiffStr = "";
-String Q2PercentageStr = "";
-double Q3Sales = 0;
-double Q3Target = 0;
-double Q3Diff = 0;
-int Q3Percentage = 0;
-String Q3SalesStr = "";
-String Q3TargetStr = "";
-String Q3DiffStr = "";
-String Q3PercentageStr = "";
-double Q4Sales = 0;
-double Q4Target = 0;
-double Q4Diff = 0;
-int Q4Percentage = 0;
-String Q4SalesStr = "";
-String Q4TargetStr = "";
-String Q4DiffStr = "";
-String Q4PercentageStr = "";
-
-double Q1Average = 0;
-String Q1AverageStr = "";
-double Q2Average = 0;
-String Q2AverageStr = "";
-double Q3Average = 0;
-String Q3AverageStr = "";
-double Q4Average = 0;
-String Q4AverageStr = "";
-bool YtdSOBarChartData = false;
-
-YTDSalesList ytdSalesList = YTDSalesList(ytdData: []);
-CustomerWiseSalesList customerAnalysisData = CustomerWiseSalesList(
-  customerData: [],
-);
-AsmwiseSalesList salesManagerData = AsmwiseSalesList(asmwiseData: []);
-TsmwiseSalesList salesPersonData = TsmwiseSalesList(tsmwiseData: []);
-RsmwiseSalesList rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
-ProductGroupwiseSalesList itemGroupWiseData = ProductGroupwiseSalesList(
-  productGroupData: [],
-);
-ProductwiseSalesList itemAnalysisData = ProductwiseSalesList(productData: []);
-OpenSOAgingList openSoAgingData = OpenSOAgingList(soAgingData: []);
-List<SODetailsList> SODetailList = [];
-MonthlySalesOrderList monthlySalesOrderList = MonthlySalesOrderList(soData: []);
-
-final List<String> categories = ['RSM', 'ASM', 'TSM', 'Status', 'Date'];
+import '../dashboard_card_ui.dart';
 
 List<List<String>> filterOptions = [
   listOfRSM,
@@ -158,32 +26,11 @@ List<List<String>> filterOptions = [
   listOfString,
   [],
 ];
-
+Map<String, DateTime> _dateCache = {};
 List<String> listOfRSM = [];
 List<String> listOfASM = [];
 List<String> listOfTSM = [];
 List<String> listOfString = [];
-
-bool fromFilter = false;
-
-int selectedCategoryIndex = 0;
-
-List<List<bool>> selectedFinanceReceivablesOptions = [];
-
-List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
-
-List<List<bool>> savedFinanceReceivablesOptions = filterOptions
-    .map((options) => List<bool>.filled(options.length, false))
-    .toList();
-
-Map<String, Map<String, bool>> allCategoriesState = {};
-
-List<String> selectedSalesData = [];
-
-DateTime? fromDateFilter;
-DateTime? toDateFilter;
-bool dateFilterFlag = false;
-Map<String, DateTime> _dateCache = {};
 
 DateTime getParsedDate(String dateStr) {
   if (_dateCache.containsKey(dateStr)) {
@@ -211,6 +58,137 @@ class SOAnalysisPage extends StatefulWidget {
 }
 
 class _SOAnalysisPageState extends State<SOAnalysisPage> {
+  final reportService = ReportService();
+
+  bool touchedMonthGoals = false;
+  bool touchedQuarterGoals = false;
+  bool touchedYTDGoals = false;
+  bool showDrillDownChart = false;
+  bool showProductSaleChart = false;
+  bool showLastMonthBarChart = false;
+  bool lastMonthChartFunc = false;
+  bool lastThreeMonthChartFunc = false;
+  int touchedMonthIndex = 0;
+  String touchedRegionalManager = "";
+  String touchedSalesManager = "";
+  String touchedSalesRep = "";
+  String touchedMonth = "";
+  String touchedState = "";
+  String touchedCustomer = "";
+  String touchedProductGroup = "";
+  String touchedProduct = "";
+  String touchedAgingCategory = "";
+  late Future<void> loadDataFuture;
+  bool chartDataLoaded = false;
+  double selectedChart = 0;
+  List<Users> usersList = [];
+  List<Users> childUsers = [];
+  List<Users> usersListForFilter = [];
+  List<Map<String, dynamic>> userList = [];
+  String UserLevel = "0";
+
+  DateTime? currentDate;
+  DateTime? currentMonthFromDate;
+  DateTime? lastMonthFromDate;
+  DateTime? lastMonthToDate;
+  DateTime? currentQuarterFromDate;
+  DateTime? currentQuarterToDate;
+  DateTime? lastQuarterFromDate;
+  DateTime? lastQuarterToDate;
+  DateTime? fiscalYearStartDate;
+  DateTime? prevFiscalYearStartDate;
+  DateTime? prevFiscalYearEndDate;
+
+  String financialYear = "";
+  String prevFinancialYear = "";
+  double selectedProduct = 0;
+  int currentQuarter = 0;
+
+  bool YtdSOBarChartData = false;
+
+  YTDSalesList ytdSalesList = YTDSalesList(ytdData: []);
+  CustomerWiseSalesList customerAnalysisData = CustomerWiseSalesList(
+    customerData: [],
+  );
+  AsmwiseSalesList salesManagerData = AsmwiseSalesList(asmwiseData: []);
+  TsmwiseSalesList salesPersonData = TsmwiseSalesList(tsmwiseData: []);
+  RsmwiseSalesList rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
+  ProductGroupwiseSalesList itemGroupWiseData = ProductGroupwiseSalesList(
+    productGroupData: [],
+  );
+  ProductwiseSalesList itemAnalysisData = ProductwiseSalesList(productData: []);
+  OpenSOAgingList openSoAgingData = OpenSOAgingList(soAgingData: []);
+  List<SODetailsList> SODetailList = [];
+  MonthlySalesOrderList monthlySalesOrderList = MonthlySalesOrderList(
+    soData: [],
+  );
+
+  final List<String> categories = ['RSM', 'ASM', 'TSM', 'Status', 'Date'];
+
+  bool fromFilter = false;
+
+  int selectedCategoryIndex = 0;
+
+  List<List<bool>> selectedFinanceReceivablesOptions = [];
+
+  List<List<bool>> savedFinanceReceivablesOptionsTemp = [];
+
+  List<List<bool>> savedFinanceReceivablesOptions = filterOptions
+      .map((options) => List<bool>.filled(options.length, false))
+      .toList();
+
+  Map<String, Map<String, bool>> allCategoriesState = {};
+
+  List<String> selectedSalesData = [];
+
+  DateTime? fromDateFilter;
+  DateTime? toDateFilter;
+  bool dateFilterFlag = false;
+
+  int? tooltipIndex;
+  bool showTooltip = false;
+
+  double roundUpToLakhs(double value, double roundValue) {
+    return (value / roundValue).ceil() * roundValue.toDouble();
+  }
+
+  double roundDownToLakhs(double value, double roundValue) {
+    return (value / roundValue).floor() * roundValue.toDouble();
+  }
+
+  double _chartAxisStep(double value) {
+    final absValue = value.abs();
+    if (absValue >= 10000000) {
+      return 10000000;
+    } else if (absValue >= 1000000) {
+      return 1000000;
+    } else if (absValue >= 50000) {
+      return 50000;
+    }
+    return 1000;
+  }
+
+  double _roundedPositiveMaxY(Iterable<double> values) {
+    final maxValue = values.fold<double>(
+      0,
+      (currentMax, value) => max(currentMax, value),
+    );
+    final step = _chartAxisStep(maxValue);
+    return max(1, ((maxValue / step).floor() + 1) * step);
+  }
+
+  double _roundedNegativeMinY(Iterable<double> values) {
+    final minValue = values.fold<double>(
+      0,
+      (currentMin, value) => min(currentMin, value),
+    );
+    if (minValue >= 0) {
+      return 0;
+    }
+    final step = _chartAxisStep(minValue);
+    return (minValue / step).floor() * step;
+  }
+
   SideTitles get _emptyTitlesTop =>
       SideTitles(showTitles: true, getTitlesWidget: getEmptyTopTitle);
 
@@ -220,6 +198,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
   SideTitles get _bottomTitlesRsm =>
       SideTitles(showTitles: true, getTitlesWidget: getBottomTitlesRsm);
+
   Widget getBottomTitlesRsm(double val, TitleMeta meta) {
     String text = '';
     RsmwiseData rsmwiseData = rsmwiseSalesList.rsmwiseData.elementAt(
@@ -408,7 +387,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           ? maxValue
           : soData.targetAmount;
     }
-    return ((maxValue ~/ 1000000) + 1) * 1000000;
+    return ((maxValue ~/ 100000) + 1) * 100000;
   }
 
   double getAsmMaxValue(AsmwiseSalesList salesManagerData) {
@@ -416,7 +395,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     for (var soData in salesManagerData.asmwiseData) {
       maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
     }
-    return ((maxValue ~/ 500000) + 1) * 500000;
+    return ((maxValue ~/ 100000) + 1) * 100000;
   }
 
   double getTsmMaxValue(TsmwiseSalesList salesPersonData) {
@@ -424,7 +403,17 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     for (var soData in salesPersonData.tsmwiseData) {
       maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
     }
-    return ((maxValue ~/ 200000) + 1) * 200000;
+    return ((maxValue ~/ 2000000) + 1) * 2000000;
+  }
+
+  double getSoAgeingMaxValue(OpenSOAgingList openSoAgingData) {
+    double maxValue = 0.0;
+    for (var soData in openSoAgingData.soAgingData) {
+      maxValue = maxValue > soData.receivableAmount
+          ? maxValue
+          : soData.receivableAmount;
+    }
+    return ((maxValue ~/ 20000000) + 1) * 20000000;
   }
 
   double getItemGroupMaxValue(ProductGroupwiseSalesList itemGroupWiseData) {
@@ -452,7 +441,13 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: soData.indexOf(so),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                backDrawRodData: BackgroundBarChartRodData(
+                  fromY: 0,
+                  toY: so.salesOrderTarget,
+                  show: true,
+                  color: const Color(0xFFFF9F47),
+                ),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
                 toY: so.salesOrderAmount,
                 width: 30,
@@ -639,8 +634,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   }
 
   void _scrollDown() {
-    salesOrderPageController.animateTo(
-      800, //salesPerformancePageController.position.maxScrollExtent
+    _verticalScrollController.animateTo(
+      800,
       duration: const Duration(seconds: 1),
       curve: Curves.fastOutSlowIn,
     );
@@ -872,7 +867,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         }
       });
 
-      // 🔴 FILTERING (unchanged logic)
+      // FILTERING (unchanged logic)
       List<String> trueRSMOptions = (allCategoriesState['RSM'] ?? {}).entries
           .where((e) => e.value)
           .map((e) => e.key)
@@ -904,100 +899,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             (trueStatusOptions.isEmpty ||
                 trueStatusOptions.contains(person.soStatus));
       }).toList();
-
-      // 🟢 SINGLE LOOP OPTIMIZATION STARTS HERE
-
-      double lastMonthTargetSum = 0;
-      double currentMonthTargetSum = 0;
-      double ytdTargetSum = 0;
-
-      double lastMonthSalesSum = 0;
-      double currentMonthSalesSum = 0;
-      double ytdSalesSum = 0;
-
-      var lastTargetRange = getLastThreeMonthsRange(lastMonthFromDate!.month);
-      var currentTargetRange = getLastThreeMonthsRange(
-        currentMonthFromDate!.month,
-      );
-
-      DateTime lastTargetFrom = lastTargetRange['fromDate']!;
-      DateTime lastTargetTo = lastTargetRange['endDate']!;
-
-      DateTime currentTargetFrom = currentTargetRange['fromDate']!;
-      DateTime currentTargetTo = currentTargetRange['endDate']!;
-
-      DateTime currentMonthEnd = addMonth(
-        currentMonthFromDate!,
-        1,
-      ).add(const Duration(days: -1));
-
-      for (var target in SODetailList) {
-        final date = getParsedDate(target.soDate);
-        final value = double.tryParse(target.orderValue) ?? 0;
-
-        // Last Month Target
-        if (date.isAtLeast(lastTargetFrom) && date.isAtMost(lastTargetTo)) {
-          lastMonthTargetSum += value;
-        }
-
-        // Current Month Target
-        if (date.isAtLeast(currentTargetFrom) &&
-            date.isAtMost(currentTargetTo)) {
-          currentMonthTargetSum += value;
-        }
-
-        // YTD Target
-        if (date.isAtLeast(prevFiscalYearStartDate!) &&
-            date.isAtMost(prevFiscalYearEndDate!)) {
-          ytdTargetSum += value;
-        }
-
-        // Last Month Sales
-        if (date.isAtLeast(lastMonthFromDate!) &&
-            date.isAtMost(lastMonthToDate!)) {
-          lastMonthSalesSum += value;
-        }
-
-        // Current Month Sales
-        if (date.isAtLeast(currentMonthFromDate!) &&
-            date.isAtMost(currentMonthEnd)) {
-          currentMonthSalesSum += value;
-        }
-
-        // YTD Sales
-        if (date.isAtLeast(fiscalYearStartDate!) &&
-            date.isAtMost(currentDate!)) {
-          ytdSalesSum += value;
-        }
-      }
-
-      // 🟢 FINAL ASSIGNMENTS
-
-      LastMonthTarget = lastMonthTargetSum / 3;
-      LastMonthTargetStr = "${(LastMonthTarget / 100000).toStringAsFixed(2)} L";
-
-      CurrentMonthTarget = currentMonthTargetSum / 3;
-      CurrentMonthTargetStr =
-          "${(CurrentMonthTarget / 100000).toStringAsFixed(2)} L";
-
-      YtdTarget = double.parse(
-        ((ytdTargetSum / 12) *
-                (currentDate!.month <= 12 && currentDate!.month >= 4
-                    ? currentDate!.month - 3
-                    : currentDate!.month + 9))
-            .toStringAsFixed(2),
-      );
-      YtdTargetStr = "${(YtdTarget / 100000).toStringAsFixed(2)} L";
-
-      LastMonthSales = lastMonthSalesSum;
-      LastMonthSalesStr = "${(LastMonthSales / 100000).toStringAsFixed(2)} L";
-
-      CurrentMonthSales = currentMonthSalesSum;
-      CurrentMonthSalesStr =
-          "${(CurrentMonthSales / 100000).toStringAsFixed(2)} L";
-
-      YtdSales = ytdSalesSum;
-      YtdSalesStr = "${(YtdSales / 100000).toStringAsFixed(2)} L";
 
       await Future.delayed(const Duration(milliseconds: 50));
     } catch (e) {
@@ -1073,61 +974,58 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
   Future<void> _loadMonthWiseSOAnalysisBarChartData() async {
     List<MonthlySalesOrderData> soDataList = [];
-    int currentYear = DateTime.now().year;
-    DateTime startDate;
-    DateTime endDate;
-    DateTime prevThreethFromDate;
-    DateTime prevThreeMthToDate;
-    var curMthSalesTarget = const Iterable.empty();
+
+    DateTime now = DateTime.now();
+
+    // Financial Year
+    int fyStartYear = (now.month >= 4) ? now.year : now.year - 1;
+    int fyEndYear = fyStartYear + 1;
+
     for (int i = 4; i <= 15; i++) {
+      int month = i > 12 ? i - 12 : i;
+      int year = month >= 4 ? fyStartYear : fyEndYear;
+
       String monthName = getMonthName(i);
-      double monthlyTarget = 0.00;
-      double monthlyCollection = 0.00;
-      var monthlyCollectionList = const Iterable.empty();
-      if (i >= 4 && i <= 12) {
-        var dateRange = getLastThreeMonthsRange(i);
-        prevThreethFromDate = dateRange['fromDate']!;
-        prevThreeMthToDate = dateRange['endDate']!;
 
-        curMthSalesTarget = SODetailList.where((target) {
-          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-          DateTime invoiceDate = getParsedDate(target.soDate);
-          return invoiceDate.isAtLeast(prevThreethFromDate) &&
-              invoiceDate.isAtMost(prevThreeMthToDate);
-        });
+      double monthlyTarget = 0;
+      double monthlyCollection = 0;
 
-        Map<String, DateTime> monthDates = getMonthStartEndDates(i);
-        monthlyCollectionList = SODetailList.where((target) {
-          DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-          return postingDate.isAtLeast(monthDates['start']!) &&
-              postingDate.isAtMost(monthDates['end']!);
-        });
-      } else {
-        var dateRange = getLastThreeMonthsRange(i - 12);
-        prevThreethFromDate = dateRange['fromDate']!;
-        prevThreeMthToDate = dateRange['endDate']!;
-        curMthSalesTarget = SODetailList.where((target) {
-          // DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-          DateTime invoiceDate = getParsedDate(target.soDate);
-          return invoiceDate.isAtLeast(prevThreethFromDate) &&
-              invoiceDate.isAtMost(prevThreeMthToDate);
-        });
+      //-----------------------------
+      // Previous 3 months
+      //-----------------------------
+      var dateRange = getLastThreeMonthsRange(month);
 
-        startDate = DateTime(currentYear, i - 12, 1);
-        endDate = DateTime(currentYear, (i - 12) + 1, 0);
-        monthlyCollectionList = SODetailList.where((target) {
-          DateTime postingDate = DateFormat('dd/MM/yyyy').parse(target.soDate);
-          return postingDate.isAtLeast(startDate) &&
-              postingDate.isAtMost(endDate);
-        });
+      DateTime prevThreeMonthFrom = dateRange['fromDate']!;
+      DateTime prevThreeMonthTo = dateRange['endDate']!;
+
+      var curMthSalesTarget = SODetailList.where((e) {
+        DateTime soDate = getParsedDate(e.soDate);
+
+        return soDate.isAtLeast(prevThreeMonthFrom) &&
+            soDate.isAtMost(prevThreeMonthTo);
+      });
+
+      //-----------------------------
+      // Current month
+      //-----------------------------
+      DateTime monthStart = DateTime(year, month, 1);
+      DateTime monthEnd = DateTime(year, month + 1, 0);
+
+      var monthlyCollectionList = SODetailList.where((e) {
+        DateTime soDate = getParsedDate(e.soDate);
+
+        return soDate.isAtLeast(monthStart) && soDate.isAtMost(monthEnd);
+      });
+
+      //-----------------------------
+      // Totals
+      //-----------------------------
+      for (var item in monthlyCollectionList) {
+        monthlyCollection += double.tryParse(item.orderValue) ?? 0;
       }
 
-      for (var target in monthlyCollectionList) {
-        monthlyCollection += double.tryParse(target.orderValue) ?? 0;
-      }
-
-      for (var target in curMthSalesTarget) {
-        monthlyTarget += double.tryParse(target.orderValue) ?? 0;
+      for (var item in curMthSalesTarget) {
+        monthlyTarget += double.tryParse(item.orderValue) ?? 0;
       }
 
       soDataList.add(
@@ -1137,9 +1035,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           salesOrderTarget: monthlyTarget / 3,
         ),
       );
-      monthlyCollection = 0;
-      monthlyTarget = 0;
     }
+
     monthlySalesOrderList = MonthlySalesOrderList(soData: soDataList);
   }
 
@@ -1532,7 +1429,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
     List<String> tsmNames = [];
     List<AsmMenu> asmMenuNames = usersList
-        .where((element) => element.parentMenuId == 0 && element.userLevel == 2)
+        .where((element) => element.parentMenuId != 0 && element.userLevel == 2)
         .map((user) => AsmMenu(user.menuName, user.menuId))
         .toList();
     for (var asmMenu in asmMenuNames) {
@@ -2066,26 +1963,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     openSoAgingData = OpenSOAgingList(soAgingData: openSOAgingDataList);
   }
 
-  void LoadAllQuarterFromToDates() {
-    DateTime now = DateTime.now();
-
-    // Determine the financial year start
-    int financialYearStart = (now.month >= 4) ? now.year : now.year - 1;
-
-    // Define quarters
-    q1FromDate = DateTime(financialYearStart, 4, 1);
-    q1ToDate = DateTime(financialYearStart, 7, 0);
-
-    q2FromDate = DateTime(financialYearStart, 7, 1);
-    q2ToDate = DateTime(financialYearStart, 10, 0);
-
-    q3FromDate = DateTime(financialYearStart, 10, 1);
-    q3ToDate = DateTime(financialYearStart + 1, 1, 0); // December 31
-
-    q4FromDate = DateTime(financialYearStart + 1, 1, 1);
-    q4ToDate = DateTime(financialYearStart + 1, 4, 0); // March 31
-  }
-
   showPopupMenu() {
     showMenu<String>(
       context: context,
@@ -2106,51 +1983,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   void clearVariables() {
     setState(() {
       chartDataLoaded = false;
-      SalesGoal = 0;
-      LastMonthSales = 0;
-      LastMonthTarget = 0;
-      YtdSales = 0;
-      YtdTarget = 0;
-      Q1Sales = 0;
-      Q1Target = 0;
-      Q1Diff = 0;
-      Q1Percentage = 0;
-      Q1SalesStr = "";
-      Q1TargetStr = "";
-      Q1DiffStr = "";
-      Q1PercentageStr = "";
-      Q2Sales = 0;
-      Q2Target = 0;
-      Q2Diff = 0;
-      Q2Percentage = 0;
-      Q2SalesStr = "";
-      Q2TargetStr = "";
-      Q2DiffStr = "";
-      Q2PercentageStr = "";
-      Q3Sales = 0;
-      Q3Target = 0;
-      Q3Diff = 0;
-      Q3Percentage = 0;
-      Q3SalesStr = "";
-      Q3TargetStr = "";
-      Q3DiffStr = "";
-      Q3PercentageStr = "";
-      Q4Sales = 0;
-      Q4Target = 0;
-      Q4Diff = 0;
-      Q4Percentage = 0;
-      Q4SalesStr = "";
-      Q4TargetStr = "";
-      Q4DiffStr = "";
-      Q4PercentageStr = "";
-      Q1Average = 0;
-      Q1AverageStr = "";
-      Q2Average = 0;
-      Q2AverageStr = "";
-      Q3Average = 0;
-      Q3AverageStr = "";
-      Q4Average = 0;
-      Q4AverageStr = "";
+
       ytdSalesList = YTDSalesList(ytdData: []);
       customerAnalysisData = CustomerWiseSalesList(customerData: []);
       salesManagerData = AsmwiseSalesList(asmwiseData: []);
@@ -2186,7 +2019,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     touchedQuarterGoals = false;
     touchedYTDGoals = false;
     LoadDates();
-    LoadAllQuarterFromToDates();
     final prefs = await SharedPreferences.getInstance();
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
@@ -2214,7 +2046,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     String touchedAgingCategory,
   ) async {
     LoadDates();
-    LoadAllQuarterFromToDates();
     final prefs = await SharedPreferences.getInstance();
     final userLevel = prefs.getString('userLevel') ?? '';
     UserLevel = userLevel;
@@ -2632,35 +2463,69 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     return DateTime(nextYear, nextMonth, originalDay);
   }
 
+  // Map<String, DateTime> getLastThreeMonthsRange(int monthIndex) {
+  //   // Ensure the month index is valid (1 to 12)
+  //   if (monthIndex < 1 || monthIndex > 12) {
+  //     throw ArgumentError('Invalid month index. Must be between 1 and 12.');
+  //   }
+
+  //   DateTime now = DateTime.now();
+
+  //   // Financial year start (April to March)
+  //   int financialYearStart = (now.month >= 4) ? now.year : now.year - 1;
+
+  //   // Determine the year for the given month
+  //   int yearForMonth = (monthIndex >= 4)
+  //       ? financialYearStart
+  //       : financialYearStart + 1;
+
+  //   // Adjust the start month to handle wrapping to the previous year
+  //   int startMonthIndex = monthIndex - 3;
+  //   int startYear = yearForMonth;
+  //   if (startMonthIndex < 1) {
+  //     startMonthIndex += 12; // Wrap to the previous year
+  //     startYear--; // Adjust the year
+  //   }
+
+  //   // Calculate start and end dates
+  //   DateTime startDate = DateTime(startYear, startMonthIndex, 1);
+  //   DateTime endDate = DateTime(yearForMonth, monthIndex, 0);
+
+  //   return {'fromDate': startDate, 'endDate': endDate};
+  // }
+
   Map<String, DateTime> getLastThreeMonthsRange(int monthIndex) {
-    // Ensure the month index is valid (1 to 12)
     if (monthIndex < 1 || monthIndex > 12) {
       throw ArgumentError('Invalid month index. Must be between 1 and 12.');
     }
 
     DateTime now = DateTime.now();
 
-    // Financial year start (April to March)
-    int financialYearStart = (now.month >= 4) ? now.year : now.year - 1;
+    // Financial Year
+    int fyStartYear = (now.month >= 4) ? now.year : now.year - 1;
+    int fyEndYear = fyStartYear + 1;
 
-    // Determine the year for the given month
-    int yearForMonth = (monthIndex >= 4)
-        ? financialYearStart
-        : financialYearStart + 1;
+    // Month belongs to which year?
+    int yearForMonth = monthIndex >= 4 ? fyStartYear : fyEndYear;
 
-    // Adjust the start month to handle wrapping to the previous year
-    int startMonthIndex = monthIndex - 3;
-    int startYear = yearForMonth;
-    if (startMonthIndex < 1) {
-      startMonthIndex += 12; // Wrap to the previous year
-      startYear--; // Adjust the year
-    }
+    // Current month start
+    DateTime currentMonthStart = DateTime(yearForMonth, monthIndex, 1);
 
-    // Calculate start and end dates
-    DateTime startDate = DateTime(startYear, startMonthIndex, 1);
-    DateTime endDate = DateTime(yearForMonth, monthIndex, 0);
+    // Previous 3 months start
+    DateTime fromDate = DateTime(
+      currentMonthStart.year,
+      currentMonthStart.month - 3,
+      1,
+    );
 
-    return {'fromDate': startDate, 'endDate': endDate};
+    // Last day of previous month
+    DateTime endDate = DateTime(
+      currentMonthStart.year,
+      currentMonthStart.month,
+      0,
+    );
+
+    return {'fromDate': fromDate, 'endDate': endDate};
   }
 
   Future<void> generateMonthWiseSOAnalysisExcel(
@@ -2668,23 +2533,18 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   ) async {
     await reportService.generateExcel(
       sheetName: 'MonthWiseSOAnalysis',
-      headers: [
-        'Month',
-        'Sales Amount',
-        'Sales Target',
-        'Percentage',
-        'Difference',
-      ],
+      headers: ['Month', 'SO Amount', 'SO Target', 'Percentage', 'Difference'],
       rows: monthlySalesList.soData
           .map(
             (monthlyData) => [
               monthlyData.monthName,
               monthlyData.salesOrderAmount,
               monthlyData.salesOrderTarget,
-              ((monthlyData.salesOrderAmount / monthlyData.salesOrderTarget == 0
-                          ? monthlyData.salesOrderAmount
-                          : monthlyData.salesOrderTarget) *
-                      100)
+              (monthlyData.salesOrderTarget == 0
+                      ? 0
+                      : (monthlyData.salesOrderAmount /
+                                monthlyData.salesOrderTarget) *
+                            100)
                   .ceil()
                   .toStringAsFixed(0),
               monthlyData.salesOrderAmount - monthlyData.salesOrderTarget,
@@ -2692,7 +2552,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           )
           .toList(),
       fileName: 'monthly_so_analysis.xlsx',
-      amountColumns: [2, 3, 4, 5],
+      amountColumns: [2, 3, 5],
       addTotalRow: true,
       reportTitle: 'Sales - MonthWise SO Analysis',
     );
@@ -2703,23 +2563,18 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   ) async {
     await reportService.generatePDF(
       title: 'MonthWiseSOAnalysis',
-      headers: [
-        'Month',
-        'Sales Amount',
-        'Sales Target',
-        'Percentage',
-        'Difference',
-      ],
+      headers: ['Month', 'SO Amount', 'SO Target', 'Percentage', 'Difference'],
       rows: monthlySalesList.soData
           .map(
             (monthlyData) => [
               monthlyData.monthName,
               monthlyData.salesOrderAmount,
               monthlyData.salesOrderTarget,
-              ((monthlyData.salesOrderAmount / monthlyData.salesOrderTarget == 0
-                          ? monthlyData.salesOrderAmount
-                          : monthlyData.salesOrderTarget) *
-                      100)
+              (monthlyData.salesOrderTarget == 0
+                      ? 0
+                      : (monthlyData.salesOrderAmount /
+                                monthlyData.salesOrderTarget) *
+                            100)
                   .ceil()
                   .toStringAsFixed(0),
               monthlyData.salesOrderAmount - monthlyData.salesOrderTarget,
@@ -2727,7 +2582,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           )
           .toList(),
       fileName: 'monthly_so_analysis.pdf',
-      amountColumns: [2, 3, 4, 5],
+      amountColumns: [2, 3, 5],
     );
   }
 
@@ -2920,7 +2775,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   }
 
   Future<void> generateSalesPersonAnalysisSOExcel(
-    TsmwiseSalesList tsmwiseSalesList,
+    TsmwiseSalesList salesPersonData,
   ) async {
     await reportService.generateExcel(
       sheetName: 'TSMWiseSOAnalysis',
@@ -2931,7 +2786,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         'Percentage',
         'Difference',
       ],
-      rows: tsmwiseSalesList.tsmwiseData
+      rows: salesPersonData.tsmwiseData
           .map(
             (tsmData) => [
               tsmData.tsmName,
@@ -2952,7 +2807,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   }
 
   Future<void> generateSalesPersonAnalysisSOPDF(
-    TsmwiseSalesList tsmwiseSalesList,
+    TsmwiseSalesList salesPersonData,
   ) async {
     await reportService.generatePDF(
       title: 'TSMWiseSOAnalysis',
@@ -2963,7 +2818,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         'Percentage',
         'Difference',
       ],
-      rows: tsmwiseSalesList.tsmwiseData
+      rows: salesPersonData.tsmwiseData
           .map(
             (tsmData) => [
               tsmData.tsmName,
@@ -2982,7 +2837,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   }
 
   Future<void> generateItemGroupWiseAnalysisSOExcel(
-    ProductGroupwiseSalesList productGroupwiseSalesList,
+    ProductGroupwiseSalesList itemGroupWiseData,
   ) async {
     await reportService.generateExcel(
       sheetName: 'ItemGroupWiseSOAnalysis',
@@ -2993,7 +2848,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         'Percentage',
         'Difference',
       ],
-      rows: productGroupwiseSalesList.productGroupData
+      rows: itemGroupWiseData.productGroupData
           .map(
             (groupData) => [
               groupData.productGroupName,
@@ -3017,7 +2872,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   }
 
   Future<void> generateItemGroupWiseAnalysisSOPDF(
-    ProductGroupwiseSalesList productGroupwiseSalesList,
+    ProductGroupwiseSalesList itemGroupWiseData,
   ) async {
     await reportService.generatePDF(
       title: 'ItemGroupWiseSOAnalysis',
@@ -3028,7 +2883,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         'Percentage',
         'Difference',
       ],
-      rows: productGroupwiseSalesList.productGroupData
+      rows: itemGroupWiseData.productGroupData
           .map(
             (groupData) => [
               groupData.productGroupName,
@@ -3050,7 +2905,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   }
 
   Future<void> generateItemAnalysisSOExcel(
-    ProductwiseSalesList productwiseSalesList,
+    ProductwiseSalesList itemAnalysisData,
   ) async {
     await reportService.generateExcel(
       sheetName: 'ItemWiseSOAnalysis',
@@ -3061,7 +2916,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         'Percentage',
         'Difference',
       ],
-      rows: productwiseSalesList.productData
+      rows: itemAnalysisData.productData
           .map(
             (itemData) => [
               itemData.productName,
@@ -3085,7 +2940,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   }
 
   Future<void> generateItemAnalysisSOPDF(
-    ProductwiseSalesList productwiseSalesList,
+    ProductwiseSalesList itemAnalysisData,
   ) async {
     await reportService.generatePDF(
       title: 'ItemWiseSOAnalysis',
@@ -3096,7 +2951,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         'Percentage',
         'Difference',
       ],
-      rows: productwiseSalesList.productData
+      rows: itemAnalysisData.productData
           .map(
             (itemData) => [
               itemData.productName,
@@ -3223,15 +3078,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     setState(() {
       chartDataLoaded = false;
     });
-    // String selectedUser = '';
-    // final prefs = await SharedPreferences.getInstance();
-    // final userName = selectedUser == ""
-    //     ? prefs.getString('userName') ?? ''
-    //     : selectedUser;
-    // final userLevel = prefs.getString('userLevel') ?? '';
-    // UserLevel = userLevel;
-    // setState(() async {
-    //   await _loadSODetails(userName, userLevel);
     _dateFilterTarget("", "", false);
     await Future.wait([
       _loadMonthWiseSOAnalysisBarChartData(),
@@ -3277,33 +3123,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           (trueStatusOptions.isEmpty ||
               trueStatusOptions.contains(person.soStatus));
     }).toList();
-    // if (trueRSMOptions.isNotEmpty) {
-    //   filteredList = SODetailList.where(
-    //     (person) => trueRSMOptions.contains(person.regionalManager),
-    //   ).toList();
-    //   SODetailList = filteredList;
-    // }
-
-    // if (trueASMOptions.isNotEmpty) {
-    //   filteredList = SODetailList.where(
-    //     (person) => trueASMOptions.contains(person.salesManager),
-    //   ).toList();
-    //   SODetailList = filteredList;
-    // }
-
-    // if (trueTSMOptions.isNotEmpty) {
-    //   filteredList = SODetailList.where(
-    //     (person) => trueTSMOptions.contains(person.salesRep),
-    //   ).toList();
-    //   SODetailList = filteredList;
-    // }
-
-    // if (trueStatusOptions.isNotEmpty) {
-    //   filteredList = SODetailList.where(
-    //     (person) => trueStatusOptions.contains(person.soStatus),
-    //   ).toList();
-    //   SODetailList = filteredList;
-    // }
 
     setState(() {
       filterOptions = [listOfRSM, listOfASM, listOfTSM, listOfString, []];
@@ -3321,15 +3140,24 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
       }
       chartDataLoaded = true;
     });
-    // });
   }
+
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _monthlySOHorizontalController = ScrollController();
+  final ScrollController _regionalManagerHorizontalController =
+      ScrollController();
+  final ScrollController _salesManagerHorizontalController = ScrollController();
+  final ScrollController _salesPersonHorizontalController = ScrollController();
+  final ScrollController _itemGroupWiseHorizontalController =
+      ScrollController();
+  final ScrollController _itemWiseHorizontalController = ScrollController();
+  final ScrollController _soAgeingHorizontalController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     chartDataLoaded = false;
     LoadDates();
-    LoadAllQuarterFromToDates();
     if (isUserLoggedIn && isBiDashboardStart) {
       loadDataFuture = loadData("");
       toDateFilter = currentDate;
@@ -3347,66 +3175,16 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
+    _monthlySOHorizontalController.dispose();
+    _regionalManagerHorizontalController.dispose();
+    _salesManagerHorizontalController.dispose();
+    _salesPersonHorizontalController.dispose();
+    _itemGroupWiseHorizontalController.dispose();
+    _itemWiseHorizontalController.dispose();
+    _soAgeingHorizontalController.dispose();
     chartDataLoaded = false;
-    SalesGoalStr = "";
-    SalesGoal = 0;
-    LastMonthSales = 0;
-    LastMonthSalesStr = "";
-    LastMonthTarget = 0;
-    LastMonthTargetStr = "";
-    LastMonthPercentage = 0;
-    CurrentMonthSales = 0;
-    CurrentMonthSalesStr = "";
-    CurrentMonthTarget = 0;
-    CurrentMonthPercentage = 0;
-    YtdSales = 0;
-    YtdSalesStr = "";
-    YtdTarget = 0;
-    YtdTargetStr = "";
-    YtdPercentage = 0;
-    LastMonthPercentageStr = "";
-    CurrentMonthPercentageStr = "";
-    YtdPercentageStr = "";
-    Q1Sales = 0;
-    Q1Target = 0;
-    Q1Diff = 0;
-    Q1Percentage = 0;
-    Q1SalesStr = "";
-    Q1TargetStr = "";
-    Q1DiffStr = "";
-    Q1PercentageStr = "";
-    Q2Sales = 0;
-    Q2Target = 0;
-    Q2Diff = 0;
-    Q2Percentage = 0;
-    Q2SalesStr = "";
-    Q2TargetStr = "";
-    Q2DiffStr = "";
-    Q2PercentageStr = "";
-    Q3Sales = 0;
-    Q3Target = 0;
-    Q3Diff = 0;
-    Q3Percentage = 0;
-    Q3SalesStr = "";
-    Q3TargetStr = "";
-    Q3DiffStr = "";
-    Q3PercentageStr = "";
-    Q4Sales = 0;
-    Q4Target = 0;
-    Q4Diff = 0;
-    Q4Percentage = 0;
-    Q4SalesStr = "";
-    Q4TargetStr = "";
-    Q4DiffStr = "";
-    Q4PercentageStr = "";
-    Q1Average = 0;
-    Q1AverageStr = "";
-    Q2Average = 0;
-    Q2AverageStr = "";
-    Q3Average = 0;
-    Q3AverageStr = "";
-    Q4Average = 0;
-    Q4AverageStr = "";
+
     monthlySalesOrderList = MonthlySalesOrderList(soData: []);
     customerAnalysisData = CustomerWiseSalesList(customerData: []);
     salesManagerData = AsmwiseSalesList(asmwiseData: []);
@@ -3423,8 +3201,8 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   Widget build(BuildContext context) {
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
     return chartDataLoaded == true
-        ? SingleChildScrollView(
-            controller: salesOrderPageController,
+        ? FinanceVerticalScroll(
+            controller: _verticalScrollController,
             child: Column(
               children: [
                 Row(
@@ -3447,499 +3225,466 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
                         IconButton(
                           onPressed: () {
                             showFilterBottomSheet(context);
-                            // showPopupMenu();
                           },
                           icon: const Icon(Icons.filter_alt_outlined),
                         ),
                         const SizedBox(width: 5),
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    showLoaderDialog(context);
-                                    generateSalesAnalysisYTDExcel();
-                                    if (YtdSOBarChartData == true) {
-                                      Navigator.pop(context);
-                                    }
-                                  });
-                                },
-                                child: const Row(
-                                  children: [Text("Download Excel")],
-                                ),
-                              ),
-                            ];
+                        PopupMenuButton<String>(
+                          onSelected: (value) async {
+                            if (value == 'excel') {
+                              showLoaderDialog(context);
+
+                              try {
+                                await Future.delayed(
+                                  const Duration(milliseconds: 100),
+                                );
+
+                                await generateSalesAnalysisYTDExcel();
+                              } finally {
+                                if (mounted && Navigator.canPop(context)) {
+                                  Navigator.pop(context); // Close loader
+                                }
+                              }
+                            }
                           },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'excel',
+                              child: Text("Download Excel"),
+                            ),
+                          ],
                         ),
+
+                        // PopupMenuButton(
+                        //   onSelected: (value) {},
+                        //   itemBuilder: (BuildContext bc) {
+                        //     return [
+                        //       PopupMenuItem(
+                        //         onTap: () {
+                        //           setState(() {
+                        //             showLoaderDialog(context);
+                        //             generateSalesAnalysisYTDExcel();
+                        //             if (YtdSOBarChartData == true) {
+                        //               Navigator.pop(context);
+                        //             }
+                        //           });
+                        //         },
+                        //         child: const Row(
+                        //           children: [Text("Download Excel")],
+                        //         ),
+                        //       ),
+                        //     ];
+                        //   },
+                        // ),
                       ],
                     ),
                   ],
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Monthwise SO Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthWiseSOAnalysisExcel(
-                                      monthlySalesOrderList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateMonthWiseSOAnalysisPDF(
-                                      monthlySalesOrderList,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+
                 Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _monthlyWiseSOAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                  padding: const EdgeInsets.all(8),
+                  child: DashboardCardUI(
+                    title: 'Monthwise SO Analysis',
+                    spacing: 20,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Customer Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateCustomerAnalysisSOExcel(
-                                      customerAnalysisData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateCustomerAnalysisSOPDF(
-                                      customerAnalysisData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
-                          },
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color(0xFF6CCC3F),
                         ),
                         const SizedBox(width: 5),
+                        const Text('Achieved', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: Color(0xFFFF9F47),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Target', style: TextStyle(fontSize: 12)),
                       ],
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _customerAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Visibility(
-                  visible: rsmwiseSalesList.rsmwiseData.isNotEmpty,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 15),
-                          Text(
-                            "Regional Manager Analysis",
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
+                    menuItems: [
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateMonthWiseSOAnalysisExcel(
+                            monthlySalesOrderList,
+                          );
+                        },
+                        child: const Text('Download Excel'),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+
+                      PopupMenuItem(
+                        onTap: () async {
+                          await generateMonthWiseSOAnalysisPDF(
+                            monthlySalesOrderList,
+                          );
+                        },
+                        child: const Text("Download PDF"),
+                      ),
+                    ],
+                    child: _monthlyWiseSOAnalysis(),
+                  ),
+                ),
+
+                Visibility(
+                  visible: customerAnalysisData.customerData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Customer Analysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
                             height: 8,
                             width: 8,
-                            color: const Color(0xFF2CA9DF),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text("Goal", style: TextStyle(fontSize: 12)),
-                          const SizedBox(width: 5),
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: const Color(0xFFF49136),
+                            color: const Color(0xFF6CCC3F),
                           ),
                           const SizedBox(width: 5),
                           const Text(
-                            "Achieved",
+                            'Achieved',
                             style: TextStyle(fontSize: 12),
                           ),
-                          PopupMenuButton(
-                            onSelected: (value) {},
-                            itemBuilder: (BuildContext bc) {
-                              return [
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateRsmSalesExcel(rsmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download Excel"),
-                                ),
-                                PopupMenuItem(
-                                  onTap: () {
-                                    setState(() {
-                                      generateRsmSalesPDF(rsmwiseSalesList);
-                                    });
-                                  },
-                                  child: const Text("Download PDF"),
-                                ),
-                              ];
-                            },
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
                           ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
                         ],
                       ),
-                    ],
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateCustomerAnalysisSOExcel(
+                              customerAnalysisData,
+                            );
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateCustomerAnalysisSOPDF(customerAnalysisData);
+                          },
+                          child: const Text("Download PDF"),
+                        ),
+                      ],
+                      child: _customerAnalysis(),
+                    ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: rsmwiseSalesList.rsmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : _regionalManagerAnalysis(),
+
+                Visibility(
+                  visible: rsmwiseSalesList.rsmwiseData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Regional Manager Analysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF6CCC3F),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateRsmSalesExcel(rsmwiseSalesList);
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateRsmSalesPDF(rsmwiseSalesList);
+                          },
+                          child: const Text("Download PDF"),
+                        ),
+                      ],
+                      child: _regionalManagerAnalysis(),
+                    ),
+                  ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: rsmwiseSalesList.rsmwiseData.isEmpty
-                      ? const SizedBox.shrink()
-                      : const Divider(thickness: 2),
-                ),
+
                 Visibility(
                   visible: salesManagerData.asmwiseData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Sales Manager\nAnalysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Sales Manager Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF6CCC3F),
                           ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesManagerAnalysisSOExcel(
-                                            salesManagerData,
-                                          );
-                                        });
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesManagerAnalysisSOPDF(
-                                            salesManagerData,
-                                          );
-                                        });
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                              const SizedBox(width: 5),
-                            ],
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
                           ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _salesManagerAnalysis(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateSalesManagerAnalysisSOExcel(
+                              salesManagerData,
+                            );
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateSalesManagerAnalysisSOPDF(
+                              salesManagerData,
+                            );
+                          },
+                          child: const Text("Download PDF"),
+                        ),
+                      ],
+                      child: _salesManagerAnalysis(),
+                    ),
                   ),
                 ),
+
                 Visibility(
                   visible: salesPersonData.tsmwiseData.isNotEmpty,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Sales Person\nAnalysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(width: 15),
-                              Text(
-                                "Sales Person Analysis",
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF6CCC3F),
                           ),
-                          Row(
-                            children: [
-                              PopupMenuButton(
-                                onSelected: (value) {},
-                                itemBuilder: (BuildContext bc) {
-                                  return [
-                                    PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesPersonAnalysisSOExcel(
-                                            salesPersonData,
-                                          );
-                                        });
-                                      },
-                                      child: const Text("Download Excel"),
-                                    ),
-                                    PopupMenuItem(
-                                      onTap: () {
-                                        setState(() {
-                                          generateSalesPersonAnalysisSOPDF(
-                                            salesPersonData,
-                                          );
-                                        });
-                                      },
-                                      child: const Text("Download PDF"),
-                                    ),
-                                  ];
-                                },
-                              ),
-                              const SizedBox(width: 5),
-                            ],
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
                           ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: _salesPersonAnalysis(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Divider(thickness: 2),
-                      ),
-                    ],
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateSalesPersonAnalysisSOExcel(
+                              salesPersonData,
+                            );
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            await generateSalesPersonAnalysisSOPDF(
+                              salesPersonData,
+                            );
+                          },
+                          child: const Text("Download PDF"),
+                        ),
+                      ],
+                      child: _salesPersonAnalysis(),
+                    ),
                   ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item GroupWise Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupWiseAnalysisSOExcel(
-                                      itemGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemGroupWiseAnalysisSOPDF(
-                                      itemGroupWiseData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
+
+                Visibility(
+                  visible: itemGroupWiseData.productGroupData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Item Groupwise\nAnalysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF6CCC3F),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemGroupWiseAnalysisSOExcel(
+                              itemGroupWiseData,
+                            );
                           },
+                          child: const Text('Download Excel'),
                         ),
-                        const SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemGroupWiseAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Item Analysis",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemAnalysisSOExcel(
-                                      itemAnalysisData,
-                                    );
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateItemAnalysisSOPDF(itemAnalysisData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemGroupWiseAnalysisSOPDF(
+                              itemGroupWiseData,
+                            );
                           },
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _itemAnalysis(),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: Divider(thickness: 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 15),
-                        Text(
-                          "Open SO Aging",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                          child: const Text('Download PDF'),
                         ),
                       ],
+                      child: _itemGroupWiseAnalysis(),
                     ),
-                    Row(
-                      children: [
-                        PopupMenuButton(
-                          onSelected: (value) {},
-                          itemBuilder: (BuildContext bc) {
-                            return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateOpenSOAgingExcel(openSoAgingData);
-                                  });
-                                },
-                                child: const Text("Download Excel"),
-                              ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  setState(() {
-                                    generateOpenSOAgingPDF(openSoAgingData);
-                                  });
-                                },
-                                child: const Text("Download PDF"),
-                              ),
-                            ];
+                  ),
+                ),
+
+                Visibility(
+                  visible: itemAnalysisData.productData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Item Analysis',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF6CCC3F),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemAnalysisSOExcel(itemAnalysisData);
                           },
+                          child: const Text('Download Excel'),
                         ),
-                        const SizedBox(width: 5),
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateItemAnalysisSOPDF(itemAnalysisData);
+                          },
+                          child: const Text('Download PDF'),
+                        ),
                       ],
+                      child: _itemWiseAnalysis(),
                     ),
-                  ],
+                  ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                  child: _openSOAging(),
+
+                Visibility(
+                  visible: openSoAgingData.soAgingData.isNotEmpty,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: DashboardCardUI(
+                      title: 'Open SO Aging',
+                      spacing: 20,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: const Color(0xFF6CCC3F),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text(
+                            'Achieved',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 8,
+                            width: 8,
+                            color: Color(0xFFFF9F47),
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Target', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateOpenSOAgingExcel(openSoAgingData);
+                          },
+                          child: const Text('Download Excel'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () async {
+                            generateOpenSOAgingPDF(openSoAgingData);
+                          },
+                          child: const Text('Download PDF'),
+                        ),
+                      ],
+                      child: _openSOAging(),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -3947,23 +3692,21 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
         : const Center(child: CircularProgressIndicator());
   }
 
-  showLoaderDialog(BuildContext context) {
-    AlertDialog alert = AlertDialog(
-      content: Row(
-        children: [
-          const CircularProgressIndicator(),
-          Container(
-            margin: const EdgeInsets.only(left: 7),
-            child: const Text("Loading..."),
-          ),
-        ],
-      ),
-    );
+  void showLoaderDialog(BuildContext context) {
     showDialog(
-      barrierDismissible: true,
       context: context,
-      builder: (BuildContext context) {
-        return alert;
+      barrierDismissible: false,
+      builder: (_) {
+        return const AlertDialog(
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 15),
+              Text("Loading..."),
+            ],
+          ),
+        );
       },
     );
   }
@@ -4062,7 +3805,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
                 ),
                 getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
                   return BarTooltipItem(
-                    '${monthlySalesOrderList.soData[grpIndex].monthName} ${DateTime.now().year}\n',
+                    '${monthlySalesOrderList.soData[grpIndex].monthName}\n',
                     const TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,
@@ -4285,154 +4028,186 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
   Widget _regionalManagerAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
-    double chartWidth = 0.0;
     int len = rsmwiseSalesList.rsmwiseData.length;
-    if (rsmwiseSalesList.rsmwiseData.length > 5) {
-      chartWidth = screenWidth + (30 * len);
-    } else {
-      chartWidth = screenWidth;
-    }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    double chartWidth = len > 5 ? screenWidth + (70 * len) + 100 : screenWidth;
+    return FinanceHorizontalChartScroll(
+      controller: _regionalManagerHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getRsmMaxValue(rsmwiseSalesList),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesRsm,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _regionalManagerAnalysisChart(
-              rsmwiseSalesList.rsmwiseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedRegionalManager = touchedRegionalManager == ""
-                          ? rsmwiseSalesList
-                                .rsmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .rsmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      // loadDataWithFilter(
-                      //   touchedMonthIndex,
-                      //   touchedRegionalManager,
-                      //   touchedSalesManager,
-                      //   touchedSalesRep,
-                      //   touchedCustomer,
-                      //   touchedProductGroup,
-                      //   touchedProduct,
-                      //   touchedAgingCategory,
-                      // );
-                    }
-                  });
-                  await loadDataWithFilter(
-                    touchedMonthIndex,
-                    touchedRegionalManager,
-                    touchedSalesManager,
-                    touchedSalesRep,
-                    touchedCustomer,
-                    touchedProductGroup,
-                    touchedProduct,
-                    touchedAgingCategory,
-                  );
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              /// SAFE MAX Y
+              maxY: max(1, getRsmMaxValue(rsmwiseSalesList)),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${rsmwiseSalesList.rsmwiseData[grpIndex].rsmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(rsmwiseSalesList.rsmwiseData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(rsmwiseSalesList.rsmwiseData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((rsmwiseSalesList.rsmwiseData[grpIndex].salesAmount - rsmwiseSalesList.rsmwiseData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((rsmwiseSalesList.rsmwiseData[grpIndex].salesAmount / rsmwiseSalesList.rsmwiseData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesRsm,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+
+              barGroups: _regionalManagerAnalysisChart(
+                rsmwiseSalesList.rsmwiseData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+                touchCallback: (event, response) async {
+                  if (response == null || response.spot == null) return;
+                  int index = response.spot!.spot.x.toInt();
+
+                  /// SAFETY CHECK
+                  if (index < 0 ||
+                      index >= rsmwiseSalesList.rsmwiseData.length) {
+                    return;
+                  }
+
+                  /// LONG PRESS → TOOLTIP
+                  if (event is FlLongPressStart) {
+                    setState(() {
+                      tooltipIndex = index;
+                      showTooltip = true;
+                    });
+                    return;
+                  }
+
+                  /// LONG PRESS END
+                  if (event is FlLongPressEnd) {
+                    setState(() {
+                      showTooltip = false;
+                    });
+                    return;
+                  }
+
+                  /// TAP → DRILLDOWN
+                  if (event is FlTapUpEvent) {
+                    setState(() {
+                      showTooltip = false;
+                      touchedRegionalManager = touchedRegionalManager == ""
+                          ? rsmwiseSalesList.rsmwiseData[index].rsmName
+                          : "";
+                      selectedChart = index.toDouble();
+                      showDrillDownChart = true;
+                    });
+
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedRegionalManager,
+                      touchedSalesManager,
+                      touchedSalesRep,
+                      touchedState,
+                      touchedCustomer,
+                      touchedProductGroup,
+                      touchedProduct,
+                    );
+
+                    if (!showProductSaleChart) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
+                    }
+                  }
+                },
+
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+
+                  fitInsideVertically: true,
+
+                  getTooltipColor: (group) => Colors.white,
+
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    if (!showTooltip || tooltipIndex != groupIndex) {
+                      return null;
+                    }
+
+                    final data = rsmwiseSalesList.rsmwiseData[groupIndex];
+
+                    final salesL = data.salesAmount / 100000;
+
+                    final targetL = data.targetAmount / 100000;
+
+                    final diffL = salesL - targetL;
+
+                    final percent = data.targetAmount == 0
+                        ? "0%"
+                        : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
+
+                    return BarTooltipItem(
+                      '${data.rsmName}\n',
+
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+
+                      children: [
+                        TextSpan(
+                          text:
+                              "Achievement : ${salesL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Target : ${targetL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Percentage : $percent",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),
@@ -4442,144 +4217,189 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
   Widget _salesManagerAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
-    double chartWidth = 0.0;
     int len = salesManagerData.asmwiseData.length;
-    if (salesManagerData.asmwiseData.length > 5) {
-      chartWidth = screenWidth + (30 * len);
-    } else {
-      chartWidth = screenWidth;
-    }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    double chartWidth = len > 5
+        ? screenWidth + (70.0 * len) + 100
+        : screenWidth;
+
+    return FinanceHorizontalChartScroll(
+      controller: _salesManagerHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getAsmMaxValue(salesManagerData),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesManager,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _salesManagerAnalysisChartData(
-              salesManagerData.asmwiseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedSalesManager = touchedSalesManager == ""
-                          ? salesManagerData
-                                .asmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .asmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                        touchedAgingCategory,
-                      );
-                    }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              /// SAFE MAX Y
+              maxY: max(1, getAsmMaxValue(salesManagerData)),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${salesManagerData.asmwiseData[grpIndex].asmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(salesManagerData.asmwiseData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(salesManagerData.asmwiseData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((salesManagerData.asmwiseData[grpIndex].salesAmount - salesManagerData.asmwiseData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((salesManagerData.asmwiseData[grpIndex].salesAmount / salesManagerData.asmwiseData[grpIndex].targetAmount == 0 ? salesManagerData.asmwiseData[grpIndex].salesAmount : salesManagerData.asmwiseData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesManager,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+
+              barGroups: _salesManagerAnalysisChartData(
+                salesManagerData.asmwiseData,
+              ),
+
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+
+                touchCallback: (event, response) async {
+                  if (response == null || response.spot == null) return;
+
+                  int index = response.spot!.spot.x.toInt();
+
+                  /// SAFETY CHECK
+                  if (index < 0 ||
+                      index >= salesManagerData.asmwiseData.length) {
+                    return;
+                  }
+
+                  /// LONG PRESS → TOOLTIP
+                  if (event is FlLongPressStart) {
+                    setState(() {
+                      tooltipIndex = index;
+
+                      showTooltip = true;
+                    });
+
+                    return;
+                  }
+
+                  /// LONG PRESS END
+                  if (event is FlLongPressEnd) {
+                    setState(() {
+                      showTooltip = false;
+                    });
+
+                    return;
+                  }
+
+                  /// TAP → DRILLDOWN
+                  if (event is FlTapUpEvent) {
+                    setState(() {
+                      showTooltip = false;
+                      touchedSalesManager = touchedSalesManager == ""
+                          ? salesManagerData.asmwiseData[index].asmName
+                          : "";
+                      selectedChart = index.toDouble();
+                      showDrillDownChart = true;
+                    });
+
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedRegionalManager,
+                      touchedSalesManager,
+                      touchedSalesRep,
+                      touchedState,
+                      touchedCustomer,
+                      touchedProductGroup,
+                      touchedProduct,
+                    );
+
+                    if (!showProductSaleChart) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+
+                      _scrollDown();
+                    }
+                  }
+                },
+
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipColor: (group) => Colors.white,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    if (!showTooltip || tooltipIndex != groupIndex) {
+                      return null;
+                    }
+                    final data = salesManagerData.asmwiseData[groupIndex];
+                    final salesL = data.salesAmount / 100000;
+                    final targetL = data.targetAmount / 100000;
+                    final diffL = salesL - targetL;
+                    final percent = data.targetAmount == 0
+                        ? "0%"
+                        : "${((data.salesAmount / data.targetAmount) * 100).toStringAsFixed(0)}%";
+
+                    return BarTooltipItem(
+                      '${data.asmName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+
+                      children: [
+                        TextSpan(
+                          text:
+                              "Achievement : ${salesL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Target : ${targetL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Difference : ${diffL.toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        TextSpan(
+                          text: "Percentage : $percent",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),
@@ -4592,142 +4412,166 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     double chartWidth = 0.0;
     int len = salesPersonData.tsmwiseData.length;
     if (salesPersonData.tsmwiseData.length > 5) {
-      chartWidth = screenWidth + (50 * len);
+      chartWidth = screenWidth + (70 * len) + 100;
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _salesPersonHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getTsmMaxValue(salesPersonData),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesSalesPerson,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _salesPersonAnalysisChartData(
-              salesPersonData.tsmwiseData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedSalesRep = touchedSalesRep == ""
-                          ? salesPersonData
-                                .tsmwiseData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .tsmName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                        touchedAgingCategory,
-                      );
-                    }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: max(1, getTsmMaxValue(salesPersonData)),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${salesPersonData.tsmwiseData[grpIndex].tsmName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(salesPersonData.tsmwiseData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(salesPersonData.tsmwiseData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((salesPersonData.tsmwiseData[grpIndex].salesAmount - salesPersonData.tsmwiseData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((salesPersonData.tsmwiseData[grpIndex].salesAmount / salesPersonData.tsmwiseData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        // "Percentage : ${((salesPersonData.tsmwiseData[grpIndex].salesAmount / salesPersonData.tsmwiseData[grpIndex].targetAmount == 0 ? salesPersonData.tsmwiseData[grpIndex].salesAmount : salesPersonData.tsmwiseData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesSalesPerson,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _salesPersonAnalysisChartData(
+                salesPersonData.tsmwiseData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+                touchCallback: (event, response) async {
+                  if (response == null || response.spot == null) return;
+                  int index = response.spot!.spot.x.toInt();
+                  if (index < 0 ||
+                      index >= salesPersonData.tsmwiseData.length) {
+                    return;
+                  }
+
+                  /// LONG PRESS → Tooltip
+                  if (event is FlLongPressStart) {
+                    setState(() {
+                      tooltipIndex = index;
+                      showTooltip = true;
+                    });
+                    return;
+                  }
+
+                  /// LONG PRESS END → Hide tooltip
+                  if (event is FlLongPressEnd) {
+                    setState(() {
+                      showTooltip = false;
+                    });
+                    return;
+                  }
+
+                  /// TAP → Drilldown
+                  if (event is FlTapUpEvent) {
+                    setState(() {
+                      showTooltip = false;
+                      touchedSalesRep = touchedSalesRep == ""
+                          ? salesPersonData.tsmwiseData[index].tsmName
+                          : "";
+                      selectedChart = index.toDouble();
+                      showDrillDownChart = true;
+                    });
+
+                    loadDataWithFilter(
+                      touchedMonthIndex,
+                      touchedRegionalManager,
+                      touchedSalesManager,
+                      touchedSalesRep,
+                      touchedState,
+                      touchedCustomer,
+                      touchedProductGroup,
+                      touchedProduct,
+                    );
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
+                    }
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipColor: (group) => Colors.white,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    if (!showTooltip || tooltipIndex != groupIndex) {
+                      return null;
+                    }
+                    return BarTooltipItem(
+                      '${salesPersonData.tsmwiseData[groupIndex].tsmName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: [
+                        TextSpan(
+                          text:
+                              "Achievement : ${(salesPersonData.tsmwiseData[groupIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Target : ${(salesPersonData.tsmwiseData[groupIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((salesPersonData.tsmwiseData[groupIndex].salesAmount - salesPersonData.tsmwiseData[groupIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${salesPersonData.tsmwiseData[groupIndex].targetAmount == 0 ? "0%" : "${((salesPersonData.tsmwiseData[groupIndex].salesAmount / salesPersonData.tsmwiseData[groupIndex].targetAmount) * 100).toStringAsFixed(0)}%"}",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),
@@ -4744,137 +4588,148 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _itemGroupWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getItemGroupMaxValue(itemGroupWiseData),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItemGroupWise,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _itemGroupWiseAnalysisChartData(
-              itemGroupWiseData.productGroupData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedProductGroup = touchedProductGroup == ""
-                          ? itemGroupWiseData
-                                .productGroupData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .productGroupName
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                        touchedAgingCategory,
-                      );
-                    }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getItemGroupMaxValue(itemGroupWiseData),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${itemGroupWiseData.productGroupData[grpIndex].productGroupName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(itemGroupWiseData.productGroupData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(itemGroupWiseData.productGroupData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((itemGroupWiseData.productGroupData[grpIndex].salesAmount - itemGroupWiseData.productGroupData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((itemGroupWiseData.productGroupData[grpIndex].salesAmount / itemGroupWiseData.productGroupData[grpIndex].targetAmount == 0 ? itemGroupWiseData.productGroupData[grpIndex].salesAmount : itemGroupWiseData.productGroupData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItemGroupWise,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemGroupWiseAnalysisChartData(
+                itemGroupWiseData.productGroupData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedProductGroup = touchedProductGroup == ""
+                            ? itemGroupWiseData
+                                  .productGroupData[barTouchResponse
+                                      .spot!
+                                      .spot
+                                      .x
+                                      .toInt()]
+                                  .productGroupName
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedState,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                        );
+                      }
+                    });
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
+                    }
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 4.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${itemGroupWiseData.productGroupData[grpIndex].productGroupName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(itemGroupWiseData.productGroupData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(itemGroupWiseData.productGroupData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((itemGroupWiseData.productGroupData[grpIndex].salesAmount - itemGroupWiseData.productGroupData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${((itemGroupWiseData.productGroupData[grpIndex].salesAmount / itemGroupWiseData.productGroupData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -4882,157 +4737,177 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     );
   }
 
-  Widget _itemAnalysis() {
+  Widget _itemWiseAnalysis() {
     final screenWidth = MediaQuery.of(context).size.width;
-    double chartWidth = 0.0;
-    int len = itemAnalysisData.productData.length;
-    if (itemAnalysisData.productData.length > 5) {
-      chartWidth = screenWidth + (35 * len);
-    } else {
-      chartWidth = screenWidth;
+    double barChartWidth = 0.0;
+    int length = itemAnalysisData.productData.length;
+    length > 6
+        ? barChartWidth = screenWidth + (35 * length)
+        : barChartWidth = screenWidth;
+
+    final amounts = itemAnalysisData.productData
+        .expand((e) => [e.salesAmount, e.targetAmount])
+        .toList();
+
+    final hasPositive = amounts.any((a) => a > 0);
+    final hasNegative = amounts.any((a) => a < 0);
+
+    double chartMinY = 0;
+    double chartMaxY = 0;
+
+    if (hasPositive && hasNegative) {
+      double maxPositive = amounts
+          .where((a) => a > 0)
+          .reduce((a, b) => a > b ? a : b);
+      double maxNegative = amounts
+          .where((a) => a < 0)
+          .reduce((a, b) => a < b ? a : b);
+      chartMaxY = _roundedPositiveMaxY([maxPositive]);
+      chartMinY = _roundedNegativeMinY([maxNegative]);
+    } else if (hasPositive) {
+      double maxPositive = amounts.reduce((a, b) => a > b ? a : b);
+      chartMaxY = _roundedPositiveMaxY([maxPositive]);
+      chartMinY = 0;
+    } else if (hasNegative) {
+      double maxNegative = amounts.reduce((a, b) => a < b ? a : b);
+      chartMaxY = 0;
+      chartMinY = _roundedNegativeMinY([maxNegative]);
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+
+    return FinanceHorizontalChartScroll(
+      controller: _itemWiseHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
-        width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getItemMaxValue(itemAnalysisData),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesItem,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _itemAnalysisChartData(itemAnalysisData.productData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
+        width: barChartWidth,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: chartMaxY,
+              minY: chartMinY,
+              barTouchData: BarTouchData(
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
                     if (flTouchEvent is FlTapUpEvent) {
-                      touchedProduct = touchedProduct == ""
-                          ? itemAnalysisData
-                                .productData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .productCode
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      // loadDataWithFilter(
-                      //   touchedMonthIndex,
-                      //   touchedRegionalManager,
-                      //   touchedSalesManager,
-                      //   touchedSalesRep,
-                      //   touchedCustomer,
-                      //   touchedProductGroup,
-                      //   touchedProduct,
-                      //   touchedAgingCategory,
-                      // );
-                      // if (showProductSaleChart != true) {
-                      //   _scrollDown();
-                      // }
+                      setState(() {
+                        touchedProduct = touchedProduct == ""
+                            ? itemAnalysisData
+                                  .productData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .productCode
+                            : "";
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedState,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                        );
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showProductSaleChart = true;
+                      });
                     }
-                  });
-                  await loadDataWithFilter(
-                    touchedMonthIndex,
-                    touchedRegionalManager,
-                    touchedSalesManager,
-                    touchedSalesRep,
-                    touchedCustomer,
-                    touchedProductGroup,
-                    touchedProduct,
-                    touchedAgingCategory,
-                  );
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
                   }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
-                ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${itemAnalysisData.productData[grpIndex].productName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(itemAnalysisData.productData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(itemAnalysisData.productData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((itemAnalysisData.productData[grpIndex].salesAmount - itemAnalysisData.productData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((itemAnalysisData.productData[grpIndex].salesAmount / itemAnalysisData.productData[grpIndex].targetAmount == 0 ? itemAnalysisData.productData[grpIndex].salesAmount : itemAnalysisData.productData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
                 },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                allowTouchBarBackDraw: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 4.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${itemAnalysisData.productData[grpIndex].productName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(itemAnalysisData.productData[grpIndex].salesAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(itemAnalysisData.productData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((itemAnalysisData.productData[grpIndex].salesAmount - itemAnalysisData.productData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${((itemAnalysisData.productData[grpIndex].salesAmount / itemAnalysisData.productData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesItem,
+                  axisNameSize: 20,
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _itemAnalysisChartData(itemAnalysisData.productData),
             ),
           ),
         ),
@@ -5049,105 +4924,112 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _soAgeingHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: openSoAgingData.soAgingData[0].maxY,
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesOpenSOAging,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _openSOAgingChartData(openSoAgingData.soAgingData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 4.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: max(1, getSoAgeingMaxValue(openSoAgingData)),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    'Open SO Aging\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "0-30 : ${(((openSoAgingData.soAgingData[0].receivableAmount) / 100000).toStringAsFixed(2))} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "31-60 : ${(((openSoAgingData.soAgingData[1].receivableAmount) / 100000).toStringAsFixed(2))} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "61-90 : ${(((openSoAgingData.soAgingData[2].receivableAmount) / 100000).toStringAsFixed(2))} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "90+ : ${(((openSoAgingData.soAgingData[3].receivableAmount) / 100000).toStringAsFixed(2))} L",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesOpenSOAging,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _openSOAgingChartData(openSoAgingData.soAgingData),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 4.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      'Open SO Aging\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "0-30 : ${(((openSoAgingData.soAgingData[0].receivableAmount) / 100000).toStringAsFixed(2))} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "31-60 : ${(((openSoAgingData.soAgingData[1].receivableAmount) / 100000).toStringAsFixed(2))} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "61-90 : ${(((openSoAgingData.soAgingData[2].receivableAmount) / 100000).toStringAsFixed(2))} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "90+ : ${(((openSoAgingData.soAgingData[3].receivableAmount) / 100000).toStringAsFixed(2))} L",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

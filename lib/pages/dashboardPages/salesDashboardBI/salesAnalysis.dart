@@ -241,7 +241,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   bool showLastMonthBarChart = false;
   bool lastMonthChartFunc = false;
   bool lastThreeMonthChartFunc = false;
-  bool touchedYearGraph = false;
   bool touchedMonthGoals = false;
   bool touchedQuarterGoals = false;
   bool touchedYTDGoals = false;
@@ -250,7 +249,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   List<double> selectedMonthSales = [];
   int? tooltipIndex;
   bool showTooltip = false;
-  ScrollController salesPerformancePageController = ScrollController();
 
   Future<void> _dateFilterTarget(
     String userName,
@@ -328,7 +326,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
 
     showDrillDownChart = true;
-    touchedYearGraph = true;
     showProductSaleChart = true;
 
     if (UserLevel != "1") {
@@ -622,16 +619,16 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
             x: rsmwiseData.indexOf(rsm),
             barRods: [
               BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: rsm.targetAmount,
-                  show: true,
-                  color: const Color(0xFFF49136),
-                ),
+                color: const Color(0xFFF49136),
+                borderRadius: BorderRadius.zero,
+                toY: rsm.targetAmount,
+                width: 20,
+              ),
+              BarChartRodData(
                 color: const Color(0xFF97D7F3),
                 borderRadius: BorderRadius.zero,
                 toY: rsm.salesAmount,
-                width: 30,
+                width: 20,
               ),
             ],
           ),
@@ -648,16 +645,16 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
             x: asmwiseData.indexOf(asm),
             barRods: [
               BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: asm.targetAmount,
-                  show: true,
-                  color: const Color(0xFFF49136),
-                ),
+                color: const Color(0xFFF49136),
+                borderRadius: BorderRadius.zero,
+                toY: asm.targetAmount,
+                width: 20,
+              ),
+              BarChartRodData(
                 color: const Color(0xFF97D7F3),
                 borderRadius: BorderRadius.zero,
                 toY: asm.salesAmount,
-                width: 30,
+                width: 20,
               ),
             ],
           ),
@@ -674,16 +671,16 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
             x: tsmwiseData.indexOf(tsm),
             barRods: [
               BarChartRodData(
-                backDrawRodData: BackgroundBarChartRodData(
-                  fromY: 0,
-                  toY: tsm.targetAmount,
-                  show: true,
-                  color: const Color(0xFFF49136),
-                ),
+                color: const Color(0xFFF49136),
+                borderRadius: BorderRadius.zero,
+                toY: tsm.targetAmount,
+                width: 20,
+              ),
+              BarChartRodData(
                 color: const Color(0xFF97D7F3),
                 borderRadius: BorderRadius.zero,
                 toY: tsm.salesAmount,
-                width: 30,
+                width: 20,
               ),
             ],
           ),
@@ -1403,7 +1400,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     await _loadEachQtrValues();
     await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
     showDrillDownChart = true;
-    touchedYearGraph = true;
     showProductSaleChart = true;
     if (UserLevel != "1") {
       await _loadTSMSalesBarChartData(0, filteredSales, filteredTargets);
@@ -3019,7 +3015,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     await _loadEachQtrValues();
     await _loadMonthlySalesBarChartData(filteredSales, filteredTargets);
     showDrillDownChart = true;
-    touchedYearGraph = true;
     showProductSaleChart = true;
     if (UserLevel != "1") {
       await _loadTSMSalesBarChartData(0, filteredSales, filteredTargets);
@@ -3154,7 +3149,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     LoadAllQuarterFromToDates();
 
     showDrillDownChart = true;
-    touchedYearGraph = true;
     showProductSaleChart = true;
 
     /// Filter once
@@ -5477,8 +5471,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
   }
 
   void _scrollDown() {
-    salesPerformancePageController.animateTo(
-      800, //salesPerformancePageController.position.maxScrollExtent
+    _verticalScrollController.animateTo(
+      800,
       duration: const Duration(seconds: 1),
       curve: Curves.fastOutSlowIn,
     );
@@ -5674,7 +5668,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                       touchedProductGroup,
                       touchedProduct,
                     );
-                    touchedYearGraph = true;
                   });
                   if (showProductSaleChart != true) {
                     await Future.delayed(const Duration(milliseconds: 50));
@@ -5842,7 +5835,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           : "";
                       selectedChart = index.toDouble();
                       showDrillDownChart = true;
-                      touchedYearGraph = true;
                     });
 
                     loadDataWithFilter(
@@ -6043,7 +6035,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           : "";
                       selectedChart = index.toDouble();
                       showDrillDownChart = true;
-                      touchedYearGraph = true;
                     });
 
                     loadDataWithFilter(
@@ -6224,7 +6215,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           : "";
                       selectedChart = index.toDouble();
                       showDrillDownChart = true;
-                      touchedYearGraph = true;
                     });
 
                     loadDataWithFilter(
@@ -6355,7 +6345,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           touchedProductGroup,
                           touchedProduct,
                         );
-                        touchedYearGraph = true;
                       }
                     });
                     if (showProductSaleChart != true) {
@@ -6540,7 +6529,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           touchedProductGroup,
                           touchedProduct,
                         );
-                        touchedYearGraph = true;
                       }
                     });
                     if (showProductSaleChart != true) {
@@ -6731,7 +6719,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                           touchedProductGroup,
                           touchedProduct,
                         );
-                        touchedYearGraph = true;
                       }
                     });
                     if (showProductSaleChart != true) {
@@ -6883,7 +6870,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                         );
                         selectedChart = barTouchResponse.spot!.spot.x;
                         showProductSaleChart = true;
-                        touchedYearGraph = true;
                       });
                     }
                   }
