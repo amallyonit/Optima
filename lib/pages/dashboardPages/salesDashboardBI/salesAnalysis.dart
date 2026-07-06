@@ -23,6 +23,7 @@ import '../ReportService.dart';
 import '../dashboard_card_ui.dart';
 
 final reportService = ReportService();
+bool _disposed = false;
 
 class SalesPerformancePage extends StatefulWidget {
   const SalesPerformancePage({super.key});
@@ -1082,6 +1083,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
                 .map((item) => SalesTargetList.fromJson(item))
                 .toList();
             int monthIndex = currentDate!.month;
+            if (_disposed || !mounted) return;
             setState(() {
               List<String> menuNames = usersList
                   .where((element) => element.parentMenuId == 0)
@@ -1301,30 +1303,45 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       body: jsonEncode(body),
     );
     if (response.statusCode != 200) return;
+
     final json = jsonDecode(response.body);
     final List list = json['responseData'] ?? [];
     final initialSales = list.map((e) => SalesList.fromJson(e)).toList();
+    // if (!mounted) return;
+    // setState(() {
+    //   _allSales.clear();
+    //   _allSales.addAll(initialSales); // Save all loaded data
+    //   // Apply filters to master list
+    //   sales = _applyUserFilter(initialSales, userName, userLevel);
+    //   _updateMonthlySales(initialSales);
+    // });
+    if (!mounted) return;
 
-    setState(() {
-      _allSales.clear();
-      _allSales.addAll(initialSales); // Save all loaded data
-      // Apply filters to master list
-      sales = _applyUserFilter(initialSales, userName, userLevel);
-      _updateMonthlySales(initialSales);
-    });
+    _allSales
+      ..clear()
+      ..addAll(initialSales);
+
+    sales = _applyUserFilter(initialSales, userName, userLevel);
+
+    _updateMonthlySales(initialSales);
+
+    if (_disposed || !mounted) return;
+
+    setState(() {});
     _calculateSalesTotals();
   }
 
   void _updateSteppedProgress() {
     // Each batch adds 10%, capped at 90%
     final double nextProgress = (loadedBatchCount * 0.10).clamp(0.0, 0.9);
-
+    if (_disposed || !mounted) return;
     setState(() {
       animatedProgress = nextProgress;
     });
   }
 
   void _completeProgress() {
+    if (_disposed || !mounted) return;
     setState(() {
       animatedProgress = 1.0;
     });
@@ -1377,6 +1394,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
           break;
         }
         final newSales = list.map((e) => SalesList.fromJson(e)).toList();
+        if (_disposed || !mounted) return;
         setState(() {
           _allSales.addAll(newSales); // Append to master list
 
@@ -1410,6 +1428,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     await _loadMonthlyProductwiseSalesBarChartData(0, filteredSales);
     await _loadMonthlyCustomerStateWiseSalesBarChartData(0, filteredSales);
     await _loadMonthlyCustomerWiseSalesBarChartData(0, filteredSales);
+    if (_disposed || !mounted) return;
     setState(() {
       filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
       savedFinanceReceivablesOptions = filterOptions
@@ -1485,6 +1504,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
         sumYtd += salesAmt;
       }
     }
+    if (_disposed || !mounted) return;
     setState(() {
       CurrentMonthSales = sumCurrentMonth;
       CurrentMonthSalesStr =
@@ -3025,6 +3045,7 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     await _loadMonthlyProductwiseSalesBarChartData(0, filteredSales);
     await _loadMonthlyCustomerStateWiseSalesBarChartData(0, filteredSales);
     await _loadMonthlyCustomerWiseSalesBarChartData(0, filteredSales);
+    if (_disposed || !mounted) return;
     setState(() {
       filterOptions = [listOfRSM, listOfASM, listOfTSM, []];
       savedFinanceReceivablesOptions = filterOptions
@@ -4193,91 +4214,88 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     selectedFinanceReceivablesOptions = savedFinanceReceivablesOptions;
   }
 
-  void clearVariables() {
-    setState(() {
-      chartDataLoaded = false;
-      YtdSalesBarChartData = false;
-      SalesGoal = 0;
-      LastMonthSales = 0;
-      LastMonthTarget = 0;
-      CurrentQtrSales = 0;
-      CurrentQtrTarget = 0;
-      YtdSales = 0;
-      YtdTarget = 0;
-      Q1Sales = 0;
-      Q1Target = 0;
-      Q1Diff = 0;
-      Q1Percentage = 0;
-      Q1SalesStr = "";
-      Q1TargetStr = "";
-      Q1DiffStr = "";
-      Q1PercentageStr = "";
-      Q2Sales = 0;
-      Q2Target = 0;
-      Q2Diff = 0;
-      Q2Percentage = 0;
-      Q2SalesStr = "";
-      Q2TargetStr = "";
-      Q2DiffStr = "";
-      Q2PercentageStr = "";
-      Q3Sales = 0;
-      Q3Target = 0;
-      Q3Diff = 0;
-      Q3Percentage = 0;
-      Q3SalesStr = "";
-      Q3TargetStr = "";
-      Q3DiffStr = "";
-      Q3PercentageStr = "";
-      Q4Sales = 0;
-      Q4Target = 0;
-      Q4Diff = 0;
-      Q4Percentage = 0;
-      Q4SalesStr = "";
-      Q4TargetStr = "";
-      Q4DiffStr = "";
-      Q4PercentageStr = "";
-      Q1Average = 0;
-      Q1AverageStr = "";
-      Q2Average = 0;
-      Q2AverageStr = "";
-      Q3Average = 0;
-      Q3AverageStr = "";
-      Q4Average = 0;
-      Q4AverageStr = "";
-      monthlySalesList = MonthlySalesList(monthlyData: []);
-      prevMonthlySalesList = MonthlySalesList(monthlyData: []);
-      productwiseSalesList = ProductwiseSalesList(productData: []);
-      customerWiseSalesList = CustomerWiseSalesList(customerData: []);
-      prevYearMonthList = PrevYearMonthList(prevYearMonthData: []);
-      tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: []);
-      asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
-      rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
-      customerStateWiseSalesList = CustomerStateWiseSalesList(
-        customerStateData: [],
-      );
-      productGroupwiseSalesList = ProductGroupwiseSalesList(
-        productGroupData: [],
-      );
-    });
+  void clearVariables({bool refresh = true}) {
+    chartDataLoaded = false;
+    YtdSalesBarChartData = false;
+    SalesGoal = 0;
+    LastMonthSales = 0;
+    LastMonthTarget = 0;
+    CurrentQtrSales = 0;
+    CurrentQtrTarget = 0;
+    YtdSales = 0;
+    YtdTarget = 0;
+    Q1Sales = 0;
+    Q1Target = 0;
+    Q1Diff = 0;
+    Q1Percentage = 0;
+    Q1SalesStr = "";
+    Q1TargetStr = "";
+    Q1DiffStr = "";
+    Q1PercentageStr = "";
+    Q2Sales = 0;
+    Q2Target = 0;
+    Q2Diff = 0;
+    Q2Percentage = 0;
+    Q2SalesStr = "";
+    Q2TargetStr = "";
+    Q2DiffStr = "";
+    Q2PercentageStr = "";
+    Q3Sales = 0;
+    Q3Target = 0;
+    Q3Diff = 0;
+    Q3Percentage = 0;
+    Q3SalesStr = "";
+    Q3TargetStr = "";
+    Q3DiffStr = "";
+    Q3PercentageStr = "";
+    Q4Sales = 0;
+    Q4Target = 0;
+    Q4Diff = 0;
+    Q4Percentage = 0;
+    Q4SalesStr = "";
+    Q4TargetStr = "";
+    Q4DiffStr = "";
+    Q4PercentageStr = "";
+    Q1Average = 0;
+    Q1AverageStr = "";
+    Q2Average = 0;
+    Q2AverageStr = "";
+    Q3Average = 0;
+    Q3AverageStr = "";
+    Q4Average = 0;
+    Q4AverageStr = "";
+    monthlySalesList = MonthlySalesList(monthlyData: []);
+    prevMonthlySalesList = MonthlySalesList(monthlyData: []);
+    productwiseSalesList = ProductwiseSalesList(productData: []);
+    customerWiseSalesList = CustomerWiseSalesList(customerData: []);
+    prevYearMonthList = PrevYearMonthList(prevYearMonthData: []);
+    tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: []);
+    asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
+    rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
+    customerStateWiseSalesList = CustomerStateWiseSalesList(
+      customerStateData: [],
+    );
+    productGroupwiseSalesList = ProductGroupwiseSalesList(productGroupData: []);
+    if (refresh && mounted) {
+      setState(() {});
+    }
   }
 
   void clearVariablesForFilter() {
-    setState(() {
-      chartDataLoaded = false;
-      YtdSalesBarChartData = false;
+    chartDataLoaded = false;
+    YtdSalesBarChartData = false;
 
-      productwiseSalesList = ProductwiseSalesList(productData: []);
-      customerWiseSalesList = CustomerWiseSalesList(customerData: []);
-      tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: []);
-      asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
-      rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
-      customerStateWiseSalesList = CustomerStateWiseSalesList(
-        customerStateData: [],
-      );
-      productGroupwiseSalesList = ProductGroupwiseSalesList(
-        productGroupData: [],
-      );
-    });
+    productwiseSalesList = ProductwiseSalesList(productData: []);
+    customerWiseSalesList = CustomerWiseSalesList(customerData: []);
+    tsmwiseSalesList = TsmwiseSalesList(tsmwiseData: []);
+    asmwiseSalesList = AsmwiseSalesList(asmwiseData: []);
+    rsmwiseSalesList = RsmwiseSalesList(rsmwiseData: []);
+    customerStateWiseSalesList = CustomerStateWiseSalesList(
+      customerStateData: [],
+    );
+    productGroupwiseSalesList = ProductGroupwiseSalesList(productGroupData: []);
+    if (_disposed || !mounted) return;
+    setState(() {});
   }
 
   @override
@@ -4291,7 +4309,6 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
     _customerSalesHorizontalController.dispose();
     _itemGroupWiseHorizontalController.dispose();
     _itemWiseHorizontalController.dispose();
-    clearVariables();
     _longPressGestureRecognizer.dispose();
     ytdSalesList = YTDSalesList(ytdData: []);
     ytdItemSalesList = ItemYTDSalesList(ytdData: []);
@@ -4307,6 +4324,8 @@ class SalesPerformancePageState extends State<SalesPerformancePage> {
       customerStateData: [],
     );
     productGroupwiseSalesList = ProductGroupwiseSalesList(productGroupData: []);
+    clearVariables(refresh: false);
+    _disposed = true;
     super.dispose();
   }
 

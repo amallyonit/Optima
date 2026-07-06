@@ -280,26 +280,6 @@ class _ExpensesFinanceState extends State<ExpensesFinance> {
     return formatter.format(date);
   }
 
-  String formatAmount(double amount) {
-    bool isNegative = amount < 0;
-
-    double positiveAmount = amount.abs();
-
-    if (positiveAmount >= 10000000) {
-      String formattedAmount =
-          '${(positiveAmount / 10000000).toStringAsFixed(2)} Cr';
-      return isNegative ? '-$formattedAmount' : formattedAmount;
-    } else if (positiveAmount >= 100000) {
-      String formattedAmount =
-          '${(positiveAmount / 100000).toStringAsFixed(2)} L';
-      return isNegative ? '-$formattedAmount' : formattedAmount;
-    } else {
-      String formattedAmount =
-          '${(positiveAmount / 1000).toStringAsFixed(2)} K';
-      return isNegative ? '-$formattedAmount' : formattedAmount;
-    }
-  }
-
   SideTitles get _leftTitles => SideTitles(
     reservedSize: 50,
     showTitles: true,

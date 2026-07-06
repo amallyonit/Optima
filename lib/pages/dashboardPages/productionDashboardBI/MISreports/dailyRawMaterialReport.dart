@@ -675,7 +675,6 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
       return e.groupName == selectedGroup;
     });
-    
 
     selectedItems = filteredList
         .where((e) {

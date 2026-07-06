@@ -368,7 +368,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           ? maxValue
           : soData.salesOrderTarget;
     }
-    return ((maxValue ~/ 500000) + 1) * 500000;
+    return ((maxValue ~/ 20000000) + 1) * 20000000;
   }
 
   double getCustomerMaxValue(CustomerWiseSalesList customerAnalysisData) {
@@ -376,7 +376,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     for (var soData in customerAnalysisData.customerData) {
       maxValue = maxValue > soData.saleAmount ? maxValue : soData.saleAmount;
     }
-    return ((maxValue ~/ 100000) + 1) * 100000;
+    return ((maxValue ~/ 1000000) + 1) * 1000000;
   }
 
   double getRsmMaxValue(RsmwiseSalesList rsmManagerData) {
@@ -387,7 +387,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
           ? maxValue
           : soData.targetAmount;
     }
-    return ((maxValue ~/ 100000) + 1) * 100000;
+    return ((maxValue ~/ 1000000) + 1) * 1000000;
   }
 
   double getAsmMaxValue(AsmwiseSalesList salesManagerData) {
@@ -421,7 +421,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     for (var soData in itemGroupWiseData.productGroupData) {
       maxValue = maxValue > soData.salesAmount ? maxValue : soData.salesAmount;
     }
-    return ((maxValue ~/ 100000) + 1) * 100000;
+    return ((maxValue ~/ 2000000) + 1) * 2000000;
   }
 
   double getItemMaxValue(ProductwiseSalesList itemAnalysisData) {
@@ -467,8 +467,14 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: customerWiseSalesData.indexOf(sales),
             barRods: [
               BarChartRodData(
+                backDrawRodData: BackgroundBarChartRodData(
+                  fromY: 0,
+                  toY: sales.targetAmount,
+                  show: true,
+                  color: const Color(0xFFFF9F47),
+                ),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
-                color: const Color(0xFFF49136),
                 toY: sales.saleAmount,
                 width: 30,
               ),
@@ -487,7 +493,13 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: rsmwiseData.indexOf(sales),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                backDrawRodData: BackgroundBarChartRodData(
+                  fromY: 0,
+                  toY: sales.targetAmount,
+                  show: true,
+                  color: const Color(0xFFFF9F47),
+                ),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
                 toY: sales.salesAmount,
                 width: 30,
@@ -507,7 +519,13 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: monthlyData.indexOf(sales),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                backDrawRodData: BackgroundBarChartRodData(
+                  fromY: 0,
+                  toY: sales.targetAmount,
+                  show: true,
+                  color: const Color(0xFFFF9F47),
+                ),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
                 toY: sales.salesAmount,
                 width: 30,
@@ -527,7 +545,13 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: monthlyData.indexOf(sales),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                backDrawRodData: BackgroundBarChartRodData(
+                  fromY: 0,
+                  toY: sales.targetAmount,
+                  show: true,
+                  color: const Color(0xFFFF9F47),
+                ),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
                 toY: sales.salesAmount,
                 width: 30,
@@ -547,8 +571,14 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: productwiseSalesData.indexOf(sales),
             barRods: [
               BarChartRodData(
+                backDrawRodData: BackgroundBarChartRodData(
+                  fromY: 0,
+                  toY: sales.targetAmount,
+                  show: true,
+                  color: const Color(0xFFFF9F47),
+                ),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
-                color: const Color(0xFFFF9F47),
                 toY: sales.salesAmount,
                 width: 30,
               ),
@@ -567,8 +597,14 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: productwiseSalesData.indexOf(sales),
             barRods: [
               BarChartRodData(
+                backDrawRodData: BackgroundBarChartRodData(
+                  fromY: 0,
+                  toY: sales.targetAmount,
+                  show: true,
+                  color: const Color(0xFFFF9F47),
+                ),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
-                color: const Color(0xFFFF9F47),
                 toY: sales.salesAmount,
                 width: 30,
               ),
@@ -587,7 +623,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
             x: openSOData.indexOf(data),
             barRods: [
               BarChartRodData(
-                color: const Color(0xFFFF9F47),
+                color: const Color(0xFF6CCC3F),
                 borderRadius: BorderRadius.zero,
                 toY: data.receivableAmount,
                 width: 30,
@@ -3144,6 +3180,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
 
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _monthlySOHorizontalController = ScrollController();
+  final ScrollController _customerHorizontalController = ScrollController();
   final ScrollController _regionalManagerHorizontalController =
       ScrollController();
   final ScrollController _salesManagerHorizontalController = ScrollController();
@@ -3177,6 +3214,7 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
   void dispose() {
     _verticalScrollController.dispose();
     _monthlySOHorizontalController.dispose();
+    _customerHorizontalController.dispose();
     _regionalManagerHorizontalController.dispose();
     _salesManagerHorizontalController.dispose();
     _salesPersonHorizontalController.dispose();
@@ -3659,13 +3697,6 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
                             style: TextStyle(fontSize: 12),
                           ),
                           const SizedBox(width: 10),
-                          Container(
-                            height: 8,
-                            width: 8,
-                            color: Color(0xFFFF9F47),
-                          ),
-                          const SizedBox(width: 5),
-                          const Text('Target', style: TextStyle(fontSize: 12)),
                         ],
                       ),
                       menuItems: [
@@ -3719,145 +3750,153 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _monthlySOHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getMaxValue(monthlySalesOrderList),
-            titlesData: FlTitlesData(
-              show: true,
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesMonthWiseSO,
-                axisNameSize: 14,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _monthWiseSOChartData(monthlySalesOrderList.soData),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    touchedMonth = monthlySalesOrderList
-                        .soData[barTouchResponse.spot!.spot.x.toInt()]
-                        .monthName;
-                    List months = [
-                      'Jan',
-                      'Feb',
-                      'Mar',
-                      'Apr',
-                      'May',
-                      'Jun',
-                      'Jul',
-                      'Aug',
-                      'Sep',
-                      'Oct',
-                      'Nov',
-                      'Dec',
-                    ];
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedMonthIndex = touchedMonthIndex == 0
-                          ? months.indexOf(touchedMonth.substring(0, 3)) + 1
-                          : 0;
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                        touchedAgingCategory,
-                      );
-                    }
-                  });
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getMaxValue(monthlySalesOrderList),
+              titlesData: FlTitlesData(
+                show: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${monthlySalesOrderList.soData[grpIndex].monthName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(monthlySalesOrderList.soData[grpIndex].salesOrderAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(monthlySalesOrderList.soData[grpIndex].salesOrderTarget / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((monthlySalesOrderList.soData[grpIndex].salesOrderAmount - monthlySalesOrderList.soData[grpIndex].salesOrderTarget) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((monthlySalesOrderList.soData[grpIndex].salesOrderAmount / monthlySalesOrderList.soData[grpIndex].salesOrderTarget) * 100).toStringAsFixed(2)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesMonthWiseSO,
+                  axisNameSize: 14,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _monthWiseSOChartData(monthlySalesOrderList.soData),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      touchedMonth = monthlySalesOrderList
+                          .soData[barTouchResponse.spot!.spot.x.toInt()]
+                          .monthName;
+                      List months = [
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec',
+                      ];
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedMonthIndex = touchedMonthIndex == 0
+                            ? months.indexOf(touchedMonth.substring(0, 3)) + 1
+                            : 0;
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                          touchedAgingCategory,
+                        );
+                      }
+                    });
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${monthlySalesOrderList.soData[grpIndex].monthName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(monthlySalesOrderList.soData[grpIndex].salesOrderAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(monthlySalesOrderList.soData[grpIndex].salesOrderTarget / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((monthlySalesOrderList.soData[grpIndex].salesOrderAmount - monthlySalesOrderList.soData[grpIndex].salesOrderTarget) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${((monthlySalesOrderList.soData[grpIndex].salesOrderAmount / monthlySalesOrderList.soData[grpIndex].salesOrderTarget) * 100).toStringAsFixed(2)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),
@@ -3874,137 +3913,145 @@ class _SOAnalysisPageState extends State<SOAnalysisPage> {
     } else {
       chartWidth = screenWidth;
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return FinanceHorizontalChartScroll(
+      controller: _customerHorizontalController,
+      verticalController: _verticalScrollController,
       child: SizedBox(
         height: 350,
         width: chartWidth,
-        child: BarChart(
-          BarChartData(
-            maxY: getCustomerMaxValue(customerAnalysisData),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              leftTitles: AxisTitles(sideTitles: _leftTitles, axisNameSize: 14),
-              topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
-              bottomTitles: AxisTitles(
-                sideTitles: _bottomTitlesCustomer,
-                axisNameSize: 20,
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              checkToShowHorizontalLine: (value) => value % 10 == 0,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: Colors.grey.shade300, strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
-                top: BorderSide(color: Colors.grey.shade400, width: 0.7),
-              ),
-            ),
-            barGroups: _customerAnalysisChartData(
-              customerAnalysisData.customerData,
-            ),
-            barTouchData: BarTouchData(
-              allowTouchBarBackDraw: true,
-              touchCallback: (flTouchEvent, barTouchResponse) async {
-                if (barTouchResponse != null && barTouchResponse.spot != null) {
-                  setState(() {
-                    if (flTouchEvent is FlTapUpEvent) {
-                      touchedCustomer = touchedCustomer == ""
-                          ? customerAnalysisData
-                                .customerData[barTouchResponse.spot!.spot.x
-                                    .toInt()]
-                                .customerCode
-                          : "";
-                      selectedChart = barTouchResponse.spot!.spot.x;
-                      showDrillDownChart = true;
-                      loadDataWithFilter(
-                        touchedMonthIndex,
-                        touchedRegionalManager,
-                        touchedSalesManager,
-                        touchedSalesRep,
-                        touchedCustomer,
-                        touchedProductGroup,
-                        touchedProduct,
-                        touchedAgingCategory,
-                      );
-                    }
-                  });
-                  if (showProductSaleChart != true) {
-                    await Future.delayed(const Duration(milliseconds: 50));
-                    _scrollDown();
-                  }
-                }
-              },
-              touchTooltipData: BarTouchTooltipData(
-                maxContentWidth: 200,
-                tooltipBorder: const BorderSide(
-                  width: 2.0,
-                  color: Colors.black12,
-                  style: BorderStyle.none,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: BarChart(
+            BarChartData(
+              maxY: getCustomerMaxValue(customerAnalysisData),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
                 ),
-                getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
-                  return BarTooltipItem(
-                    '${customerAnalysisData.customerData[grpIndex].customerName}\n',
-                    const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text:
-                            "Achievement : ${(customerAnalysisData.customerData[grpIndex].saleAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "3 Month Avg. : ${(customerAnalysisData.customerData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Difference : ${((customerAnalysisData.customerData[grpIndex].saleAmount - customerAnalysisData.customerData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            "Percentage : ${((customerAnalysisData.customerData[grpIndex].saleAmount / customerAnalysisData.customerData[grpIndex].targetAmount == 0 ? customerAnalysisData.customerData[grpIndex].saleAmount : customerAnalysisData.customerData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          color: Colors.black, //widget.touchedBarColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    textAlign: TextAlign.start,
-                  );
-                },
-                getTooltipColor: (group) => Colors.white,
-                fitInsideVertically: true,
-                fitInsideHorizontally: true,
+                leftTitles: AxisTitles(
+                  sideTitles: _leftTitles,
+                  axisNameSize: 14,
+                ),
+                topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+                bottomTitles: AxisTitles(
+                  sideTitles: _bottomTitlesCustomer,
+                  axisNameSize: 20,
+                ),
               ),
-              handleBuiltInTouches: true,
-              touchExtraThreshold: const EdgeInsets.all(10),
+              gridData: FlGridData(
+                show: true,
+                checkToShowHorizontalLine: (value) => value % 10 == 0,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                  top: BorderSide(color: Colors.grey.shade400, width: 0.7),
+                ),
+              ),
+              barGroups: _customerAnalysisChartData(
+                customerAnalysisData.customerData,
+              ),
+              barTouchData: BarTouchData(
+                allowTouchBarBackDraw: true,
+                touchCallback: (flTouchEvent, barTouchResponse) async {
+                  if (barTouchResponse != null &&
+                      barTouchResponse.spot != null) {
+                    setState(() {
+                      if (flTouchEvent is FlTapUpEvent) {
+                        touchedCustomer = touchedCustomer == ""
+                            ? customerAnalysisData
+                                  .customerData[barTouchResponse.spot!.spot.x
+                                      .toInt()]
+                                  .customerCode
+                            : "";
+                        selectedChart = barTouchResponse.spot!.spot.x;
+                        showDrillDownChart = true;
+                        loadDataWithFilter(
+                          touchedMonthIndex,
+                          touchedRegionalManager,
+                          touchedSalesManager,
+                          touchedSalesRep,
+                          touchedCustomer,
+                          touchedProductGroup,
+                          touchedProduct,
+                          touchedAgingCategory,
+                        );
+                      }
+                    });
+                    if (showProductSaleChart != true) {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      _scrollDown();
+                    }
+                  }
+                },
+                touchTooltipData: BarTouchTooltipData(
+                  maxContentWidth: 200,
+                  tooltipBorder: const BorderSide(
+                    width: 2.0,
+                    color: Colors.black12,
+                    style: BorderStyle.none,
+                  ),
+                  getTooltipItem: (groupData, grpIndex, rodData, rodIndex) {
+                    return BarTooltipItem(
+                      '${customerAnalysisData.customerData[grpIndex].customerName}\n',
+                      const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text:
+                              "Achievement : ${(customerAnalysisData.customerData[grpIndex].saleAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "3 Month Avg. : ${(customerAnalysisData.customerData[grpIndex].targetAmount / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Difference : ${((customerAnalysisData.customerData[grpIndex].saleAmount - customerAnalysisData.customerData[grpIndex].targetAmount) / 100000).toStringAsFixed(2)} L\n",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "Percentage : ${((customerAnalysisData.customerData[grpIndex].saleAmount / customerAnalysisData.customerData[grpIndex].targetAmount == 0 ? customerAnalysisData.customerData[grpIndex].saleAmount : customerAnalysisData.customerData[grpIndex].targetAmount) * 100).ceil().toStringAsFixed(0)}%",
+                          style: const TextStyle(
+                            color: Colors.black, //widget.touchedBarColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      textAlign: TextAlign.start,
+                    );
+                  },
+                  getTooltipColor: (group) => Colors.white,
+                  fitInsideVertically: true,
+                  fitInsideHorizontally: true,
+                ),
+                handleBuiltInTouches: true,
+                touchExtraThreshold: const EdgeInsets.all(10),
+              ),
             ),
           ),
         ),

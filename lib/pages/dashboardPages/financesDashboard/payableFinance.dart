@@ -377,24 +377,6 @@ class _PayableFinanceState extends State<PayableFinance> {
     return formatter.format(date);
   }
 
-  String formatAmount(double amount) {
-    final isNegative = amount < 0;
-    final positiveAmount = amount.abs();
-    String formatted;
-
-    if (positiveAmount < 1000) {
-      formatted = positiveAmount.toStringAsFixed(2);
-    } else if (positiveAmount < 100000) {
-      formatted = '${(positiveAmount / 1000).toStringAsFixed(2)} K';
-    } else if (positiveAmount < 10000000) {
-      formatted = '${(positiveAmount / 100000).toStringAsFixed(2)} L';
-    } else {
-      formatted = '${(positiveAmount / 10000000).toStringAsFixed(2)} Cr';
-    }
-
-    return isNegative ? '-$formatted' : formatted;
-  }
-
   void navigateToLoginScreen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userJwtToken', '');

@@ -954,24 +954,27 @@ class MonthlySalesOrderData {
 
 String formatAmount(double amount) {
   bool isNegative = amount < 0;
-
   double positiveAmount = amount.abs();
 
-  if (positiveAmount >= 10000000) {
-    String formattedAmount =
-        '${(positiveAmount / 10000000).toStringAsFixed(2)} C';
-    return isNegative ? '-$formattedAmount' : formattedAmount;
-  } else if (positiveAmount >= 100000) {
-    String formattedAmount =
-        '${(positiveAmount / 100000).toStringAsFixed(2)} L';
-    return isNegative ? '-$formattedAmount' : formattedAmount;
-  } else if (positiveAmount >= 10000) {
-    String formattedAmount = '${(positiveAmount / 10000).toStringAsFixed(2)} K';
-    return isNegative ? '-$formattedAmount' : formattedAmount;
-  } else {
-    String formattedAmount = '${(positiveAmount / 1000).toStringAsFixed(2)} K';
-    return isNegative ? '-$formattedAmount' : formattedAmount;
+  String formatValue(double value, String suffix) {
+    // Truncate to 2 decimal places instead of rounding
+    double truncated = (value * 100).floor() / 100;
+    return '${truncated.toStringAsFixed(2)} $suffix';
   }
+
+  String formattedAmount;
+
+  if (positiveAmount >= 10000000) {
+    formattedAmount = formatValue(positiveAmount / 10000000, 'C');
+  } else if (positiveAmount >= 100000) {
+    formattedAmount = formatValue(positiveAmount / 100000, 'L');
+  } else if (positiveAmount >= 10000) {
+    formattedAmount = formatValue(positiveAmount / 10000, 'K');
+  } else {
+    formattedAmount = formatValue(positiveAmount / 1000, 'K');
+  }
+
+  return isNegative ? '-$formattedAmount' : formattedAmount;
 }
 
 String formatCount(double count) {
@@ -6618,27 +6621,35 @@ class PendingPurchaseChartModel {
   final String description;
 
   final double targetPurchaseOrder;
-  final double totalPendingPOValue;
   final double grnValue;
-
-  final double previousMonthPending;
-  final double currentMonthPending;
-  final double nextMonthPending;
 
   PendingPurchaseChartModel({
     required this.description,
     required this.targetPurchaseOrder,
-    required this.totalPendingPOValue,
     required this.grnValue,
+  });
+
+  List<double> get chartValues => [targetPurchaseOrder, grnValue];
+}
+
+class PendingPurchaseChartModel2 {
+  final String description;
+
+  final double totalPendingPOValue;
+  final double previousMonthPending;
+  final double currentMonthPending;
+  final double nextMonthPending;
+
+  PendingPurchaseChartModel2({
+    required this.description,
+    required this.totalPendingPOValue,
     required this.previousMonthPending,
     required this.currentMonthPending,
     required this.nextMonthPending,
   });
 
-  List<double> get chartValues => [
-    targetPurchaseOrder,
+  List<double> get chartValues2 => [
     totalPendingPOValue,
-    grnValue,
     previousMonthPending,
     currentMonthPending,
     nextMonthPending,

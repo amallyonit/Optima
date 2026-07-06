@@ -69,19 +69,6 @@ class _DeliveryAnalysisPageState extends State<DeliveryAnalysisPage> {
 
   int touchedIndex = -1;
 
-  String formatAmount(double amount) {
-    if (amount >= 10000000) {
-      // Amount in crores
-      return '${(amount / 10000000).toStringAsFixed(2)} Cr';
-    } else if (amount >= 100000) {
-      // Amount in lakhs
-      return '${(amount / 100000).toStringAsFixed(2)} L';
-    } else {
-      // Amount in thousands
-      return '${(amount / 1000).toStringAsFixed(2)} K';
-    }
-  }
-
   double convertAmount(double amount) {
     if (amount >= 10000000) {
       // Amount in crores

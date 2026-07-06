@@ -47,7 +47,7 @@ class _MonthlyWorkforceSummaryPageState
   double _avgOnRoll = 0;
   double _avgPresent = 0;
 
-  String formatAmount(double amount) {
+  String formatCount(double amount) {
     if (amount % 1 == 0) {
       return amount.toInt().toString();
     }
@@ -226,7 +226,7 @@ class _MonthlyWorkforceSummaryPageState
     showTitles: true,
     getTitlesWidget: (value, meta) {
       String leftDouble = "";
-      leftDouble = formatAmount(value);
+      leftDouble = formatCount(value);
       return Text(leftDouble, style: const TextStyle(fontSize: 12));
     },
   );
@@ -449,7 +449,7 @@ class _MonthlyWorkforceSummaryPageState
                       ),
                       children: [
                         TextSpan(
-                          text: "\nTarget: ${formatAmount(data.target)}",
+                          text: "\nTarget: ${formatCount(data.target)}",
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 12,
@@ -457,7 +457,7 @@ class _MonthlyWorkforceSummaryPageState
                           ),
                         ),
                         TextSpan(
-                          text: "\nOnRoll: ${formatAmount(data.onRoll)}",
+                          text: "\nOnRoll: ${formatCount(data.onRoll)}",
                           style: const TextStyle(
                             color: Color(0xFF2ca9df),
                             fontSize: 12,
@@ -465,7 +465,7 @@ class _MonthlyWorkforceSummaryPageState
                           ),
                         ),
                         TextSpan(
-                          text: "\nPresent: ${formatAmount(data.present)}",
+                          text: "\nPresent: ${formatCount(data.present)}",
                           style: const TextStyle(
                             color: Colors.green,
                             fontSize: 12,
@@ -504,7 +504,7 @@ class _MonthlyWorkforceSummaryPageState
                     showTitles: true,
                     reservedSize: 40,
                     getTitlesWidget: (v, m) => Text(
-                      formatAmount(v),
+                      formatCount(v),
                       style: const TextStyle(fontSize: 10),
                     ),
                   ),

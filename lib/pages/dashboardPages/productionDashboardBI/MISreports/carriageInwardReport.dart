@@ -278,8 +278,8 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
     formattedDateNow = DateFormat('dd/MM/yy').format(monthDates["end"]!);
   }
 
-  String formatAmount(double amount) {
-    if (amount >= 100000) return "${(amount / 1000).toStringAsFixed(1)}k";
+  String formatLeftTitleAmount(double amount) {
+    if (amount >= 100000) return "${(amount / 1000).toStringAsFixed(1)}K";
     return amount.toStringAsFixed(0);
   }
 
@@ -345,7 +345,7 @@ class _CarriageInwardPageState extends State<CarriageInwardPage> {
     showTitles: true,
     getTitlesWidget: (value, meta) {
       String leftDouble = "";
-      leftDouble = formatAmount(value);
+      leftDouble = formatLeftTitleAmount(value);
       return Text(leftDouble, style: const TextStyle(fontSize: 12));
     },
   );

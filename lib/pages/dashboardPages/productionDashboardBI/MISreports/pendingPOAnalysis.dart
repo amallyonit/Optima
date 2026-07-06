@@ -13,6 +13,7 @@ import 'package:optima/classes/globals.dart';
 import '../../../../notificationService.dart';
 import '../../ReportService.dart';
 import '../../dashboard_card_ui.dart';
+import 'package:collection/collection.dart';
 
 class PendingPOAnalysisPage extends StatefulWidget {
   const PendingPOAnalysisPage({super.key});
@@ -47,6 +48,7 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
   List<POList> poList = [];
   List<POList> poListTemp = [];
   List<PendingPurchaseChartModel> pendingPurchaseChartData = [];
+  List<PendingPurchaseChartModel2> pendingPurchaseChartData2 = [];
   List<SalesTargetList> salesTargetList = [];
   List<PurchaseList> purchaseList = [];
   List<PurchaseList> purchaseListTemp = [];
@@ -58,19 +60,6 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
   DateTime? toDateFilter;
   bool dateFilterFlag = false;
 
-  String formatAmount(double amount) {
-    if (amount >= 10000000) {
-      // Amount in crores
-      return '${(amount / 10000000).toStringAsFixed(2)} Cr';
-    } else if (amount >= 100000) {
-      // Amount in lakhs
-      return '${(amount / 100000).toStringAsFixed(2)} L';
-    } else {
-      // Amount in thousands
-      return '${(amount / 1000).toStringAsFixed(2)} K';
-    }
-  }
-
   double convertAmount(double amount) {
     if (amount >= 10000000) {
       // Amount in crores
@@ -81,16 +70,6 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     } else {
       // Amount in thousands
       return double.parse((amount / 1000).toStringAsFixed(2));
-    }
-  }
-
-  String formatFinanceAmount(double amount) {
-    if (amount >= 1000000000) {
-      return "${(amount / 1000000000).toStringAsFixed(2)} B";
-    } else if (amount >= 1000000) {
-      return "${(amount / 1000000).toStringAsFixed(2)} M";
-    } else {
-      return '${(amount / 1000).toStringAsFixed(2)} K';
     }
   }
 
@@ -225,6 +204,12 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     getTitlesWidget: _bottomTitleWidgetsPendingPurchase,
   );
 
+  late SideTitles _bottomTitlesPendingPurchase2 = SideTitles(
+    showTitles: true,
+    reservedSize: 55,
+    getTitlesWidget: _bottomTitleWidgetsPendingPurchase2,
+  );
+
   Widget _bottomTitleWidgetsPendingPurchase(double value, TitleMeta meta) {
     if (value.toInt() >= pendingPurchaseChartData.length) {
       return const SizedBox();
@@ -248,19 +233,42 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     );
   }
 
-  final List<Color> _pendingPurchaseColors = [
-    Colors.blue,
-    Colors.orange,
-    Colors.green,
+  Widget _bottomTitleWidgetsPendingPurchase2(double value, TitleMeta meta) {
+    if (value.toInt() >= pendingPurchaseChartData2.length) {
+      return const SizedBox();
+    }
+
+    final text = pendingPurchaseChartData2[value.toInt()].description;
+
+    return SideTitleWidget(
+      meta: meta,
+      space: 10,
+      child: SizedBox(
+        width: 90,
+        child: Text(
+          text.replaceAll(' ', '\n'),
+          textAlign: TextAlign.center,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+        ),
+      ),
+    );
+  }
+
+  final List<Color> _pendingPurchaseColors = [Colors.blue, Colors.green];
+
+  final List<String> _pendingPurchaseLabels = ["Target PO", "Achieved GRN"];
+
+  final List<Color> _pendingPurchaseColors2 = [
     Colors.red,
+    Colors.orange,
     Colors.purple,
-    Colors.brown,
+    Colors.teal,
   ];
 
-  final List<String> _pendingPurchaseLabels = [
-    "Target Purchase Order",
+  final List<String> _pendingPurchaseLabels2 = [
     "Total Pending PO",
-    "GRN Value",
     "Upto Previous Month Pending",
     "Current Month Pending",
     "Next Month Pending",
@@ -288,6 +296,28 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     });
   }
 
+  List<BarChartGroupData> _PendingPurchaseChartData2(
+    List<PendingPurchaseChartModel2> data,
+  ) {
+    return List.generate(data.length, (index) {
+      final item = data[index];
+
+      return BarChartGroupData(
+        x: index,
+        barsSpace: 3,
+        barRods: List.generate(
+          item.chartValues2.length,
+          (i) => BarChartRodData(
+            toY: item.chartValues2[i],
+            width: 8,
+            color: _pendingPurchaseColors2[i],
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      );
+    });
+  }
+
   List<PendingPurchaseChartModel> prepareChartData({
     required List<PurchaseList> purchaseList,
     required List<POList> poList,
@@ -308,21 +338,16 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
       'Raw Material',
       'Packing Material',
       'Traded Material',
-      'Other (GP)',
+      'General Products',
     ];
 
     final List<PendingPurchaseChartModel> chartData = [];
 
     for (final group in chartGroups) {
-      //-----------------------------------------
-      // STEP 6 : GRN VALUE
-      //-----------------------------------------
       final now = analysisDate;
 
       final currentMonthStart = DateTime(now.year, now.month, 1);
       final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
-      final nextMonthStart = DateTime(now.year, now.month + 1, 1);
-      final nextMonthEnd = DateTime(now.year, now.month + 2, 0);
 
       double grnValue = purchaseList
           .where((purchase) {
@@ -343,9 +368,68 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
           })
           .fold(0.0, (sum, purchase) => sum + parseValue(purchase.rowTotal));
 
-      //-----------------------------------------
-      // STEP 7 : Previous / Current / Next Pending
-      //-----------------------------------------
+      double targetPurchaseOrder = salesTargetList
+          .where((target) {
+            if (![
+              'General Products',
+              'Raw Material',
+              'Packing Material',
+              'Traded Material',
+            ].contains(target.salesRep)) {
+              return false;
+            }
+
+            return target.salesRep == group;
+          })
+          .fold(
+            0.0,
+            (sum, target) =>
+                sum + parseValue(target.getTargetForMonth(months.current)),
+          );
+
+      chartData.add(
+        PendingPurchaseChartModel(
+          description: group,
+          targetPurchaseOrder: targetPurchaseOrder,
+          grnValue: grnValue,
+        ),
+      );
+    }
+
+    return chartData;
+  }
+
+  List<PendingPurchaseChartModel2> prepareChartData2({
+    required List<PurchaseList> purchaseList,
+    required List<POList> poList,
+    required List<SalesTargetList> salesTargetList,
+  }) {
+    final analysisDate = dateFilterFlag && toDateFilter != null
+        ? toDateFilter!
+        : DateTime.now();
+    purchaseList = purchaseList
+        .where((e) => e.whsCode != 'BAGALUWH' && e.itemSubGroup != "Suture")
+        .toList();
+    poList = poList
+        .where((e) => e.warehouse != 'BAGALUWH' && e.itemSubGroup != "Suture")
+        .toList();
+    // Fixed chart groups
+    const chartGroups = [
+      'Raw Material',
+      'Packing Material',
+      'Traded Material',
+      'General Products',
+    ];
+
+    final List<PendingPurchaseChartModel2> chartData = [];
+
+    for (final group in chartGroups) {
+      final now = analysisDate;
+
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
+      final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+      final nextMonthEnd = DateTime(now.year, now.month + 12, 0);
 
       double previousPending = 0;
       double currentPending = 0;
@@ -384,36 +468,12 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
         }
       }
 
-      //-----------------------------------------
-      // STEP 8 : Total Pending
-      //-----------------------------------------
       double totalPending = previousPending + currentPending + nextPending;
 
-      //-----------------------------------------
-      // STEP 9 : Target Purchase Order
-      //-----------------------------------------
-      double targetPurchaseOrder = salesTargetList
-          .where((target) {
-            if (group == 'Other (GP)') {
-              return target.salesRep != 'Raw Material' &&
-                  target.salesRep != 'Packing Material' &&
-                  target.salesRep != 'Traded Material';
-            }
-
-            return target.salesRep == group;
-          })
-          .fold(
-            0.0,
-            (sum, target) =>
-                sum + parseValue(target.getTargetForMonth(months.current)),
-          );
-
       chartData.add(
-        PendingPurchaseChartModel(
+        PendingPurchaseChartModel2(
           description: group,
-          targetPurchaseOrder: targetPurchaseOrder,
           totalPendingPOValue: totalPending,
-          grnValue: grnValue,
           previousMonthPending: previousPending,
           currentMonthPending: currentPending,
           nextMonthPending: nextPending,
@@ -464,7 +524,13 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
         }
       } while (fetchedCount == limit);
 
+      // List<POList> tmpTest = [];
+
       setState(() {
+        // const poNos = {'24331324', '24331322'};
+
+        // tmpTest = tmpList.where((d) => poNos.contains(d.poNo.trim())).toList();
+
         poList = tmpList
             .where(
               (po) => po.poStatus == "Open" && po.groupName != "Fixed Assets",
@@ -679,6 +745,12 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
       salesTargetList: salesTargetList,
     );
 
+    pendingPurchaseChartData2 = prepareChartData2(
+      purchaseList: purchaseList,
+      poList: poList,
+      salesTargetList: salesTargetList,
+    );
+
     setState(() {
       chartDataLoaded = true;
     });
@@ -719,26 +791,31 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
       'Pending PO value of $nextMonthLabel',
     ];
 
-    final rows = pendingPurchaseChartData
-        .map(
-          (item) => [
-            item.description,
-            item.targetPurchaseOrder,
-            item.totalPendingPOValue,
-            item.grnValue,
-            item.previousMonthPending,
-            item.currentMonthPending,
-            item.nextMonthPending,
-          ],
-        )
-        .toList();
+    final pendingPurchaseMap2 = {
+      for (var item in pendingPurchaseChartData2) item.description: item,
+    };
+
+    final rows = pendingPurchaseChartData.map((item) {
+      final item2 = pendingPurchaseMap2[item.description];
+
+      return [
+        item.description,
+        item.targetPurchaseOrder,
+        item2?.totalPendingPOValue ?? 0.0,
+        item.grnValue,
+        item2?.previousMonthPending ?? 0.0,
+        item2?.currentMonthPending ?? 0.0,
+        item2?.nextMonthPending ?? 0.0,
+      ];
+    }).toList();
+
     rows.add([
       'Total=',
       pendingPurchaseChartData.fold<double>(
         0.0,
         (sum, item) => sum + item.targetPurchaseOrder,
       ),
-      pendingPurchaseChartData.fold<double>(
+      pendingPurchaseChartData2.fold<double>(
         0.0,
         (sum, item) => sum + item.totalPendingPOValue,
       ),
@@ -746,34 +823,42 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
         0.0,
         (sum, item) => sum + item.grnValue,
       ),
-      pendingPurchaseChartData.fold<double>(
+      pendingPurchaseChartData2.fold<double>(
         0.0,
         (sum, item) => sum + item.previousMonthPending,
       ),
-      pendingPurchaseChartData.fold<double>(
+      pendingPurchaseChartData2.fold<double>(
         0.0,
         (sum, item) => sum + item.currentMonthPending,
       ),
-      pendingPurchaseChartData.fold<double>(
+      pendingPurchaseChartData2.fold<double>(
         0.0,
         (sum, item) => sum + item.nextMonthPending,
       ),
     ]);
 
-    final excludedBagalurRows = poList
-        .where((po) => po.warehouse.trim().toUpperCase() == 'BAGALUWH')
-        .map(
-          (po) => [
-            po.poNo,
-            po.vendorName,
-            parseValue(po.pendingValue),
-            po.groupName,
+    final excludedBagalurRows =
+        groupBy(
+          poList.where((po) => po.warehouse.trim().toUpperCase() == 'BAGALUWH'),
+          (po) => po.poNo,
+        ).entries.map((entry) {
+          final first = entry.value.first;
+
+          return [
+            first.poNo,
+            first.vendorName,
+            entry.value.fold<double>(
+              0.0,
+              (sum, po) => sum + parseValue(po.pendingValue),
+            ),
+            first.groupName.trim().isNotEmpty
+                ? first.groupName
+                : first.itemSubGroup,
             '',
             '',
             '',
-          ],
-        )
-        .toList();
+          ];
+        }).toList();
 
     final footerRows = <List<dynamic>>[
       [
@@ -794,7 +879,7 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
       headers: headers,
       rows: rows,
       fileName: 'purchase_order_pending_summary.xlsx',
-      amountColumns: [2, 3, 4, 5, 6, 7],
+      amountColumns: [],
       addTotalRow: false,
       footerRows: footerRows,
       reportTitle:
@@ -832,6 +917,12 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
       _loadSalesTarget(UserName, UserLevel),
     ]);
     pendingPurchaseChartData = prepareChartData(
+      purchaseList: purchaseList,
+      poList: poList,
+      salesTargetList: salesTargetList,
+    );
+
+    pendingPurchaseChartData2 = prepareChartData2(
       purchaseList: purchaseList,
       poList: poList,
       salesTargetList: salesTargetList,
@@ -880,7 +971,7 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
         return 'Traded Material';
 
       default:
-        return 'Other (GP)';
+        return 'General Products';
     }
   }
 
@@ -941,6 +1032,7 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
 
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
+  final ScrollController _horizontalController2 = ScrollController();
 
   @override
   void initState() {
@@ -957,6 +1049,7 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
   void dispose() {
     _verticalScrollController.dispose();
     _horizontalController.dispose();
+    _horizontalController2.dispose();
     super.dispose();
   }
 
@@ -1016,6 +1109,8 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
                       children: [
                         const SizedBox(height: 10),
                         _pendingPurchaseAnalysisGraph(),
+                        const SizedBox(height: 15),
+                        _pendingPurchaseAnalysisGraph2(),
                         const SizedBox(height: 15),
                       ],
                     ),
@@ -1148,6 +1243,127 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
     );
   }
 
+  Widget _pendingPurchaseAnalysisGraph2() {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    double chartWidth = screenWidth;
+
+    if (pendingPurchaseChartData2.length > 4) {
+      chartWidth += (pendingPurchaseChartData2.length - 4) * 140;
+    }
+
+    double maxAmount = 0;
+
+    if (pendingPurchaseChartData2.isNotEmpty) {
+      maxAmount = pendingPurchaseChartData2
+          .expand((e) => e.chartValues2)
+          .reduce((a, b) => a > b ? a : b);
+    }
+
+    return Column(
+      children: [
+        _buildPendingPurchaseLegend2(),
+
+        const SizedBox(height: 10),
+
+        FinanceHorizontalChartScroll(
+          controller: _horizontalController2,
+          verticalController: _verticalScrollController,
+          child: SizedBox(
+            width: chartWidth,
+            height: 400,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+
+                  maxY: getMaxValue(maxAmount),
+
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    checkToShowHorizontalLine: (value) => true,
+                    getDrawingHorizontalLine: (value) =>
+                        FlLine(color: Colors.grey.shade300, strokeWidth: 1),
+                  ),
+
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey.shade400,
+                        width: .7,
+                      ),
+                      top: BorderSide(color: Colors.grey.shade400, width: .7),
+                    ),
+                  ),
+
+                  titlesData: FlTitlesData(
+                    show: true,
+
+                    leftTitles: AxisTitles(sideTitles: _leftTitles),
+
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+
+                    topTitles: AxisTitles(sideTitles: _emptyTitlesTop),
+
+                    bottomTitles: AxisTitles(
+                      sideTitles: _bottomTitlesPendingPurchase2,
+                    ),
+                  ),
+
+                  barGroups: _PendingPurchaseChartData2(
+                    pendingPurchaseChartData2,
+                  ),
+
+                  barTouchData: BarTouchData(
+                    handleBuiltInTouches: true,
+
+                    touchTooltipData: BarTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+
+                      getTooltipColor: (group) => Colors.white,
+
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final item = pendingPurchaseChartData2[group.x];
+
+                        final labels = _pendingPurchaseLabels2;
+                        final values = item.chartValues2;
+
+                        return BarTooltipItem(
+                          item.description,
+                          const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          children: List.generate(labels.length, (index) {
+                            return TextSpan(
+                              text:
+                                  "\n${labels[index]} : ${formatAmount(values[index])}",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _pendingPurchaseColors2[index],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          }),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPendingPurchaseLegend() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1171,6 +1387,41 @@ class _PendingPOAnalysisPageState extends State<PendingPOAnalysisPage> {
               const SizedBox(width: 6),
               Text(
                 _pendingPurchaseLabels[index],
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingPurchaseLegend2() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Wrap(
+        spacing: 18,
+        runSpacing: 10,
+        alignment: WrapAlignment.center,
+        children: List.generate(
+          _pendingPurchaseLabels2.length,
+          (index) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: _pendingPurchaseColors2[index],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _pendingPurchaseLabels2[index],
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
