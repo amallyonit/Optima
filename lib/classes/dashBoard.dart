@@ -6655,3 +6655,56 @@ class PendingPurchaseChartModel2 {
     nextMonthPending,
   ];
 }
+
+class CRMInventoryList {
+  final String docDate;
+  final String itemNo;
+  final String itemDescription;
+  final String warehouseCode;
+  final String warehouseName;
+  final String groupName;
+  final String itemSubGroup;
+  final String uom;
+  final String totalQuantity;
+  final String totalValue;
+  final String misrmItemGroups;
+  final String misfgItemGroups;
+  final String rmLocation;
+  final String fgLocation;
+
+  CRMInventoryList({
+    required this.docDate,
+    required this.itemNo,
+    required this.itemDescription,
+    required this.warehouseCode,
+    required this.warehouseName,
+    required this.groupName,
+    required this.itemSubGroup,
+    required this.uom,
+    required this.totalQuantity,
+    required this.totalValue,
+    required this.misrmItemGroups,
+    required this.misfgItemGroups,
+    required this.rmLocation,
+    required this.fgLocation,
+  });
+
+  factory CRMInventoryList.fromJson(Map<String, dynamic> json) {
+    return CRMInventoryList(
+      docDate: json['docDate'],
+      itemNo: json['itemNo'],
+      itemDescription: json['itemDescription'],
+      warehouseCode: json['warehouseCode'],
+      warehouseName: json['warehouseName'],
+      groupName: json['groupName'],
+      itemSubGroup: json['itemSubGroup'],
+      uom: json['uom'],
+      totalQuantity: json['totalQuantity'],
+      totalValue: json['totalValue'],
+      misrmItemGroups: json['misrmItemGroups'],
+      misfgItemGroups: json['misfgItemGroups'],
+      rmLocation: json['rmLocation'],
+      fgLocation: json['fgLocation'],
+    );
+  }
+}

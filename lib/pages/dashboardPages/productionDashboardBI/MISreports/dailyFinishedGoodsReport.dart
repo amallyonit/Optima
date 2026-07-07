@@ -50,13 +50,13 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
   bool chartDataLoaded = false;
   String? _selectedBranch;
 
-  List<InventoryLevelList> stockData = [];
-  List<InventoryLevelList> stockDataTemp = [];
+  List<CRMInventoryList> stockData = [];
+  List<CRMInventoryList> stockDataTemp = [];
   List<StockInTransitList> stockInTransitList = [];
   List<StockInTransitList> stockInTransitListTemp = [];
   List<SalesTargetList> salesTargetList = [];
 
-  String selectedGroup = 'Medical Device';
+  String selectedGroup = '';
 
   DateTime selectedDate = DateTime.now();
   String formattedStartDate = "";
@@ -333,17 +333,18 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     int index = 0;
     int limit = 10000; // Maximum limit to fetch all data
     int fetchedCount = 0;
-    List<InventoryLevelList> stockList = [];
-    List<InventoryLevelList> filteredStockList = [];
+    List<CRMInventoryList> stockList = [];
+    List<CRMInventoryList> filteredStockList = [];
+    final toDate = formatDate(currentDate!);
     try {
       do {
         var body = {
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "type": "All",
           "sapToken": DataManager.readSapToken(),
         };
-        const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
+        const apiUrl = '${ApiHelper.baseUrl}CRMInventoryList';
         final response = await http.post(
           Uri.parse(apiUrl),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
@@ -353,9 +354,9 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryLevelList> newStockList =
+            List<CRMInventoryList> newStockList =
                 (responseJson['responseData'] as List)
-                    .map((item) => InventoryLevelList.fromJson(item))
+                    .map((item) => CRMInventoryList.fromJson(item))
                     .toList();
 
             stockList.addAll(newStockList);
@@ -369,10 +370,8 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         }
       } while (fetchedCount == limit);
 
-      const groups = {'Finished Goods', 'Traded Material'};
-
       filteredStockList = stockList
-          .where((e) => groups.contains(e.groupName))
+          .where((e) => e.misfgItemGroups != "")
           .toList();
 
       setState(() {
@@ -491,14 +490,14 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         .reduce((a, b) => a > b ? a : b);
   }
 
-  List<String> get groupList {
+  List<String> get groupsList {
     final groups =
-        dailyStockAchievementData.stockData
+        ([...dailyStockAchievementData.stockData]
+              ..sort((a, b) => b.targetStock.compareTo(a.targetStock)))
             .map((e) => e.itemGroup.trim())
             .where((e) => e.isNotEmpty)
             .toSet()
-            .toList()
-          ..sort();
+            .toList();
 
     return groups;
   }
@@ -530,6 +529,19 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     return double.tryParse(value?.replaceAll(',', '') ?? '') ?? 0;
   }
 
+  DateTime? parseDate(String value) {
+    for (final format in [
+      DateFormat('dd-MM-yyyy'),
+      DateFormat('dd/MM/yyyy'),
+      DateFormat('yyyy-MM-dd'),
+    ]) {
+      try {
+        return format.parseStrict(value);
+      } catch (_) {}
+    }
+    return null;
+  }
+
   Future<void> _loadDailyFGGraph() async {
     if (stockData.isEmpty || _selectedBranch == null) return;
     final DateTime selected = selectedDate;
@@ -544,15 +556,14 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       59,
       59,
     );
-
     final months = getMonths(selected);
     List<DailyStockAchievementData> stockDataList = [];
 
     // Filter selected month records
     final filteredList = stockData.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
-
+        final docDate = parseDate(e.docDate);
+        if (docDate == null) return false;
         return docDate.isAtLeast(startDate) && docDate.isAtMost(endDate);
       } catch (_) {
         return false;
@@ -560,16 +571,16 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     }).toList();
 
     // Group by Date + SubGroup
-    final Map<String, List<InventoryLevelList>> groupedData = {};
+    final Map<String, List<CRMInventoryList>> groupedData = {};
 
     for (final item in filteredList) {
       if (_selectedBranch != "All Warehouses") {
         if (item.warehouseName != _selectedBranch) continue;
       }
-      DateTime docDate = DateFormat('dd/MM/yyyy').parse(item.documentDate);
+      DateTime docDate = parseDate(item.docDate)!;
 
       String key =
-          "${DateFormat('yyyy-MM-dd').format(docDate)}|${item.itemSubGroup}";
+          "${DateFormat('yyyy-MM-dd').format(docDate)}|${item.misfgItemGroups}";
 
       groupedData.putIfAbsent(key, () => []);
       groupedData[key]!.add(item);
@@ -583,13 +594,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
 
       targetStock = salesTargetList
           .where((target) {
-            if (rows.first.groupName == 'Other (GP)') {
-              return target.salesRep != 'Raw Material' &&
-                  target.salesRep != 'Packing Material' &&
-                  target.salesRep != 'Traded Material';
-            }
-
-            return target.salesRep == rows.first.groupName;
+            return target.salesRep == rows.first.misfgItemGroups;
           })
           .fold(
             0.0,
@@ -598,7 +603,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
           );
 
       for (final row in rows) {
-        actualStock += double.tryParse(row.quantity) ?? 0;
+        actualStock += double.tryParse(row.totalValue) ?? 0;
       }
 
       double achievedPercentage = targetStock > 0
@@ -607,8 +612,8 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
 
       stockDataList.add(
         DailyStockAchievementData(
-          date: DateFormat('dd/MM/yyyy').parse(rows.first.documentDate),
-          itemGroup: rows.first.itemSubGroup,
+          date: parseDate(rows.first.docDate)!,
+          itemGroup: rows.first.misfgItemGroups,
           targetStock: targetStock,
           actualStock: actualStock,
           achievedPercentage: achievedPercentage,
@@ -622,10 +627,13 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       stockData: stockDataList,
     );
 
-    final groups = stockDataList
-        .map((e) => e.itemGroup.trim())
-        .toSet()
-        .toList();
+    final groups =
+        ([...dailyStockAchievementData.stockData]
+              ..sort((a, b) => b.targetStock.compareTo(a.targetStock)))
+            .map((e) => e.itemGroup.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
 
     if (groups.isNotEmpty && !groups.contains(selectedGroup)) {
       selectedGroup = groups.first;
@@ -638,7 +646,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
 
   Future<void> _loadItemGraph() async {
     if (stockData.isEmpty || _selectedBranch == null) return;
-
+    final months = getMonths(selectedDate);
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       selectedDate.month,
     );
@@ -653,8 +661,8 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
 
     final filteredList = stockData.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
-
+        final docDate = parseDate(e.docDate);
+        if (docDate == null) return false;
         if (!(docDate.isAtLeast(startDate) && docDate.isAtMost(endDate))) {
           return false;
         }
@@ -670,24 +678,12 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     }).toList();
 
     var inventoryList = filteredList.where((e) {
-      if (e.groupName == 'Other (GP)') {
-        return e.groupName != 'Raw Material' &&
-            e.groupName != 'Packing Material' &&
-            e.groupName != 'Traded Material';
-      }
-
-      return e.groupName == selectedGroup;
+      return e.misfgItemGroups == selectedGroup;
     });
 
     selectedItems = filteredList
         .where((e) {
-          if (e.groupName == 'Other (GP)') {
-            return e.groupName != 'Raw Material' &&
-                e.groupName != 'Packing Material' &&
-                e.groupName != 'Traded Material';
-          }
-
-          return e.groupName == selectedGroup;
+          return e.misfgItemGroups == selectedGroup;
         })
         .map((e) => e.itemDescription.trim())
         .toSet(); // to filter the stock in transit list
@@ -704,11 +700,19 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         for (var list in inventoryList.where(
           (e) => e.itemDescription == itemDescription,
         )) {
-          double actualQty = double.parse(list.quantity);
+          double actualQty = double.parse(list.totalQuantity);
           actualStockQty += actualQty;
-          double targetQty = double.parse(list.minInventory);
-          targetStockQty += targetQty;
         }
+
+        targetStockQty = salesTargetList
+            .where((target) {
+              return target.salesRep == invList.misfgItemGroups;
+            })
+            .fold(
+              0.0,
+              (sum, target) =>
+                  sum + parseValue(target.getTargetForMonth(months.current)),
+            );
 
         stkData.add(
           StockItemData(
@@ -766,8 +770,8 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
 
     final filteredList = stockInTransitList.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
-
+        final docDate = parseDate(e.documentDate);
+        if (docDate == null) return false;
         if (!(docDate.isAtLeast(startDate) && docDate.isAtMost(endDate))) {
           return false;
         }
@@ -859,7 +863,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     chartDataLoaded = false;
     stockData = stockDataTemp;
     stockInTransitList = stockInTransitListTemp;
-    selectedGroup = selectedGroup = 'Medical Device';
+    selectedGroup = '';
     _selectedBranch = "All Warehouses";
     await _loadDailyFGGraph();
     await _loadItemGraph();
@@ -878,18 +882,22 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     final DateTime startDate = monthDates["start"]!;
     final DateTime endDate = monthDates["end"]!;
     List<List<dynamic>> rows = [];
-
+    final months = getMonths(selectedDate);
     List<String> dayHeaders = [];
+    List<String> dayKeys = [];
 
     for (
       DateTime d = startDate;
       !d.isAfter(endDate);
       d = d.add(const Duration(days: 1))
     ) {
-      dayHeaders.add(DateFormat('dd-MMM').format(d));
+      final key = DateFormat('dd-MMM').format(d);
+
+      dayKeys.add(key);
+      dayHeaders.add('$key (Ach %)');
     }
     final headers = [
-      "Warehouse / Item Sub Group",
+      "Name of Branch/Depot",
       "Closing Stock Target",
       "Actual Stock",
       ...dayHeaders,
@@ -897,7 +905,8 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     ];
     final filteredList = stockData.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
+        final docDate = parseDate(e.docDate);
+        if (docDate == null) return false;
 
         return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
       } catch (_) {
@@ -905,13 +914,18 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       }
     }).toList();
 
-    final Map<String, List<InventoryLevelList>> warehouseGroups = {};
+    late Map<String, List<CRMInventoryList>> warehouseGroups = {};
 
     for (final item in filteredList) {
-      warehouseGroups.putIfAbsent(item.warehouseName, () => []);
+      warehouseGroups.putIfAbsent(item.fgLocation, () => []);
 
-      warehouseGroups[item.warehouseName]!.add(item);
+      warehouseGroups[item.fgLocation]!.add(item);
     }
+
+    warehouseGroups = Map.fromEntries(
+      warehouseGroups.entries.toList()
+        ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase())),
+    );
 
     for (final warehouseEntry in warehouseGroups.entries) {
       final warehouseName = warehouseEntry.key;
@@ -925,46 +939,53 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         "",
       ]);
 
-      final Map<String, List<InventoryLevelList>> subGroupMap = {};
+      final Map<String, List<CRMInventoryList>> groupMap = {};
 
       for (final item in warehouseEntry.value) {
-        subGroupMap.putIfAbsent(item.itemSubGroup, () => []);
+        groupMap.putIfAbsent(item.misfgItemGroups, () => []);
 
-        subGroupMap[item.itemSubGroup]!.add(item);
+        groupMap[item.misfgItemGroups]!.add(item);
       }
 
-      for (final subGroupEntry in subGroupMap.entries) {
-        final subGroup = subGroupEntry.key;
+      for (final groupEntry in groupMap.entries) {
+        final group = groupEntry.key;
 
         double totalTarget = 0;
         double totalActual = 0;
 
         Map<String, double> dayPercentages = {};
 
-        final Map<String, List<InventoryLevelList>> dateGroups = {};
+        final Map<String, List<CRMInventoryList>> dateGroups = {};
 
-        for (final item in subGroupEntry.value) {
-          dateGroups.putIfAbsent(item.documentDate, () => []);
+        for (final item in groupEntry.value) {
+          dateGroups.putIfAbsent(item.docDate, () => []);
 
-          dateGroups[item.documentDate]!.add(item);
+          dateGroups[item.docDate]!.add(item);
         }
 
         for (final dateEntry in dateGroups.entries) {
           double dayActual = 0;
           double dayTarget = 0;
 
+          dayTarget = salesTargetList
+              .where((target) {
+                return target.salesRep == group;
+              })
+              .fold(
+                0.0,
+                (sum, target) =>
+                    sum + parseValue(target.getTargetForMonth(months.current)),
+              );
+
           for (final row in dateEntry.value) {
-            dayActual += double.tryParse(row.quantity) ?? 0;
-            dayTarget += double.tryParse(row.minInventory) ?? 0;
+            dayActual += double.tryParse(row.totalValue) ?? 0;
           }
 
           double percentage = dayTarget > 0
               ? double.parse(((dayActual / dayTarget) * 100).toStringAsFixed(2))
               : 0;
 
-          final day = DateFormat(
-            'dd-MMM',
-          ).format(DateFormat('dd/MM/yyyy').parse(dateEntry.key));
+          final day = DateFormat('dd-MMM').format(parseDate(dateEntry.key)!);
 
           dayPercentages[day] = percentage;
 
@@ -973,21 +994,24 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         }
 
         final row = <dynamic>[
-          subGroup,
+          group,
           totalTarget.toStringAsFixed(2),
           totalActual.toStringAsFixed(2),
         ];
 
-        for (final day in dayHeaders) {
+        for (final day in dayKeys) {
           row.add(dayPercentages[day] ?? 0);
         }
 
-        final avg = dayPercentages.isEmpty
+        double avg = dayPercentages.isEmpty
             ? 0
-            : dayPercentages.values.reduce((a, b) => a + b) /
-                  dayPercentages.length;
+            : double.parse(
+                ((dayPercentages.values.reduce((a, b) => a + b) /
+                        dayPercentages.length)
+                    .toStringAsFixed(2)),
+              );
 
-        row.add(avg.toStringAsFixed(2));
+        row.add(avg);
 
         rows.add(row);
       }
@@ -996,9 +1020,29 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       rows.add(List.filled(headers.length, ""));
     }
 
-    rows.add(["MD Export-FG", 0, 0, ...List.filled(dayHeaders.length, 0), 0]);
+    rows.add([
+      "BAGLUR - RAW Material",
+      0,
+      0,
+      ...List.filled(dayHeaders.length, 0),
+      0,
+    ]);
 
-    rows.add(["IPD Export-FG", 0, 0, ...List.filled(dayHeaders.length, 0), 0]);
+    rows.add([
+      "MD Export-RM+PM",
+      0,
+      0,
+      ...List.filled(dayHeaders.length, 0),
+      0,
+    ]);
+
+    rows.add([
+      "IPD Export-RM+PM",
+      0,
+      0,
+      ...List.filled(dayHeaders.length, 0),
+      0,
+    ]);
 
     await reportService.generateExcel(
       sheetName: "Daily FG Report",
@@ -1006,9 +1050,10 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       rows: rows,
       fileName:
           "Daily_FG_Report_${DateFormat('MMM_yyyy').format(selectedDate)}.xlsx",
-      amountColumns: [],
-      addTotalRow: false,
+      amountColumns: [2, 3],
+      addTotalRow: true,
       reportTitle: 'Production[MIS] - Daily Finished Goods Report',
+      highlightSections: true,
     );
   }
 
@@ -1521,7 +1566,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
   }
 
   Widget _groupTabs() {
-    if (groupList.isEmpty) {
+    if (groupsList.isEmpty) {
       return const SizedBox();
     }
     return LayoutBuilder(
@@ -1535,13 +1580,13 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(groupList.length, (index) {
-                  final group = groupList[index];
+                children: List.generate(groupsList.length, (index) {
+                  final group = groupsList[index];
                   final isSelected = group == selectedGroup;
 
                   return Padding(
                     padding: EdgeInsets.only(
-                      right: index == groupList.length - 1 ? 0 : 8,
+                      right: index == groupsList.length - 1 ? 0 : 8,
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(25),

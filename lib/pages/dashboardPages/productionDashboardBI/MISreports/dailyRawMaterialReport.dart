@@ -49,13 +49,13 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
   bool chartDataLoaded = false;
   String? _selectedBranch;
 
-  List<InventoryLevelList> stockData = [];
-  List<InventoryLevelList> stockDataTemp = [];
+  List<CRMInventoryList> stockData = [];
+  List<CRMInventoryList> stockDataTemp = [];
   List<StockInTransitList> stockInTransitList = [];
   List<StockInTransitList> stockInTransitListTemp = [];
   List<SalesTargetList> salesTargetList = [];
 
-  String selectedGroup = 'Raw Material';
+  String selectedGroup = '';
 
   DateTime selectedDate = DateTime.now();
   String formattedStartDate = "";
@@ -332,17 +332,18 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     int index = 0;
     int limit = 10000; // Maximum limit to fetch all data
     int fetchedCount = 0;
-    List<InventoryLevelList> stockList = [];
-    List<InventoryLevelList> filteredStockList = [];
+    List<CRMInventoryList> stockList = [];
+    List<CRMInventoryList> filteredStockList = [];
+    final toDate = formatDate(currentDate!);
     try {
       do {
         var body = {
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "type": "All",
           "sapToken": DataManager.readSapToken(),
         };
-        const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
+        const apiUrl = '${ApiHelper.baseUrl}CRMInventoryList';
         final response = await http.post(
           Uri.parse(apiUrl),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
@@ -352,9 +353,9 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryLevelList> newStockList =
+            List<CRMInventoryList> newStockList =
                 (responseJson['responseData'] as List)
-                    .map((item) => InventoryLevelList.fromJson(item))
+                    .map((item) => CRMInventoryList.fromJson(item))
                     .toList();
 
             stockList.addAll(newStockList);
@@ -368,10 +369,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         }
       } while (fetchedCount == limit);
 
-      const groups = {'Raw Material', 'Packing Material', 'General Products'};
-
       filteredStockList = stockList
-          .where((e) => groups.contains(e.groupName))
+          .where((e) => e.misrmItemGroups != "")
           .toList();
 
       setState(() {
@@ -492,12 +491,12 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
   List<String> get groupsList {
     final groups =
-        dailyStockAchievementData.stockData
+        ([...dailyStockAchievementData.stockData]
+              ..sort((a, b) => b.targetStock.compareTo(a.targetStock)))
             .map((e) => e.itemGroup.trim())
             .where((e) => e.isNotEmpty)
             .toSet()
-            .toList()
-          ..sort();
+            .toList();
 
     return groups;
   }
@@ -529,6 +528,19 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     return double.tryParse(value?.replaceAll(',', '') ?? '') ?? 0;
   }
 
+  DateTime? parseDate(String value) {
+    for (final format in [
+      DateFormat('dd-MM-yyyy'),
+      DateFormat('dd/MM/yyyy'),
+      DateFormat('yyyy-MM-dd'),
+    ]) {
+      try {
+        return format.parseStrict(value);
+      } catch (_) {}
+    }
+    return null;
+  }
+
   Future<void> _loadDailyRMGraph() async {
     if (stockData.isEmpty || _selectedBranch == null) return;
     final DateTime selected = selectedDate;
@@ -549,8 +561,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     // Filter selected month records
     final filteredList = stockData.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
-
+        final docDate = parseDate(e.docDate);
+        if (docDate == null) return false;
         return docDate.isAtLeast(startDate) && docDate.isAtMost(endDate);
       } catch (_) {
         return false;
@@ -558,16 +570,16 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     }).toList();
 
     // Group by Date + SubGroup
-    final Map<String, List<InventoryLevelList>> groupedData = {};
+    final Map<String, List<CRMInventoryList>> groupedData = {};
 
     for (final item in filteredList) {
       if (_selectedBranch != "All Warehouses") {
         if (item.warehouseName != _selectedBranch) continue;
       }
-      DateTime docDate = DateFormat('dd/MM/yyyy').parse(item.documentDate);
+      DateTime docDate = parseDate(item.docDate)!;
 
       String key =
-          "${DateFormat('yyyy-MM-dd').format(docDate)}|${item.groupName}";
+          "${DateFormat('yyyy-MM-dd').format(docDate)}|${item.misrmItemGroups}";
 
       groupedData.putIfAbsent(key, () => []);
       groupedData[key]!.add(item);
@@ -581,13 +593,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
       targetStock = salesTargetList
           .where((target) {
-            if (rows.first.groupName == 'Other (GP)') {
-              return target.salesRep != 'Raw Material' &&
-                  target.salesRep != 'Packing Material' &&
-                  target.salesRep != 'Traded Material';
-            }
-
-            return target.salesRep == rows.first.groupName;
+            return target.salesRep == rows.first.misrmItemGroups;
           })
           .fold(
             0.0,
@@ -596,7 +602,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
           );
 
       for (final row in rows) {
-        actualStock += double.tryParse(row.value) ?? 0;
+        actualStock += double.tryParse(row.totalValue) ?? 0;
       }
 
       double achievedPercentage = targetStock > 0
@@ -605,8 +611,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
       stockDataList.add(
         DailyStockAchievementData(
-          date: DateFormat('dd/MM/yyyy').parse(rows.first.documentDate),
-          itemGroup: rows.first.groupName,
+          date: parseDate(rows.first.docDate)!,
+          itemGroup: rows.first.misrmItemGroups,
           targetStock: targetStock,
           actualStock: actualStock,
           achievedPercentage: achievedPercentage,
@@ -620,10 +626,13 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       stockData: stockDataList,
     );
 
-    final groups = stockDataList
-        .map((e) => e.itemGroup.trim())
-        .toSet()
-        .toList();
+    final groups =
+        ([...dailyStockAchievementData.stockData]
+              ..sort((a, b) => b.targetStock.compareTo(a.targetStock)))
+            .map((e) => e.itemGroup.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
 
     if (groups.isNotEmpty && !groups.contains(selectedGroup)) {
       selectedGroup = groups.first;
@@ -636,7 +645,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
   Future<void> _loadItemGraph() async {
     if (stockData.isEmpty || _selectedBranch == null) return;
-
+    final months = getMonths(selectedDate);
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       selectedDate.month,
     );
@@ -650,7 +659,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
     final filteredList = stockData.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
+        final docDate = parseDate(e.docDate);
+        if (docDate == null) return false;
 
         if (!(docDate.isAtLeast(startDate) && docDate.isAtMost(endDate))) {
           return false;
@@ -667,24 +677,12 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     }).toList();
 
     var inventoryList = filteredList.where((e) {
-      if (e.groupName == 'Other (GP)') {
-        return e.groupName != 'Raw Material' &&
-            e.groupName != 'Packing Material' &&
-            e.groupName != 'Traded Material';
-      }
-
-      return e.groupName == selectedGroup;
+      return e.misrmItemGroups == selectedGroup;
     });
 
     selectedItems = filteredList
         .where((e) {
-          if (e.groupName == 'Other (GP)') {
-            return e.groupName != 'Raw Material' &&
-                e.groupName != 'Packing Material' &&
-                e.groupName != 'Traded Material';
-          }
-
-          return e.groupName == selectedGroup;
+          return e.misrmItemGroups == selectedGroup;
         })
         .map((e) => e.itemDescription.trim())
         .toSet(); // to filter the stock in transit list
@@ -702,12 +700,19 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         for (var list in inventoryList.where(
           (e) => e.itemDescription == itemDescription,
         )) {
-          double actualQty = double.parse(list.value);
+          double actualQty = double.parse(list.totalValue);
           actualStockQty += actualQty;
-
-          double targetStock = double.parse(list.minInventory);
-          targetStockQty += targetStock;
         }
+
+        targetStockQty = salesTargetList
+            .where((target) {
+              return target.salesRep == invList.misrmItemGroups;
+            })
+            .fold(
+              0.0,
+              (sum, target) =>
+                  sum + parseValue(target.getTargetForMonth(months.current)),
+            );
 
         stkData.add(
           StockItemData(
@@ -765,7 +770,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
     final filteredList = stockInTransitList.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
+        final docDate = parseDate(e.documentDate);
+        if (docDate == null) return false;
 
         if (!(docDate.isAtLeast(startDate) && docDate.isAtMost(endDate))) {
           return false;
@@ -858,7 +864,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     chartDataLoaded = false;
     stockData = stockDataTemp;
     stockInTransitList = stockInTransitListTemp;
-    selectedGroup = selectedGroup = 'Raw Material';
+    selectedGroup = '';
     _selectedBranch = "All Warehouses";
     await _loadDailyRMGraph();
     await _loadItemGraph();
@@ -892,7 +898,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       dayHeaders.add('$key (Ach %)');
     }
     final headers = [
-      "Warehouse / Item Group",
+      "Name of Branch/Depot",
       "Closing Stock Target",
       "Actual Stock",
       ...dayHeaders,
@@ -900,7 +906,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     ];
     final filteredList = stockData.where((e) {
       try {
-        final docDate = DateFormat('dd/MM/yyyy').parse(e.documentDate);
+        final docDate = parseDate(e.docDate);
+        if (docDate == null) return false;
 
         return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
       } catch (_) {
@@ -908,13 +915,18 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       }
     }).toList();
 
-    final Map<String, List<InventoryLevelList>> warehouseGroups = {};
+    late Map<String, List<CRMInventoryList>> warehouseGroups = {};
 
     for (final item in filteredList) {
-      warehouseGroups.putIfAbsent(item.warehouseName, () => []);
+      warehouseGroups.putIfAbsent(item.rmLocation, () => []);
 
-      warehouseGroups[item.warehouseName]!.add(item);
+      warehouseGroups[item.rmLocation]!.add(item);
     }
+
+    warehouseGroups = Map.fromEntries(
+      warehouseGroups.entries.toList()
+        ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase())),
+    );
 
     for (final warehouseEntry in warehouseGroups.entries) {
       final warehouseName = warehouseEntry.key;
@@ -928,12 +940,12 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         "",
       ]);
 
-      final Map<String, List<InventoryLevelList>> groupMap = {};
+      final Map<String, List<CRMInventoryList>> groupMap = {};
 
       for (final item in warehouseEntry.value) {
-        groupMap.putIfAbsent(item.groupName, () => []);
+        groupMap.putIfAbsent(item.misrmItemGroups, () => []);
 
-        groupMap[item.groupName]!.add(item);
+        groupMap[item.misrmItemGroups]!.add(item);
       }
 
       for (final groupEntry in groupMap.entries) {
@@ -944,12 +956,12 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
         Map<String, double> dayPercentages = {};
 
-        final Map<String, List<InventoryLevelList>> dateGroups = {};
+        final Map<String, List<CRMInventoryList>> dateGroups = {};
 
         for (final item in groupEntry.value) {
-          dateGroups.putIfAbsent(item.documentDate, () => []);
+          dateGroups.putIfAbsent(item.docDate, () => []);
 
-          dateGroups[item.documentDate]!.add(item);
+          dateGroups[item.docDate]!.add(item);
         }
 
         for (final dateEntry in dateGroups.entries) {
@@ -958,12 +970,6 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
           dayTarget = salesTargetList
               .where((target) {
-                if (group == 'Other (GP)') {
-                  return target.salesRep != 'Raw Material' &&
-                      target.salesRep != 'Packing Material' &&
-                      target.salesRep != 'Traded Material';
-                }
-
                 return target.salesRep == group;
               })
               .fold(
@@ -973,16 +979,14 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
               );
 
           for (final row in dateEntry.value) {
-            dayActual += double.tryParse(row.value) ?? 0;
+            dayActual += double.tryParse(row.totalValue) ?? 0;
           }
 
           double percentage = dayTarget > 0
               ? double.parse(((dayActual / dayTarget) * 100).toStringAsFixed(2))
               : 0;
 
-          final day = DateFormat(
-            'dd-MMM',
-          ).format(DateFormat('dd/MM/yyyy').parse(dateEntry.key));
+          final day = DateFormat('dd-MMM').format(parseDate(dateEntry.key)!);
 
           dayPercentages[day] = percentage;
 
@@ -1047,9 +1051,10 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       rows: rows,
       fileName:
           "Daily_RM_Report_${DateFormat('MMM_yyyy').format(selectedDate)}.xlsx",
-      amountColumns: [],
-      addTotalRow: false,
+      amountColumns: [2, 3],
+      addTotalRow: true,
       reportTitle: 'Production[MIS] - Daily Raw Materials Report',
+      highlightSections: true,
     );
   }
 
