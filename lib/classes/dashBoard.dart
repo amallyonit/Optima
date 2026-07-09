@@ -6708,3 +6708,38 @@ class CRMInventoryList {
     );
   }
 }
+
+class CRMInventorySummaryList {
+  final String dayNo;
+  final String docDate;
+  final String misrmItemGroups;
+  final String misfgItemGroups;
+  final String rmLocation;
+  final String fgLocation;
+  final String totalQty;
+  final String totalValue;
+
+  CRMInventorySummaryList({
+    required this.dayNo,
+    required this.docDate,
+    required this.misrmItemGroups,
+    required this.misfgItemGroups,
+    required this.rmLocation,
+    required this.fgLocation,
+    required this.totalQty,
+    required this.totalValue,
+  });
+
+  factory CRMInventorySummaryList.fromJson(Map<String, dynamic> json) {
+    return CRMInventorySummaryList(
+      dayNo: json['dayNo'],
+      docDate: json['docDate'],
+      misrmItemGroups: json['misrmItemGroups'],
+      misfgItemGroups: json['misfgItemGroups'],
+      rmLocation: json['rmLocation'],
+      fgLocation: json['fgLocation'],
+      totalQty: json['totalQty'],
+      totalValue: json['totalValue'],
+    );
+  }
+}

@@ -44,6 +44,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
   final reportService = ReportService();
   final ScrollController _tabScrollController = ScrollController();
   late Future<void> loadDataFuture;
+  DateTime? currentMonthFromDate;
   DateTime? currentDate;
   DateTime? fiscalYearStartDate;
   bool chartDataLoaded = false;
@@ -51,6 +52,8 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
   List<CRMInventoryList> stockData = [];
   List<CRMInventoryList> stockDataTemp = [];
+  List<CRMInventorySummaryList> stockSummaryData = [];
+  List<CRMInventorySummaryList> stockSummaryDataTemp = [];
   List<StockInTransitList> stockInTransitList = [];
   List<StockInTransitList> stockInTransitListTemp = [];
   List<SalesTargetList> salesTargetList = [];
@@ -90,6 +93,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
   void LoadDates() {
     currentDate = DateTime.now();
+    currentMonthFromDate = DateTime(currentDate!.year, currentDate!.month, 1);
 
     int fiscalYearStartMonth = 4;
 
@@ -382,6 +386,66 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       NotificationService.error(
         title: "Error",
         message: "Error occured while loading stock statement.",
+      );
+    }
+  }
+
+  Future<void> _loadDailyRMSummaryAPI(String UserName, String UserLevel) async {
+    int index = 0;
+    int limit = 10000; // Maximum limit to fetch all data
+    int fetchedCount = 0;
+    List<CRMInventorySummaryList> stockSummaryList = [];
+    List<CRMInventorySummaryList> filteredStockSummaryList = [];
+    final toDate = formatDate(currentDate!);
+    final fromDate = formatDate(currentMonthFromDate!);
+    try {
+      do {
+        var body = {
+          "FromDate": fromDate,
+          "ToDate": toDate,
+          "Index": index.toString(),
+          "Limit": limit.toString(),
+          "sapToken": DataManager.readSapToken(),
+        };
+        const apiUrl = '${ApiHelper.baseUrl}CRMInventorySummaryList';
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseJson = jsonDecode(response.body);
+          if (responseJson["responseData"].toString().isNotEmpty) {
+            List<CRMInventorySummaryList> newStockList =
+                (responseJson['responseData'] as List)
+                    .map((item) => CRMInventorySummaryList.fromJson(item))
+                    .toList();
+
+            stockSummaryList.addAll(newStockList);
+            fetchedCount = newStockList.length;
+            index++;
+          } else {
+            fetchedCount = 0;
+          }
+        } else {
+          fetchedCount = 0;
+        }
+      } while (fetchedCount == limit);
+
+      filteredStockSummaryList = stockSummaryList
+          .where((e) => e.rmLocation != "")
+          .toList();
+      // && e.rmLocation.toLowerCase() != 'bagluru'
+      setState(() {
+        stockSummaryData = filteredStockSummaryList.toList();
+        stockSummaryDataTemp = filteredStockSummaryList.toList();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading stock summary data.",
       );
     }
   }
@@ -838,6 +902,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadDailyRMStatementAPI(userName, userLevel);
+    await _loadDailyRMSummaryAPI(userName, userLevel);
     await _loadStockInTransitListAPI(userName, userLevel);
     await _loadSalesTargetAPI(userName, userLevel);
     _selectedBranch = "All Warehouses";
@@ -874,7 +939,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     });
   }
 
-  Future<void> exportDailyRMExcel() async {
+  Future<void> exportDailyRMExcelOld() async {
     if (stockData.isEmpty) return;
     Map<String, DateTime> monthDates = getMonthStartEndDates(
       selectedDate.month,
@@ -1021,6 +1086,185 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       rows.add(List.filled(headers.length, ""));
     }
 
+    rows.add([
+      "BAGLUR - RAW Material",
+      0,
+      0,
+      ...List.filled(dayHeaders.length, 0),
+      0,
+    ]);
+
+    rows.add([
+      "MD Export-RM+PM",
+      0,
+      0,
+      ...List.filled(dayHeaders.length, 0),
+      0,
+    ]);
+
+    rows.add([
+      "IPD Export-RM+PM",
+      0,
+      0,
+      ...List.filled(dayHeaders.length, 0),
+      0,
+    ]);
+
+    await reportService.generateExcel(
+      sheetName: "Daily RM Report",
+      headers: headers,
+      rows: rows,
+      fileName:
+          "Daily_RM_Report_${DateFormat('MMM_yyyy').format(selectedDate)}.xlsx",
+      amountColumns: [2, 3],
+      addTotalRow: true,
+      reportTitle: 'Production[MIS] - Daily Raw Materials Report',
+      highlightSections: true,
+    );
+  }
+
+  Future<void> exportDailyRMExcel() async {
+    if (stockData.isEmpty) return;
+    Map<String, DateTime> monthDates = getMonthStartEndDates(
+      selectedDate.month,
+    );
+
+    final DateTime startDate = monthDates["start"]!;
+    final DateTime endDate = monthDates["end"]!;
+    List<List<dynamic>> rows = [];
+    final months = getMonths(selectedDate);
+    List<String> dayHeaders = [];
+    List<String> dayKeys = [];
+
+    for (
+      DateTime d = startDate;
+      !d.isAfter(endDate);
+      d = d.add(const Duration(days: 1))
+    ) {
+      final key = DateFormat('dd-MMM').format(d);
+
+      dayKeys.add(key);
+      dayHeaders.add('$key (Ach %)');
+    }
+    final headers = [
+      "Name of Branch/Depot",
+      "Closing Stock Target",
+      "Actual Stock",
+      ...dayHeaders,
+      "Average %",
+    ];
+    final filteredList = stockSummaryData
+        .where((e) {
+          final docDate = parseDate(e.docDate);
+          if (docDate == null) return false;
+
+          return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
+        })
+        .where((e) => e.rmLocation.toLowerCase() != 'bagluru')
+        .toList();
+
+    late Map<String, List<CRMInventorySummaryList>> warehouseGroups = {};
+
+    for (final item in filteredList.where((e) => e.rmLocation.isNotEmpty)) {
+      warehouseGroups.putIfAbsent(item.rmLocation, () => []);
+
+      warehouseGroups[item.rmLocation]!.add(item);
+    }
+
+    warehouseGroups = Map.fromEntries(
+      warehouseGroups.entries.toList()
+        ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase())),
+    );
+
+    for (final warehouseEntry in warehouseGroups.entries) {
+      final warehouseName = warehouseEntry.key;
+
+      // Warehouse Header Row
+      rows.add([
+        warehouseName.toUpperCase(),
+        "",
+        "",
+        ...List.filled(dayHeaders.length, ""),
+        "",
+      ]);
+
+      final Map<String, List<CRMInventorySummaryList>> groupMap = {};
+
+      for (final item in warehouseEntry.value.where(
+        (e) => e.misrmItemGroups.isNotEmpty,
+      )) {
+        groupMap.putIfAbsent(item.misrmItemGroups, () => []);
+
+        groupMap[item.misrmItemGroups]!.add(item);
+      }
+
+      Map<String, double> targetMap = {};
+      for (final target in salesTargetList) {
+        targetMap[target.salesRep] =
+            (targetMap[target.salesRep] ?? 0) +
+            parseValue(target.getTargetForMonth(months.current));
+      }
+
+      for (final groupEntry in groupMap.entries) {
+        final group = groupEntry.key;
+
+        double totalTarget = 0;
+        double totalActual = 0;
+
+        Map<String, double> dayPercentages = {};
+        double dayActual = 0;
+        double dayTarget = 0;
+        for (final item in groupEntry.value) {
+          dayTarget = targetMap[group] ?? 0;
+          dayActual = double.tryParse(item.totalValue) ?? 0;
+
+          double percentage = dayTarget > 0
+              ? double.parse(((dayActual / dayTarget) * 100).toStringAsFixed(2))
+              : 0;
+
+          final day = DateFormat('dd-MMM').format(parseDate(item.docDate)!);
+
+          dayPercentages[day] = double.parse(percentage.toStringAsFixed(2));
+
+          totalActual = dayActual;
+          totalTarget = dayTarget;
+        }
+
+        final row = <dynamic>[
+          group,
+          totalTarget.toStringAsFixed(2),
+          totalActual.toStringAsFixed(2),
+        ];
+
+        for (final day in dayKeys) {
+          row.add(dayPercentages[day] ?? 0);
+        }
+
+        double avg = dayPercentages.isEmpty
+            ? 0
+            : double.parse(
+                ((dayPercentages.values.reduce((a, b) => a + b) /
+                        dayPercentages.length)
+                    .toStringAsFixed(2)),
+              );
+
+        row.add(avg);
+
+        rows.add(row);
+      }
+
+      // Blank Row After Each Warehouse
+      rows.add(List.filled(headers.length, ""));
+    }
+    final footerDataList = stockSummaryData
+        .where((e) {
+          final docDate = parseDate(e.docDate);
+          if (docDate == null) return false;
+
+          return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
+        })
+        .where((e) => e.rmLocation.toLowerCase() == 'bagluru')
+        .toList();
     rows.add([
       "BAGLUR - RAW Material",
       0,
