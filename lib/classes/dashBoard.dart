@@ -5585,12 +5585,14 @@ class StockItemData {
   final double actualStock;
   final double difference;
   String warehouseCode;
+  double actualStockValue;
   StockItemData({
     required this.itemSubGroup,
     required this.targetStock,
     required this.actualStock,
     required this.difference,
     this.warehouseCode = "",
+    this.actualStockValue = 0.0,
   });
 }
 

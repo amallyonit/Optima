@@ -485,7 +485,8 @@ class ReportService {
                 title.contains("pbt") ||
                 title.contains("pat"));
 
-        final isTotalRow = title.startsWith("total");
+        final isTotalRow =
+            title.startsWith("total") || title.startsWith("grand total");
 
         for (int j = 0; j < row.length; j++) {
           final cell = sheet.getRangeByIndex(rowIndex, j + 1);
