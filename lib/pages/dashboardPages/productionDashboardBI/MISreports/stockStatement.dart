@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
 import 'package:optima/classes/dashBoard.dart';
@@ -52,6 +51,18 @@ class WarehouseStockRow {
   });
 }
 
+class MonthInfo {
+  final String previous;
+  final String current;
+  final String next;
+
+  MonthInfo({
+    required this.previous,
+    required this.current,
+    required this.next,
+  });
+}
+
 class _StockStatementPageState extends State<StockStatementPage> {
   final reportService = ReportService();
 
@@ -63,11 +74,15 @@ class _StockStatementPageState extends State<StockStatementPage> {
   DateTime? fiscalYearStartDate;
   bool chartDataLoaded = false;
 
-  List<InventoryLevelList> stockData = [];
-  List<InventoryLevelList> stockDataTemp = [];
+  // List<InventoryLevelList> stockData = [];
+  // List<InventoryLevelList> stockDataTemp = [];
+  List<CRMInventoryList> stockData = [];
+  List<CRMInventoryList> stockDataTemp = [];
   List<StockInTransitList> stockInTransitList = [];
   List<StockInTransitList> stockInTransitListTemp = [];
   List<WarehouseWiseStockData> warehouseWiseStockData = [];
+  List<SalesTargetList> salesTargetList = [];
+  List<SalesTargetList> salesTargetListTemp = [];
 
   double targetStockHeader = 0;
   double actualStockHeader = 0;
@@ -78,7 +93,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
     return formatter.format(date);
   }
 
-  String touchedSubGroup = "";
+  String touchedGroup = "";
   DateTime addMonth(DateTime date, int addMonth) {
     int currentMonth = date.month;
     int currentYear = date.year;
@@ -263,32 +278,31 @@ class _StockStatementPageState extends State<StockStatementPage> {
     int index = 0;
     int limit = 10000; // Maximum limit to fetch all data
     int fetchedCount = 0;
-    List<InventoryLevelList> salesList = [];
+    List<CRMInventoryList> invList = [];
+    final toDate = formatDate(currentDate!);
     try {
       do {
         var body = {
+          "ToDate": toDate,
           "Index": index.toString(),
           "Limit": limit.toString(),
-          "type": "All",
           "sapToken": DataManager.readSapToken(),
         };
-        const apiUrl = '${ApiHelper.baseUrl}BicxoStockStatusList';
+        const apiUrl = '${ApiHelper.baseUrl}CRMInventoryList';
         final response = await http.post(
           Uri.parse(apiUrl),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body: jsonEncode(body),
         );
-
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseJson = jsonDecode(response.body);
           if (responseJson["responseData"].toString().isNotEmpty) {
-            List<InventoryLevelList> newSalesList =
+            List<CRMInventoryList> newList =
                 (responseJson['responseData'] as List)
-                    .map((item) => InventoryLevelList.fromJson(item))
+                    .map((item) => CRMInventoryList.fromJson(item))
                     .toList();
-
-            salesList.addAll(newSalesList);
-            fetchedCount = newSalesList.length;
+            invList.addAll(newList);
+            fetchedCount = newList.length;
             index++;
           } else {
             fetchedCount = 0;
@@ -299,18 +313,112 @@ class _StockStatementPageState extends State<StockStatementPage> {
       } while (fetchedCount == limit);
 
       setState(() {
-        context.read<StockStatementMISProvider>().updateInventoryLevelList(
-          salesList,
-        );
-
-        stockData = salesList.toList();
-        stockDataTemp = salesList.toList();
+        stockData = invList.where((e) => e.fgLocation != "").toList();
+        stockDataTemp = invList.where((e) => e.fgLocation != "").toList();
       });
     } catch (e) {
       if (!mounted) return;
       NotificationService.error(
         title: "Error",
         message: "Error occured while loading stock statement.",
+      );
+    }
+  }
+
+  List<SalesTargetList> parseSalesTargetList(List<dynamic> data) {
+    return data.map((e) => SalesTargetList.fromJson(e)).toList();
+  }
+
+  Future<void> _loadSalesTargetAPI(String userName, String userLevel) async {
+    final fromDate = formatDate(fiscalYearStartDate!);
+
+    final toDate = formatDate(currentDate!);
+
+    final body = {
+      "FromDate": fromDate,
+      "ToDate": toDate,
+      "Index": 0,
+      "Limit": 0,
+      "sapToken": DataManager.readSapToken(),
+    };
+
+    const apiUrl = '${ApiHelper.baseUrl}BicxoSalesTargetList';
+
+    try {
+      late http.Response response;
+
+      // Retry for network/504/502 issues
+      for (int retry = 0; retry < 3; retry++) {
+        try {
+          response = await http
+              .post(
+                Uri.parse(apiUrl),
+                headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+                body: jsonEncode(body),
+              )
+              .timeout(const Duration(seconds: 25));
+
+          if (response.statusCode == 200) break;
+
+          if (response.statusCode == 502 || response.statusCode == 504) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+
+          break; // other errors → stop retry
+        } catch (_) {
+          await Future.delayed(const Duration(seconds: 2));
+        }
+      }
+
+      // Handle token expiration
+      if (response.statusCode == 401 ||
+          response.body.contains("Invalid or Expired Token")) {
+        if (!mounted) return;
+        NotificationService.warning(
+          title: "Security Alert",
+          message: "Invalid or Expired Token.",
+        );
+        return;
+      }
+
+      if (response.statusCode != 200) {
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading sales target data.",
+        );
+        return;
+      }
+
+      final jsonMap = jsonDecode(response.body);
+
+      final List<dynamic>? data = jsonMap["responseData"] ?? [];
+
+      if (data == null || data.isEmpty) {
+        if (!mounted) return;
+        NotificationService.error(
+          title: "Error",
+          message: "Error occured while loading sales target data.",
+        );
+        return;
+      }
+
+      final parsedList = parseSalesTargetList(data);
+      if (!mounted) return;
+
+      // UPDATE UI
+      setState(() {
+        salesTargetList = List.from(parsedList); // applies to all user levels
+        salesTargetListTemp = List.from(
+          parsedList,
+        ); // applies to all user levels
+      });
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while loading sales target data.",
       );
     }
   }
@@ -402,39 +510,112 @@ class _StockStatementPageState extends State<StockStatementPage> {
         .toList();
   }
 
-  Future<void> _loadItemSubGroupGraph() async {
+  MonthInfo getMonths(DateTime date) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    final previous = months[(date.month + 10) % 12];
+    final current = months[date.month - 1];
+    final next = months[(date.month) % 12];
+
+    return MonthInfo(previous: previous, current: current, next: next);
+  }
+
+  double parseValue(String? value) {
+    return double.tryParse(value?.replaceAll(',', '') ?? '') ?? 0;
+  }
+
+  DateTime? parseDate(String value) {
+    for (final format in [
+      DateFormat('dd-MM-yyyy'),
+      DateFormat('dd/MM/yyyy'),
+      DateFormat('yyyy-MM-dd'),
+    ]) {
+      try {
+        return format.parseStrict(value);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<void> _loadItemGroupGraph() async {
     var inventoryList = stockData;
-    String itemSubGroup = "";
-    double actualStockQty = 0.00;
-    double targetStockQty = 0.00;
+    String itemGroup = "";
+    double actualStockVal = 0.00;
+    double targetStockVal = 0.00;
     List<StockItemData> stkData = [];
-    Set<String> processedItemSubGroupCodes = {};
+    Set<String> processedItemGroupCodes = {};
+    List<SalesTargetList> tmpTargetList = [];
+    final Map<String, double> targetCache = {};
+    final months = getMonths(currentDate!);
 
     for (var invList in inventoryList) {
-      if (!processedItemSubGroupCodes.contains(invList.itemSubGroup)) {
-        itemSubGroup = invList.itemSubGroup;
-        for (var list in inventoryList.where(
-          (e) => e.itemSubGroup == itemSubGroup,
-        )) {
-          double actualQty = double.parse(list.quantity);
-          actualStockQty += actualQty;
-          double targetQty = double.parse(list.minInventory);
-          targetStockQty += targetQty;
+      if (!processedItemGroupCodes.contains(invList.itemGroup)) {
+        itemGroup = invList.itemGroup;
+        for (var list in inventoryList.where((e) => e.itemGroup == itemGroup)) {
+          double actualVal = double.parse(list.totalValue);
+          actualStockVal += actualVal;
+
+          tmpTargetList = salesTargetList
+              .where(
+                (e) => e.salesRep.toLowerCase().startsWith(
+                  invList.fgLocation.toLowerCase(),
+                ),
+              )
+              .toList();
+
+          final key = '${list.fgLocation}|${list.itemGroup}';
+          targetStockVal = targetCache.putIfAbsent(key, () {
+            final expected = '${list.fgLocation}-${list.itemGroup}'
+                .toLowerCase()
+                .trim();
+
+            return tmpTargetList.fold(0.0, (sum, t) {
+              if (t.salesRep.toLowerCase().trim() == expected) {
+                return sum + parseValue(t.getTargetForMonth(months.current));
+              }
+              return sum;
+            });
+          });
+          // targetStockVal = salesTargetList
+          //     .where((target) {
+          //       return target.salesRep.toLowerCase() ==
+          //           invList.fgLocation.toLowerCase() +
+          //               '-' +
+          //               itemGroup.toLowerCase();
+          //     })
+          //     .fold(
+          //       0.0,
+          //       (sum, target) =>
+          //           sum + parseValue(target.getTargetForMonth(months.current)),
+          //     );
         }
 
         stkData.add(
           StockItemData(
-            itemSubGroup: itemSubGroup,
-            targetStock: targetStockQty,
-            actualStock: actualStockQty,
-            difference: targetStockQty - actualStockQty,
+            itemSubGroup: itemGroup,
+            targetStock: targetStockVal,
+            actualStock: actualStockVal,
+            difference: targetStockVal - actualStockVal,
           ),
         );
-        processedItemSubGroupCodes.add(invList.itemSubGroup);
+        processedItemGroupCodes.add(invList.itemGroup);
       }
-      actualStockQty = 0;
-      targetStockQty = 0;
-      itemSubGroup = "";
+      actualStockVal = 0;
+      targetStockVal = 0;
+      itemGroup = "";
     }
 
     actualStockHeader = stkData
@@ -454,16 +635,19 @@ class _StockStatementPageState extends State<StockStatementPage> {
     );
 
     stockStatementData = StockItemList(stockData: stkData);
-    chartDataLoaded = true;
   }
 
   Future<void> _loadItemGraph() async {
     var inventoryList = stockData;
     String itemDescription = "";
-    double actualStockQty = 0.00;
-    double targetStockQty = 0.00;
+    double actualStockVal = 0.00;
+    double targetStockVal = 0.00;
     List<StockItemData> stkData = [];
     Set<String> processedItemCodes = {};
+    Set<String> processedItemGroups = {};
+    final months = getMonths(currentDate!);
+    List<SalesTargetList> tmpTargetList = [];
+    final Map<String, double> targetCache = {};
 
     for (var invList in inventoryList) {
       if (!processedItemCodes.contains(invList.itemDescription)) {
@@ -471,24 +655,57 @@ class _StockStatementPageState extends State<StockStatementPage> {
         for (var list in inventoryList.where(
           (e) => e.itemDescription == itemDescription,
         )) {
-          double actualQty = double.parse(list.quantity);
-          actualStockQty += actualQty;
-          double targetQty = double.parse(list.minInventory);
-          targetStockQty += targetQty;
+          double actualVal = double.parse(list.totalValue);
+          actualStockVal += actualVal;
         }
+        if (!processedItemGroups.contains(invList.itemGroup)) {
+          tmpTargetList = salesTargetList
+              .where(
+                (e) => e.salesRep.toLowerCase().startsWith(
+                  invList.fgLocation.toLowerCase(),
+                ),
+              )
+              .toList();
 
+          final key = '${invList.fgLocation}|${invList.itemGroup}';
+          targetStockVal = targetCache.putIfAbsent(key, () {
+            final expected = '${invList.fgLocation}-${invList.itemGroup}'
+                .toLowerCase()
+                .trim();
+
+            return tmpTargetList.fold(0.0, (sum, t) {
+              if (t.salesRep.toLowerCase().trim() == expected) {
+                return sum + parseValue(t.getTargetForMonth(months.current));
+              }
+              return sum;
+            });
+          });
+          // targetStockVal = salesTargetList
+          //     .where((target) {
+          //       return target.salesRep.toLowerCase() ==
+          //           invList.fgLocation.toLowerCase() +
+          //               '-' +
+          //               invList.itemGroup.toLowerCase();
+          //     })
+          //     .fold(
+          //       0.0,
+          //       (sum, target) =>
+          //           sum + parseValue(target.getTargetForMonth(months.current)),
+          //     );
+        }
         stkData.add(
           StockItemData(
             itemSubGroup: itemDescription,
-            targetStock: targetStockQty,
-            actualStock: actualStockQty,
-            difference: targetStockQty - actualStockQty,
+            targetStock: targetStockVal,
+            actualStock: actualStockVal,
+            difference: targetStockVal - actualStockVal,
           ),
         );
         processedItemCodes.add(invList.itemDescription);
+        processedItemGroups.add(invList.itemGroup);
       }
-      actualStockQty = 0;
-      targetStockQty = 0;
+      actualStockVal = 0;
+      targetStockVal = 0;
       itemDescription = "";
     }
 
@@ -509,7 +726,6 @@ class _StockStatementPageState extends State<StockStatementPage> {
     );
 
     stockStatementItemData = StockItemList(stockData: stkData);
-    chartDataLoaded = true;
   }
 
   Future<void> _loadTransitGraph() async {
@@ -546,7 +762,6 @@ class _StockStatementPageState extends State<StockStatementPage> {
     stkData.sort((a, b) => (b.actualStock).compareTo(a.actualStock));
 
     stockStatementTransitData = StockItemList(stockData: stkData);
-    chartDataLoaded = true;
   }
 
   Future<void> loadData(String selectedUser) async {
@@ -557,12 +772,15 @@ class _StockStatementPageState extends State<StockStatementPage> {
     selectedUser == "" ? prefs.getString('userName') ?? '' : selectedUser;
     final userLevel = prefs.getString('userLevel') ?? '';
     await _loadStockStatementAPI(userName, userLevel);
+    await _loadSalesTargetAPI(userName, userLevel);
     await _loadStockInTransitListAPI(userName, userLevel);
     _selectedBranch = "All Warehouses";
-    await _loadItemSubGroupGraph();
+    await _loadItemGroupGraph();
     await _loadItemGraph();
     await _loadTransitGraph();
-    chartDataLoaded = true;
+    setState(() {
+      chartDataLoaded = true;
+    });
   }
 
   Future<void> loadDataWithFilter(String subGroup) async {
@@ -571,14 +789,25 @@ class _StockStatementPageState extends State<StockStatementPage> {
     });
     stockData = stockDataTemp;
     stockInTransitList = stockInTransitListTemp;
+    salesTargetList = salesTargetListTemp;
+
+    salesTargetList = salesTargetList.where((data) {
+      final expected = '${_selectedBranch}-'.toLowerCase().trim();
+      final warehouseMatch =
+          _selectedBranch!.isEmpty ||
+          _selectedBranch == "All Warehouses" ||
+          data.salesRep.toLowerCase().trim().contains(expected);
+
+      return warehouseMatch;
+    }).toList();
 
     stockData = stockData.where((data) {
       final warehouseMatch =
           _selectedBranch!.isEmpty ||
           _selectedBranch == "All Warehouses" ||
-          data.warehouseName == _selectedBranch;
+          data.fgLocation == _selectedBranch;
 
-      final subGroupMatch = subGroup.isEmpty || data.itemSubGroup == subGroup;
+      final subGroupMatch = subGroup.isEmpty || data.itemGroup == subGroup;
 
       return warehouseMatch && subGroupMatch;
     }).toList();
@@ -592,12 +821,10 @@ class _StockStatementPageState extends State<StockStatementPage> {
     if (_selectedBranch != null &&
         _selectedBranch!.isNotEmpty &&
         _selectedBranch != "All Warehouses") {
-      final warehouse = stockData.where(
-        (e) => e.warehouseName == _selectedBranch,
-      );
+      final warehouse = stockData.where((e) => e.fgLocation == _selectedBranch);
 
       if (warehouse.isNotEmpty) {
-        selectedWarehouseCode = warehouse.first.warehouseCode;
+        selectedWarehouseCode = warehouse.first.fgLocation;
       }
     }
 
@@ -605,7 +832,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
       final warehouseMatch =
           _selectedBranch!.isEmpty ||
           _selectedBranch == "All Warehouses" ||
-          data.fromWarehouse == selectedWarehouseCode;
+          data.fgLocation == selectedWarehouseCode;
 
       final subGroupMatch =
           subGroup.isEmpty ||
@@ -613,8 +840,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
 
       return warehouseMatch && subGroupMatch;
     }).toList();
-
-    await _loadItemSubGroupGraph();
+    await _loadItemGroupGraph();
     await _loadItemGraph();
     await _loadTransitGraph();
     setState(() {
@@ -623,12 +849,14 @@ class _StockStatementPageState extends State<StockStatementPage> {
   }
 
   Future<void> loadDataClearFilter() async {
-    chartDataLoaded = false;
+    setState(() {
+      chartDataLoaded = false;
+    });
     stockData = stockDataTemp;
     stockInTransitList = stockInTransitListTemp;
-    touchedSubGroup = "";
+    touchedGroup = "";
     _selectedBranch = "All Warehouses";
-    await _loadItemSubGroupGraph();
+    await _loadItemGroupGraph();
     await _loadItemGraph();
     await _loadTransitGraph();
     setState(() {
@@ -660,18 +888,35 @@ class _StockStatementPageState extends State<StockStatementPage> {
   }
 
   List<WarehouseStockRow> _prepareWarehouseWiseStockData() {
+    List<SalesTargetList> tmpTargetList = [];
+    final Map<String, double> targetCache = {};
     final Map<String, WarehouseStockRow> result = {};
-
+    final months = getMonths(currentDate!);
     for (final item in stockData) {
-      final rowLabel = item.itemSubGroup;
-      final warehouse = item.warehouseCode;
+      final rowLabel = item.itemGroup;
+      final warehouse = item.fgLocation;
+      tmpTargetList = salesTargetList
+          .where(
+            (e) => e.salesRep.toLowerCase().startsWith(warehouse.toLowerCase()),
+          )
+          .toList();
 
-      final target =
-          double.tryParse(item.minInventory.replaceAll(',', '')) ?? 0;
+      final key = '${item.fgLocation}|${item.itemGroup}';
 
-      final actual = double.tryParse(item.quantity.replaceAll(',', '')) ?? 0;
+      final target = targetCache.putIfAbsent(key, () {
+        final expected = '${item.fgLocation}-${item.itemGroup}'
+            .toLowerCase()
+            .trim();
 
-      final difference = target - actual;
+        return tmpTargetList.fold(0.0, (sum, t) {
+          if (t.salesRep.toLowerCase().trim() == expected) {
+            return sum + parseValue(t.getTargetForMonth(months.current));
+          }
+          return sum;
+        });
+      });
+
+      final actual = double.tryParse(item.totalValue.replaceAll(',', '')) ?? 0;
 
       result.putIfAbsent(
         rowLabel,
@@ -685,11 +930,10 @@ class _StockStatementPageState extends State<StockStatementPage> {
 
       final row = result[rowLabel]!;
 
-      row.target[warehouse] = (row.target[warehouse] ?? 0) + target;
-
+      row.target.putIfAbsent(warehouse, () => target);
       row.actual[warehouse] = (row.actual[warehouse] ?? 0) + actual;
-
-      row.difference[warehouse] = (row.difference[warehouse] ?? 0) + difference;
+      row.difference[warehouse] =
+          row.target[warehouse]! - row.actual[warehouse]!;
     }
 
     return result.values.toList();
@@ -707,7 +951,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
         return;
       }
 
-      final warehouses = stockData.map((e) => e.warehouseCode).toSet().toList()
+      final warehouses = stockData.map((e) => e.fgLocation).toSet().toList()
         ..sort();
 
       final workbook = xlsio.Workbook();
@@ -758,7 +1002,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
       for (final warehouse in warehouses) {
         sheet.getRangeByIndex(4, col, 4, col + 2).merge();
 
-        sheet.getRangeByIndex(4, col).setText(warehouse);
+        sheet.getRangeByIndex(4, col).setText(warehouse.toUpperCase());
 
         sheet.getRangeByIndex(5, col).setText("Target");
 
@@ -1113,7 +1357,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
                                       newValue ?? "All Warehouses";
                                 });
                                 if (newValue != null) {
-                                  await loadDataWithFilter(touchedSubGroup);
+                                  await loadDataWithFilter(touchedGroup);
                                 }
                               },
                             ),
@@ -1381,14 +1625,14 @@ class _StockStatementPageState extends State<StockStatementPage> {
                       barTouchResponse.spot != null) {
                     setState(() {
                       if (flTouchEvent is FlTapUpEvent) {
-                        touchedSubGroup = touchedSubGroup == ""
+                        touchedGroup = touchedGroup == ""
                             ? stockStatementData
                                   .stockData[barTouchResponse.spot!.spot.x
                                       .toInt()]
                                   .itemSubGroup
                             : "";
 
-                        loadDataWithFilter(touchedSubGroup);
+                        loadDataWithFilter(touchedGroup);
                       }
                     });
                   }
@@ -1735,10 +1979,10 @@ class _BranchDropdownState extends State<BranchDropdown> {
     for (var e in list) {
       String val = '';
       try {
-        val = (e.warehouseName ?? '').toString().trim();
+        val = (e.fgLocation ?? '').toString().trim();
       } catch (_) {
-        if (e is Map && e.containsKey('warehouseName')) {
-          val = (e['warehouseName'] ?? '').toString();
+        if (e is Map && e.containsKey('fgLocation')) {
+          val = (e['fgLocation'] ?? '').toString();
         }
       }
       if (val.trim().isEmpty) continue;

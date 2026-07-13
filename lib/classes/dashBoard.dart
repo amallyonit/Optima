@@ -6233,6 +6233,13 @@ class StockInTransitList {
   final String totalAmount;
   final String fromWarehouse;
   final String toWarehouse;
+  final String misrmItemGroups;
+  final String misfgItemGroups;
+  final String rmLocation;
+  final String fgLocation;
+  final String itemGroup;
+  final String groupName;
+  final String itemSubGroup;
 
   StockInTransitList({
     required this.documentDate,
@@ -6248,6 +6255,13 @@ class StockInTransitList {
     required this.totalAmount,
     required this.fromWarehouse,
     required this.toWarehouse,
+    required this.misrmItemGroups,
+    required this.misfgItemGroups,
+    required this.rmLocation,
+    required this.fgLocation,
+    required this.itemGroup,
+    required this.groupName,
+    required this.itemSubGroup,
   });
 
   factory StockInTransitList.fromJson(Map<String, dynamic> json) {
@@ -6265,6 +6279,13 @@ class StockInTransitList {
       totalAmount: json["totalAmount"]?.toString() ?? "0",
       fromWarehouse: json["fromWarehouse"] ?? "",
       toWarehouse: json["toWarehouse"] ?? "",
+      misrmItemGroups: json["misrmItemGroups"]?.toString() ?? "0",
+      misfgItemGroups: json["misfgItemGroups"]?.toString() ?? "0",
+      rmLocation: json["rmLocation"]?.toString() ?? "0",
+      fgLocation: json["fgLocation"]?.toString() ?? "0",
+      itemGroup: json["itemGroup"]?.toString() ?? "0",
+      groupName: json["groupName"] ?? "",
+      itemSubGroup: json["itemSubGroup"] ?? "",
     );
   }
 }
@@ -6673,7 +6694,7 @@ class CRMInventoryList {
   final String misfgItemGroups;
   final String rmLocation;
   final String fgLocation;
-
+  final String itemGroup;
   CRMInventoryList({
     required this.docDate,
     required this.itemNo,
@@ -6689,6 +6710,7 @@ class CRMInventoryList {
     required this.misfgItemGroups,
     required this.rmLocation,
     required this.fgLocation,
+    required this.itemGroup,
   });
 
   factory CRMInventoryList.fromJson(Map<String, dynamic> json) {
@@ -6707,6 +6729,7 @@ class CRMInventoryList {
       misfgItemGroups: json['misfgItemGroups'],
       rmLocation: json['rmLocation'],
       fgLocation: json['fgLocation'],
+      itemGroup: json['itemGroup'],
     );
   }
 }

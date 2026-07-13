@@ -61,12 +61,12 @@ class _ProductionSummaryWithManpowerCostEntryState
   DateTime? date;
   final bool isSunday = false;
 
-  final List<String> headers = [
+  List<String> get headers => [
     "Action",
     "Date",
-    "Gown/Kit/Drape Qty.",
-    "Gown/Kit/Drape Box",
-    "Gown/Kit/Drape Worker",
+    "${_getHeaderTextForGrid(_selectedPlant!)} Qty.",
+    "${_getHeaderTextForGrid(_selectedPlant!)} Box",
+    "${_getHeaderTextForGrid(_selectedPlant!)} Worker",
     "Wrap Sheet Qty.",
     "Wrap Sheet Box",
     "Wrap Sheet Worker",
@@ -149,6 +149,7 @@ class _ProductionSummaryWithManpowerCostEntryState
 
   final DateFormat displayFormat = DateFormat('MMM/yyyy');
   bool isLoading = false;
+  bool disableWrapsheetColumn = false;
 
   String? _selectedPlant = 'Rajapalayam IPD Plant';
   String? _selectedShift = 'DAY';
@@ -228,6 +229,32 @@ class _ProductionSummaryWithManpowerCostEntryState
     final mm = d.month.toString().padLeft(2, '0');
     final yyyy = d.year.toString();
     return '$dd-$mm-$yyyy';
+  }
+
+  String _getHeaderTextForGrid(String plantName) {
+    switch (plantName) {
+      case "Rajapalayam CMS Plant":
+        return "CMS";
+
+      case "Bangalore MD Plant":
+        return "MD";
+
+      default:
+        return "Gown/Kit/Drape";
+    }
+  }
+
+  bool _checkForWrapsheetDisable(String plantName) {
+    switch (plantName) {
+      case "Rajapalayam CMS Plant":
+        return true;
+
+      case "Bangalore MD Plant":
+        return true;
+
+      default:
+        return false;
+    }
   }
 
   static const int _frozenColumnCount = 2;
@@ -2083,8 +2110,10 @@ class _ProductionSummaryWithManpowerCostEntryState
   }
 
   Widget _buildEditableCell(int rowIndex, int colIndex) {
-    final isCalculated = isFormulaColumn(colIndex);
-
+    var isCalculated = isFormulaColumn(colIndex);
+    if (colIndex == 3 || colIndex == 4) {
+      isCalculated = _checkForWrapsheetDisable(_selectedPlant!);
+    }
     return SizedBox(
       height: _rowHeight,
       child: Padding(
