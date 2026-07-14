@@ -894,11 +894,26 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     }
   }
 
+  DateTime subtractOneMonth(DateTime date) {
+    final previousMonth = DateTime(date.year, date.month - 1, 1);
+    final lastDayOfPreviousMonth = DateTime(
+      previousMonth.year,
+      previousMonth.month + 1,
+      0,
+    ).day;
+
+    return DateTime(
+      previousMonth.year,
+      previousMonth.month,
+      date.day.clamp(1, lastDayOfPreviousMonth),
+    );
+  }
+
   Future<void> _loadSalesTarget(String UserName, String UserLevel) async {
     final body = {
       "FromDate": dateFilterFlag
-          ? formatDate(fromDateFilter!)
-          : formatDate(fiscalYearStartDate!),
+          ? formatDate(subtractOneMonth(fromDateFilter!))
+          : formatDate(subtractOneMonth(fiscalYearStartDate!)),
       "ToDate": dateFilterFlag
           ? formatDate(toDateFilter!)
           : formatDate(currentDate!),
@@ -1323,27 +1338,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       int month = recordDate.month;
       // Convert the balance string to a double.
       double recordBalance = (double.tryParse(record.balance) ?? 0.0).abs();
-
-      // Find an existing entry for this subgroup using try/catch.
-      // SubGroupMonthWiseRevenueExpensesData? subgroupData;
-
-      // // If no entry exists, create a new one with all balances initialized to 0.0.
-      // subgroupData = SubGroupMonthWiseRevenueExpensesData(
-      //   subGroupName: "Other Income",
-      //   aprBalance: 0.0,
-      //   mayBalance: 0.0,
-      //   junBalance: 0.0,
-      //   julBalance: 0.0,
-      //   augBalance: 0.0,
-      //   septBalance: 0.0,
-      //   octBalance: 0.0,
-      //   novBalance: 0.0,
-      //   decBalance: 0.0,
-      //   janBalance: 0.0,
-      //   febBalance: 0.0,
-      //   marBalance: 0.0,
-      // );
-      // subGroupMonthWiseDataList.add(subgroupData);
 
       // Update the corresponding month balance based on the record's month.
       // Assuming a financial year from April to March.
@@ -2677,10 +2671,16 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         (i) => i < monthlyCogsList.length ? monthlyCogsList[i].cogs : 0,
       );
 
+      var inventoryTargets = getTargets("INVENTORY TARGET");
+      var openingStockTargets = List<num>.generate(
+        12,
+        (i) => inventoryTargets[(i + 11) % 12],
+      );
+
       rows.add(
         buildRow(
           title: "Opening Stock",
-          targets: getTargets("INVENTORY TARGET"),
+          targets: openingStockTargets,
           values: openingStock,
         ),
       );
@@ -2696,9 +2696,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "Less: Closing Stock",
-          targets: getTargets(
-            "INVENTORY TARGET",
-          ), // change to previous month closing
+          targets: getTargets("INVENTORY TARGET"),
           values: closingStock,
         ),
       );
