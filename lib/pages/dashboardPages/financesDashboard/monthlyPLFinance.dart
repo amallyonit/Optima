@@ -2739,10 +2739,11 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- DIRECT EXPENSES ----------------
       addSection("Direct Expenses");
 
+      var dirTargets;
       for (var item in directExpensesList.subGroupData) {
         final values = getMonthBalances(item);
         var tmpDirTarget = getTargets(item.subGroupName);
-        var dirTargets = List<num>.generate(12, (i) => tmpDirTarget[i]);
+        dirTargets = List<num>.generate(12, (i) => tmpDirTarget[i]);
         rows.add(
           buildRow(
             title: item.subGroupName,
@@ -2757,11 +2758,16 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
           ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
           : List.filled(12, 0);
 
+      List<num> totalDirectTarget =
+          sumOfDirectExpensesList.subGroupData.isNotEmpty
+          ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
+          : List.filled(12, 0);
+
       if (direct.isNotEmpty) {
         rows.add(
           buildRow(
             title: "Total Direct Expenses",
-            targets: List.filled(12, 0),
+            targets: totalDirectTarget,
             values: direct,
             percentageBase: sales,
           ),
