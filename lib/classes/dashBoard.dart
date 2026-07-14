@@ -4998,6 +4998,8 @@ class TrialBalance {
   final String closingBalance;
   final String category;
   final String foreignName;
+  final String accountGroup;
+  final String accountSubGroup;
 
   TrialBalance({
     required this.group,
@@ -5012,6 +5014,8 @@ class TrialBalance {
     required this.closingBalance,
     required this.category,
     required this.foreignName,
+    required this.accountGroup,
+    required this.accountSubGroup,
   });
 
   factory TrialBalance.fromJson(Map<String, dynamic> json) {
@@ -5028,6 +5032,8 @@ class TrialBalance {
       closingBalance: json['closingBalance'],
       category: json['category'],
       foreignName: json['foreignName'],
+      accountGroup: json['accountGroup'],
+      accountSubGroup: json['accountSubGroup'],
     );
   }
 }

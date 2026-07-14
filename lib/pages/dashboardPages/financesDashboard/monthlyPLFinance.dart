@@ -238,6 +238,9 @@ class GRNMonthlyPLProvider with ChangeNotifier {
 }
 
 class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
+  bool _isDetailedPlExcelGenerating = false;
+  bool _isSummaryPlExcelGenerating = false;
+
   @override
   void initState() {
     super.initState();
@@ -431,8 +434,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         ? prefs.getString('userName') ?? ''
         : selectedUser;
     userLevel = prefs.getString('userLevel') ?? '';
+    await _loadTrialBalance(userName, userLevel);
     await Future.wait([
-      _loadTrialBalance(userName, userLevel),
+      // _loadTrialBalance(userName, userLevel),
       _loadPurchasePrice(userName, userLevel),
       _loadInventory(userName, userLevel),
       _loadSales(userName, userLevel),
@@ -595,7 +599,11 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
           fetchedCount = 0;
         }
       } while (fetchedCount == limit);
-
+      tmpTrialBalanceList = tmpTrialBalanceList
+          .where(
+            (e) => e.accountGroup.isNotEmpty && e.accountSubGroup.isNotEmpty,
+          )
+          .toList();
       setState(() {
         context.read<TrialBalanceProvider>().updateTrialBalanceList(
           tmpTrialBalanceList,
@@ -1020,7 +1028,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
     // Filter records that are part of "Expenditure".
     List<TrialBalance> expenseRecords = trialBalanceList
-        .where((record) => record.group == "Expenditure")
+        .where((record) => record.accountGroup == "Expenditure")
         .toList();
 
     List<TrialBalance> customerTargetList = [];
@@ -1054,7 +1062,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       SubGroupMonthWiseExpensesData? subgroupData;
       try {
         subgroupData = subGroupMonthWiseDataList.firstWhere(
-          (element) => element.subGroupName == record.subGroup,
+          (element) => element.subGroupName == record.accountSubGroup,
         );
       } catch (e) {
         subgroupData = null;
@@ -1063,7 +1071,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // If no entry exists, create a new one with all balances initialized to 0.0.
       if (subgroupData == null) {
         subgroupData = SubGroupMonthWiseExpensesData(
-          subGroupName: record.subGroup,
+          subGroupName: record.accountSubGroup,
           aprBalance: 0.0,
           mayBalance: 0.0,
           junBalance: 0.0,
@@ -1123,7 +1131,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
     // Filter records that are part of "Expenditure".
     List<TrialBalance> expenseRecords = trialBalanceList
-        .where((record) => record.group == "Revenue")
+        .where((record) => record.accountGroup == "Revenue")
         .toList();
 
     List<TrialBalance> customerTargetList = [];
@@ -1162,7 +1170,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       SubGroupMonthWiseRevenueExpensesData? subgroupData;
       try {
         subgroupData = subGroupMonthWiseDataList.firstWhere(
-          (element) => element.subGroupName == record.subGroup,
+          (element) => element.subGroupName == record.accountSubGroup,
         );
       } catch (e) {
         subgroupData = null;
@@ -1171,7 +1179,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // If no entry exists, create a new one with all balances initialized to 0.0.
       if (subgroupData == null) {
         subgroupData = SubGroupMonthWiseRevenueExpensesData(
-          subGroupName: record.subGroup,
+          subGroupName: record.accountSubGroup,
           aprBalance: 0.0,
           mayBalance: 0.0,
           junBalance: 0.0,
@@ -1230,10 +1238,13 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     DateFormat formatter = DateFormat('dd/MM/yyyy');
 
     // Filter records that are part of "Expenditure".
-    List<TrialBalance> expenseRecords = trialBalanceList
-        .where((record) => record.foreignName == "Other Income")
-        .toList();
+    // List<TrialBalance> expenseRecords = trialBalanceList
+    //     .where((record) => record.foreignName == "Other Income")
+    //     .toList();
 
+    List<TrialBalance> expenseRecords = trialBalanceList
+        .where((record) => record.accountSubGroup == "Other Income")
+        .toList();
     List<TrialBalance> customerTargetList = [];
 
     customerTargetList = expenseRecords.where((record) {
@@ -1337,16 +1348,28 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     }).toList();
 
     // Split into two categories
+    // List<TrialBalance> indirectExpenseRecords = validRecords
+    //     .where((r) => r.category == 'Indirect Expenses')
+    //     .toList();
+
+    // List<TrialBalance> otherIndirectExpenseRecords = validRecords
+    //     .where((r) => r.category == 'Other Indirect Expenses')
+    //     .toList();
+
+    // List<TrialBalance> directExpenseRecords = validRecords
+    //     .where((r) => r.category == 'Direct Expenses')
+    //     .toList();
+
     List<TrialBalance> indirectExpenseRecords = validRecords
-        .where((r) => r.category == 'Indirect Expenses')
+        .where((r) => r.accountGroup == 'Indirect Expenses')
         .toList();
 
     List<TrialBalance> otherIndirectExpenseRecords = validRecords
-        .where((r) => r.category == 'Other Indirect Expenses')
+        .where((r) => r.accountGroup == 'Other Indirect Expenses')
         .toList();
 
     List<TrialBalance> directExpenseRecords = validRecords
-        .where((r) => r.category == 'Direct Expenses')
+        .where((r) => r.accountGroup == 'Direct Expenses')
         .toList();
 
     // Helper function to process a list and generate month-wise balances
@@ -1361,10 +1384,12 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         double recordBalance = double.tryParse(record.balance) ?? 0.0;
 
         var existing = dataList.firstWhere(
-          (e) => e.subGroupName == record.foreignName,
+          // (e) => e.subGroupName == record.foreignName,
+          (e) => e.subGroupName == record.accountSubGroup,
           orElse: () {
             final newEntry = SubGroupMonthWiseRevenueExpensesData(
-              subGroupName: record.foreignName,
+              // subGroupName: record.foreignName,
+              subGroupName: record.accountSubGroup,
               aprBalance: 0.0,
               mayBalance: 0.0,
               junBalance: 0.0,
@@ -1522,8 +1547,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
   Future<void> _loadSubGroupWiseAnalysis(
     int monthIndex,
-    String? group,
-    String? subGroup,
+    String? accountGroup,
+    String? accountSubGroup,
   ) async {
     List<SubGroupWiseAnalysisExpensesData> subGroupWiseDataList = [];
     List<TrialBalance> customerTargetList = [];
@@ -1543,12 +1568,12 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
       for (var customer
           in customerTargetList
-              .where((customer) => customer.group == "Expenditure")
+              .where((customer) => customer.accountGroup == "Expenditure")
               .toList()) {
-        if (!processedSubGroupCodes.contains(customer.subGroup)) {
-          subGroupName = customer.subGroup;
+        if (!processedSubGroupCodes.contains(customer.accountSubGroup)) {
+          subGroupName = customer.accountSubGroup;
           for (var sales in customerTargetList.where(
-            (saleelement) => saleelement.subGroup == subGroupName,
+            (saleelement) => saleelement.accountSubGroup == subGroupName,
           )) {
             balance += double.tryParse(sales.balance) ?? 0;
           }
@@ -1575,20 +1600,20 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
       // customerTargetList = filterExpensesList(
       //   customerTargetList.cast<ExpensesList>().toList(),
-      //   group: group,
-      //   subGroup: subGroup,
+      //   accountGroup: accountGroup,
+      //   accountSubGroup: accountSubGroup,
       // );
 
       Set<String> processedSubGroupCodes = {};
 
       for (var customer
           in customerTargetList
-              .where((customer) => customer.group == "Expenditure")
+              .where((customer) => customer.accountGroup == "Expenditure")
               .toList()) {
-        if (!processedSubGroupCodes.contains(customer.subGroup)) {
-          subGroupName = customer.subGroup;
+        if (!processedSubGroupCodes.contains(customer.accountSubGroup)) {
+          subGroupName = customer.accountSubGroup;
           for (var sales in customerTargetList.where(
-            (saleelement) => saleelement.subGroup == subGroupName,
+            (saleelement) => saleelement.accountSubGroup == subGroupName,
           )) {
             balance += double.tryParse(sales.balance) ?? 0;
           }
@@ -1621,11 +1646,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     double balanceAmount = 0.0;
 
     List<TrialBalance> records = trialBalanceList
-        .where(
-          (record) =>
-              record.group ==
-              "Expenditure" /*&& record.monthYear.contains("2025")*/,
-        )
+        .where((record) => record.accountGroup == "Expenditure")
         .toList();
 
     customerTargetList = records.where((record) {
@@ -1684,7 +1705,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     double balanceAmount = 0.0;
 
     List<TrialBalance> records = trialBalanceList
-        .where((record) => record.group == "Revenue")
+        .where((record) => record.accountGroup == "Revenue")
         .toList();
 
     customerTargetList = records.where((record) {
@@ -1841,19 +1862,19 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     // Filter records based on the invoice date falling within the specified fiscal year.
     List<InventoryList> filteredRecords = inventory;
 
-    // Create a Map to group balances by month-year.
+    // Create a Map to accountGroup balances by month-year.
     // Key: month-year string (e.g. "08/2024")
     // Value: accumulated balance for that month.
 
     double balance = 0;
 
-    // Iterate over the filtered records to group and sum balances.
+    // Iterate over the filtered records to accountGroup and sum balances.
     for (var record in filteredRecords) {
       balance += double.tryParse(record.totalValue) ?? 0.0;
       // Sum the absolute value of balances.
     }
 
-    // Convert each group into DailyAnalysisExpensesData.
+    // Convert each accountGroup into DailyAnalysisExpensesData.
     groupWiseDataList.add(
       DailyAnalysisExpensesData(balance: balance, date: "Apr"),
     );
@@ -1870,18 +1891,18 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     // Filter records based on the invoice date falling within the specified fiscal year.
     List<InventoryList> filteredRecords = inventory;
 
-    // Create a Map to group balances by month-year.
+    // Create a Map to accountGroup balances by month-year.
     // Key: month-year string (e.g. "08/2024")
     // Value: accumulated balance for that month.
     double balance = 0;
 
-    // Iterate over the filtered records to group and sum balances.
+    // Iterate over the filtered records to accountGroup and sum balances.
     for (var record in filteredRecords) {
       balance += double.tryParse(record.totalValue) ?? 0.0;
       // Sum the absolute value of balances.
     }
 
-    // Convert each group into DailyAnalysisExpensesData.
+    // Convert each accountGroup into DailyAnalysisExpensesData.
     groupWiseDataList.add(
       DailyAnalysisExpensesData(
         balance: balance,
@@ -2450,6 +2471,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
   }
 
   Future<void> generateSalesAnalysisYTDExcel() async {
+    if (_isDetailedPlExcelGenerating) return;
+    _isDetailedPlExcelGenerating = true;
+
     try {
       // ---------------- HEADER ----------------
       final months = [
@@ -2539,7 +2563,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       final sales = getSales();
 
       // ---------------- REVENUE ----------------
-      addSection("Revenue");
+      addSection("Income");
 
       final revenueTargets = List.generate(12, (i) {
         final mapIndex = (i + 3) % 12;
@@ -2741,11 +2765,13 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- EBITDA / PBT / PAT ----------------
       addSection("Profitability");
 
-      final finance = foreignNameMonthExpenseWiseList.subGroupData.firstWhere(
-        (e) => e.subGroupName == 'Finance Costs',
-      );
+      final financeRows = foreignNameMonthExpenseWiseList.subGroupData
+          .where((e) => e.subGroupName.trim().toLowerCase() == 'finance costs')
+          .toList();
 
-      final financeVals = getMonthBalances(finance);
+      final financeVals = financeRows.isNotEmpty
+          ? getMonthBalances(financeRows.first)
+          : List<num>.filled(12, 0);
       final directVals = sumOfDirectExpensesList.subGroupData.isNotEmpty
           ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
           : List.filled(12, 0);
@@ -2805,7 +2831,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         headers: headers,
         rows: rows,
         fileName: 'detailed_p&l.xlsx',
-        amountColumns: List.generate(headers.length, (i) => i + 1),
+        amountColumns: List.generate(headers.length - 1, (i) => i + 2),
         reportTitle: 'Finance - Detailed P&L',
         enableStyling: true,
         highlightSections: true,
@@ -2814,10 +2840,15 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       );
     } catch (e) {
       debugPrint("Excel Error: $e");
+    } finally {
+      _isDetailedPlExcelGenerating = false;
     }
   }
 
   Future<void> generateSummarySalesAnalysisYTDExcel() async {
+    if (_isSummaryPlExcelGenerating) return;
+    _isSummaryPlExcelGenerating = true;
+
     try {
       // ---------------- HEADER ----------------
       final headers = [
@@ -3014,6 +3045,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       );
     } catch (e) {
       debugPrint("Summary Excel Error: $e");
+    } finally {
+      _isSummaryPlExcelGenerating = false;
     }
   }
 
@@ -3209,22 +3242,24 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                           },
                           icon: const Icon(Icons.filter_alt_outlined),
                         ),
-                        PopupMenuButton(
-                          onSelected: (value) {},
+                        PopupMenuButton<String>(
+                          onSelected: (value) async {
+                            if (value == 'detailedExcel') {
+                              await generateSalesAnalysisYTDExcel();
+                            } else if (value == 'summaryExcel') {
+                              await generateSummarySalesAnalysisYTDExcel();
+                            }
+                          },
                           itemBuilder: (BuildContext bc) {
                             return [
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateSalesAnalysisYTDExcel();
-                                },
+                              const PopupMenuItem<String>(
+                                value: 'detailedExcel',
                                 child: const Row(
                                   children: [Text("Download Detailed Excel")],
                                 ),
                               ),
-                              PopupMenuItem(
-                                onTap: () {
-                                  generateSummarySalesAnalysisYTDExcel();
-                                },
+                              const PopupMenuItem<String>(
+                                value: 'summaryExcel',
                                 child: const Row(
                                   children: [Text("Download Summary Excel")],
                                 ),
@@ -3564,7 +3599,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                       textAlign: TextAlign.start,
                     );
                   },
-                  getTooltipColor: (group) => Colors.white,
+                  getTooltipColor: (accountGroup) => Colors.white,
                   fitInsideVertically: true,
                   fitInsideHorizontally: true,
                 ),
@@ -3683,7 +3718,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                       textAlign: TextAlign.start,
                     );
                   },
-                  getTooltipColor: (group) => Colors.white,
+                  getTooltipColor: (accountGroup) => Colors.white,
                   fitInsideVertically: true,
                   fitInsideHorizontally: true,
                 ),
@@ -3793,7 +3828,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                       textAlign: TextAlign.start,
                     );
                   },
-                  getTooltipColor: (group) => Colors.white,
+                  getTooltipColor: (accountGroup) => Colors.white,
                   fitInsideVertically: true,
                   fitInsideHorizontally: true,
                 ),
@@ -3914,7 +3949,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                       textAlign: TextAlign.start,
                     );
                   },
-                  getTooltipColor: (group) => Colors.white,
+                  getTooltipColor: (accountGroup) => Colors.white,
                   fitInsideVertically: true,
                   fitInsideHorizontally: true,
                 ),
@@ -4026,7 +4061,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
                       textAlign: TextAlign.start,
                     );
                   },
-                  getTooltipColor: (group) => Colors.white,
+                  getTooltipColor: (accountGroup) => Colors.white,
                   fitInsideVertically: true,
                   fitInsideHorizontally: true,
                 ),
