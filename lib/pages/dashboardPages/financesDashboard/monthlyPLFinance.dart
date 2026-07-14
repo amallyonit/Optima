@@ -399,6 +399,32 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     return "FY${startYear % 100}-${endYear % 100}-T";
   }
 
+  double getTargetForFinancialMonth(String salesRep, int monthNumber) {
+    final monthName = getMonthName(monthNumber);
+    double target = 0;
+    target = salesTarget
+        .where(
+          (target) =>
+              target.financialYear == getCurrentFinancialYearSuffix() &&
+              target.salesRep == salesRep,
+        )
+        .map(
+          (target) =>
+              double.tryParse(target.getTargetForMonth(monthName)) ?? 0.0,
+        )
+        .fold(0.0, (sum, value) => sum + value);
+
+    return target;
+  }
+
+  List<num> getFiscalYearTargets(String salesRep) {
+    const fiscalMonths = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+
+    return fiscalMonths
+        .map((monthNumber) => getTargetForFinancialMonth(salesRep, monthNumber))
+        .toList();
+  }
+
   Map<String, List<double>> buildMonthlyTargets(List<SalesTargetList> data) {
     const reps = [
       'MD SALES TARGET',
@@ -1268,6 +1294,26 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       return startsAfterOrOnFiscalStart && endsBeforeOrOnCurrentDate;
     }).toList();
 
+    SubGroupMonthWiseRevenueExpensesData? subgroupData;
+
+    // If no entry exists, create a new one with all balances initialized to 0.0.
+    subgroupData = SubGroupMonthWiseRevenueExpensesData(
+      subGroupName: "Other Income",
+      aprBalance: 0.0,
+      mayBalance: 0.0,
+      junBalance: 0.0,
+      julBalance: 0.0,
+      augBalance: 0.0,
+      septBalance: 0.0,
+      octBalance: 0.0,
+      novBalance: 0.0,
+      decBalance: 0.0,
+      janBalance: 0.0,
+      febBalance: 0.0,
+      marBalance: 0.0,
+    );
+    subGroupMonthWiseDataList.add(subgroupData);
+
     // Process each expense record.
     for (var record in customerTargetList) {
       //
@@ -1276,28 +1322,28 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       DateTime recordDate = formatter.parse('01/${record.monthYear}');
       int month = recordDate.month;
       // Convert the balance string to a double.
-      double recordBalance = double.tryParse(record.balance) ?? 0.0;
+      double recordBalance = (double.tryParse(record.balance) ?? 0.0).abs();
 
       // Find an existing entry for this subgroup using try/catch.
-      SubGroupMonthWiseRevenueExpensesData? subgroupData;
+      // SubGroupMonthWiseRevenueExpensesData? subgroupData;
 
-      // If no entry exists, create a new one with all balances initialized to 0.0.
-      subgroupData = SubGroupMonthWiseRevenueExpensesData(
-        subGroupName: "Other Income",
-        aprBalance: 0.0,
-        mayBalance: 0.0,
-        junBalance: 0.0,
-        julBalance: 0.0,
-        augBalance: 0.0,
-        septBalance: 0.0,
-        octBalance: 0.0,
-        novBalance: 0.0,
-        decBalance: 0.0,
-        janBalance: 0.0,
-        febBalance: 0.0,
-        marBalance: 0.0,
-      );
-      subGroupMonthWiseDataList.add(subgroupData);
+      // // If no entry exists, create a new one with all balances initialized to 0.0.
+      // subgroupData = SubGroupMonthWiseRevenueExpensesData(
+      //   subGroupName: "Other Income",
+      //   aprBalance: 0.0,
+      //   mayBalance: 0.0,
+      //   junBalance: 0.0,
+      //   julBalance: 0.0,
+      //   augBalance: 0.0,
+      //   septBalance: 0.0,
+      //   octBalance: 0.0,
+      //   novBalance: 0.0,
+      //   decBalance: 0.0,
+      //   janBalance: 0.0,
+      //   febBalance: 0.0,
+      //   marBalance: 0.0,
+      // );
+      // subGroupMonthWiseDataList.add(subgroupData);
 
       // Update the corresponding month balance based on the record's month.
       // Assuming a financial year from April to March.
@@ -1347,29 +1393,22 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
           !fromDt.isAfter(currentDate!);
     }).toList();
 
-    // Split into two categories
-    // List<TrialBalance> indirectExpenseRecords = validRecords
-    //     .where((r) => r.category == 'Indirect Expenses')
-    //     .toList();
-
-    // List<TrialBalance> otherIndirectExpenseRecords = validRecords
-    //     .where((r) => r.category == 'Other Indirect Expenses')
-    //     .toList();
-
-    // List<TrialBalance> directExpenseRecords = validRecords
-    //     .where((r) => r.category == 'Direct Expenses')
-    //     .toList();
+    bool matchesExpenseType(TrialBalance record, String type) {
+      final normalizedType = type.trim().toLowerCase();
+      return record.category.trim().toLowerCase() == normalizedType ||
+          record.accountGroup.trim().toLowerCase() == normalizedType;
+    }
 
     List<TrialBalance> indirectExpenseRecords = validRecords
-        .where((r) => r.accountGroup == 'Indirect Expenses')
+        .where((r) => matchesExpenseType(r, 'Indirect Expenses'))
         .toList();
 
     List<TrialBalance> otherIndirectExpenseRecords = validRecords
-        .where((r) => r.accountGroup == 'Other Indirect Expenses')
+        .where((r) => matchesExpenseType(r, 'Other Indirect Expenses'))
         .toList();
 
     List<TrialBalance> directExpenseRecords = validRecords
-        .where((r) => r.accountGroup == 'Direct Expenses')
+        .where((r) => matchesExpenseType(r, 'Direct Expenses'))
         .toList();
 
     // Helper function to process a list and generate month-wise balances
@@ -1646,7 +1685,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     double balanceAmount = 0.0;
 
     List<TrialBalance> records = trialBalanceList
-        .where((record) => record.accountGroup == "Expenditure")
+        .where((record) => record.group == "Expenditure")
         .toList();
 
     customerTargetList = records.where((record) {
@@ -2368,6 +2407,18 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       foreignNameMonthExpenseWiseList = SubGroupMonthWiseRevenueExpensesList(
         subGroupData: [],
       );
+      otherIndirectExpensesList = SubGroupMonthWiseRevenueExpensesList(
+        subGroupData: [],
+      );
+      directExpensesList = SubGroupMonthWiseRevenueExpensesList(
+        subGroupData: [],
+      );
+      sumOfDirectExpensesList = SubGroupMonthWiseRevenueExpensesList(
+        subGroupData: [],
+      );
+      totalIndirectExpensesList = SubGroupMonthWiseRevenueExpensesList(
+        subGroupData: [],
+      );
       otherIncomeList = SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
     });
   }
@@ -2509,10 +2560,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
             : 0,
       );
 
-      List<num> getTargets(String key) => List.generate(12, (i) {
-        final mapIndex = (i + 3) % 12;
-        return monthlyMap[key]?[mapIndex] ?? 0;
-      });
+      List<num> getTargets(String key) => getFiscalYearTargets(key);
 
       List<num> getMonthBalances(dynamic d) => [
         d.aprBalance,
@@ -2565,12 +2613,13 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- REVENUE ----------------
       addSection("Income");
 
-      final revenueTargets = List.generate(12, (i) {
-        final mapIndex = (i + 3) % 12;
+      var ipdSalesTargets = getTargets("IPD SALES TARGET");
+      var mdSalesTargets = getTargets("MD SALES TARGET");
 
-        return (monthlyMap["IPD SALES TARGET"]?[mapIndex] ?? 0) +
-            (monthlyMap["MD SALES TARGET"]?[mapIndex] ?? 0);
-      });
+      var revenueTargets = List<num>.generate(
+        12,
+        (i) => ipdSalesTargets[i] + mdSalesTargets[i],
+      );
 
       rows.add(
         buildRow(
@@ -2581,7 +2630,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         ),
       );
 
-      final otherIncome = otherIncomeList.subGroupData.isNotEmpty
+      var otherIncome = otherIncomeList.subGroupData.isNotEmpty
           ? getMonthBalances(otherIncomeList.subGroupData.first)
           : List.filled(12, 0);
 
@@ -2647,7 +2696,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "Less: Closing Stock",
-          targets: getTargets("INVENTORY TARGET"),
+          targets: getTargets(
+            "INVENTORY TARGET",
+          ), // change to previous month closing
           values: closingStock,
         ),
       );
