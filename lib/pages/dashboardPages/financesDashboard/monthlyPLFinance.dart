@@ -2599,6 +2599,20 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         d.marBalance,
       ];
 
+      List<num> sumTargetsForItems(Iterable<dynamic> items) {
+        final totals = List<num>.filled(12, 0);
+
+        for (final item in items) {
+          final itemTargets = getTargets(item.subGroupName);
+
+          for (int i = 0; i < 12; i++) {
+            totals[i] = totals[i] + itemTargets[i];
+          }
+        }
+
+        return totals;
+      }
+
       List<dynamic> buildRow({
         required String title,
         required List<num> targets,
@@ -2758,10 +2772,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
           ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
           : List.filled(12, 0);
 
-      List<num> totalDirectTarget =
-          sumOfDirectExpensesList.subGroupData.isNotEmpty
-          ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
-          : List.filled(12, 0);
+      final totalDirectTarget = sumTargetsForItems(
+        directExpensesList.subGroupData,
+      );
 
       if (direct.isNotEmpty) {
         rows.add(
@@ -2819,11 +2832,16 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         (i) => indirect1[i] + indirect2[i],
       );
 
+      final totalIndirectTarget = sumTargetsForItems([
+        ...otherIndirectExpensesList.subGroupData,
+        ...foreignNameMonthExpenseWiseList.subGroupData,
+      ]);
+
       if (totalIndirect.isNotEmpty) {
         rows.add(
           buildRow(
             title: "Total Indirect Expenses",
-            targets: List.filled(12, 0),
+            targets: totalIndirectTarget,
             values: totalIndirect,
             percentageBase: sales,
           ),
@@ -2834,10 +2852,14 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         12,
         (i) => direct[i] + indirect1[i] + indirect2[i],
       );
+      final totalOperatingTarget = List<num>.generate(
+        12,
+        (i) => totalDirectTarget[i] + totalIndirectTarget[i],
+      );
       rows.add(
         buildRow(
           title: "Total Operating Expenses",
-          targets: List.filled(12, 0),
+          targets: totalOperatingTarget,
           values: totalExpenditure,
           percentageBase: sales,
         ),
