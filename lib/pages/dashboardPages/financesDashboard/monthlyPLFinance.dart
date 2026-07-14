@@ -399,13 +399,30 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     return "FY${startYear % 100}-${endYear % 100}-T";
   }
 
-  double getTargetForFinancialMonth(String salesRep, int monthNumber) {
+  String getPreviousFinancialYearSuffix() {
+    final now = DateTime.now();
+    final year = now.year;
+    final month = now.month;
+
+    int currentStartYear = (month >= 4) ? year : year - 1;
+    int previousStartYear = currentStartYear - 1;
+    int previousEndYear = currentStartYear;
+
+    return "FY${previousStartYear % 100}-${previousEndYear % 100}-T";
+  }
+
+  double getTargetForFinancialMonth(
+    String salesRep,
+    int monthNumber, {
+    String? financialYearSuffix,
+  }) {
     final monthName = getMonthName(monthNumber);
     double target = 0;
     target = salesTarget
         .where(
           (target) =>
-              target.financialYear == getCurrentFinancialYearSuffix() &&
+              target.financialYear ==
+                  (financialYearSuffix ?? getCurrentFinancialYearSuffix()) &&
               target.salesRep == salesRep,
         )
         .map(
@@ -423,6 +440,17 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     return fiscalMonths
         .map((monthNumber) => getTargetForFinancialMonth(salesRep, monthNumber))
         .toList();
+  }
+
+  List<num> getOpeningStockTargets() {
+    var inventoryTargets = getFiscalYearTargets("INVENTORY TARGET");
+    var previousYearMarchTarget = getTargetForFinancialMonth(
+      "INVENTORY TARGET",
+      3,
+      financialYearSuffix: getPreviousFinancialYearSuffix(),
+    );
+
+    return [previousYearMarchTarget, ...inventoryTargets.take(11)];
   }
 
   Map<String, List<double>> buildMonthlyTargets(List<SalesTargetList> data) {
@@ -2671,16 +2699,10 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         (i) => i < monthlyCogsList.length ? monthlyCogsList[i].cogs : 0,
       );
 
-      var inventoryTargets = getTargets("INVENTORY TARGET");
-      var openingStockTargets = List<num>.generate(
-        12,
-        (i) => inventoryTargets[(i + 11) % 12],
-      );
-
       rows.add(
         buildRow(
           title: "Opening Stock",
-          targets: openingStockTargets,
+          targets: getOpeningStockTargets(),
           values: openingStock,
         ),
       );
@@ -2719,11 +2741,12 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
       for (var item in directExpensesList.subGroupData) {
         final values = getMonthBalances(item);
-
+        var tmpDirTarget = getTargets(item.subGroupName);
+        var dirTargets = List<num>.generate(12, (i) => tmpDirTarget[i]);
         rows.add(
           buildRow(
             title: item.subGroupName,
-            targets: List.filled(12, 0),
+            targets: dirTargets,
             values: values,
             percentageBase: sales,
           ),
@@ -2750,10 +2773,12 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       addSection("Indirect Expenses");
 
       for (var item in otherIndirectExpensesList.subGroupData) {
+        var tmpIndirTarget1 = getTargets(item.subGroupName);
+        var indirTargets1 = List<num>.generate(12, (i) => tmpIndirTarget1[i]);
         rows.add(
           buildRow(
             title: item.subGroupName,
-            targets: List.filled(12, 0),
+            targets: indirTargets1,
             values: getMonthBalances(item),
             percentageBase: sales,
           ),
@@ -2761,10 +2786,12 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       }
 
       for (var item in foreignNameMonthExpenseWiseList.subGroupData) {
+        var tmpIndirTarget2 = getTargets(item.subGroupName);
+        var indirTargets2 = List<num>.generate(12, (i) => tmpIndirTarget2[i]);
         rows.add(
           buildRow(
             title: item.subGroupName,
-            targets: List.filled(12, 0),
+            targets: indirTargets2,
             values: getMonthBalances(item),
             percentageBase: sales,
           ),
