@@ -139,7 +139,7 @@ SubGroupMonthWiseExpensesList subGroupMonthWiseList =
     SubGroupMonthWiseExpensesList(subGroupData: []);
 SubGroupMonthWiseRevenueExpensesList subGroupMonthExpenseWiseList =
     SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
-SubGroupMonthWiseRevenueExpensesList foreignNameMonthExpenseWiseList =
+SubGroupMonthWiseRevenueExpensesList indirectExpenseWiseList =
     SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
 SubGroupMonthWiseRevenueExpensesList otherIndirectExpensesList =
     SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
@@ -150,6 +150,8 @@ SubGroupMonthWiseRevenueExpensesList sumOfDirectExpensesList =
 SubGroupMonthWiseRevenueExpensesList totalIndirectExpensesList =
     SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
 SubGroupMonthWiseRevenueExpensesList otherIncomeList =
+    SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
+SubGroupMonthWiseRevenueExpensesList financeCostsList =
     SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
 
 DateTime? fromDateFilter;
@@ -1417,8 +1419,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
     bool matchesExpenseType(TrialBalance record, String type) {
       final normalizedType = type.trim().toLowerCase();
-      return record.category.trim().toLowerCase() == normalizedType ||
-          record.accountGroup.trim().toLowerCase() == normalizedType;
+      return
+      // record.category.trim().toLowerCase() == normalizedType ||
+      record.accountGroup.trim().toLowerCase() == normalizedType;
     }
 
     List<TrialBalance> indirectExpenseRecords = validRecords
@@ -1431,6 +1434,10 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
     List<TrialBalance> directExpenseRecords = validRecords
         .where((r) => matchesExpenseType(r, 'Direct Expenses'))
+        .toList();
+
+    List<TrialBalance> financeCostsRecords = validRecords
+        .where((r) => matchesExpenseType(r, 'Finance Costs'))
         .toList();
 
     // Helper function to process a list and generate month-wise balances
@@ -1513,13 +1520,12 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     }
 
     // Generate final lists
-    foreignNameMonthExpenseWiseList = processExpenseRecords(
-      indirectExpenseRecords,
-    );
+    indirectExpenseWiseList = processExpenseRecords(indirectExpenseRecords);
     otherIndirectExpensesList = processExpenseRecords(
       otherIndirectExpenseRecords,
     );
     directExpensesList = processExpenseRecords(directExpenseRecords);
+    financeCostsList = processExpenseRecords(financeCostsRecords);
 
     // Sum each month's direct expenses
     SubGroupMonthWiseRevenueExpensesData sumOfDirectExpenses =
@@ -2426,7 +2432,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       subGroupMonthExpenseWiseList = SubGroupMonthWiseRevenueExpensesList(
         subGroupData: [],
       );
-      foreignNameMonthExpenseWiseList = SubGroupMonthWiseRevenueExpensesList(
+      indirectExpenseWiseList = SubGroupMonthWiseRevenueExpensesList(
         subGroupData: [],
       );
       otherIndirectExpensesList = SubGroupMonthWiseRevenueExpensesList(
@@ -2442,6 +2448,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         subGroupData: [],
       );
       otherIncomeList = SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
+      financeCostsList = SubGroupMonthWiseRevenueExpensesList(subGroupData: []);
     });
   }
 
@@ -2804,7 +2811,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         );
       }
 
-      for (var item in foreignNameMonthExpenseWiseList.subGroupData) {
+      for (var item in indirectExpenseWiseList.subGroupData) {
         var tmpIndirTarget2 = getTargets(item.subGroupName);
         var indirTargets2 = List<num>.generate(12, (i) => tmpIndirTarget2[i]);
         rows.add(
@@ -2821,9 +2828,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
           ? getMonthBalances(totalIndirectExpensesList.subGroupData.first)
           : List.filled(12, 0);
 
-      List<num> indirect2 =
-          foreignNameMonthExpenseWiseList.subGroupData.isNotEmpty
-          ? getMonthBalances(foreignNameMonthExpenseWiseList.subGroupData.first)
+      List<num> indirect2 = indirectExpenseWiseList.subGroupData.isNotEmpty
+          ? getMonthBalances(indirectExpenseWiseList.subGroupData.first)
           : List.filled(12, 0);
 
       // element-wise sum
@@ -2834,7 +2840,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
       final totalIndirectTarget = sumTargetsForItems([
         ...otherIndirectExpensesList.subGroupData,
-        ...foreignNameMonthExpenseWiseList.subGroupData,
+        ...indirectExpenseWiseList.subGroupData,
       ]);
 
       if (totalIndirect.isNotEmpty) {
@@ -2866,16 +2872,14 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       );
 
       addSpacer();
-      // ---------------- EBITDA / PBT / PAT ----------------
-      addSection("Profitability");
 
-      final financeRows = foreignNameMonthExpenseWiseList.subGroupData
-          .where((e) => e.subGroupName.trim().toLowerCase() == 'finance costs')
-          .toList();
+      // ---------------- EBITDA / PBT / PAT --------------------
+      final financeRows = financeCostsList.subGroupData.toList();
 
       final financeVals = financeRows.isNotEmpty
           ? getMonthBalances(financeRows.first)
           : List<num>.filled(12, 0);
+
       final directVals = sumOfDirectExpensesList.subGroupData.isNotEmpty
           ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
           : List.filled(12, 0);
@@ -2911,20 +2915,63 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         ),
       );
 
+      addSpacer();
+
+      // ---------------- FINANCE COSTS ----------------
+
+      final totalfinanceCostsTarget = sumTargetsForItems(
+        financeCostsList.subGroupData,
+      );
+      List<num> totalfinanceCosts = financeCostsList.subGroupData.isNotEmpty
+          ? getMonthBalances(financeCostsList.subGroupData.first)
+          : List.filled(12, 0);
       rows.add(
         buildRow(
-          title: "PBT",
+          title: "Total Finance Costs:",
+          targets: totalfinanceCostsTarget,
+          values: totalfinanceCosts,
+          percentageBase: sales,
+        ),
+      );
+      for (var item in financeCostsList.subGroupData) {
+        var tmpFinTarget = getTargets(item.subGroupName);
+        var finTargets = List<num>.generate(12, (i) => tmpFinTarget[i]);
+        rows.add(
+          buildRow(
+            title: item.subGroupName,
+            targets: finTargets,
+            values: getMonthBalances(item),
+            percentageBase: sales,
+          ),
+        );
+      }
+      addSpacer();
+
+      rows.add(
+        buildRow(
+          title: "Depreciation & Amortization (SLM Basis)",
           targets: List.filled(12, 0),
-          values: pbt,
+          values: List.filled(12, 0),
           percentageBase: sales,
         ),
       );
 
       rows.add(
         buildRow(
-          title: "PAT",
+          title: "EBIT (Operating Profit)",
           targets: List.filled(12, 0),
           values: pat,
+          percentageBase: sales,
+        ),
+      );
+
+      addSpacer();
+
+      rows.add(
+        buildRow(
+          title: "PBT (Profit Before Tax)",
+          targets: List.filled(12, 0),
+          values: pbt,
           percentageBase: sales,
         ),
       );
@@ -3099,7 +3146,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- OTHER + FINANCE ----------------
       double financeActual = 0.0;
       try {
-        final finance = foreignNameMonthExpenseWiseList.subGroupData.firstWhere(
+        final finance = indirectExpenseWiseList.subGroupData.firstWhere(
           (e) => e.subGroupName == 'Finance Costs',
         );
         financeActual = getBalanceForMonth(finance, fiscalMonthIndex);
