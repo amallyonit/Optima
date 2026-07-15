@@ -483,10 +483,15 @@ class ReportService {
             highlightProfitability &&
             (title.contains("ebitda") ||
                 title.contains("pbt") ||
-                title.contains("pat"));
+                title.contains("finance costs") ||
+                title.contains("work-in-progress"));
 
         final isTotalRow =
-            title.startsWith("total") || title.startsWith("grand total");
+            title.startsWith("total") ||
+            title.startsWith("grand total") ||
+            title.startsWith("(increase)/decrease") ||
+            title.startsWith("cost of materials consumed (cogs)") ||
+            title.startsWith("cogs");
 
         for (int j = 0; j < row.length; j++) {
           final cell = sheet.getRangeByIndex(rowIndex, j + 1);

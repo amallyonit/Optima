@@ -51,6 +51,31 @@ class MonthlyCogsData {
   });
 }
 
+class MonthlyWIPList {
+  final List<MonthlyWIPData> monthlyData;
+  MonthlyWIPList({required this.monthlyData});
+}
+
+class MonthlyWIPData {
+  final String monthYear;
+  final double openingStock;
+  final double purchases;
+  final double closingStock;
+  final double cogs;
+  final double? inventoryTarget;
+  final double? cogsTarget;
+
+  MonthlyWIPData({
+    required this.monthYear,
+    required this.openingStock,
+    required this.purchases,
+    required this.closingStock,
+    required this.cogs,
+    this.inventoryTarget,
+    this.cogsTarget,
+  });
+}
+
 class MonthlyPLFinance extends StatefulWidget {
   const MonthlyPLFinance({super.key});
 
@@ -91,8 +116,12 @@ List<SalesTargetList> salesTarget = [];
 
 List<GRNList> grnList = [];
 List<MonthlyInventoryData> monthWiseInventory = [];
+
 List<MonthlyCogsData> monthlyCogsList = [];
 MonthlyCogsList monthlyCOGS = MonthlyCogsList(monthlyData: []);
+
+List<MonthlyWIPData> monthlyWIPList = [];
+MonthlyWIPList monthlyWIP = MonthlyWIPList(monthlyData: []);
 
 double lessThan30DaysValue = 0;
 double a30to60DaysValue = 0;
@@ -311,10 +340,28 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     required Map<String, List<double>> targetMap,
   }) {
     List<MonthlyCogsData> cogsList = [];
+    const excludedGroups = {
+      'Finished Goods',
+      'General Products',
+      'Traded Material',
+      'Semi Finished Goods',
+    };
 
-    for (int i = 1; i < inventoryList.length; i++) {
-      final curr = inventoryList[i];
-      final prev = inventoryList[i - 1];
+    final List<MonthlyInventoryData> filteredInventoryList = inventoryList
+        .map(
+          (monthData) => MonthlyInventoryData(
+            monthYear: monthData.monthYear,
+            inventory: monthData.inventory
+                .where((i) => !excludedGroups.contains(i.groupName))
+                .toList(),
+          ),
+        )
+        .where((monthData) => monthData.inventory.isNotEmpty)
+        .toList();
+
+    for (int i = 1; i < filteredInventoryList.length; i++) {
+      final curr = filteredInventoryList[i];
+      final prev = filteredInventoryList[i - 1];
       final monthYear = curr.monthYear; // e.g. "Apr 2025"
       final monthIdx = monthIndexFromString(monthYear);
 
@@ -356,6 +403,68 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     }
 
     return cogsList;
+  }
+
+  List<MonthlyWIPData> calculateMonthlyWIP({
+    required List<MonthlyInventoryData> inventoryList,
+    required List<DailyAnalysisExpensesData> purchaseMonthlyData,
+    required Map<String, List<double>> targetMap,
+  }) {
+    List<MonthlyWIPData> wipList = [];
+    const allowedGroups = {
+      'Finished Goods',
+      'General Products',
+      'Traded Material',
+      'Semi Finished Goods',
+    };
+
+    final List<MonthlyInventoryData> filteredInventoryList = inventoryList
+        .map(
+          (monthData) => MonthlyInventoryData(
+            monthYear: monthData.monthYear,
+            inventory: monthData.inventory
+                .where((i) => allowedGroups.contains(i.groupName))
+                .toList(),
+          ),
+        )
+        .where((monthData) => monthData.inventory.isNotEmpty)
+        .toList();
+
+    for (int i = 1; i < filteredInventoryList.length; i++) {
+      final curr = filteredInventoryList[i];
+      final prev = filteredInventoryList[i - 1];
+      final monthYear = curr.monthYear; // e.g. "Apr 2025"
+
+      final openingStock = prev.inventory.fold(
+        0.0,
+        (sum, item) => sum + double.parse(item.totalValue),
+      );
+      final closingStock = curr.inventory.fold(
+        0.0,
+        (sum, item) => sum + double.parse(item.totalValue),
+      );
+      final purchases = (i - 1 < purchaseMonthlyData.length)
+          ? purchaseMonthlyData[i - 1].balance
+          : 0.0;
+      final cogs = openingStock + purchases - closingStock;
+
+      final cogsTarget = 0.0;
+      final inventoryTarget = 0.0;
+
+      wipList.add(
+        MonthlyWIPData(
+          monthYear: monthYear,
+          openingStock: openingStock,
+          purchases: purchases,
+          closingStock: closingStock,
+          cogs: cogs,
+          cogsTarget: cogsTarget,
+          inventoryTarget: inventoryTarget,
+        ),
+      );
+    }
+
+    return wipList;
   }
 
   int monthIndexFromString(String monthYear) {
@@ -490,9 +599,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         ? prefs.getString('userName') ?? ''
         : selectedUser;
     userLevel = prefs.getString('userLevel') ?? '';
-    await _loadTrialBalance(userName, userLevel);
+    // await _loadTrialBalance(userName, userLevel);
     await Future.wait([
-      // _loadTrialBalance(userName, userLevel),
+      _loadTrialBalance(userName, userLevel),
       _loadPurchasePrice(userName, userLevel),
       _loadInventory(userName, userLevel),
       _loadSales(userName, userLevel),
@@ -512,7 +621,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       _loadSubGroupMonthWiseAnalysisExpenditure(),
       _loadSubGroupMonthWiseAnalysisRevenue(),
       _loadOtherIncomeMonthWiseAnalysisRevenue(),
-      _loadForeignNameMonthWiseAnalysisRevenue(),
+      _loadGroupWiseMonthlyExpenseAnalysisRevenue(),
     ]);
     if (!mounted) return;
     setState(() {
@@ -1404,7 +1513,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     );
   }
 
-  Future<void> _loadForeignNameMonthWiseAnalysisRevenue() async {
+  Future<void> _loadGroupWiseMonthlyExpenseAnalysisRevenue() async {
     DateFormat formatter = DateFormat('dd/MM/yyyy');
 
     // Filter records within fiscal year and up to current date
@@ -1419,9 +1528,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
     bool matchesExpenseType(TrialBalance record, String type) {
       final normalizedType = type.trim().toLowerCase();
-      return
-      // record.category.trim().toLowerCase() == normalizedType ||
-      record.accountGroup.trim().toLowerCase() == normalizedType;
+      return record.accountGroup.trim().toLowerCase() == normalizedType;
     }
 
     List<TrialBalance> indirectExpenseRecords = validRecords
@@ -1452,11 +1559,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         double recordBalance = double.tryParse(record.balance) ?? 0.0;
 
         var existing = dataList.firstWhere(
-          // (e) => e.subGroupName == record.foreignName,
           (e) => e.subGroupName == record.accountSubGroup,
           orElse: () {
             final newEntry = SubGroupMonthWiseRevenueExpensesData(
-              // subGroupName: record.foreignName,
               subGroupName: record.accountSubGroup,
               aprBalance: 0.0,
               mayBalance: 0.0,
@@ -1828,6 +1933,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         .where((t) => t.financialYear == getCurrentFinancialYearSuffix())
         .toList();
 
+    const allowedGroups = {'Traded Material', 'Semi Finished Goods'};
+
     List<DailyAnalysisExpensesData> groupWiseDataList = [];
 
     List<GRNList> filteredRecords = grnList.where((record) {
@@ -1835,7 +1942,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       return invoiceDate.isAtLeast(
             dateFilterFlag ? fromDateFilter! : fiscalYearStartDate!,
           ) &&
-          invoiceDate.isAtMost(dateFilterFlag ? toDateFilter! : currentDate!);
+          invoiceDate.isAtMost(dateFilterFlag ? toDateFilter! : currentDate!) &&
+          !allowedGroups.contains(record.itemGroup);
     }).toList();
 
     Map<String, double> monthlyBalanceMap = {};
@@ -1877,8 +1985,59 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       purchaseMonthlyData: purchaseMonthlyData.dailyData,
       targetMap: monthlyMap,
     );
-
     monthlyCOGS = MonthlyCogsList(monthlyData: monthlyCogsList);
+
+    groupWiseDataList = [];
+    filteredRecords = grnList.where((record) {
+      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(record.grnDate);
+      return invoiceDate.isAtLeast(
+            dateFilterFlag ? fromDateFilter! : fiscalYearStartDate!,
+          ) &&
+          invoiceDate.isAtMost(dateFilterFlag ? toDateFilter! : currentDate!) &&
+          allowedGroups.contains(record.itemGroup);
+    }).toList();
+
+    monthlyBalanceMap = {};
+    for (var record in filteredRecords) {
+      DateTime invoiceDate = DateFormat('dd/MM/yyyy').parse(record.grnDate);
+      String monthYearKey = DateFormat('MM/yyyy').format(invoiceDate);
+      double balance = double.tryParse(record.rowTotal) ?? 0.0;
+      monthlyBalanceMap[monthYearKey] =
+          (monthlyBalanceMap[monthYearKey] ?? 0.0) + balance.abs();
+    }
+
+    monthlyBalanceMap.forEach((monthYear, totalBalance) {
+      // Parse month integer out of "MM/yyyy"
+      final parts = monthYear.split('/');
+      final int month = int.parse(parts[0]);
+      final String monthName = getMonthName(month);
+
+      // Sum up all "PURCHASE TARGET" entries for this month
+      double monthlyTarget = tempTarget
+          .where((t) => t.salesRep == "PURCHASE TARGET")
+          .map((t) => double.tryParse(t.getTargetForMonth(monthName)) ?? 0.0)
+          .fold(0.0, (sum, v) => sum + v);
+
+      groupWiseDataList.add(
+        DailyAnalysisExpensesData(
+          balance: totalBalance,
+          date: monthYear,
+          target: monthlyTarget,
+        ),
+      );
+    });
+
+    purchaseMonthlyData = DailyAnalysisExpensesList(
+      dailyData: groupWiseDataList,
+    );
+
+    monthlyWIPList = calculateMonthlyWIP(
+      inventoryList: monthWiseInventory,
+      purchaseMonthlyData: purchaseMonthlyData.dailyData,
+      targetMap: monthlyMap,
+    );
+
+    monthlyWIP = MonthlyWIPList(monthlyData: monthlyWIPList);
   }
 
   Future<void> _loadMonthlyAnalysisInventory() async {
@@ -2504,7 +2663,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       _loadSubGroupMonthWiseAnalysisExpenditure(),
       _loadSubGroupMonthWiseAnalysisRevenue(),
       _loadOtherIncomeMonthWiseAnalysisRevenue(),
-      _loadForeignNameMonthWiseAnalysisRevenue(),
+      _loadGroupWiseMonthlyExpenseAnalysisRevenue(),
     ]);
     setState(() {});
     chartDataLoadedMonthlyPl = true;
@@ -2620,6 +2779,20 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         return totals;
       }
 
+      List<num> sumMonthBalancesForItems(Iterable<dynamic> items) {
+        final totals = List<num>.filled(12, 0);
+
+        for (final item in items) {
+          final itemBalances = getMonthBalances(item);
+
+          for (int i = 0; i < 12; i++) {
+            totals[i] = totals[i] + itemBalances[i];
+          }
+        }
+
+        return totals;
+      }
+
       List<dynamic> buildRow({
         required String title,
         required List<num> targets,
@@ -2656,17 +2829,21 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- REVENUE ----------------
       addSection("Income");
 
-      var ipdSalesTargets = getTargets("IPD SALES TARGET");
-      var mdSalesTargets = getTargets("MD SALES TARGET");
+      // var ipdSalesTargets = getTargets("IPD SALES TARGET");
+      // var mdSalesTargets = getTargets("MD SALES TARGET");
 
-      var revenueTargets = List<num>.generate(
-        12,
-        (i) => ipdSalesTargets[i] + mdSalesTargets[i],
-      );
+      // var revenueTargets = List<num>.generate(
+      //   12,
+      //   (i) => ipdSalesTargets[i] + mdSalesTargets[i],
+      // );
+      var revTargets = getTargets("Revenue from Operations");
+      var revenueTargets = List<num>.generate(12, (i) => revTargets[i]);
+      var othTargets = getTargets("Other Income");
+      var othIncomeTargets = List<num>.generate(12, (i) => othTargets[i]);
 
       rows.add(
         buildRow(
-          title: "Revenue",
+          title: "Revenue from Operations",
           targets: revenueTargets,
           values: sales,
           percentageBase: revenueTargets,
@@ -2680,32 +2857,34 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "Other Income",
-          targets: List.filled(12, 0),
+          targets: othIncomeTargets,
           values: otherIncome,
-          percentageBase: sales,
+          percentageBase: othIncomeTargets,
         ),
       );
 
       final totalRevenue = List.generate(12, (i) => sales[i] + otherIncome[i]);
+      final totalRevenueTarget = List.generate(
+        12,
+        (i) => revenueTargets[i] + othIncomeTargets[i],
+      );
 
       rows.add(
         buildRow(
-          title: "Total Revenue",
-          targets: List.filled(12, 0),
+          title: "Total Income",
+          targets: totalRevenueTarget,
           values: totalRevenue,
           percentageBase: sales,
         ),
       );
       addSpacer();
       // ---------------- INVENTORY / COGS ----------------
-      addSection("Inventory & COGS");
-
-      final openingStock = List.generate(
+      var openingStock = List.generate(
         12,
         (i) => i < monthlyCogsList.length ? monthlyCogsList[i].openingStock : 0,
       );
 
-      final purchases = List.generate(
+      var purchases = List.generate(
         12,
         (i) => i < monthlyCogsList.length ? monthlyCogsList[i].purchases : 0,
       );
@@ -2719,19 +2898,17 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         12,
         (i) => i < monthlyCogsList.length ? monthlyCogsList[i].cogs : 0,
       );
-
+      var ost = getOpeningStockTargets();
+      var pt = getTargets("PURCHASE TARGET");
+      var cst = getTargets("INVENTORY TARGET");
       rows.add(
-        buildRow(
-          title: "Opening Stock",
-          targets: getOpeningStockTargets(),
-          values: openingStock,
-        ),
+        buildRow(title: "Opening Stock", targets: ost, values: openingStock),
       );
 
       rows.add(
         buildRow(
-          title: "Add: Purchases",
-          targets: getTargets("PURCHASE TARGET"),
+          title: "Add: Purchases of Raw Materials",
+          targets: pt,
           values: purchases,
         ),
       );
@@ -2739,22 +2916,82 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "Less: Closing Stock",
-          targets: getTargets("INVENTORY TARGET"),
+          targets: cst,
           values: closingStock,
         ),
       );
 
+      final cogsTargets = getTargets("COGS TARGET");
+
       rows.add(
         buildRow(
-          title: "COGS",
-          targets: getTargets("COGS TARGET"),
+          title: "Cost of Materials Consumed (COGS)",
+          targets: cogsTargets,
           values: cogs,
           percentageBase: totalRevenue,
         ),
       );
 
+      addSpacer();
+      // ---------------- WORK IN PROGRESS ----------------
+      var openingStockWip = List.generate(
+        12,
+        (i) => i < monthlyWIPList.length ? monthlyWIPList[i].openingStock : 0,
+      );
+
+      var purchasesWip = List.generate(
+        12,
+        (i) => i < monthlyWIPList.length ? monthlyWIPList[i].purchases : 0,
+      );
+
+      final closingStockWip = List.generate(
+        12,
+        (i) => i < monthlyWIPList.length ? monthlyWIPList[i].closingStock : 0,
+      );
+
+      final cogsWip = List.generate(
+        12,
+        (i) => i < monthlyWIPList.length ? monthlyWIPList[i].cogs : 0,
+      );
+
+      addSection(
+        "Changes In Inventories of Work-In-Progress And finished goods:",
+      );
+      rows.add(
+        buildRow(
+          title: "Opening stock (Including goods in transit)",
+          targets: List.filled(12, 0),
+          values: openingStockWip,
+          percentageBase: sales,
+        ),
+      );
+      rows.add(
+        buildRow(
+          title: "Add: Purchase of Traded Material & Semi Finished Goods",
+          targets: List.filled(12, 0),
+          values: purchasesWip,
+          percentageBase: sales,
+        ),
+      );
+      rows.add(
+        buildRow(
+          title: "Closing Stock (Including goods in transit)",
+          targets: List.filled(12, 0),
+          values: closingStockWip,
+          percentageBase: sales,
+        ),
+      );
+      rows.add(
+        buildRow(
+          title: "(Increase)/Decrease in Inventories:",
+          targets: List.filled(12, 0),
+          values: cogsWip,
+          percentageBase: sales,
+        ),
+      );
+
       // ---------------- EXPENSES ----------------
-      addSection("Expenses");
+      // addSection("Expenses");
       addSpacer();
 
       // ---------------- DIRECT EXPENSES ----------------
@@ -2784,6 +3021,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       );
 
       if (direct.isNotEmpty) {
+        addSpacer();
         rows.add(
           buildRow(
             title: "Total Direct Expenses",
@@ -2844,6 +3082,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       ]);
 
       if (totalIndirect.isNotEmpty) {
+        addSpacer();
         rows.add(
           buildRow(
             title: "Total Indirect Expenses",
@@ -2874,42 +3113,48 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       addSpacer();
 
       // ---------------- EBITDA / PBT / PAT --------------------
-      final financeRows = financeCostsList.subGroupData.toList();
+      const depreciationAmortizationMonthly = 25000.0;
+      final depreciationAmortization = List<num>.filled(
+        12,
+        depreciationAmortizationMonthly,
+      );
+      final depreciationAmortizationTargets = List<num>.filled(
+        12,
+        depreciationAmortizationMonthly,
+      );
+      final totalFinanceCostsTarget = sumTargetsForItems(
+        financeCostsList.subGroupData,
+      );
+      final totalFinanceCosts = sumMonthBalancesForItems(
+        financeCostsList.subGroupData,
+      );
 
-      final financeVals = financeRows.isNotEmpty
-          ? getMonthBalances(financeRows.first)
-          : List<num>.filled(12, 0);
-
-      final directVals = sumOfDirectExpensesList.subGroupData.isNotEmpty
-          ? getMonthBalances(sumOfDirectExpensesList.subGroupData.first)
-          : List.filled(12, 0);
-
-      final indirectVals = totalIndirectExpensesList.subGroupData.isNotEmpty
-          ? getMonthBalances(totalIndirectExpensesList.subGroupData.first)
-          : List.filled(12, 0);
-
-      List<num> ebitda = [];
-      List<num> pbt = [];
-      List<num> pat = [];
-
-      for (int i = 0; i < 12; i++) {
-        final e =
-            financeVals[i] +
-            ((totalRevenue[i]) - cogs[i] - directVals[i] - indirectVals[i]) +
-            25000;
-
-        final p = totalRevenue[i] - cogs[i] - directVals[i] - indirectVals[i];
-        final pa = totalExpenditure[i] - totalRevenue[i];
-
-        ebitda.add(e);
-        pbt.add(p);
-        pat.add(pa);
-      }
+      final ebitdaTargets = List<num>.generate(
+        12,
+        (i) => revenueTargets[i] - cogsTargets[i] - totalOperatingTarget[i],
+      );
+      final ebitda = List<num>.generate(
+        12,
+        (i) => totalRevenue[i] - cogs[i] - totalExpenditure[i],
+      );
+      final ebitTargets = List<num>.generate(
+        12,
+        (i) => ebitdaTargets[i] - depreciationAmortizationTargets[i],
+      );
+      final ebit = List<num>.generate(
+        12,
+        (i) => ebitda[i] - depreciationAmortization[i],
+      );
+      final pbtTargets = List<num>.generate(
+        12,
+        (i) => ebitTargets[i] - totalFinanceCostsTarget[i],
+      );
+      final pbt = List<num>.generate(12, (i) => ebit[i] - totalFinanceCosts[i]);
 
       rows.add(
         buildRow(
           title: "EBITDA",
-          targets: List.filled(12, 0),
+          targets: ebitdaTargets,
           values: ebitda,
           percentageBase: sales,
         ),
@@ -2919,17 +3164,11 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
       // ---------------- FINANCE COSTS ----------------
 
-      final totalfinanceCostsTarget = sumTargetsForItems(
-        financeCostsList.subGroupData,
-      );
-      List<num> totalfinanceCosts = financeCostsList.subGroupData.isNotEmpty
-          ? getMonthBalances(financeCostsList.subGroupData.first)
-          : List.filled(12, 0);
       rows.add(
         buildRow(
-          title: "Total Finance Costs:",
-          targets: totalfinanceCostsTarget,
-          values: totalfinanceCosts,
+          title: "Finance Costs:",
+          targets: totalFinanceCostsTarget,
+          values: totalFinanceCosts,
           percentageBase: sales,
         ),
       );
@@ -2950,8 +3189,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "Depreciation & Amortization (SLM Basis)",
-          targets: List.filled(12, 0),
-          values: List.filled(12, 0),
+          targets: depreciationAmortizationTargets,
+          values: depreciationAmortization,
           percentageBase: sales,
         ),
       );
@@ -2959,8 +3198,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "EBIT (Operating Profit)",
-          targets: List.filled(12, 0),
-          values: pat,
+          targets: ebitTargets,
+          values: ebit,
           percentageBase: sales,
         ),
       );
@@ -2970,7 +3209,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "PBT (Profit Before Tax)",
-          targets: List.filled(12, 0),
+          targets: pbtTargets,
           values: pbt,
           percentageBase: sales,
         ),

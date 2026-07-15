@@ -1,0 +1,2 @@
+ERROR System.Management.Automation.SetValueInvocationException Exception setting "AutomationSecurity": "Exception from HRESULT: 0x800AC472"
+quit error Exception calling "Quit" with "0" argument(s): "Exception from HRESULT: 0x800AC472"

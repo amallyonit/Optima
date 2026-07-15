@@ -451,9 +451,18 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
     }
   }
 
+  // Stock in transit
+  stockInTransitValue = 0;
+  for (final stk in input.stockList) {
+    final stkValue = double.tryParse(stk.lineTotal) ?? 0;
+    stockInTransitValue += stkValue;
+  }
+
   // COGS calculation
   cogsValue =
-      (inventoryOpeningValue + monthlyPurchasePriceGrnSum) -
+      (inventoryOpeningValue +
+          monthlyPurchasePriceGrnSum +
+          stockInTransitValue) -
       (lessThan30DaysValue +
           a30to60DaysValue +
           a60to90DaysValue +
@@ -466,13 +475,6 @@ DailyCostingResult _computeDailyCostingReport(DailyCostingInput input) {
       a60to90DaysValue +
       nearExpiryValue +
       expiredValue;
-
-  // Stock in transit
-  stockInTransitValue = 0;
-  for (final stk in input.stockList) {
-    final stkValue = double.tryParse(stk.lineTotal) ?? 0;
-    stockInTransitValue += stkValue;
-  }
 
   double readyToDispatchStockItemwise = 0;
   final sortedSO =
@@ -3702,10 +3704,12 @@ class _DailyCostingReportState extends State<DailyCostingReport> {
         title: "Closing Stock(Including Stock In Transit)",
         target: inventoryTarget,
         worksheet: "",
-        achieved: formatIndian(inventoryAchieved),
+        achieved: formatIndian(inventoryAchieved + stockInTransitValue),
         percentage: inventoryTarget == 0
             ? "0"
-            : ((inventoryAchieved / inventoryTarget) * 100).toStringAsFixed(2),
+            : (((inventoryAchieved + stockInTransitValue) / inventoryTarget) *
+                      100)
+                  .toStringAsFixed(2),
       );
 
       setDashboardRow(
