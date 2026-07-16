@@ -773,10 +773,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         context.read<TrialBalanceProvider>().updateTrialBalanceList(
           tmpTrialBalanceList,
         );
-        if (trialBalanceList.isEmpty) {
-          trialBalanceList = tmpTrialBalanceList.toList();
-          trialBalanceListTemp = tmpTrialBalanceList.toList();
-        }
+        trialBalanceList = tmpTrialBalanceList.toList();
+        trialBalanceListTemp = tmpTrialBalanceList.toList();
       });
     } catch (e) {
       if (mounted) {
@@ -1814,7 +1812,11 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     double balanceAmount = 0.0;
 
     List<TrialBalance> records = trialBalanceList
-        .where((record) => record.accountGroup == "Expenditure")
+        .where(
+          (record) =>
+              record.group == "Expenditure" ||
+              record.accountGroup == "Expenditure",
+        )
         .toList();
 
     customerTargetList = records.where((record) {
@@ -2910,7 +2912,10 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         ),
       );
 
-      final cogsTargets = getTargets("COGS TARGET");
+      final cogsTargets = List<num>.generate(
+        12,
+        (i) => ost[i] + pt[i] - cst[i],
+      );
 
       rows.add(
         buildRow(
@@ -2942,6 +2947,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         12,
         (i) => i < monthlyWIPList.length ? monthlyWIPList[i].cogs : 0,
       );
+      final cogsWipTargets = List<num>.filled(12, 0);
 
       addSection(
         "Changes In Inventories of Work-In-Progress And finished goods:",
@@ -2973,7 +2979,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       rows.add(
         buildRow(
           title: "(Increase)/Decrease in Inventories:",
-          targets: List.filled(12, 0),
+          targets: cogsWipTargets,
           values: cogsWip,
           percentageBase: sales,
         ),
@@ -3117,15 +3123,38 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         financeCostsList.subGroupData,
       );
 
-      final ebitdaTargets = List<num>.generate(
+      final pbtTargets = List<num>.generate(
         12,
-        (i) => revenueTargets[i] - cogsTargets[i] - totalOperatingTarget[i],
+        (i) =>
+            totalRevenueTarget[i] -
+            cogsTargets[i] -
+            cogsWipTargets[i] -
+            totalOperatingTarget[i] -
+            depreciationAmortizationTargets[i] -
+            totalFinanceCostsTarget[i],
       );
-      final ebitda = List<num>.generate(
+      final pbt = List<num>.generate(
         12,
-        (i) => totalRevenue[i] - cogs[i] - totalExpenditure[i],
+        (i) =>
+            totalRevenue[i] -
+            cogs[i] -
+            cogsWip[i] -
+            totalExpenditure[i] -
+            depreciationAmortization[i] -
+            totalFinanceCosts[i],
       );
-      final ebitTargets = List<num>.generate(
+      var ebitdaTargets = List<num>.generate(
+        12,
+        (i) =>
+            pbtTargets[i] +
+            depreciationAmortizationTargets[i] +
+            totalFinanceCostsTarget[i],
+      );
+      var ebitda = List<num>.generate(
+        12,
+        (i) => pbt[i] + depreciationAmortization[i] + totalFinanceCosts[i],
+      );
+      var ebitTargets = List<num>.generate(
         12,
         (i) => ebitdaTargets[i] - depreciationAmortizationTargets[i],
       );
@@ -3133,11 +3162,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         12,
         (i) => ebitda[i] - depreciationAmortization[i],
       );
-      final pbtTargets = List<num>.generate(
-        12,
-        (i) => ebitTargets[i] - totalFinanceCostsTarget[i],
-      );
-      final pbt = List<num>.generate(12, (i) => ebit[i] - totalFinanceCosts[i]);
 
       rows.add(
         buildRow(
