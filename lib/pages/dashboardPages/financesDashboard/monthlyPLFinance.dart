@@ -3311,15 +3311,35 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- DATE INDEX ----------------
       final now = DateTime.now();
       final fiscalMonthIndex = now.month >= 4 ? now.month - 4 : now.month + 8;
+      final monthNumber = now.month;
 
-      final mapTargetIndex = 3 + fiscalMonthIndex;
+      double targetForMonth(String key) {
+        return getTargetForFinancialMonth(key, monthNumber);
+      }
+
+      double sumTargetsForMonth(Iterable<dynamic> items) {
+        return items.fold<double>(
+          0,
+          (sum, item) => sum + targetForMonth(item.subGroupName),
+        );
+      }
+
+      double sumBalancesForMonth(Iterable<dynamic> items) {
+        return items.fold<double>(
+          0,
+          (sum, item) => sum + getBalanceForMonth(item, fiscalMonthIndex),
+        );
+      }
 
       // ---------------- SALES ----------------
       addSection("Revenue");
 
-      double salesTarget =
-          (monthlyMap["IPD SALES TARGET"]?[mapTargetIndex] ?? 0) +
-          (monthlyMap["MD SALES TARGET"]?[mapTargetIndex] ?? 0);
+      double salesTarget = targetForMonth("Revenue from Operations");
+      if (salesTarget == 0) {
+        salesTarget =
+            targetForMonth("IPD SALES TARGET") +
+            targetForMonth("MD SALES TARGET");
+      }
 
       double salesActual =
           (fiscalMonthIndex < monthlySalesList.monthlyData.length)
@@ -3327,70 +3347,14 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
           : 0.0;
 
       rows.add(
-        buildRow(title: "Net Sales", target: salesTarget, actual: salesActual),
-      );
-
-      // ---------------- COGS ----------------
-      double cogsTarget = (monthlyMap["COGS TARGET"]?[mapTargetIndex] ?? 0);
-
-      double cogsActual = (fiscalMonthIndex < monthlyCogsList.length)
-          ? monthlyCogsList[fiscalMonthIndex].cogs
-          : 0.0;
-
-      rows.add(buildRow(title: "COGS", target: cogsTarget, actual: cogsActual));
-
-      // ---------------- GROSS PROFIT ----------------
-      double gpTarget = salesTarget - cogsTarget;
-      double gpActual = salesActual - cogsActual;
-
-      rows.add(
-        buildRow(title: "Gross Profit", target: gpTarget, actual: gpActual),
-      );
-
-      // ---------------- GP % ----------------
-      rows.add(
         buildRow(
-          title: "GP%",
-          target: calcPct(gpTarget, salesTarget),
-          actual: calcPct(gpActual, salesActual),
-          isPercentageRow: true,
+          title: "Revenue from Operations",
+          target: salesTarget,
+          actual: salesActual,
         ),
       );
 
-      // ---------------- EXPENSES ----------------
-      addSection("Expenses");
-
-      double directExpActual = 0.0;
-      if (sumOfDirectExpensesList.subGroupData.isNotEmpty) {
-        directExpActual = getBalanceForMonth(
-          sumOfDirectExpensesList.subGroupData.first,
-          fiscalMonthIndex,
-        );
-      }
-
-      double indirectExpActual = 0.0;
-      if (totalIndirectExpensesList.subGroupData.isNotEmpty) {
-        indirectExpActual = getBalanceForMonth(
-          totalIndirectExpensesList.subGroupData.first,
-          fiscalMonthIndex,
-        );
-      }
-
-      double totalOpExpActual = directExpActual + indirectExpActual;
-
-      rows.add(
-        buildRow(title: "Total Operating Expenses", actual: totalOpExpActual),
-      );
-
-      // ---------------- OTHER + FINANCE ----------------
-      double financeActual = 0.0;
-      try {
-        final finance = indirectExpenseWiseList.subGroupData.firstWhere(
-          (e) => e.subGroupName == 'Finance Costs',
-        );
-        financeActual = getBalanceForMonth(finance, fiscalMonthIndex);
-      } catch (_) {}
-
+      double otherIncomeTarget = targetForMonth("Other Income");
       double otherIncomeActual = 0.0;
       if (otherIncomeList.subGroupData.isNotEmpty) {
         otherIncomeActual = getBalanceForMonth(
@@ -3399,24 +3363,193 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
         );
       }
 
+      rows.add(
+        buildRow(
+          title: "Other Income",
+          target: otherIncomeTarget,
+          actual: otherIncomeActual,
+        ),
+      );
+
+      double totalIncomeTarget = salesTarget + otherIncomeTarget;
+      double totalIncomeActual = salesActual + otherIncomeActual;
+
+      rows.add(
+        buildRow(
+          title: "Total Income",
+          target: totalIncomeTarget,
+          actual: totalIncomeActual,
+        ),
+      );
+
+      // ---------------- COGS ----------------
+      addSection("Inventory & COGS");
+      final openingStockTargets = getOpeningStockTargets();
+      double openingStockTarget = fiscalMonthIndex < openingStockTargets.length
+          ? openingStockTargets[fiscalMonthIndex].toDouble()
+          : 0.0;
+      double purchaseTarget = targetForMonth("PURCHASE TARGET");
+      double closingStockTarget = targetForMonth("INVENTORY TARGET");
+      double cogsTarget =
+          openingStockTarget + purchaseTarget - closingStockTarget;
+
+      double cogsActual = (fiscalMonthIndex < monthlyCogsList.length)
+          ? monthlyCogsList[fiscalMonthIndex].cogs
+          : 0.0;
+
+      rows.add(
+        buildRow(
+          title: "Cost of Materials Consumed (COGS)",
+          target: cogsTarget,
+          actual: cogsActual,
+        ),
+      );
+
+      double inventoryChangeTarget = 0.0;
+      double inventoryChangeActual = (fiscalMonthIndex < monthlyWIPList.length)
+          ? monthlyWIPList[fiscalMonthIndex].cogs
+          : 0.0;
+
+      rows.add(
+        buildRow(
+          title: "(Increase)/Decrease in Inventories",
+          target: inventoryChangeTarget,
+          actual: inventoryChangeActual,
+        ),
+      );
+
+      // ---------------- EXPENSES ----------------
+      addSection("Expenses");
+
+      double directExpTarget = sumTargetsForMonth(
+        directExpensesList.subGroupData,
+      );
+      double directExpActual = 0.0;
+      if (sumOfDirectExpensesList.subGroupData.isNotEmpty) {
+        directExpActual = getBalanceForMonth(
+          sumOfDirectExpensesList.subGroupData.first,
+          fiscalMonthIndex,
+        );
+      }
+
+      double indirectExpTarget = sumTargetsForMonth([
+        ...otherIndirectExpensesList.subGroupData,
+        ...indirectExpenseWiseList.subGroupData,
+      ]);
+
+      double indirectExpActual1 = 0.0;
+      if (totalIndirectExpensesList.subGroupData.isNotEmpty) {
+        indirectExpActual1 = getBalanceForMonth(
+          totalIndirectExpensesList.subGroupData.first,
+          fiscalMonthIndex,
+        );
+      }
+
+      double indirectExpActual2 = sumBalancesForMonth(
+        indirectExpenseWiseList.subGroupData,
+      );
+
+      double indirectExpActual = indirectExpActual1 + indirectExpActual2;
+      double totalOpExpTarget = directExpTarget + indirectExpTarget;
+      double totalOpExpActual = directExpActual + indirectExpActual;
+
+      rows.add(
+        buildRow(
+          title: "Total Direct Expenses",
+          target: directExpTarget,
+          actual: directExpActual,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "Total Indirect Expenses",
+          target: indirectExpTarget,
+          actual: indirectExpActual,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "Total Operating Expenses",
+          target: totalOpExpTarget,
+          actual: totalOpExpActual,
+        ),
+      );
+
+      // ---------------- OTHER + FINANCE ----------------
+      double financeTarget = sumTargetsForMonth(financeCostsList.subGroupData);
+      double financeActual = sumBalancesForMonth(financeCostsList.subGroupData);
+      const depreciationAmortization = 2500000.0;
+
       // ---------------- EBITDA ----------------
       addSection("Profitability");
 
-      double ebitdaActual =
-          financeActual +
-          ((otherIncomeActual + salesActual) -
-              cogsActual -
-              directExpActual -
-              indirectExpActual) +
-          25000;
+      double pbtTarget =
+          totalIncomeTarget -
+          cogsTarget -
+          inventoryChangeTarget -
+          totalOpExpTarget -
+          depreciationAmortization -
+          financeTarget;
+      double pbtActual =
+          totalIncomeActual -
+          cogsActual -
+          inventoryChangeActual -
+          totalOpExpActual -
+          depreciationAmortization -
+          financeActual;
 
-      rows.add(buildRow(title: "EBITDA", actual: ebitdaActual));
+      double ebitdaTarget =
+          pbtTarget + depreciationAmortization + financeTarget;
+      double ebitdaActual =
+          pbtActual + depreciationAmortization + financeActual;
+
+      double ebitTarget = ebitdaTarget - depreciationAmortization;
+      double ebitActual = ebitdaActual - depreciationAmortization;
+
+      rows.add(
+        buildRow(title: "EBITDA", target: ebitdaTarget, actual: ebitdaActual),
+      );
 
       rows.add(
         buildRow(
           title: "EBITDA%",
-          actual: calcPct(ebitdaActual, salesActual),
+          target: calcPct(ebitdaTarget, totalIncomeTarget),
+          actual: calcPct(ebitdaActual, totalIncomeActual),
           isPercentageRow: true,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "Finance Costs",
+          target: financeTarget,
+          actual: financeActual,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "Depreciation & Amortization (SLM Basis)",
+          target: depreciationAmortization,
+          actual: depreciationAmortization,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "EBIT (Operating Profit)",
+          target: ebitTarget,
+          actual: ebitActual,
+        ),
+      );
+
+      rows.add(
+        buildRow(
+          title: "PBT (Profit Before Tax)",
+          target: pbtTarget,
+          actual: pbtActual,
         ),
       );
 
