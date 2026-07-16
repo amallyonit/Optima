@@ -1,6 +1,0 @@
-create excel
-open workbook
-wb null? False
-sheets 0
-close error Call was rejected by callee. (Exception from HRESULT: 0x80010001 (RPC_E_CALL_REJECTED))
-quit error Exception calling "Quit" with "0" argument(s): "Exception from HRESULT: 0x800AC472"

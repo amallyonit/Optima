@@ -566,8 +566,8 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
 
   Map<String, List<double>> buildMonthlyTargets(List<SalesTargetList> data) {
     const reps = [
-      'MD SALES TARGET',
-      'IPD SALES TARGET',
+      'Revenue from Operations',
+      'Other Income',
       'PURCHASE TARGET',
       'COGS TARGET',
       'INVENTORY TARGET',
@@ -1147,9 +1147,10 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       double monthlySales = 0.0;
 
       // 3. Pull your MD & IPD targets for **this** month
+
       for (var tgt in tempTarget) {
-        if (tgt.salesRep == "MD SALES TARGET" ||
-            tgt.salesRep == "IPD SALES TARGET") {
+        if (tgt.salesRep == "Revenue from Operations" ||
+            tgt.salesRep == "Other Income") {
           // getTargetForMonth returns the string for that month’s column
           monthlyTarget +=
               double.tryParse(tgt.getTargetForMonth(monthName)) ?? 0.0;
@@ -1416,11 +1417,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     List<SubGroupMonthWiseRevenueExpensesData> subGroupMonthWiseDataList = [];
 
     DateFormat formatter = DateFormat('dd/MM/yyyy');
-
-    // Filter records that are part of "Expenditure".
-    // List<TrialBalance> expenseRecords = trialBalanceList
-    //     .where((record) => record.foreignName == "Other Income")
-    //     .toList();
 
     List<TrialBalance> expenseRecords = trialBalanceList
         .where((record) => record.accountSubGroup == "Other Income")
@@ -1818,7 +1814,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
     double balanceAmount = 0.0;
 
     List<TrialBalance> records = trialBalanceList
-        .where((record) => record.group == "Expenditure")
+        .where((record) => record.accountGroup == "Expenditure")
         .toList();
 
     customerTargetList = records.where((record) {
@@ -2829,13 +2825,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- REVENUE ----------------
       addSection("Income");
 
-      // var ipdSalesTargets = getTargets("IPD SALES TARGET");
-      // var mdSalesTargets = getTargets("MD SALES TARGET");
-
-      // var revenueTargets = List<num>.generate(
-      //   12,
-      //   (i) => ipdSalesTargets[i] + mdSalesTargets[i],
-      // );
       var revTargets = getTargets("Revenue from Operations");
       var revenueTargets = List<num>.generate(12, (i) => revTargets[i]);
       var othTargets = getTargets("Other Income");
@@ -2991,7 +2980,6 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       );
 
       // ---------------- EXPENSES ----------------
-      // addSection("Expenses");
       addSpacer();
 
       // ---------------- DIRECT EXPENSES ----------------
@@ -3113,7 +3101,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       addSpacer();
 
       // ---------------- EBITDA / PBT / PAT --------------------
-      const depreciationAmortizationMonthly = 25000.0;
+      const depreciationAmortizationMonthly = 2500000.0;
       final depreciationAmortization = List<num>.filled(
         12,
         depreciationAmortizationMonthly,
@@ -3332,14 +3320,9 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       }
 
       // ---------------- SALES ----------------
-      addSection("Revenue");
+      addSection("Income");
 
       double salesTarget = targetForMonth("Revenue from Operations");
-      if (salesTarget == 0) {
-        salesTarget =
-            targetForMonth("IPD SALES TARGET") +
-            targetForMonth("MD SALES TARGET");
-      }
 
       double salesActual =
           (fiscalMonthIndex < monthlySalesList.monthlyData.length)
