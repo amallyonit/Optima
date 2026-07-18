@@ -57,6 +57,11 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     "VEHICLE NO",
   ];
 
+  static const int _frozenColumnCount = 1;
+  static const double _headerHeight = 60;
+  static const double _rowHeight = 55;
+  static const double _dateColumnWidth = 120;
+
   final List<WasteType> wasteTypes = [
     WasteType(name: "WASTE CUTTING", uom: "KGS"),
     WasteType(name: "POLY COVER WASTE", uom: "KGS"),
@@ -103,6 +108,19 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
   bool isLoading = false;
 
   String? _selectedPlant = 'Rajapalayam Plant';
+
+  double _getColumnWidth(int headerIndex) {
+    if (headerIndex == 0) return _dateColumnWidth;
+    if (headerIndex == headers.length - 1) return 160;
+    return 135;
+  }
+
+  Map<int, TableColumnWidth> _buildColumnWidths(int start, int end) {
+    return {
+      for (int i = start; i < end; i++)
+        i - start: FixedColumnWidth(_getColumnWidth(i)),
+    };
+  }
 
   bool isNumericColumn(int colIndex) {
     return colIndex < controllers[0].length - 1;
@@ -928,28 +946,49 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
   Widget _buildStickyTable() {
     return Column(
       children: [
-        // STICKY HEADER (not scrollable by user)
-        SingleChildScrollView(
-          controller: _headerHorizontalController,
-          physics: const NeverScrollableScrollPhysics(),
-          scrollDirection: Axis.horizontal,
-          child: _buildHeaderTable(),
+        Row(
+          children: [
+            SizedBox(width: _dateColumnWidth, child: _buildFrozenHeader()),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _headerHorizontalController,
+                physics: const NeverScrollableScrollPhysics(),
+                scrollDirection: Axis.horizontal,
+                child: _buildScrollableHeader(),
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 0),
 
         // BODY (scrolls vertically + horizontally)
         Expanded(
-          child: Scrollbar(
+          child: RawScrollbar(
             controller: _verticalController,
             thumbVisibility: true,
+            trackVisibility: true,
+            thickness: 8,
+            radius: const Radius.circular(12),
+            interactive: true,
             child: SingleChildScrollView(
               controller: _verticalController,
               scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                controller: _bodyHorizontalController,
-                scrollDirection: Axis.horizontal,
-                child: _buildBodyTable(),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: _dateColumnWidth,
+                    child: _buildFrozenBodyTable(),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: _bodyHorizontalController,
+                      scrollDirection: Axis.horizontal,
+                      child: _buildScrollableBodyTable(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -958,45 +997,7 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     );
   }
 
-  Widget _buildHeaderTable() {
-    return Table(
-      border: TableBorder.all(color: Colors.black),
-      columnWidths: {
-        for (int i = 0; i < headers.length; i++)
-          i: FixedColumnWidth(
-            i == 0
-                ? 120
-                : i == headers.length - 1
-                ? 160
-                : 135,
-          ),
-      },
-      children: [
-        TableRow(
-          decoration: const BoxDecoration(color: Color(0xffc0e4f3)),
-          children: headers
-              .map(
-                (text) => Container(
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.all(8.0),
-                  height: 60,
-                  child: Text(
-                    text,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBodyTable() {
+  Widget buildBodyTableOld() {
     return Table(
       border: TableBorder.all(color: Colors.black),
       columnWidths: {
@@ -1059,6 +1060,160 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
           }),
         ),
       ],
+    );
+  }
+
+  Widget _buildFrozenHeader() {
+    return Table(
+      border: TableBorder.all(color: Colors.black),
+      columnWidths: _buildColumnWidths(0, _frozenColumnCount),
+      children: [
+        TableRow(
+          decoration: const BoxDecoration(color: Color(0xffc0e4f3)),
+          children: headers
+              .take(_frozenColumnCount)
+              .map(_buildHeaderCell)
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScrollableHeader() {
+    return Table(
+      border: TableBorder.all(color: Colors.black),
+      columnWidths: _buildColumnWidths(_frozenColumnCount, headers.length),
+      children: [
+        TableRow(
+          decoration: const BoxDecoration(color: Color(0xffc0e4f3)),
+          children: headers
+              .skip(_frozenColumnCount)
+              .map(_buildHeaderCell)
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderCell(String text) {
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(8.0),
+      height: _headerHeight,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildFrozenBodyTable() {
+    return Table(
+      border: TableBorder.all(color: Colors.black),
+      columnWidths: _buildColumnWidths(0, _frozenColumnCount),
+      children: [
+        for (int i = 0; i < dates.length; i++) _buildFrozenRow(i),
+        TableRow(
+          decoration: BoxDecoration(color: Colors.green.shade200),
+          children: [
+            Container(
+              alignment: Alignment.center,
+              height: _rowHeight,
+              padding: const EdgeInsets.all(8.0),
+              child: const Text(
+                "Total",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScrollableBodyTable() {
+    return Table(
+      border: TableBorder.all(color: Colors.black),
+      columnWidths: _buildColumnWidths(_frozenColumnCount, headers.length),
+      children: [
+        for (int i = 0; i < dates.length; i++) _buildScrollableRow(i),
+        TableRow(
+          decoration: BoxDecoration(color: Colors.green.shade200),
+          children: List.generate(headers.length - _frozenColumnCount, (index) {
+            final colIndex = index + _frozenColumnCount;
+
+            if (colIndex == headers.length - 1) {
+              return Container(
+                alignment: Alignment.center,
+                height: _rowHeight,
+                padding: const EdgeInsets.all(8.0),
+                child: const Text(""),
+              );
+            }
+
+            final totalIndex = colIndex - 1;
+            final value = (totalIndex >= 0 && totalIndex < totals.length)
+                ? totals[totalIndex]
+                : 0.0;
+
+            return Container(
+              alignment: Alignment.centerRight,
+              height: _rowHeight,
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                value.toStringAsFixed(2),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  TableRow _buildFrozenRow(int rowIndex) {
+    return TableRow(
+      children: [
+        Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(8.0),
+          height: _rowHeight,
+          child: Text(dates[rowIndex]),
+        ),
+      ],
+    );
+  }
+
+  TableRow _buildScrollableRow(int rowIndex) {
+    return TableRow(
+      children: List.generate(headers.length - _frozenColumnCount, (index) {
+        final colIndex = index;
+        return Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: TextField(
+            controller: controllers[rowIndex][colIndex],
+            focusNode: focusNodes[rowIndex][colIndex],
+            keyboardType: isNumericColumn(colIndex)
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : TextInputType.text,
+            textAlign: isNumericColumn(colIndex)
+                ? TextAlign.right
+                : TextAlign.left,
+            onChanged: (_) => calculateTotals(),
+            onTap: () {
+              controllers[rowIndex][colIndex].selection = TextSelection(
+                baseOffset: 0,
+                extentOffset: controllers[rowIndex][colIndex].text.length,
+              );
+            },
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            ),
+          ),
+        );
+      }),
     );
   }
 
