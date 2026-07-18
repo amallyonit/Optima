@@ -15,6 +15,40 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_downloader/flutter_downloader.dart';
 
+class _WorksheetInfo {
+  final xlsio.Worksheet sheet;
+
+  final List<String> headers;
+  final List<List<dynamic>> rows;
+
+  final List<int>? amountColumns;
+
+  final bool addTotalRow;
+
+  final bool enableStyling;
+
+  final bool highlightSections;
+
+  final bool highlightProfitability;
+
+  final bool highlightNegative;
+
+  final List<List<dynamic>>? footerRows;
+
+  const _WorksheetInfo({
+    required this.sheet,
+    required this.headers,
+    required this.rows,
+    this.amountColumns,
+    this.addTotalRow = false,
+    this.enableStyling = false,
+    this.highlightSections = false,
+    this.highlightProfitability = false,
+    this.highlightNegative = false,
+    this.footerRows,
+  });
+}
+
 class ReportService {
   Future<String> getDownloadPath() async {
     if (Platform.isAndroid) {
@@ -361,6 +395,12 @@ class ReportService {
     bool highlightProfitability = false, // optional
     bool highlightNegative = false, // optional
 
+    List<String>? thirdSheetHeaders,
+    List<List<dynamic>>? thirdSheetRows,
+    String? thirdSheetName,
+    bool addThirdSheetTotalRow = false,
+    List<int>? thirdSheetAmountColumns,
+
     List<List<dynamic>>? footerRows,
   }) async {
     try {
@@ -378,11 +418,18 @@ class ReportService {
       sheet.name = sheetName;
 
       Worksheet? secondSheet;
+      Worksheet? thirdSheet;
 
       if (secondSheetHeaders != null &&
           secondSheetRows != null &&
           secondSheetName != null) {
         secondSheet = workbook.worksheets.addWithName(secondSheetName);
+      }
+
+      if (thirdSheetHeaders != null &&
+          thirdSheetRows != null &&
+          thirdSheetName != null) {
+        thirdSheet = workbook.worksheets.addWithName(thirdSheetName);
       }
       // -------- REPORT HEADER --------
       // 'assets/images/${ApiHelper.projectName}/logo.png'
@@ -423,305 +470,53 @@ class ReportService {
       sheet.getRangeByIndex(1, headers.length).cellStyle.bold = true;
       sheet.getRangeByIndex(2, 1).cellStyle.fontSize = 12;
 
-      // ---------------- HEADER ----------------
-      for (int col = 0; col < headers.length; col++) {
-        final cell = sheet.getRangeByIndex(4, col + 1);
-
-        cell.setText(headers[col]);
-
-        cell.cellStyle.hAlign = amountColumns?.contains(col + 1) == true
-            ? xlsio.HAlignType.right
-            : xlsio.HAlignType.left;
-      }
-
-      if (secondSheet != null) {
-        for (int col = 0; col < secondSheetHeaders!.length; col++) {
-          final cell = secondSheet.getRangeByIndex(4, col + 1);
-
-          cell.setText(secondSheetHeaders[col]);
-
-          cell.cellStyle.hAlign =
-              secondSheetAmountColumns?.contains(col + 1) == true
-              ? xlsio.HAlignType.right
-              : xlsio.HAlignType.left;
-        }
-        final headerRange = secondSheet.getRangeByIndex(
-          4,
-          1,
-          4,
-          secondSheetHeaders.length,
-        );
-
-        headerRange.cellStyle.bold = true;
-        headerRange.cellStyle.backColor = "#E7F3FF";
-      }
-
-      final headerRange = sheet.getRangeByIndex(4, 1, 4, headers.length);
-
-      headerRange.cellStyle.bold = true;
-      headerRange.cellStyle.backColor = "#E7F3FF";
-
-      headerRange.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
-
-      // ---------------- DATA ----------------
-      for (int i = 0; i < rows.length; i++) {
-        final rowIndex = i + 5;
-        final row = rows[i];
-
-        // -------- Detect row types (SAFE - only if enabled) --------
-        final isSectionRow =
-            highlightSections &&
-            row.sublist(1).every((e) => e == "" || e == null);
-
-        final isSpacerRow =
-            highlightSections &&
-            row.sublist(0).every((e) => e == "" || e == null);
-
-        final title = row[0]?.toString().toLowerCase() ?? "";
-
-        final isProfitability =
-            highlightProfitability &&
-            (title.contains("ebitda") ||
-                title.contains("pbt") ||
-                title.contains("finance costs") ||
-                title.contains("work-in-progress"));
-
-        final isTotalRow =
-            title.startsWith("total") ||
-            title.startsWith("grand total") ||
-            title.startsWith("(increase)/decrease") ||
-            title.startsWith("cost of materials consumed (cogs)") ||
-            title.startsWith("cogs");
-
-        for (int j = 0; j < row.length; j++) {
-          final cell = sheet.getRangeByIndex(rowIndex, j + 1);
-          final value = row[j];
-
-          // -------- VALUE HANDLING (IMPROVED) --------
-          if (value is num) {
-            cell.setNumber(value.toDouble());
-            cell.cellStyle.hAlign = xlsio.HAlignType.right;
-          } else {
-            final numValue = double.tryParse(value.toString());
-            if (numValue != null) {
-              cell.setNumber(numValue);
-              cell.cellStyle.hAlign = xlsio.HAlignType.right;
-            } else {
-              cell.setText(value?.toString() ?? "");
-            }
-          }
-
-          // -------- SECTION STYLE --------
-          if (isSectionRow && !isSpacerRow) {
-            cell.cellStyle.bold = true;
-            if (enableStyling) {
-              cell.cellStyle.fontSize = 13;
-              cell.cellStyle.backColor = "#D9E1F2";
-            }
-          }
-          // -------- SPACER ROW --------
-          if (isSpacerRow) {
-            if (enableStyling) {
-              cell.cellStyle.backColor = "#EEEEEE";
-            }
-          }
-
-          // -------- PROFITABILITY STYLE --------
-          if (isProfitability) {
-            cell.cellStyle.bold = true;
-            if (enableStyling) {
-              cell.cellStyle.backColor = "#E2EFDA";
-            }
-          }
-
-          // -------- NEGATIVE VALUES --------
-          if (highlightNegative) {
-            final numValue = value is num
-                ? value
-                : double.tryParse(value.toString());
-
-            if (numValue != null && numValue < 0) {
-              cell.cellStyle.fontColor = "#FF0000";
-            }
-          }
-
-          if (isTotalRow) {
-            cell.cellStyle.bold = true;
-            if (enableStyling) {
-              cell.cellStyle.backColor = "#FFF2CC"; // light yellow
-            }
-          }
-        }
-      }
-
-      if (secondSheet != null) {
-        for (int i = 0; i < secondSheetRows!.length; i++) {
-          final rowIndex = i + 5;
-          final row = secondSheetRows[i];
-
-          for (int j = 0; j < row.length; j++) {
-            final cell = secondSheet.getRangeByIndex(rowIndex, j + 1);
-
-            final value = row[j];
-
-            if (value is num) {
-              cell.setNumber(value.toDouble());
-            } else {
-              final numValue = double.tryParse(value.toString());
-
-              if (numValue != null) {
-                cell.setNumber(numValue);
-              } else {
-                cell.setText(value.toString());
-              }
-            }
-          }
-        }
-      }
-      int totalRows = rows.length + 4;
-      if (addTotalRow) {
-        totalRows += 1;
-      }
-      if (footerRows != null) {
-        totalRows += footerRows.length + 1;
-      }
-      final totalCols = headers.length;
-
-      _applySheetBordersAndFormatting(
-        sheet: sheet,
-        totalRows: totalRows,
-        totalCols: totalCols,
-        amountColumns: amountColumns,
+      _buildWorksheet(
+        info: _WorksheetInfo(
+          sheet: sheet,
+          headers: headers,
+          rows: rows,
+          amountColumns: amountColumns,
+          addTotalRow: addTotalRow,
+          enableStyling: enableStyling,
+          highlightSections: highlightSections,
+          highlightProfitability: highlightProfitability,
+          highlightNegative: highlightNegative,
+          footerRows: footerRows,
+        ),
       );
 
       if (secondSheet != null) {
-        for (int col = 1; col <= secondSheetHeaders!.length; col++) {
-          secondSheet.autoFitColumn(col);
-        }
-      }
-
-      if (addTotalRow && amountColumns != null) {
-        final totalRowIndex = rows.length + 5;
-
-        final totalLabelCell = sheet.getRangeByIndex(totalRowIndex, 1);
-        totalLabelCell.setText("Total");
-        totalLabelCell.cellStyle.bold = true;
-
-        for (final col in amountColumns) {
-          final columnLetter = _getExcelColumnName(col);
-
-          final formula =
-              'SUM(${columnLetter}5:$columnLetter${rows.length + 4})';
-
-          final cell = sheet.getRangeByIndex(totalRowIndex, col);
-
-          cell.setFormula(formula);
-          cell.cellStyle.hAlign = xlsio.HAlignType.right;
-          cell.cellStyle.bold = true;
-        }
-        sheet
-                .getRangeByIndex(totalRowIndex, 1, totalRowIndex, totalCols)
-                .cellStyle
-                .backColor =
-            "#FFF2CC";
-        for (int col = 1; col <= totalCols; col++) {
-          final cell = sheet.getRangeByIndex(totalRowIndex, col);
-
-          cell.cellStyle.borders.left.lineStyle = xlsio.LineStyle.thin;
-          cell.cellStyle.borders.right.lineStyle = xlsio.LineStyle.thin;
-          cell.cellStyle.borders.top.lineStyle = xlsio.LineStyle.thin;
-          cell.cellStyle.borders.bottom.lineStyle = xlsio.LineStyle.thin;
-        }
-      }
-
-      // ---------------- FOOTER ROWS ----------------
-      if (footerRows != null && footerRows.isNotEmpty) {
-        int footerStartRow = rows.length + 5 + (addTotalRow ? 2 : 1);
-
-        for (int i = 0; i < footerRows.length; i++) {
-          final footerRow = footerRows[i];
-
-          for (int j = 0; j < footerRow.length; j++) {
-            final cell = sheet.getRangeByIndex(footerStartRow + i, j + 1);
-
-            final value = footerRow[j];
-
-            if (value is num) {
-              cell.setNumber(value.toDouble());
-            } else {
-              final numValue = double.tryParse(value.toString());
-
-              if (numValue != null) {
-                cell.setNumber(numValue);
-              } else {
-                cell.setText(value.toString());
-              }
-            }
-          }
-
-          // Style footer labels
-          sheet.getRangeByIndex(footerStartRow + i, 1).cellStyle.bold = true;
-        }
-      }
-
-      if (secondSheet != null &&
-          addSecondSheetTotalRow &&
-          secondSheetAmountColumns != null) {
-        final totalRowIndex = secondSheetRows!.length + 5;
-
-        secondSheet.getRangeByIndex(totalRowIndex, 1).setText("Total");
-
-        secondSheet.getRangeByIndex(totalRowIndex, 1).cellStyle.bold = true;
-
-        for (final col in secondSheetAmountColumns) {
-          final letter = _getExcelColumnName(col);
-
-          secondSheet
-              .getRangeByIndex(totalRowIndex, col)
-              .setFormula('SUM(${letter}5:${letter}${totalRowIndex - 1})');
-        }
-      }
-
-      if (secondSheet != null) {
-        int secondSheetTotalRows = secondSheetRows!.length + 4;
-
-        if (addSecondSheetTotalRow) {
-          secondSheetTotalRows += 1;
-        }
-
-        _applySheetBordersAndFormatting(
-          sheet: secondSheet,
-          totalRows: secondSheetTotalRows,
-          totalCols: secondSheetHeaders!.length,
-          amountColumns: secondSheetAmountColumns,
+        _buildWorksheet(
+          info: _WorksheetInfo(
+            sheet: secondSheet,
+            headers: secondSheetHeaders!,
+            rows: secondSheetRows!,
+            amountColumns: secondSheetAmountColumns,
+            addTotalRow: addSecondSheetTotalRow,
+            enableStyling: enableStyling,
+            highlightSections: highlightSections,
+            highlightProfitability: highlightProfitability,
+            highlightNegative: highlightNegative,
+          ),
         );
-
-        // Highlight Total row exactly like main sheet
-        if (addSecondSheetTotalRow) {
-          final totalRowIndex = secondSheetRows.length + 5;
-
-          secondSheet
-                  .getRangeByIndex(
-                    totalRowIndex,
-                    1,
-                    totalRowIndex,
-                    secondSheetHeaders.length,
-                  )
-                  .cellStyle
-                  .backColor =
-              "#FFF2CC";
-
-          for (int col = 1; col <= secondSheetHeaders.length; col++) {
-            final cell = secondSheet.getRangeByIndex(totalRowIndex, col);
-
-            cell.cellStyle.bold = true;
-            cell.cellStyle.borders.left.lineStyle = xlsio.LineStyle.thin;
-            cell.cellStyle.borders.right.lineStyle = xlsio.LineStyle.thin;
-            cell.cellStyle.borders.top.lineStyle = xlsio.LineStyle.thin;
-            cell.cellStyle.borders.bottom.lineStyle = xlsio.LineStyle.thin;
-          }
-        }
       }
+
+      if (thirdSheet != null) {
+        _buildWorksheet(
+          info: _WorksheetInfo(
+            sheet: thirdSheet,
+            headers: thirdSheetHeaders!,
+            rows: thirdSheetRows!,
+            amountColumns: thirdSheetAmountColumns,
+            addTotalRow: addThirdSheetTotalRow,
+            enableStyling: enableStyling,
+            highlightSections: highlightSections,
+            highlightProfitability: highlightProfitability,
+            highlightNegative: highlightNegative,
+          ),
+        );
+      }
+
       // ---------------- SAVE ----------------
       final bytes = List<int>.from(workbook.saveAsStream());
       workbook.dispose();
@@ -737,6 +532,201 @@ class ReportService {
     } catch (e) {
       debugPrint("Excel Error: $e");
     }
+  }
+
+  void _buildWorksheet({required _WorksheetInfo info}) {
+    // ---------------- HEADER ----------------
+    for (int col = 0; col < info.headers.length; col++) {
+      final cell = info.sheet.getRangeByIndex(4, col + 1);
+
+      cell.setText(info.headers[col]);
+
+      cell.cellStyle.hAlign = info.amountColumns?.contains(col + 1) == true
+          ? xlsio.HAlignType.right
+          : xlsio.HAlignType.left;
+    }
+
+    final headerRange = info.sheet.getRangeByIndex(
+      4,
+      1,
+      4,
+      info.headers.length,
+    );
+
+    headerRange.cellStyle.bold = true;
+    headerRange.cellStyle.backColor = "#E7F3FF";
+    headerRange.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+    // ---------------- DATA ----------------
+    for (int i = 0; i < info.rows.length; i++) {
+      final rowIndex = i + 5;
+      final row = info.rows[i];
+
+      // -------- Detect row types (SAFE - only if enabled) --------
+      final isSectionRow =
+          info.highlightSections &&
+          row.sublist(1).every((e) => e == "" || e == null);
+
+      final isSpacerRow =
+          info.highlightSections &&
+          row.sublist(0).every((e) => e == "" || e == null);
+
+      final title = row[0]?.toString().toLowerCase() ?? "";
+
+      final isProfitability =
+          info.highlightProfitability &&
+          (title.contains("ebitda") ||
+              title.contains("pbt") ||
+              title.contains("finance costs") ||
+              title.contains("work-in-progress"));
+
+      final isTotalRow =
+          title.startsWith("total") ||
+          title.startsWith("grand total") ||
+          title.startsWith("(increase)/decrease") ||
+          title.startsWith("cost of materials consumed (cogs)") ||
+          title.startsWith("cogs");
+
+      for (int j = 0; j < row.length; j++) {
+        final cell = info.sheet.getRangeByIndex(rowIndex, j + 1);
+        final value = row[j];
+
+        // -------- VALUE HANDLING (IMPROVED) --------
+        if (value is num) {
+          cell.setNumber(value.toDouble());
+          cell.cellStyle.hAlign = xlsio.HAlignType.right;
+        } else {
+          final numValue = double.tryParse(value.toString());
+          if (numValue != null) {
+            cell.setNumber(numValue);
+            cell.cellStyle.hAlign = xlsio.HAlignType.right;
+          } else {
+            cell.setText(value?.toString() ?? "");
+          }
+        }
+
+        // -------- SECTION STYLE --------
+        if (isSectionRow && !isSpacerRow) {
+          cell.cellStyle.bold = true;
+          if (info.enableStyling) {
+            cell.cellStyle.fontSize = 13;
+            cell.cellStyle.backColor = "#D9E1F2";
+          }
+        }
+        // -------- SPACER ROW --------
+        if (isSpacerRow) {
+          if (info.enableStyling) {
+            cell.cellStyle.backColor = "#EEEEEE";
+          }
+        }
+
+        // -------- PROFITABILITY STYLE --------
+        if (isProfitability) {
+          cell.cellStyle.bold = true;
+          if (info.enableStyling) {
+            cell.cellStyle.backColor = "#E2EFDA";
+          }
+        }
+
+        // -------- NEGATIVE VALUES --------
+        if (info.highlightNegative) {
+          final numValue = value is num
+              ? value
+              : double.tryParse(value.toString());
+
+          if (numValue != null && numValue < 0) {
+            cell.cellStyle.fontColor = "#FF0000";
+          }
+        }
+
+        if (isTotalRow) {
+          cell.cellStyle.bold = true;
+          if (info.enableStyling) {
+            cell.cellStyle.backColor = "#FFF2CC"; // light yellow
+          }
+        }
+      }
+    }
+
+    int totalRows = info.rows.length + 4;
+    if (info.addTotalRow) {
+      totalRows += 1;
+    }
+    if (info.footerRows != null) {
+      totalRows += info.footerRows!.length + 1;
+    }
+    final totalCols = info.headers.length;
+
+    if (info.addTotalRow && info.amountColumns != null) {
+      final totalRowIndex = info.rows.length + 5;
+
+      final totalLabelCell = info.sheet.getRangeByIndex(totalRowIndex, 1);
+      totalLabelCell.setText("Total");
+      totalLabelCell.cellStyle.bold = true;
+
+      for (final col in info.amountColumns!) {
+        final columnLetter = _getExcelColumnName(col);
+
+        final formula =
+            'SUM(${columnLetter}5:$columnLetter${info.rows.length + 4})';
+
+        final cell = info.sheet.getRangeByIndex(totalRowIndex, col);
+
+        cell.setFormula(formula);
+        cell.cellStyle.hAlign = xlsio.HAlignType.right;
+        cell.cellStyle.bold = true;
+      }
+      info.sheet
+              .getRangeByIndex(totalRowIndex, 1, totalRowIndex, totalCols)
+              .cellStyle
+              .backColor =
+          "#FFF2CC";
+      for (int col = 1; col <= totalCols; col++) {
+        final cell = info.sheet.getRangeByIndex(totalRowIndex, col);
+
+        cell.cellStyle.borders.left.lineStyle = xlsio.LineStyle.thin;
+        cell.cellStyle.borders.right.lineStyle = xlsio.LineStyle.thin;
+        cell.cellStyle.borders.top.lineStyle = xlsio.LineStyle.thin;
+        cell.cellStyle.borders.bottom.lineStyle = xlsio.LineStyle.thin;
+      }
+    }
+
+    // ---------------- FOOTER ROWS ----------------
+    if (info.footerRows != null && info.footerRows!.isNotEmpty) {
+      int footerStartRow = info.rows.length + 5 + (info.addTotalRow ? 2 : 1);
+
+      for (int i = 0; i < info.footerRows!.length; i++) {
+        final footerRow = info.footerRows![i];
+
+        for (int j = 0; j < footerRow.length; j++) {
+          final cell = info.sheet.getRangeByIndex(footerStartRow + i, j + 1);
+
+          final value = footerRow[j];
+
+          if (value is num) {
+            cell.setNumber(value.toDouble());
+          } else {
+            final numValue = double.tryParse(value.toString());
+
+            if (numValue != null) {
+              cell.setNumber(numValue);
+            } else {
+              cell.setText(value.toString());
+            }
+          }
+        }
+
+        // Style footer labels
+        info.sheet.getRangeByIndex(footerStartRow + i, 1).cellStyle.bold = true;
+      }
+    }
+
+    _applySheetBordersAndFormatting(
+      sheet: info.sheet,
+      totalRows: totalRows,
+      totalCols: totalCols,
+      amountColumns: info.amountColumns,
+    );
   }
 
   Future<String?> uploadPDF(Uint8List bytes, String fileName) async {

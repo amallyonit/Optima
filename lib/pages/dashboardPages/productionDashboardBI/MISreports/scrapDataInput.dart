@@ -7,10 +7,20 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:optima/api_helper.dart';
+import '../../../../classes/dashBoard.dart';
+import '../../../../classes/dataManager.dart';
 import '../../../../notificationService.dart';
 import '../../ReportService.dart';
 
-final reportService = ReportService();
+class WasteType {
+  final String name;
+  final String uom;
+  double? rate;
+  double? quantity;
+  double? amount;
+
+  WasteType({required this.name, required this.uom, this.rate});
+}
 
 class ScrapInputPage extends StatefulWidget {
   @override
@@ -18,30 +28,58 @@ class ScrapInputPage extends StatefulWidget {
 }
 
 class _ScrapInputPageState extends State<ScrapInputPage> {
+  List<SalesTargetList> salesTarget = [];
+  final reportService = ReportService();
+
   final String plant = "";
   DateTime? date;
   final bool isSunday = false;
 
   final List<String> headers = [
     "DATE",
-    "FABRIC WASTE CUTTING (IN KGS)",
-    "POLY COVER WASTE (IN KGS)",
-    "WASTE CORRUGATED BOX (IN KGS)",
-    "QUALITY TUBE ( ROLLS)",
-    "NORMAL TUBE ( ROLLS)",
-    "LINEN WASTE FABRIC (IN KGS)",
-    "WASTE IRON (IN KGS)",
-    "WASTE WOOD",
-    "PLASTIC WASTE MT Can (IN KGS)",
-    "MASK TIE WASTAGE",
-    "MASK LOOP WASTAGE",
-    "BOUFFANT CAP WASTAGE",
-    "SURGICAL CAP",
+    "FABRIC WASTE CUTTING (KGS)",
+    "POLY COVER WASTE (KGS)",
+    "WASTE CORRUGATED BOX (KGS)",
+    "QUALITY TUBE (NOS)",
+    "NORMAL TUBE (NOS)",
+    "LINEN WASTE FABRIC (KGS)",
+    "IRON WASTAGE (KGS)",
+    "WASTAGE WOOD (KGS)",
+    "PLASTIC WASTE MT Can (KGS)",
+    "MASK TIE WASTAGE (KGS)",
+    "MASK LOOP WASTAGE (KGS)",
+    "BOUFFANT CAP WASTAGE (KGS)",
+    "SURGICAL CAP (KGS)",
+    "WASTE OIL (LTR)",
+    "P.P. COVER WASTAGGE (KGS)",
+    "SAC BAG WASTE (NOS)",
+    "CLOTH WASTAGE (KGS)",
     "VEHICLE NO",
+  ];
+
+  final List<WasteType> wasteTypes = [
+    WasteType(name: "WASTE CUTTING", uom: "KGS"),
+    WasteType(name: "POLY COVER WASTE", uom: "KGS"),
+    WasteType(name: "WASTE CORRUGATED BOX", uom: "KGS"),
+    WasteType(name: "QUALITY TUBE", uom: "NOS"),
+    WasteType(name: "NORMAL TUBE", uom: "NOS"),
+    WasteType(name: "LINEN WASTE FABRIC", uom: "KGS"),
+    WasteType(name: "IRON WASTAGE", uom: "KGS"),
+    WasteType(name: "WASTAGE WOOD", uom: "KGS"),
+    WasteType(name: "PLASTIC WASTE MT Can", uom: "KGS"),
+    WasteType(name: "MASK TIE WASTAGE", uom: "KGS"),
+    WasteType(name: "MASK LOOP WASTAGE", uom: "KGS"),
+    WasteType(name: "BOUFFANT CAP WASTAGE", uom: "KGS"),
+    WasteType(name: "SURGICAL CAP", uom: "KGS"),
+    WasteType(name: "WASTE OIL", uom: "LTR"),
+    WasteType(name: "P.P. COVER WASTAGGE", uom: "KGS"),
+    WasteType(name: "SAC BAG WASTE", uom: "NOS"),
+    WasteType(name: "CLOTH WASTAGE", uom: "KGS"),
   ];
 
   final List<String> dates = [];
   bool isSaving = false;
+  bool isGeneratingExcel = false;
   String get formattedDate {
     final d = date?.day.toString().padLeft(2, '0');
     final m = date?.month.toString().padLeft(2, '0');
@@ -159,6 +197,154 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     return rows;
   }
 
+  Future<List<List<dynamic>>> buildMonthlyRows() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userName = prefs.getString('userName') ?? '';
+    final userLevel = prefs.getString('userLevel') ?? '';
+    await _loadSalesTarget(userName, userLevel);
+    int i = 0;
+    for (final waste in wasteTypes) {
+      waste.rate = await getWasteRate(waste.name);
+      final qty = controllers.fold<double>(
+        0,
+        (sum, row) => sum + (double.tryParse(row[i].text) ?? 0),
+      );
+      waste.quantity = qty;
+      waste.amount = waste.rate! * qty;
+      i++;
+    }
+
+    return wasteTypes.map((waste) {
+      return [
+        waste.name,
+        waste.uom,
+        waste.quantity ?? 0,
+        waste.rate ?? 0,
+        waste.amount ?? 0,
+      ];
+    }).toList();
+  }
+
+  DateTime subtractOneMonth(DateTime date) {
+    final previousMonth = DateTime(date.year, date.month - 1, 1);
+    final lastDayOfPreviousMonth = DateTime(
+      previousMonth.year,
+      previousMonth.month + 1,
+      0,
+    ).day;
+
+    return DateTime(
+      previousMonth.year,
+      previousMonth.month,
+      date.day.clamp(1, lastDayOfPreviousMonth),
+    );
+  }
+
+  String formatDate(DateTime date) {
+    final formatter = DateFormat('yyyyMMdd');
+    return formatter.format(date);
+  }
+
+  String getMonthName(int month) {
+    final formatter = DateFormat('MMMM');
+    return formatter.format(DateTime(2000, month));
+  }
+
+  String getCurrentFinancialYearSuffix() {
+    final now = DateTime.now();
+    final year = now.year;
+    final month = now.month;
+
+    int startYear = (month >= 4) ? year : year - 1;
+    int endYear = startYear + 1;
+
+    return "FY${startYear % 100}-${endYear % 100}-T";
+  }
+
+  double getTargetForFinancialMonth(
+    String salesRep,
+    int monthNumber, {
+    String? financialYearSuffix,
+  }) {
+    final monthName = getMonthName(monthNumber);
+    double target = 0;
+    target = salesTarget
+        .where(
+          (target) =>
+              target.financialYear ==
+                  (financialYearSuffix ?? getCurrentFinancialYearSuffix()) &&
+              target.salesRep == salesRep,
+        )
+        .map(
+          (target) =>
+              double.tryParse(target.getTargetForMonth(monthName)) ?? 0.0,
+        )
+        .fold(0.0, (sum, value) => sum + value);
+
+    return target;
+  }
+
+  Future<void> _loadSalesTarget(String UserName, String UserLevel) async {
+    final body = {
+      "FromDate": formatDate(subtractOneMonth(_from!)),
+      "ToDate": formatDate(_to!),
+      "Index": 0,
+      "Limit": 0,
+      "sapToken": DataManager.readSapToken(),
+    };
+    const apiUrl = '${ApiHelper.baseUrl}BicxoSalesTargetList';
+    var headers = {HttpHeaders.contentTypeHeader: 'application/json'};
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        body: jsonEncode(body),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        if (responseJson["responseData"].toString().isNotEmpty) {
+          List<dynamic> data = responseJson['responseData'];
+          if (data.isNotEmpty) {
+            List<SalesTargetList> newSalesTargetList = (data)
+                .map((item) => SalesTargetList.fromJson(item))
+                .toList();
+            salesTarget = newSalesTargetList;
+          }
+        } else {
+          if (responseJson.containsKey("Error") &&
+              responseJson["Error"].toString() == "Invalid or Expired Token") {
+            if (!mounted) return;
+            NotificationService.warning(
+              title: "Security Alert",
+              message: "Invalid or Expired Token.",
+            );
+          } else {
+            if (!mounted) return;
+            NotificationService.error(
+              title: "Error",
+              message: responseJson["Error"].toString(),
+            );
+          }
+        }
+      } else {
+        if (!mounted) return;
+        NotificationService.info(
+          title: "Info",
+          message: "Sales target details not found.",
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      NotificationService.error(title: "Error", message: e.toString());
+    }
+  }
+
+  Future<double> getWasteRate(String wasteType) async {
+    double wastageRate = 0;
+    wastageRate = getTargetForFinancialMonth(wasteType, _from!.month);
+    return wastageRate;
+  }
+
   Future<void> _downloadExcel() async {
     if (dates.isEmpty || controllers.isEmpty) {
       if (!mounted) return;
@@ -176,6 +362,14 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
     final secondSheetHeaders = ['Description', ...weekHeaders, 'Total'];
 
+    final thirdSheetHeaders = [
+      'Description',
+      'UOM',
+      'RATE',
+      'Quantity',
+      'Amount',
+    ];
+
     await reportService.generateExcel(
       sheetName: 'MonthlyScrapDetails',
       headers: headers,
@@ -183,18 +377,43 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
         dates.length,
         (i) => [dates[i], ...controllers[i].map((c) => c.text)],
       ),
+      amountColumns: [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+      ],
+      addTotalRow: true,
+
       secondSheetName: 'Weekly Scrap Summary',
       secondSheetHeaders: secondSheetHeaders,
       secondSheetRows: buildWeeklyRows(),
-      fileName: 'scrap_details.xlsx',
-      amountColumns: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-      addTotalRow: true,
       addSecondSheetTotalRow: true,
-      // Week columns + Total column
       secondSheetAmountColumns: List.generate(
         secondSheetHeaders.length - 1,
         (i) => i + 2,
       ),
+
+      thirdSheetName: "Monthly Scrap Summary $caption",
+      thirdSheetHeaders: thirdSheetHeaders,
+      thirdSheetRows: await buildMonthlyRows(),
+      addThirdSheetTotalRow: true,
+      thirdSheetAmountColumns: [3, 4, 5],
+
+      fileName: 'ScrapDetails.xlsx',
       reportTitle: 'Production[MIS] - Scrap Details $caption',
     );
   }
@@ -212,7 +431,7 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
         "${dt.day.toString().padLeft(2, '0')}";
   }
 
-  String formatDate(String isoDate) {
+  String formatDateString(String isoDate) {
     final dt = DateTime.parse(isoDate);
     final d = dt.day.toString().padLeft(2, '0');
     final m = dt.month.toString().padLeft(2, '0');
@@ -268,7 +487,11 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
         "MaskLoopWastage": double.tryParse(controllers[i][10].text) ?? 0.0,
         "BouffantCapWastage": double.tryParse(controllers[i][11].text) ?? 0.0,
         "SurgicalCap": double.tryParse(controllers[i][12].text) ?? 0.0,
-        "VehicleNo": controllers[i][13].text,
+        "WasteOil": double.tryParse(controllers[i][13].text) ?? 0.0,
+        "PpCoverWastage": double.tryParse(controllers[i][14].text) ?? 0.0,
+        "SacBagWastage": double.tryParse(controllers[i][15].text) ?? 0.0,
+        "ClothWastage": double.tryParse(controllers[i][16].text) ?? 0.0,
+        "VehicleNo": controllers[i][17].text,
       };
       scrapData.add(row);
     }
@@ -320,6 +543,10 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
 
     for (int i = 0; i < dates.length; i++) {
       final rowControllers = <TextEditingController>[
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
+        TextEditingController(text: '0'),
         TextEditingController(text: '0'),
         TextEditingController(text: '0'),
         TextEditingController(text: '0'),
@@ -411,7 +638,7 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
           Map<String, dynamic> apiDataByDate = {};
 
           for (var row in result) {
-            String d = formatDate(row['ScrapDate']);
+            String d = formatDateString(row['ScrapDate']);
             apiDataByDate[d] = row;
             existingDbDates.add(d);
           }
@@ -462,6 +689,18 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
                 text: existingRow?['SurgicalCap']?.toString() ?? '0',
               ),
               TextEditingController(
+                text: existingRow?['WasteOil']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['PpCoverWastage']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['SacBagWastage']?.toString() ?? '0',
+              ),
+              TextEditingController(
+                text: existingRow?['ClothWastage']?.toString() ?? '0',
+              ),
+              TextEditingController(
                 text: existingRow?['VehicleNo']?.toString() ?? '',
               ),
             ];
@@ -510,10 +749,10 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
       }
     } catch (e) {
       if (!mounted) return;
-        NotificationService.error(
-          title: "Error",
-          message: "Error occured while selecting the scrap details",
-        );
+      NotificationService.error(
+        title: "Error",
+        message: "Error occured while selecting the scrap details",
+      );
     }
   }
 
@@ -817,7 +1056,14 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
                           setState(() => isSaving = false);
                         },
                   child: isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.green,
+                          ),
+                        )
                       : const Text(
                           "Save",
                           style: TextStyle(
@@ -840,15 +1086,30 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: _downloadExcel,
-                  child: const Text(
-                    "Download Excel",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                  onPressed: isGeneratingExcel
+                      ? null
+                      : () async {
+                          setState(() => isGeneratingExcel = true);
+                          await _downloadExcel();
+                          setState(() => isGeneratingExcel = false);
+                        },
+                  child: isGeneratingExcel
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.green,
+                          ),
+                        )
+                      : const Text(
+                          "Download Excel",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
             ],

@@ -1059,10 +1059,7 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       "sapToken": DataManager.readSapToken(),
     };
     const apiUrl = '${ApiHelper.baseUrl}BicxoSalesTargetList';
-    var headers = {
-      HttpHeaders.contentTypeHeader: 'application/json',
-      // HttpHeaders.authorizationHeader: 'Bearer    ${DataManager.readSapToken()}'
-    };
+    var headers = {HttpHeaders.contentTypeHeader: 'application/json'};
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -3346,10 +3343,10 @@ class _MonthlyPLFinanceState extends State<MonthlyPLFinance> {
       // ---------------- SALES ----------------
       addSection("Income");
 
-// var revTargets = getTargets("Revenue from Operations");
-//       var revenueTargets = List<num>.generate(12, (i) => revTargets[i]);
-//       var othTargets = getTargets("Other Income");
-//       var othIncomeTargets = List<num>.generate(12, (i) => othTargets[i]);
+      // var revTargets = getTargets("Revenue from Operations");
+      //       var revenueTargets = List<num>.generate(12, (i) => revTargets[i]);
+      //       var othTargets = getTargets("Other Income");
+      //       var othIncomeTargets = List<num>.generate(12, (i) => othTargets[i]);
 
       double salesTarget = targetForMonth("Revenue from Operations");
 
