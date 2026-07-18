@@ -839,6 +839,11 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
   @override
   Widget build(BuildContext context) {
     final hasRows = dates.isNotEmpty;
+    final mediaQuery = MediaQuery.of(context);
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0;
+    final useKeyboardLayout = isLandscape && isKeyboardOpen;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: true,
@@ -856,40 +861,67 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
         centerTitle: true,
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            /// TOP FILTER AREA
-            Card(
-              elevation: 3,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  children: [const SizedBox(height: 10), _buildDatePickers()],
-                ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final filterCard = Card(
+            elevation: 3,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                children: [const SizedBox(height: 10), _buildDatePickers()],
               ),
             ),
+          );
 
-            const SizedBox(height: 12),
+          final tableArea = isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : hasRows
+              ? _buildStickyTable()
+              : const Center(
+                  child: Text(
+                    'No table generated yet. Choose From and To and press Generate.',
+                  ),
+                );
 
-            /// MAIN TABLE AREA (sticky header compatible)
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : hasRows
-                  ? _buildStickyTable()
-                  : const Center(
-                      child: Text(
-                        'No table generated yet. Choose From and To and press Generate.',
-                      ),
-                    ),
+          if (useKeyboardLayout) {
+            final tableHeight = (constraints.maxHeight - 122).clamp(
+              120.0,
+              260.0,
+            );
+
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                children: [
+                  filterCard,
+                  const SizedBox(height: 12),
+                  SizedBox(height: tableHeight, child: tableArea),
+                ],
+              ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              children: [
+                /// TOP FILTER AREA
+                filterCard,
+
+                const SizedBox(height: 12),
+
+                /// MAIN TABLE AREA (sticky header compatible)
+                Expanded(child: tableArea),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
 
-      bottomNavigationBar: hasRows ? _buildSaveButton() : null,
+      bottomNavigationBar: hasRows && !useKeyboardLayout
+          ? _buildSaveButton()
+          : null,
     );
   }
 
