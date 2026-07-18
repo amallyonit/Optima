@@ -1189,27 +1189,38 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
     return TableRow(
       children: List.generate(headers.length - _frozenColumnCount, (index) {
         final colIndex = index;
-        return Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: TextField(
-            controller: controllers[rowIndex][colIndex],
-            focusNode: focusNodes[rowIndex][colIndex],
-            keyboardType: isNumericColumn(colIndex)
-                ? const TextInputType.numberWithOptions(decimal: true)
-                : TextInputType.text,
-            textAlign: isNumericColumn(colIndex)
-                ? TextAlign.right
-                : TextAlign.left,
-            onChanged: (_) => calculateTotals(),
-            onTap: () {
-              controllers[rowIndex][colIndex].selection = TextSelection(
-                baseOffset: 0,
-                extentOffset: controllers[rowIndex][colIndex].text.length,
-              );
-            },
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        return SizedBox(
+          height: _rowHeight,
+          child: Padding(
+            padding: const EdgeInsets.all(3.0),
+            child: TextField(
+              controller: controllers[rowIndex][colIndex],
+              focusNode: focusNodes[rowIndex][colIndex],
+              expands: true,
+              maxLines: null,
+              minLines: null,
+              keyboardType: isNumericColumn(colIndex)
+                  ? const TextInputType.numberWithOptions(decimal: true)
+                  : TextInputType.text,
+              textAlign: isNumericColumn(colIndex)
+                  ? TextAlign.right
+                  : TextAlign.left,
+              textAlignVertical: TextAlignVertical.center,
+              onChanged: (_) => calculateTotals(),
+              onTap: () {
+                controllers[rowIndex][colIndex].selection = TextSelection(
+                  baseOffset: 0,
+                  extentOffset: controllers[rowIndex][colIndex].text.length,
+                );
+              },
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: 4,
+                  horizontal: 8,
+                ),
+              ),
             ),
           ),
         );
