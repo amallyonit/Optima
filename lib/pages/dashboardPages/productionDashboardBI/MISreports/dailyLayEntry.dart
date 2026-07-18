@@ -76,7 +76,8 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   static const int _dataColumnCount = 14;
   static const Set<int> _formulaColumns = {3, 7, 10, 13};
   static const int _frozenColumnCount = 2;
-  static const double _headerHeight = 82;
+  static const double _headerHeight = 76;
+  static const double _compactHeaderHeight = 76;
   static const double _rowHeight = 55;
   static const double _actionColumnWidth = 90;
   static const double _dateColumnWidth = 120;
@@ -110,6 +111,7 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   DateTime? _to;
   bool isLoading = false;
   bool isSaving = false;
+  bool isGeneratingExcel = false;
   bool _isSyncing = false;
   String userID = '';
   String? _selectedPlant = 'Bangalore IPD Plant';
@@ -120,6 +122,13 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   final reportService = ReportService();
 
   double get _frozenTableWidth => _actionColumnWidth + _dateColumnWidth;
+
+  bool get _isKeyboardLandscape {
+    final mediaQuery = MediaQuery.of(context);
+    return !kIsWeb &&
+        mediaQuery.viewInsets.bottom > 0 &&
+        mediaQuery.orientation == Orientation.landscape;
+  }
 
   @override
   void initState() {
@@ -1359,6 +1368,8 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   }
 
   Widget _buildStickyTable() {
+    final isKeyboardLandscape = _isKeyboardLandscape;
+
     return Container(
       margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -1373,7 +1384,11 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 6, left: 6, right: 6),
+            padding: EdgeInsets.only(
+              top: isKeyboardLandscape ? 0 : 6,
+              left: 6,
+              right: 6,
+            ),
             child: Row(
               children: [
                 SizedBox(width: _frozenTableWidth, child: _buildFrozenHeader()),
@@ -1391,7 +1406,11 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
           Divider(height: 1, color: Colors.grey.shade300),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 6, left: 6, right: 6),
+              padding: EdgeInsets.only(
+                bottom: isKeyboardLandscape ? 0 : 6,
+                left: 6,
+                right: 6,
+              ),
               child: RawScrollbar(
                 controller: _verticalController,
                 thumbVisibility: true,
@@ -1422,23 +1441,24 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
               ),
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey.shade300)),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: _frozenTableWidth + 12),
-                Expanded(
-                  child: PermanentHorizontalScrollbar(
-                    controller: _bodyHorizontalController,
-                    height: 16,
+          if (!isKeyboardLandscape)
+            Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(width: _frozenTableWidth + 12),
+                  Expanded(
+                    child: PermanentHorizontalScrollbar(
+                      controller: _bodyHorizontalController,
+                      height: 16,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-              ],
+                  const SizedBox(width: 6),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1479,7 +1499,7 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
   Widget _buildHeaderCell(String text) {
     return Container(
       alignment: Alignment.center,
-      height: _headerHeight,
+      height: _isKeyboardLandscape ? _compactHeaderHeight : _headerHeight,
       padding: const EdgeInsets.all(8.0),
       child: Text(
         text,
@@ -1786,7 +1806,14 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
                           setState(() => isSaving = false);
                         },
                   child: isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.green,
+                          ),
+                        )
                       : Text(
                           'Save',
                           style: TextStyle(
@@ -1806,15 +1833,30 @@ class _DailyLayEntryState extends State<DailyLayEntryPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: _showDownloadOptions,
-                  child: Text(
-                    'Download Excel',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: fontSize,
-                    ),
-                  ),
+                  onPressed: isGeneratingExcel
+                      ? null
+                      : () async {
+                          setState(() => isGeneratingExcel = true);
+                          await _showDownloadOptions();
+                          setState(() => isGeneratingExcel = false);
+                        },
+                  child: isGeneratingExcel
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.green,
+                          ),
+                        )
+                      : Text(
+                          'Download Excel',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: fontSize,
+                          ),
+                        ),
                 ),
               ),
             ],

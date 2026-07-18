@@ -88,6 +88,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
   Set<String> existingDbDates = {};
 
   bool isSaving = false;
+  bool isGeneratingExcel = false;
   bool _isSyncing = false;
 
   String formatDate(String isoDate) {
@@ -273,7 +274,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     }
   }
 
-  void _refreshCalculatedValuesAndTotals({int? rowIndex}) {
+  Future<void> _refreshCalculatedValuesAndTotals({int? rowIndex}) async {
     if (rowIndex == null) {
       _recalculateAllRows();
     } else {
@@ -349,7 +350,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       return;
     }
 
-    _refreshCalculatedValuesAndTotals();
+    await _refreshCalculatedValuesAndTotals();
 
     List<List<dynamic>> rows = [];
 
@@ -370,7 +371,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
       );
       return;
     }
-    reportService.generateExcel(
+    await reportService.generateExcel(
       sheetName: 'Wrapsheet Calculation',
       headers: headers.sublist(1),
       rows: rows,
@@ -1212,7 +1213,7 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
     _selectedShift ??= 'DAY'; // default selection
 
     final dropdownPlant = SizedBox(
-      width: 194,
+      width: 215,
       height: 40,
       child: DropdownButtonFormField<String>(
         initialValue: _selectedPlant,
@@ -1588,7 +1589,14 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
                           setState(() => isSaving = false);
                         },
                   child: isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.green,
+                          ),
+                        )
                       : Text(
                           "Save",
                           style: TextStyle(
@@ -1611,15 +1619,30 @@ class _WrapsheetCalculationPageState extends State<WrapsheetCalculationPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  onPressed: exportWrapsheetExcel,
-                  child: Text(
-                    "Download Excel",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: fontSize,
-                    ),
-                  ),
+                  onPressed: isGeneratingExcel
+                      ? null
+                      : () async {
+                          setState(() => isGeneratingExcel = true);
+                          await exportWrapsheetExcel();
+                          setState(() => isGeneratingExcel = false);
+                        },
+                  child: isGeneratingExcel
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.green,
+                          ),
+                        )
+                      : Text(
+                          "Download Excel",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: fontSize,
+                          ),
+                        ),
                 ),
               ),
             ],
