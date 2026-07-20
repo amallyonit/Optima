@@ -23,6 +23,8 @@ class ItemGroupAgeingSummary {
   double days61to90Value = 0.0;
   double greaterThan90DaysQty = 0.0;
   double greaterThan90DaysValue = 0.0;
+  bool isTotal = false;
+  int totalGroup = 0;
 
   ItemGroupAgeingSummary({required this.itemGroupName});
 
@@ -59,6 +61,17 @@ class ItemGroupAgeingSummary {
         break;
     }
   }
+
+  void addSummary(ItemGroupAgeingSummary other) {
+    lessThan60DaysQty += other.lessThan60DaysQty;
+    lessThan60DaysValue += other.lessThan60DaysValue;
+
+    days61to90Qty += other.days61to90Qty;
+    days61to90Value += other.days61to90Value;
+
+    greaterThan90DaysQty += other.greaterThan90DaysQty;
+    greaterThan90DaysValue += other.greaterThan90DaysValue;
+  }
 }
 
 class ItemGroupAgeingSummaryList {
@@ -82,6 +95,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
   List<InventoryList> inventory = [];
   List<InventoryList> inventoryTemp = [];
   String _selectedBranch = "";
+  DateTime selectedDate = DateTime.now();
 
   InventoryAgingMISList inventoryAgingList = InventoryAgingMISList(
     agingData: [],
@@ -273,7 +287,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
     try {
       do {
         var body = {
-          "ToDate": formatDate(currentDate!),
+          "ToDate": formatDate(selectedDate),
           "Index": index.toString(),
           "Limit": limit.toString(),
           "sapToken": DataManager.readSapToken(),
@@ -427,29 +441,124 @@ class _AgingReportPageState extends State<AgingReportPage> {
   }
 
   Future<void> _loadItemGroupAgeingSummary() async {
-    final inventoryList = inventory; // your source list
-    final Map<String, ItemGroupAgeingSummary> grouped = {};
+    final List<ItemGroupAgeingSummary> finalResult = [];
 
-    for (var item in inventoryList) {
-      final String groupName = (item.groupName).toString();
-      final String ageing = (item.ageingBrackets).toString();
-      final double qty =
-          double.tryParse((item.totalQuantity).toString()) ?? 0.0;
-      final double val = double.tryParse((item.totalValue).toString()) ?? 0.0;
+    // Normal warehouse data
+    final normalInventory = inventory
+        .where((e) => e.warehouseCode != "BAGALUWH")
+        .toList();
 
-      if (groupName.isEmpty) continue;
+    // Bagalur data
+    final bagalurInventory = inventory
+        .where((e) => e.warehouseCode == "BAGALUWH")
+        .toList();
 
-      grouped.putIfAbsent(
+    // Overall totals (excluding Bagalur)
+    final overallTotal = ItemGroupAgeingSummary(itemGroupName: "TOTAL (1to3)");
+    overallTotal.isTotal = true;
+
+    // Grand Total
+    final grandTotal = ItemGroupAgeingSummary(itemGroupName: "Grand Total");
+    grandTotal.isTotal = true;
+
+    //------------------------------------------------------------
+    // NORMAL DATA
+    //------------------------------------------------------------
+
+    final Map<String, Map<String, ItemGroupAgeingSummary>> grouped = {};
+
+    for (final item in normalInventory) {
+      final totalGroup = item.totalGroup;
+      final groupName = item.groupName;
+
+      final ageing = item.ageingBrackets;
+
+      final qty = double.tryParse(item.totalQuantity) ?? 0;
+
+      final val = double.tryParse(item.totalValue) ?? 0;
+
+      grouped.putIfAbsent(totalGroup, () => {});
+
+      grouped[totalGroup]!.putIfAbsent(
         groupName,
         () => ItemGroupAgeingSummary(itemGroupName: groupName),
       );
-      grouped[groupName]!.addToBracket(ageing, qty, val);
+
+      grouped[totalGroup]![groupName]!.addToBracket(ageing, qty, val);
     }
 
-    final List<ItemGroupAgeingSummary> result = grouped.values.toList();
-    result.sort((a, b) => b.totalQuantity.compareTo(a.totalQuantity));
+    final sortedGroups = grouped.keys.toList()..sort();
 
-    itemGroupAgeingSummaryList = ItemGroupAgeingSummaryList(items: result);
+    for (final grp in sortedGroups) {
+      final subtotal = ItemGroupAgeingSummary(itemGroupName: grp);
+
+      subtotal.isTotal = true;
+
+      final rows = grouped[grp]!.values.toList()
+        ..sort((a, b) => b.totalValue.compareTo(a.totalValue));
+
+      for (final row in rows) {
+        finalResult.add(row);
+
+        subtotal.addSummary(row);
+
+        overallTotal.addSummary(row);
+
+        grandTotal.addSummary(row);
+      }
+
+      finalResult.add(subtotal);
+    }
+
+    finalResult.add(overallTotal);
+
+    //------------------------------------------------------------
+    // BAGALUR
+    //------------------------------------------------------------
+
+    final Map<String, ItemGroupAgeingSummary> bagMap = {};
+
+    for (final item in bagalurInventory) {
+      final groupName = "BAG-${item.groupName}";
+
+      final ageing = item.ageingBrackets;
+
+      final qty = double.tryParse(item.totalQuantity) ?? 0;
+
+      final val = double.tryParse(item.totalValue) ?? 0;
+
+      bagMap.putIfAbsent(
+        groupName,
+        () => ItemGroupAgeingSummary(itemGroupName: groupName),
+      );
+
+      bagMap[groupName]!.addToBracket(ageing, qty, val);
+    }
+
+    final bagTotal = ItemGroupAgeingSummary(itemGroupName: "Total-Bagalur");
+
+    bagTotal.isTotal = true;
+
+    final bagRows = bagMap.values.toList()
+      ..sort((a, b) => b.totalValue.compareTo(a.totalValue));
+
+    for (final row in bagRows) {
+      finalResult.add(row);
+
+      bagTotal.addSummary(row);
+
+      grandTotal.addSummary(row);
+    }
+
+    finalResult.add(bagTotal);
+
+    //------------------------------------------------------------
+    // GRAND TOTAL
+    //------------------------------------------------------------
+
+    finalResult.add(grandTotal);
+
+    itemGroupAgeingSummaryList = ItemGroupAgeingSummaryList(items: finalResult);
   }
 
   Future<void> loadData(String selectedUser) async {
@@ -469,8 +578,29 @@ class _AgingReportPageState extends State<AgingReportPage> {
     });
   }
 
+  Future<void> selectMonth(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2025),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null &&
+        (picked.month != selectedDate.month ||
+            picked.year != selectedDate.year)) {
+      setState(() {
+        selectedDate = picked;
+        chartDataLoaded = false;
+      });
+      LoadDates();
+      await loadData("");
+    }
+  }
+
   Future<void> loadDataWithFilter() async {
-    chartDataLoaded = false;
+    setState(() {
+      chartDataLoaded = false;
+    });
     inventory = inventoryTemp;
     inventory = inventory.where((data) {
       final warehouseMatch =
@@ -490,7 +620,10 @@ class _AgingReportPageState extends State<AgingReportPage> {
   }
 
   Future<void> loadDataClearFilter() async {
-    chartDataLoaded = false;
+    setState(() {
+      chartDataLoaded = false;
+    });
+    selectedDate = DateTime.now();
     inventory = inventoryTemp;
     _selectedBranch = "All Warehouses";
     await _loadInventoryAgingData();
@@ -533,8 +666,10 @@ class _AgingReportPageState extends State<AgingReportPage> {
           .toList(),
       fileName: 'ageingreport.xlsx',
       amountColumns: [2, 3, 4, 5, 6, 7, 8, 9],
-      addTotalRow: true,
-      reportTitle: 'Production[MIS] - Ageing Report $_selectedBranch',
+      addTotalRow: false,
+      reportTitle:
+          'Production[MIS] - Ageing Report $_selectedBranch - AS ON ${DateFormat('dd-MM-yyyy').format(selectedDate)}',
+      highlightSections: true,
     );
   }
 
@@ -586,9 +721,14 @@ class _AgingReportPageState extends State<AgingReportPage> {
                         ),
                       ],
                     ),
-                    const Row(children: [SizedBox(width: 10)]),
                     Row(
                       children: [
+                        IconButton(
+                          onPressed: () {
+                            selectMonth(context);
+                          },
+                          icon: const Icon(Icons.calendar_month),
+                        ),
                         IconButton(
                           onPressed: () {
                             showPopupMenu();
@@ -598,6 +738,17 @@ class _AgingReportPageState extends State<AgingReportPage> {
                         const SizedBox(width: 5),
                       ],
                     ),
+                    // Row(
+                    //   children: [
+                    //     IconButton(
+                    //       onPressed: () {
+                    //         showPopupMenu();
+                    //       },
+                    //       icon: const Icon(Icons.filter_alt_outlined),
+                    //     ),
+                    //     const SizedBox(width: 5),
+                    //   ],
+                    // ),
                   ],
                 ),
 

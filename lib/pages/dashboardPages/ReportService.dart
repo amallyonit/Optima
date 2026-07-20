@@ -580,12 +580,15 @@ class ReportService {
               title.contains("finance costs") ||
               title.contains("work-in-progress"));
 
-      final isTotalRow =
-          title.startsWith("total") ||
-          title.startsWith("grand total") ||
-          title.startsWith("(increase)/decrease") ||
-          title.startsWith("cost of materials consumed (cogs)") ||
-          title.startsWith("cogs");
+      final lowerTitle = title.trim().toLowerCase();
+
+      final isTotalRow = [
+        "total",
+        "grand total",
+        "(increase)/decrease",
+        "cost of materials consumed (cogs)",
+        "cogs",
+      ].any(lowerTitle.startsWith);
 
       for (int j = 0; j < row.length; j++) {
         final cell = info.sheet.getRangeByIndex(rowIndex, j + 1);
@@ -641,9 +644,9 @@ class ReportService {
 
         if (isTotalRow) {
           cell.cellStyle.bold = true;
-          if (info.enableStyling) {
-            cell.cellStyle.backColor = "#FFF2CC"; // light yellow
-          }
+          // if (info.enableStyling) {
+          cell.cellStyle.backColor = "#FFF2CC"; // light yellow
+          //}
         }
       }
     }

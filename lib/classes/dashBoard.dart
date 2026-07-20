@@ -1856,6 +1856,7 @@ class InventoryList {
   final String ageingBrackets;
   final String totalQuantity;
   final String totalValue;
+  final String totalGroup;
 
   InventoryList({
     required this.docDate,
@@ -1869,6 +1870,7 @@ class InventoryList {
     required this.ageingBrackets,
     required this.totalQuantity,
     required this.totalValue,
+    required this.totalGroup,
   });
 
   factory InventoryList.fromJson(Map<String, dynamic> json) {
@@ -1884,6 +1886,7 @@ class InventoryList {
       ageingBrackets: json['ageingBrackets'],
       totalQuantity: json['totalQuantity'],
       totalValue: json['totalValue'],
+      totalGroup: json['totalGroup'],
     );
   }
 }

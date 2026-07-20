@@ -236,8 +236,8 @@ class _ScrapInputPageState extends State<ScrapInputPage> {
       return [
         waste.name,
         waste.uom,
-        waste.quantity ?? 0,
         waste.rate ?? 0,
+        waste.quantity ?? 0,
         waste.amount ?? 0,
       ];
     }).toList();

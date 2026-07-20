@@ -266,7 +266,13 @@ class _StockStatementPageState extends State<StockStatementPage> {
                 color: const Color.fromARGB(255, 199, 7, 173),
                 borderRadius: BorderRadius.zero,
                 toY: chartData.actualStock,
-                width: 30,
+                width: 15,
+              ),
+              BarChartRodData(
+                color: const Color.fromARGB(255, 81, 3, 71),
+                borderRadius: BorderRadius.zero,
+                toY: chartData.actualStockValue,
+                width: 15,
               ),
             ],
           ),
@@ -732,6 +738,7 @@ class _StockStatementPageState extends State<StockStatementPage> {
     var inventoryList = stockInTransitList;
     String itemDescription = "";
     double actualStockQty = 0.00;
+    double actualStockVal = 0.00;
     List<StockItemData> stkData = [];
     Set<String> processedItemCodes = {};
 
@@ -742,7 +749,9 @@ class _StockStatementPageState extends State<StockStatementPage> {
           (e) => e.itemDescription == itemDescription,
         )) {
           double actualQty = double.parse(list.quantity);
+          double actualVal = double.parse(list.lineTotal);
           actualStockQty += actualQty;
+          actualStockVal += actualVal;
         }
 
         stkData.add(
@@ -750,12 +759,14 @@ class _StockStatementPageState extends State<StockStatementPage> {
             itemSubGroup: itemDescription,
             targetStock: 0,
             actualStock: actualStockQty,
+            actualStockValue: actualStockVal,
             difference: 0,
           ),
         );
         processedItemCodes.add(invList.itemDescription);
       }
       actualStockQty = 0;
+      actualStockVal = 0;
       itemDescription = "";
     }
 
@@ -936,6 +947,30 @@ class _StockStatementPageState extends State<StockStatementPage> {
           row.target[warehouse]! - row.actual[warehouse]!;
     }
 
+    final transitRow = WarehouseStockRow(
+      rowLabel: "Stock in Transit",
+      target: {},
+      actual: {},
+      difference: {},
+    );
+
+    for (final item in stockInTransitList) {
+      final warehouse = item.fgLocation;
+
+      final value = double.tryParse(item.lineTotal) ?? 0;
+
+      transitRow.target.putIfAbsent(warehouse, () => 0);
+      transitRow.actual[warehouse] =
+          (transitRow.actual[warehouse] ?? 0) + value;
+    }
+
+    for (final warehouse in transitRow.actual.keys) {
+      transitRow.difference[warehouse] =
+          transitRow.target[warehouse]! - transitRow.actual[warehouse]!;
+    }
+
+    result["Stock in Transit"] = transitRow;
+
     return result.values.toList();
   }
 
@@ -1087,16 +1122,16 @@ class _StockStatementPageState extends State<StockStatementPage> {
       // TOTAL ROW
       // --------------------------------------------------
 
-      sheet.getRangeByIndex(rowIndex, 1).setText("Total");
+      sheet.getRangeByIndex(rowIndex, 2).setText("Total");
 
       sheet
-              .getRangeByIndex(rowIndex, 1, rowIndex, totalColumns)
+              .getRangeByIndex(rowIndex, 2, rowIndex, totalColumns)
               .cellStyle
               .backColor =
           "#FFF2CC";
 
       sheet
-              .getRangeByIndex(rowIndex, 1, rowIndex, totalColumns)
+              .getRangeByIndex(rowIndex, 2, rowIndex, totalColumns)
               .cellStyle
               .bold =
           true;
@@ -1224,7 +1259,12 @@ class _StockStatementPageState extends State<StockStatementPage> {
     int slNo = 1;
     await reportService.generateExcel(
       sheetName: 'StockInTransitStatement',
-      headers: ['SL NO', 'Item Name', 'Stock In Transit'],
+      headers: [
+        'SL NO',
+        'Item Name',
+        'Stock In Transit(Qty)',
+        'Stock In Transit(Value)',
+      ],
       rows: stockStatementTransitData.stockData
           .map(
             (stkData) => [
@@ -1232,11 +1272,12 @@ class _StockStatementPageState extends State<StockStatementPage> {
               stkData
                   .itemSubGroup, // Item name will come in itemSubGroup field in this chart
               stkData.actualStock,
+              stkData.actualStockValue,
             ],
           )
           .toList(),
       fileName: 'stock_in_transit_statement.xlsx',
-      amountColumns: [3],
+      amountColumns: [3, 4],
       addTotalRow: true,
       reportTitle: 'Production[MIS] - Stock In Transit Statement',
     );
@@ -1496,7 +1537,15 @@ class _StockStatementPageState extends State<StockStatementPage> {
                           color: const Color.fromARGB(255, 199, 7, 173),
                         ),
                         const SizedBox(width: 5),
-                        const Text('Transit', style: TextStyle(fontSize: 12)),
+                        const Text('Qty', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 10),
+                        Container(
+                          height: 8,
+                          width: 8,
+                          color: const Color.fromARGB(255, 81, 3, 71),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Value', style: TextStyle(fontSize: 12)),
                       ],
                     ),
                     menuItems: [
@@ -1834,9 +1883,9 @@ class _StockStatementPageState extends State<StockStatementPage> {
     double? maxY = stockStatementTransitData.stockData.isNotEmpty
         ? stockStatementTransitData.stockData
               .map(
-                (e) => e.actualStock > e.targetStock
+                (e) => e.actualStock > e.actualStockValue
                     ? e.actualStock
-                    : e.targetStock,
+                    : e.actualStockValue,
               )
               .reduce((a, b) => a > b ? a : b)
         : 0;
@@ -1907,7 +1956,16 @@ class _StockStatementPageState extends State<StockStatementPage> {
                       children: <TextSpan>[
                         TextSpan(
                           text:
-                              "\nStock In Transit: ${formatAmount(stockStatementTransitData.stockData[grpIndex].actualStock)}",
+                              "\nQuantity: ${formatAmount(stockStatementTransitData.stockData[grpIndex].actualStock)}\n",
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              "\Value: ${formatAmount(stockStatementTransitData.stockData[grpIndex].actualStockValue)}",
                           style: const TextStyle(
                             color: Colors.black,
                             fontSize: 12,
