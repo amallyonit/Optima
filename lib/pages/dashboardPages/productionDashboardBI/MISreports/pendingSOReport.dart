@@ -300,10 +300,8 @@ class _PendingSOReportPageState extends State<PendingSOReportPage> {
             .toList();
         SODetailListTemp = soDetailList
             .where(
-              (e) =>
-                  e.soStatus == "Open" &&
-                  e.bpGroup != "AH GROUP" &&
-                  ["Finished Goods", "Traded Material"].contains(e.groupName),
+              (e) => e.soStatus == "Open" && e.bpGroup != "AH GROUP",
+              // && ["Finished Goods", "Traded Material"].contains(e.groupName),
             )
             .toList();
       });

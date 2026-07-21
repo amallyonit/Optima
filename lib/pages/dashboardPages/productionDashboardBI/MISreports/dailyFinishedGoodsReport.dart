@@ -956,7 +956,12 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     );
 
     final DateTime startDate = monthDates["start"]!;
-    final DateTime endDate = monthDates["end"]!;
+
+    final DateTime endDate =
+        (selectedDate.year == currentDate!.year &&
+            selectedDate.month == currentDate!.month)
+        ? currentDate!
+        : monthDates["end"]!;
     List<List<dynamic>> rows = [];
     List<String> dayHeaders = [];
     List<String> dayKeys = [];
@@ -970,15 +975,16 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
     }
 
     for (
-      DateTime d = startDate;
-      !d.isAfter(endDate);
-      d = d.add(const Duration(days: 1))
+      DateTime d = endDate;
+      !d.isBefore(startDate);
+      d = d.add(const Duration(days: -1))
     ) {
       final key = DateFormat('dd-MMM').format(d);
 
       dayKeys.add(key);
       dayHeaders.add('$key (Ach %)');
     }
+
     final headers = [
       "Name of Branch/Depot",
       "Closing Stock Target",
@@ -986,6 +992,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
       ...dayHeaders,
       "Average %",
     ];
+    
     final filteredList = stockSummaryData
         .where((e) {
           final docDate = parseDate(e.docDate);
@@ -1110,7 +1117,10 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         groupMap[item.misfgItemGroups]!.add(item);
       }
 
-      for (final groupEntry in groupMap.entries) {
+      final sortedEntries = groupMap.entries.toList()
+        ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
+
+      for (final groupEntry in sortedEntries) {
         final group = groupEntry.key;
 
         double totalTarget = targetMap[group] ?? 0;
@@ -1131,7 +1141,7 @@ class _DailyFinishedGoodsReportState extends State<DailyFinishedGoodsReport> {
         }
 
         groupEntry.value.sort(
-          (a, b) => parseDate(a.docDate)!.compareTo(parseDate(b.docDate)!),
+          (a, b) => parseDate(b.docDate)!.compareTo(parseDate(a.docDate)!),
         );
 
         totalActual = double.tryParse(groupEntry.value.last.totalValue) ?? 0;

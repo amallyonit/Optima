@@ -959,7 +959,12 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     );
 
     final DateTime startDate = monthDates["start"]!;
-    final DateTime endDate = monthDates["end"]!;
+
+    final DateTime endDate =
+        (selectedDate.year == currentDate!.year &&
+            selectedDate.month == currentDate!.month)
+        ? currentDate!
+        : monthDates["end"]!;
     List<List<dynamic>> rows = [];
     List<String> dayHeaders = [];
     List<String> dayKeys = [];
@@ -973,9 +978,9 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     }
 
     for (
-      DateTime d = startDate;
-      !d.isAfter(endDate);
-      d = d.add(const Duration(days: 1))
+      DateTime d = endDate;
+      !d.isBefore(startDate);
+      d = d.add(const Duration(days: -1))
     ) {
       final key = DateFormat('dd-MMM').format(d);
 
@@ -996,7 +1001,11 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
           return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
         })
-        .where((e) => e.rmLocation.toLowerCase() != 'bagluru')
+        .where(
+          (e) =>
+              e.rmLocation.toLowerCase() != 'bagluru' &&
+              e.rmLocation.toLowerCase() != 'job work',
+        )
         .toList();
 
     addWarehouseSection(
@@ -1012,7 +1021,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
     addTotalRow(
       rows: rows,
       data: filteredList,
-      title: "TOTAL (Excluding Bagluru & Export)",
+      title: "TOTAL (Excluding Bagluru ,Export & Job work)",
       targetMap: targetMap,
       dayKeys: dayKeys,
       endDate: endDate,
@@ -1027,7 +1036,11 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
 
           return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
         })
-        .where((e) => e.rmLocation.toLowerCase() == 'bagluru')
+        .where(
+          (e) =>
+              e.rmLocation.toLowerCase() == 'bagluru' &&
+              e.rmLocation.toLowerCase() != 'job work',
+        )
         .toList();
 
     rows.add(List.filled(headers.length, ""));
@@ -1040,6 +1053,30 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       endDate: endDate,
       showWarehouseHeader: true,
     );
+
+    //Data for Job Work
+    final jobWorkDataList = stockSummaryData
+        .where((e) {
+          final docDate = parseDate(e.docDate);
+
+          if (docDate == null) return false;
+
+          return !docDate.isBefore(startDate) && !docDate.isAfter(endDate);
+        })
+        .where((e) => e.rmLocation.toLowerCase() == 'job work')
+        .toList();
+    if (jobWorkDataList.isNotEmpty) {
+      rows.add(List.filled(headers.length, ""));
+      addWarehouseSection(
+        rows: rows,
+        data: jobWorkDataList,
+        targetMap: targetMap,
+        headers: headers,
+        dayKeys: dayKeys,
+        endDate: endDate,
+        showWarehouseHeader: true,
+      );
+    }
     final grandTotalList = stockSummaryData.where((e) {
       final docDate = parseDate(e.docDate);
       if (docDate == null) return false;
@@ -1054,6 +1091,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
       dayKeys: dayKeys,
       endDate: endDate,
     );
+
     await reportService.generateExcel(
       sheetName: "Daily RM Report",
       headers: headers,
@@ -1113,7 +1151,10 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         groupMap[item.misrmItemGroups]!.add(item);
       }
 
-      for (final groupEntry in groupMap.entries) {
+      final sortedEntries = groupMap.entries.toList()
+        ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
+
+      for (final groupEntry in sortedEntries) {
         final group = groupEntry.key;
 
         double totalTarget = targetMap[group] ?? 0;
@@ -1134,7 +1175,7 @@ class _DailyRawMaterialReportState extends State<DailyRawMaterialReport> {
         }
 
         groupEntry.value.sort(
-          (a, b) => parseDate(a.docDate)!.compareTo(parseDate(b.docDate)!),
+          (a, b) => parseDate(b.docDate)!.compareTo(parseDate(a.docDate)!),
         );
 
         totalActual = double.tryParse(groupEntry.value.last.totalValue) ?? 0;
